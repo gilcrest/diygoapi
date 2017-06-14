@@ -1,0 +1,19 @@
+<component name="libraryTable">
+  <library name="GOPATH &lt;go-API-template&gt;">
+    <CLASSES>
+      <root url="file://$PROJECT_DIR$/../../../golang.org" />
+      <root url="file://$PROJECT_DIR$/../../../gopl.io" />
+      <root url="file://$PROJECT_DIR$/../../../go.uber.org" />
+      <root url="file://$PROJECT_DIR$/../.." />
+    </CLASSES>
+    <SOURCES>
+      <root url="file://$PROJECT_DIR$/../../../golang.org" />
+      <root url="file://$PROJECT_DIR$/../../../gopl.io" />
+      <root url="file://$PROJECT_DIR$/../../../go.uber.org" />
+      <root url="file://$PROJECT_DIR$/../.." />
+    </SOURCES>
+    <excluded>
+      <root url="file://$PROJECT_DIR$" />
+    </excluded>
+  </library>
+</component>
