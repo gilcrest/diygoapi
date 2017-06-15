@@ -32,7 +32,7 @@ func AddDBTx2Context(ctx context.Context, opts *sql.TxOptions) context.Context {
 // extracts the database transaction from the context, if present.
 func DBTxFromContext(ctx context.Context) (*sql.Tx, bool) {
 	// ctx.Value returns nil if ctx has no value for the key;
-	// the net.IP type assertion returns ok=false for nil.
+	// the *sql.Tx type assertion returns ok=false for nil.
 	dbTx, ok := ctx.Value(dbTxKey).(*sql.Tx)
 	return dbTx, ok
 }
