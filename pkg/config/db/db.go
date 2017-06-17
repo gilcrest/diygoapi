@@ -6,12 +6,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/gilcrest/go-API-template/pkg/config/env"
 	_ "github.com/lib/pq"
-)
-
-var (
-	// DBCon is the connection handle for the database
-	DBCon *sql.DB
 )
 
 // The key type is unexported to prevent collisions with context keys defined in
@@ -24,8 +20,8 @@ type key int
 const dbTxKey key = 0
 
 // returns Context carrying the database transaction (tx).
-func AddDBTx2Context(ctx context.Context, opts *sql.TxOptions) context.Context {
-	tx, _ := DbTx(ctx, opts)
+func AddDBTx2Context(ctx context.Context, env env.Env, opts *sql.TxOptions) context.Context {
+	tx, _ := DbTx(ctx, env, opts)
 	return context.WithValue(ctx, dbTxKey, tx)
 }
 
@@ -63,11 +59,11 @@ func NewDB() (*sql.DB, error) {
 // Opens a database connection and starts a database transaction using the
 // BeginTx method which allows for rollback of the transaction if the context
 // is cancelled
-func DbTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error) {
+func DbTx(ctx context.Context, env env.Env, opts *sql.TxOptions) (*sql.Tx, error) {
 
 	// Calls the BeginTx method of the above opened database
 	// func (db *DB) BeginTx(ctx context.Context, opts *TxOptions) (*Tx, error)
-	tx, err := DBCon.BeginTx(ctx, opts)
+	tx, err := env.Db.BeginTx(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
