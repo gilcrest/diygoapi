@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/gilcrest/go-API-template/pkg/appUser"
-	"github.com/gilcrest/go-API-template/pkg/appUser/appUserDAF"
+	"github.com/gilcrest/go-API-template/pkg/appUser/create"
 	"github.com/gilcrest/go-API-template/pkg/config/db"
 	"github.com/gilcrest/go-API-template/pkg/config/env"
 )
@@ -43,7 +43,18 @@ func main() {
 	inputUsr := appUser.User{Username: "repoMan", MobileID: "(617) 302-7777", Email: "repoman@alwaysintense.com", FirstName: "Otto", LastName: "Maddox"}
 	auditUsr := appUser.User{Username: "bud", MobileID: "(617) 302-7777", Email: "repoman@alwaysintense.com", FirstName: "Otto", LastName: "Maddox"}
 
-	appUserDAF.Create(ctx, inputUsr, auditUsr)
+	//
+	logsWritten, err := create.Create(ctx, &inputUsr, &auditUsr)
+
+	tx, ok := db.DBTxFromContext(ctx)
+
+	if ok && logsWritten > 0 {
+		err = tx.Commit()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+	}
 
 	fmt.Printf("%.2fs elapsed\n", time.Since(start).Seconds())
 

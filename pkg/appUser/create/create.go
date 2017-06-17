@@ -1,4 +1,4 @@
-// Business validations for creating a user
+// Business validations for creating an application user
 package create
 
 import (
@@ -9,7 +9,7 @@ import (
 )
 
 // Perform business validations prior to writing to the db
-func createUser(ctx context.Context, inputUser appUser.User, auditUser appUser.User) (int, error) {
+func Create(ctx context.Context, inputUser *appUser.User, auditUser *appUser.User) (int, error) {
 
 	// Write to db -- function returns rows impacted (should always be 1)
 	// or an error

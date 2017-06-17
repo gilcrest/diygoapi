@@ -18,7 +18,6 @@ func TestCreate(t *testing.T) {
 	// Populates DBCon global variable from config/db using the NewDB function from
 	// the same package
 	db.DBCon, err = db.NewDB()
-
 	//inputUsr := appUser.User{Username: "repoMan", MobileID: "(617) 302-7777", Email: "repoman@alwaysintense.com", FirstName: "Otto", LastName: "Maddox"}
 	//auditUsr := appUser.User{Username: "bud", MobileID: "(617) 302-7777", Email: "repoman@alwaysintense.com", FirstName: "Otto", LastName: "Maddox"}
 

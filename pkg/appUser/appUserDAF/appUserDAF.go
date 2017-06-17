@@ -11,7 +11,7 @@ import (
 
 // Creates a record in the appUser table using a stored function which
 // returns the number of rows inserted
-func Create(ctx context.Context, inputUser appUser.User, auditUser appUser.User) (int, error) {
+func Create(ctx context.Context, inputUser *appUser.User, auditUser *appUser.User) (int, error) {
 
 	var (
 		rowsInserted int
