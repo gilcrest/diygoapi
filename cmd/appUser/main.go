@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/gilcrest/go-API-template/pkg/appUser"
-	"github.com/gilcrest/go-API-template/pkg/appUser/create"
 	"github.com/gilcrest/go-API-template/pkg/config/db"
 	"github.com/gilcrest/go-API-template/pkg/config/env"
 )
@@ -41,10 +40,12 @@ func main() {
 	ctx = db.AddDBTx2Context(ctx, env, nil)
 
 	inputUsr := appUser.User{Username: "repoMan", MobileID: "(617) 302-7777", Email: "repoman@alwaysintense.com", FirstName: "Otto", LastName: "Maddox"}
-	auditUsr := appUser.User{Username: "bud", MobileID: "(617) 302-7777", Email: "repoman@alwaysintense.com", FirstName: "Otto", LastName: "Maddox"}
+	//auditUsr := appUser.User{Username: "bud", MobileID: "(617) 302-7777", Email: "repoman@alwaysintense.com", FirstName: "Otto", LastName: "Maddox"}
 
 	//
-	logsWritten, err := create.Create(ctx, &inputUsr, &auditUsr)
+	logsWritten, err := inputUsr.Create(ctx)
+
+	fmt.Printf("logsWritten = %d\n", logsWritten)
 
 	tx, ok := db.DBTxFromContext(ctx)
 
@@ -53,7 +54,8 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-
+	} else if logsWritten <= 0 {
+		log.Fatal(err)
 	}
 
 	fmt.Printf("%.2fs elapsed\n", time.Since(start).Seconds())
