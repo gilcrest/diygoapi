@@ -1,3 +1,4 @@
+// User type and associated methods to create, modify, delete application users
 package appUser
 
 import (

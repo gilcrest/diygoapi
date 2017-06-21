@@ -1,5 +1,5 @@
 // Allows for testing the different flows without having to go through
-// the server
+// the http server
 package main
 
 import (

@@ -1,3 +1,7 @@
+// General database configuration package that allows for creating
+// a database pool, starting a db transaction and adding said db
+// transaction to a context and pulling the db transaction from the
+// context
 package db
 
 import (
