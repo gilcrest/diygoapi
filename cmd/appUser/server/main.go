@@ -9,7 +9,10 @@ import (
 	"github.com/gilcrest/go-API-template/pkg/config/db"
 	"github.com/gilcrest/go-API-template/pkg/config/env"
 
+	"net/http/httputil"
+
 	"github.com/gorilla/mux"
+	"go.uber.org/zap"
 )
 
 var environment env.Env
@@ -25,7 +28,7 @@ func main() {
 	// match only POST requests on /memberlog/
 	// func (r *Router) HandleFunc(path string, f func(http.ResponseWriter,
 	// *http.Request)) *Route
-	r.HandleFunc("/appUser/create", handleMbrLog).Methods("GET")
+	r.HandleFunc("/appUser/create", handleMbrLog).Methods("POST")
 
 	// handle all requests with the Gorilla router by adding
 	// r to the DefaultServeMux
@@ -43,6 +46,8 @@ func main() {
 // an open database handle of 0 or more underlying connections
 func envInit() {
 
+	logger, _ := zap.NewProduction()
+
 	// returns an open database handle of 0 or more underlying connections
 	// func NewDB() (*sql.DB, error)
 	sqldb, err := db.NewDB()
@@ -51,7 +56,7 @@ func envInit() {
 		log.Fatal(err)
 	}
 
-	environment = env.Env{Db: sqldb}
+	environment = env.Env{Db: sqldb, Logger: logger}
 
 }
 
@@ -59,8 +64,14 @@ func handleMbrLog(w http.ResponseWriter, req *http.Request) {
 
 	// retrieve the context from the http.Request
 	ctx := req.Context()
-	log.Printf("handleMbrLog started")
-	defer log.Printf("handleMbrLog ended")
+	logger := environment.Logger
+	logger.Debug("handleMbrLog started")
+
+	defer environment.Logger.Sync()
+	defer logger.Debug("handleMbrLog ended")
+
+	logRequest(req)
+	prettyPrintRequest(req)
 
 	// db.NewContext function creates and begins a new sql.Tx, which pulls from the
 	// previously opened database (postgres) connection pool and starts a database
@@ -74,7 +85,7 @@ func handleMbrLog(w http.ResponseWriter, req *http.Request) {
 	//
 	logsWritten, err := inputUsr.Create(ctx)
 
-	fmt.Printf("logsWritten = %d\n", logsWritten)
+	fmt.Fprintf(w, "logsWritten = %d\n", logsWritten)
 
 	tx, ok := db.DBTxFromContext(ctx)
 
@@ -86,6 +97,18 @@ func handleMbrLog(w http.ResponseWriter, req *http.Request) {
 	} else if logsWritten <= 0 {
 		log.Fatal(err)
 	}
+}
+
+func prettyPrintRequest(req *http.Request) {
+	// Save a copy of this request for debugging.
+	requestDump, err := httputil.DumpRequest(req, true)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(string(requestDump))
+}
+
+func logRequest(req *http.Request) {
 
 	// type Request struct {
 	//            Method string
@@ -107,18 +130,23 @@ func handleMbrLog(w http.ResponseWriter, req *http.Request) {
 	//            RequestURI string
 	//            TLS *tls.ConnectionState
 	//    }
-	fmt.Fprintf(w, "Hi there, I love %s!\n", req.URL.Path[1:])
-	fmt.Fprintf(w, "HTTP method = %s\n", req.Method)
-	fmt.Fprintf(w, "URL = %s\n", req.URL)
-	fmt.Fprintf(w, "Protocol = %s\n", req.Proto)
-	fmt.Fprintf(w, "ProtoMajor = %d\n", req.ProtoMajor)
-	fmt.Fprintf(w, "ProtoMinor = %d\n", req.ProtoMinor)
-	fmt.Fprintf(w, "Header = %s\n", req.Header)
-	fmt.Fprintf(w, "Body = %s\n", req.Body)
-	fmt.Fprintf(w, "Content Length = %d\n", req.ContentLength)
-	fmt.Fprintf(w, "Transfer Encoding = %s\n", req.TransferEncoding)
-	fmt.Fprintf(w, "Close boolean = %t\n", req.Close)
-	fmt.Fprintf(w, "Host = %s\n", req.Host)
-	fmt.Fprintf(w, "Post Form Values = %s\n", req.Form)
 
+	logger := environment.Logger
+	logger.Info("Request received",
+		zap.String("URL Path", req.URL.Path[1:]),
+		zap.String("HTTP method", req.Method),
+		zap.String("URL", req.URL.String()),
+		zap.String("Protocol", req.Proto),
+		zap.Int("ProtoMajor", req.ProtoMajor),
+		zap.Int("ProtoMinor", req.ProtoMinor),
+
+		//TODO - finish logging the rest of the request
+		//fmt.Fprintf(w, "Header = %s\n", req.Header)
+		//fmt.Fprintf(w, "Body = %s\n", req.Body)
+		//fmt.Fprintf(w, "Content Length = %d\n", req.ContentLength)
+		//fmt.Fprintf(w, "Transfer Encoding = %s\n", req.TransferEncoding)
+		//fmt.Fprintf(w, "Close boolean = %t\n", req.Close)
+		//fmt.Fprintf(w, "Host = %s\n", req.Host)
+		//fmt.Fprintf(w, "Post Form Values = %s\n", req.Form)
+	)
 }

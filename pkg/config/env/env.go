@@ -2,9 +2,13 @@
 // related items - sql db, logger, etc.
 package env
 
-import "database/sql"
+import (
+	"database/sql"
+
+	"go.uber.org/zap"
+)
 
 type Env struct {
-	Db *sql.DB
+	Db     *sql.DB
+	Logger *zap.Logger
 }
-
