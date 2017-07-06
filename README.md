@@ -9,3 +9,4 @@ An attempt at creating a RESTful API template (built with Go)
     - Performance Monitoring
 - Helpful logging
 - Proper Error Handling
+- RESTful service versioning
