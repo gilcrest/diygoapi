@@ -10,27 +10,17 @@ import (
 
 	"net/http/httputil"
 
-	"encoding/json"
-
-	"github.com/gilcrest/go-API-template/pkg/appUser"
+	"github.com/gilcrest/go-API-template/pkg/handlers"
 	"github.com/gorilla/mux"
 	"go.uber.org/zap"
 )
-
-type testUser struct {
-	Username  string
-	MobileID  string
-	Email     string
-	FirstName string
-	LastName  string
-}
 
 func main() {
 
 	// Initializes "environment" object to be passed around to functions
 	// func envInit() *env.Env
 	env := envInit()
-	tsth := &testHandler{env: env}
+	uh := &handlers.UserHandler{Env: env}
 
 	// create a new mux (multiplex) router
 	// func NewRouter() *Router
@@ -39,7 +29,7 @@ func main() {
 	// API may have multiple versions and the matching may get a bit
 	// lengthy, this routeMatcher function helps with organizing that
 	// func routeMatcher(rtr *mux.Router) *mux.Router
-	r = routeMatcher(tsth, r)
+	r = handlers.PathMatcher(uh, r)
 
 	// handle all requests with the Gorilla router by adding
 	// r to the DefaultServeMux
@@ -70,130 +60,6 @@ func envInit() *env.Env {
 	return environment
 
 }
-
-func routeMatcher(th *testHandler, rtr *mux.Router) *mux.Router {
-
-	// match only POST requests on /api/appUser/create
-	// This is the original (v1) version for the API and the response for this will never change
-	//  with versioning in order to maintain a stable contract
-	// func (r *Router) HandleFunc(path string, f func(http.ResponseWriter, *http.Request)) *Route
-	rtr.HandleFunc("/api/appUser/create", th.createUserHandler).
-		Methods("POST").
-		Headers("Content-Type", "application/json")
-
-	// match only POST requests on /api/v1/appUser/create
-	// func (r *Router) HandleFunc(path string, f func(http.ResponseWriter, *http.Request)) *Route
-	//rtr.HandleFunc("/api/v1/appUser/create", createUserHandler).
-	//	Methods("POST").
-	//	Headers("Content-Type", "application/json")
-
-	return rtr
-}
-
-type testHandler struct {
-	env *env.Env
-}
-
-func (th *testHandler) createUserHandler(w http.ResponseWriter, req *http.Request) {
-	// retrieve the context from the http.Request
-	ctx := req.Context()
-	logger := th.env.Logger
-	logger.Debug("handleMbrLog started")
-
-	defer th.env.Logger.Sync()
-	defer logger.Debug("handleMbrLog ended")
-
-	//logRequest(req)
-	prettyPrintRequest(req)
-
-	// db.NewContext function creates and begins a new sql.Tx, which pulls from the
-	// previously opened database (postgres) connection pool and starts a database
-	// transaction.  In addition, the pointer to this "started" sql.Tx is included
-	// in the above created context
-	ctx = db.AddDBTx2Context(ctx, th.env, nil)
-
-	decoder := json.NewDecoder(req.Body)
-	var t testUser
-	err := decoder.Decode(&t)
-	if err != nil {
-		panic(err)
-	}
-	defer req.Body.Close()
-	log.Println(t)
-
-	inputUsr := appUser.User{Username: "repoMan", MobileID: "(617) 302-7777", Email: "repoman@alwaysintense.com", FirstName: "Otto", LastName: "Maddox"}
-	//auditUsr := appUser.User{Username: "bud", MobileID: "(617) 302-7777", Email: "repoman@alwaysintense.com", FirstName: "Otto", LastName: "Maddox"}
-
-	// Call the create method of the appUser object to validate data and write to db
-	logsWritten, err := inputUsr.Create(ctx)
-
-	fmt.Fprintf(w, "logsWritten = %d\n", logsWritten)
-
-	tx, ok := db.DBTxFromContext(ctx)
-
-	if ok && logsWritten > 0 {
-		err = tx.Commit()
-		if err != nil {
-			log.Fatal(err)
-		}
-	} else if logsWritten <= 0 {
-		log.Fatal(err)
-	}
-}
-
-//func createUserHandler(w http.ResponseWriter, req *http.Request) {
-//
-//	// retrieve the context from the http.Request
-//	ctx := req.Context()
-//	logger := environment.Logger
-//	logger.Debug("handleMbrLog started")
-//
-//	defer environment.Logger.Sync()
-//	defer logger.Debug("handleMbrLog ended")
-//
-//	logRequest(req)
-//	prettyPrintRequest(req)
-//
-//	// db.NewContext function creates and begins a new sql.Tx, which pulls from the
-//	// previously opened database (postgres) connection pool and starts a database
-//	// transaction.  In addition, the pointer to this "started" sql.Tx is included
-//	// in the above created context
-//	ctx = db.AddDBTx2Context(ctx, environment, nil)
-//
-//	decoder := json.NewDecoder(req.Body)
-//	var t testUser
-//	err := decoder.Decode(&t)
-//	if err != nil {
-//		panic(err)
-//	}
-//	defer req.Body.Close()
-//	log.Println(t)
-//
-//	inputUsr := appUser.User{Username: "repoMan", MobileID: "(617) 302-7777", Email: "repoman@alwaysintense.com", FirstName: "Otto", LastName: "Maddox"}
-//	//auditUsr := appUser.User{Username: "bud", MobileID: "(617) 302-7777", Email: "repoman@alwaysintense.com", FirstName: "Otto", LastName: "Maddox"}
-//
-//	// Call the create method of the appUser object to validate data and write to db
-//	logsWritten, err := inputUsr.Create(ctx)
-//
-//	fmt.Fprintf(w, "logsWritten = %d\n", logsWritten)
-//
-//	tx, ok := db.DBTxFromContext(ctx)
-//
-//	if ok && logsWritten > 0 {
-//		err = tx.Commit()
-//		if err != nil {
-//			log.Fatal(err)
-//		}
-//	} else if logsWritten <= 0 {
-//		log.Fatal(err)
-//	}
-//}
-
-/*
-Creates a user in the database, but also:
-	- writes a log of the request and response
-	- "pretty prints" the request
-*/
 
 func prettyPrintRequest(req *http.Request) {
 	// Save a copy of this request for debugging.
