@@ -23,7 +23,7 @@ func (u User) Create(ctx context.Context) (int, error) {
 		return -1, errors.New("Email must have a value")
 	}
 
-	// Write to db -- createDAF function returns rows impacted (should always be 1)
+	// Write to db -- createDB method returns rows impacted (should always be 1)
 	// or an error
 	rows, err := u.createDB(ctx)
 	return rows, err
