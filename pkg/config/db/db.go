@@ -24,7 +24,7 @@ type key int
 const dbTxKey key = 0
 
 // returns Context carrying the database transaction (tx).
-func AddDBTx2Context(ctx context.Context, env env.Env, opts *sql.TxOptions) context.Context {
+func AddDBTx2Context(ctx context.Context, env *env.Env, opts *sql.TxOptions) context.Context {
 	tx, _ := DbTx(ctx, env, opts)
 	return context.WithValue(ctx, dbTxKey, tx)
 }
@@ -63,7 +63,7 @@ func NewDB() (*sql.DB, error) {
 // Opens a database connection and starts a database transaction using the
 // BeginTx method which allows for rollback of the transaction if the context
 // is cancelled
-func DbTx(ctx context.Context, env env.Env, opts *sql.TxOptions) (*sql.Tx, error) {
+func DbTx(ctx context.Context, env *env.Env, opts *sql.TxOptions) (*sql.Tx, error) {
 
 	// Calls the BeginTx method of the above opened database
 	// func (db *DB) BeginTx(ctx context.Context, opts *TxOptions) (*Tx, error)
