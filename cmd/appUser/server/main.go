@@ -4,13 +4,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/http/httputil"
 
 	"github.com/gilcrest/go-API-template/pkg/config/db"
 	"github.com/gilcrest/go-API-template/pkg/config/env"
-
-	"net/http/httputil"
-
 	"github.com/gilcrest/go-API-template/pkg/handlers"
+
 	"github.com/gorilla/mux"
 	"go.uber.org/zap"
 )
@@ -20,7 +19,6 @@ func main() {
 	// Initializes "environment" object to be passed around to functions
 	// func envInit() *env.Env
 	env := envInit()
-	uh := &handlers.UserHandler{Env: env}
 
 	// create a new mux (multiplex) router
 	// func NewRouter() *Router
@@ -29,7 +27,7 @@ func main() {
 	// API may have multiple versions and the matching may get a bit
 	// lengthy, this routeMatcher function helps with organizing that
 	// func routeMatcher(rtr *mux.Router) *mux.Router
-	r = handlers.PathMatcher(uh, r)
+	r = handlers.PathMatcher(env, r)
 
 	// handle all requests with the Gorilla router by adding
 	// r to the DefaultServeMux
