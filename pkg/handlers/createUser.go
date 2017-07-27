@@ -11,14 +11,6 @@ import (
 	"github.com/gilcrest/go-API-template/pkg/config/env"
 )
 
-type testUser struct {
-	Username  string
-	MobileID  string
-	Email     string
-	FirstName string
-	LastName  string
-}
-
 // Error represents a handler error. It provides methods for a HTTP status
 // code and embeds the built-in error interface.
 type Error interface {
@@ -32,7 +24,7 @@ type HTTPStatusError struct {
 	Err  error
 }
 
-// Allows StatusError to satisfy the error interface.
+// Allows HTTPStatusError to satisfy the error interface.
 func (hse HTTPStatusError) Error() string {
 	return hse.Err.Error()
 }
@@ -91,21 +83,17 @@ func CreateUserHandler(env *env.Env, w http.ResponseWriter, req *http.Request) e
 	// in the above created context
 	ctx = db.AddDBTx2Context(ctx, env, nil)
 
-	// TODO - decode JSON found in the request body - this is bogus right now, need to fix...
-	decoder := json.NewDecoder(req.Body)
-	var t testUser
-	err := decoder.Decode(&t)
+	var usr *appUser.User
+	err := json.NewDecoder(req.Body).Decode(&usr)
 	if err != nil {
-		panic(err)
+		return HTTPStatusError{500, err}
 	}
 	defer req.Body.Close()
-	log.Println(t)
 
-	inputUsr := appUser.User{Username: "repoMan", MobileID: "(617) 302-7777", Email: "repoman@alwaysintense.com", FirstName: "Otto", LastName: "Maddox"}
-	//auditUsr := appUser.User{Username: "bud", MobileID: "(617) 302-7777", Email: "repoman@alwaysintense.com", FirstName: "Otto", LastName: "Maddox"}
+	log.Println(usr)
 
 	// Call the create method of the appUser object to validate data and write to db
-	logsWritten, err := inputUsr.Create(ctx)
+	logsWritten, err := usr.Create(ctx)
 
 	tx, ok := db.DBTxFromContext(ctx)
 

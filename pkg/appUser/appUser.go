@@ -9,11 +9,11 @@ import (
 )
 
 type User struct {
-	Username  string
-	MobileID  string
-	Email     string
-	FirstName string
-	LastName  string
+	Username  string `json:"username"`
+	MobileID  string `json:"mobile_id"`
+	Email     string `json:"email"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
 }
 
 // Perform business validations prior to writing to the db
