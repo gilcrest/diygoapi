@@ -5,10 +5,10 @@ An attempt at creating a RESTful API template (built with Go)
 - [ ] Unit Testing
 - [ ] Verbose Code Documentation
 - Instrumentation
-    - [ ] API Metrics
-    - [ ] request/response logging (ability to turn on and off logging type based on some type of flag)
+    - request/response logging (ability to turn on and off logging type based on some type of flag)
         - [ ] logStyle 1: structured (JSON), leveled (debug, error, info, etc.) logging to stdout
         - [ ] logStyle 2: relational database logging (certain data points broken out, request/response in a TEXT datatype)
+    - [ ] API Metrics
     - [ ] Performance Monitoring
 - [ ] Helpful logging
 - [ ] Proper Error Handling
