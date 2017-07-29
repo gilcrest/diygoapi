@@ -17,3 +17,4 @@ An attempt at creating a RESTful API template (built with Go)
 - [ ] Security/Authentication/Authorization using HTTPS/OAuth2, etc.
 - [ ] Properly Vendored dependencies (I have no idea how to do this yet...)
 - [ ] Containerized
+- [ ] Generated Client examples
