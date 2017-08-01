@@ -38,7 +38,7 @@ func (u User) createDB(ctx context.Context) (int, error) {
 	)
 
 	// pull pointer to sql.Tx as tx from context passed in parameter
-	tx, ok := db.DBTxFromContext(ctx)
+	tx, ok := db.TxFromContext(ctx)
 
 	// ensure there is a sql.Tx in the context by checking boolean passed back above
 	if !ok {

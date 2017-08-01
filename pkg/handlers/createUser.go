@@ -35,7 +35,7 @@ func CreateUserHandler(env *env.Env, w http.ResponseWriter, req *http.Request) e
 	// previously opened database (postgres) connection pool and starts a database
 	// transaction.  In addition, the pointer to this "started" sql.Tx is included
 	// in the above created context
-	ctx = db.AddDBTx2Context(ctx, env, nil)
+	ctx = db.Tx2Context(ctx, env, nil)
 
 	var usr *appUser.User
 	err = json.NewDecoder(req.Body).Decode(&usr)
@@ -49,7 +49,7 @@ func CreateUserHandler(env *env.Env, w http.ResponseWriter, req *http.Request) e
 	// Call the create method of the appUser object to validate data and write to db
 	logsWritten, err := usr.Create(ctx)
 
-	tx, ok := db.DBTxFromContext(ctx)
+	tx, ok := db.TxFromContext(ctx)
 
 	if ok && logsWritten > 0 {
 		err = tx.Commit()

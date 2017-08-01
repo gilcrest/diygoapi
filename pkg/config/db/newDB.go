@@ -6,16 +6,16 @@ import (
 	"os"
 )
 
-// returns an open database handle of 0 or more underlying connections
+// NewDB returns an open database handle of 0 or more underlying connections
 func NewDB() (*sql.DB, error) {
 
 	// Get Database connection credentials from environment variables
-	DB_NAME := os.Getenv("PG_DBNAME")
-	DB_USER := os.Getenv("PG_USERNAME")
-	DB_PASSWORD := os.Getenv("PG_PASSWORD")
+	dbName := os.Getenv("PG_DBNAME")
+	dbUser := os.Getenv("PG_USERNAME")
+	dbPassword := os.Getenv("PG_PASSWORD")
 
 	// Craft string for database connection
-	dbinfo := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable", DB_USER, DB_PASSWORD, DB_NAME)
+	dbinfo := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable", dbUser, dbPassword, dbName)
 
 	// Open the postgres database using the postgres driver (pq)
 	// func Open(driverName, dataSourceName string) (*DB, error)
