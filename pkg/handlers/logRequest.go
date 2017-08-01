@@ -6,7 +6,7 @@ import (
 	"net/http/httputil"
 )
 
-// PrintRequest wraps the call to httputil.DumpRequest...
+// PrintRequest wraps the call to httputil.DumpRequest
 func PrintRequest(req *http.Request) error {
 
 	// func DumpRequest(req *http.Request, body bool) ([]byte, error)
