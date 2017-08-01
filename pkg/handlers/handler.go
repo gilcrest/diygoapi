@@ -37,7 +37,7 @@ type Handler struct {
 	H   func(e *env.Env, w http.ResponseWriter, r *http.Request) error
 }
 
-// ServeHTTP allows our Handler type to satisfy http.Handler.
+// ServeHTTP allows Handler type to satisfy the http.Handler interface
 func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	err := h.H(h.Env, w, r)
 	if err != nil {
