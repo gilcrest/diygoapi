@@ -5,7 +5,6 @@ import (
 	"database/sql"
 
 	"github.com/gilcrest/go-API-template/pkg/config/env"
-	_ "github.com/lib/pq"
 )
 
 // The key type is unexported to prevent collisions with context keys defined in
