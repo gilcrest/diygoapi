@@ -22,10 +22,6 @@
 
 
 [[constraint]]
-  branch = "master"
-  name = "github.com/gilcrest/lp"
-
-[[constraint]]
   name = "github.com/gorilla/mux"
   version = "1.4.0"
 
