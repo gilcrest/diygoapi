@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 
+	_ "github.com/lib/pq" // pq driver calls for blank identifier
 	"go.uber.org/zap"
 )
 

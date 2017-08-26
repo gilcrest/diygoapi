@@ -19,13 +19,14 @@ CreateUserHandler creates a user in the database, but also:
 func CreateUserHandler(env *env.Env, w http.ResponseWriter, req *http.Request) error {
 	// retrieve the context from the http.Request
 	ctx := req.Context()
-	logger := env.Logger
-	logger.Debug("CreateUserHandler started")
 
+	logger := env.Logger
 	defer env.Logger.Sync()
+
+	logger.Debug("CreateUserHandler started")
 	defer logger.Debug("CreateUserHandler ended")
 
-	err := PrintRequest(req)
+	err := LogRequest(env, req)
 
 	if err != nil {
 		return err
@@ -43,8 +44,6 @@ func CreateUserHandler(env *env.Env, w http.ResponseWriter, req *http.Request) e
 		return HTTPStatusError{500, err}
 	}
 	defer req.Body.Close()
-
-	log.Println(usr)
 
 	// Call the create method of the appUser object to validate data and write to db
 	logsWritten, err := usr.Create(ctx)
