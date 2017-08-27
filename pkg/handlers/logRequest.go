@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"strings"
@@ -15,25 +16,24 @@ import (
 
 // LogRequest wraps several logging functions
 //   printRequest - sends request output from httputil.DumpRequest to STDERR
-//   loggerRequest - uses logger util to log requests
+//   logRequest - uses logger util to log requests
 //   log2DB - logs request to relational database
 func LogRequest(env *env.Env, req *http.Request) error {
-	// Check Redis key:value pair to determine if printing is on
+	// Check cached key:value pair to determine if printing/logging is on
 	// for the service
-	// TODO - Implement Redis cache
-	if 0 == 0 {
-		err := printRequest(req)
-		if err != nil {
-			return err
-		}
+	// TODO - Implement cache
+	var err error
+	err = printRequest(req)
+	if err != nil {
+		return err
 	}
-	if 0 == 0 {
-		err := logRequest(env, req)
-		if err != nil {
-			return err
-		}
+	err = logRequest(env, req)
+	if err != nil {
+		return err
 	}
+	// TODO implement log2DB
 	return nil
+
 }
 
 // PrintRequest wraps the call to httputil.DumpRequest
@@ -53,7 +53,7 @@ func printRequest(req *http.Request) error {
 //
 // It returns an error if the initial slurp of all bytes fails. It does not attempt
 // to make the returned ReadClosers have identical error-matching behavior.
-// Function lifted straight from httputil package
+// Function lifted straight from net/http/httputil package
 func drainBody(b io.ReadCloser) (r1, r2 io.ReadCloser, err error) {
 	if b == http.NoBody {
 		// No copying needed. Preserve the magic sentinel meaning of NoBody.
@@ -145,6 +145,16 @@ func logFormValues(lgr *zap.Logger, req *http.Request) (*zap.Logger, error) {
 	return lgr, nil
 }
 
+func logHostPort(lgr *zap.Logger, req *http.Request) (*zap.Logger, error) {
+	host, port, err := net.SplitHostPort(req.Host)
+	if err != nil {
+		return nil, HTTPStatusError{http.StatusBadRequest, err}
+	}
+	lgr = lgr.With(zap.String("Host", host))
+	lgr = lgr.With(zap.String("Port", port))
+	return lgr, nil
+}
+
 func logRequest(env *env.Env, req *http.Request) error {
 
 	var cntType string
@@ -155,6 +165,7 @@ func logRequest(env *env.Env, req *http.Request) error {
 	logger.Debug("logRequest started")
 	defer logger.Debug("logRequest ended")
 
+	logger, _ = logHostPort(logger, req)
 	logger, cntType, _ = logHeader(logger, req)
 	logger, _ = logBody(logger, req)
 	if cntType == "application/x-www-form-urlencoded" {
@@ -171,14 +182,13 @@ func logRequest(env *env.Env, req *http.Request) error {
 		zap.Int64("Content Length", req.ContentLength),
 		zap.String("Transfer-Encoding", strings.Join(req.TransferEncoding, ",")),
 		zap.Bool("Close", req.Close),
-		zap.String("Host", req.Host),
-		//fmt.Fprintf(w, "Form Values = %s\n", url.Values)
-		//fmt.Fprintf(w, "Post Form Values = %s\n", url.Values)
-		//fmt.Fprintf(w, "MultpartForm Values = %s\n", *multipart.Form)
-		//fmt.Fprintf(w, "Trailer", Header)
+		// Form Values = url.Values
+		// Post Form Values = url.Values
+		// MultpartForm Values = *multipart.Form
+		// Trailer = Header
 		zap.String("RemoteAddr", req.RemoteAddr),
 		zap.String("RequestURI", req.RequestURI),
-		//fmt.Fprintf(w, "TLS", *tls.ConnectionState)
+		// TLS = *tls.ConnectionState
 	)
 
 	return nil
