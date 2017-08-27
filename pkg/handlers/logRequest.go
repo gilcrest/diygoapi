@@ -109,21 +109,30 @@ func logBody(lgr *zap.Logger, req *http.Request) (*zap.Logger, error) {
 	return lgr, nil
 }
 
-func logHeader(lgr *zap.Logger, req *http.Request) (*zap.Logger, string, error) {
-	var i int
-	var cntType string
+func logHeader(lgr *zap.Logger, req *http.Request) (*zap.Logger, error) {
 
 	for key, valSlice := range req.Header {
 		for _, val := range valSlice {
-			if key == "Content-Type" {
-				cntType = val
-			}
+			var i int
 			i++
 			header := fmt.Sprintf("%s: %s", key, val)
 			lgr = lgr.With(zap.String(fmt.Sprintf("Header(%d)", i), header))
 		}
 	}
-	return lgr, cntType, nil
+	return lgr, nil
+}
+
+func logTrailer(lgr *zap.Logger, req *http.Request) (*zap.Logger, error) {
+
+	for key, valSlice := range req.Trailer {
+		for _, val := range valSlice {
+			var i int
+			i++
+			header := fmt.Sprintf("%s: %s", key, val)
+			lgr = lgr.With(zap.String(fmt.Sprintf("Trailer(%d)", i), header))
+		}
+	}
+	return lgr, nil
 }
 
 func logFormValues(lgr *zap.Logger, req *http.Request) (*zap.Logger, error) {
@@ -142,6 +151,15 @@ func logFormValues(lgr *zap.Logger, req *http.Request) (*zap.Logger, error) {
 			lgr = lgr.With(zap.String(fmt.Sprintf("Form(%d)", i), formValue))
 		}
 	}
+
+	for key, valSlice := range req.PostForm {
+		for _, val := range valSlice {
+			i++
+			formValue := fmt.Sprintf("%s: %s", key, val)
+			lgr = lgr.With(zap.String(fmt.Sprintf("PostForm(%d)", i), formValue))
+		}
+	}
+
 	return lgr, nil
 }
 
@@ -157,7 +175,7 @@ func logHostPort(lgr *zap.Logger, req *http.Request) (*zap.Logger, error) {
 
 func logRequest(env *env.Env, req *http.Request) error {
 
-	var cntType string
+	var err error
 
 	logger := env.Logger
 	defer env.Logger.Sync()
@@ -165,12 +183,27 @@ func logRequest(env *env.Env, req *http.Request) error {
 	logger.Debug("logRequest started")
 	defer logger.Debug("logRequest ended")
 
-	logger, _ = logHostPort(logger, req)
-	logger, cntType, _ = logHeader(logger, req)
-	logger, _ = logBody(logger, req)
-	if cntType == "application/x-www-form-urlencoded" {
-		logger, _ = logFormValues(logger, req)
+	logger, err = logHostPort(logger, req)
+	if err != nil {
+		return err
 	}
+	logger, err = logHeader(logger, req)
+	if err != nil {
+		return err
+	}
+	logger, err = logBody(logger, req)
+	if err != nil {
+		return err
+	}
+	logger, err = logFormValues(logger, req)
+	if err != nil {
+		return err
+	}
+	logger, err = logTrailer(logger, req)
+	if err != nil {
+		return err
+	}
+	// TODO - determine what to log for TLS (*tls.ConnectionState)
 
 	logger.Info("Request received",
 		zap.String("HTTP method", req.Method),
@@ -182,13 +215,8 @@ func logRequest(env *env.Env, req *http.Request) error {
 		zap.Int64("Content Length", req.ContentLength),
 		zap.String("Transfer-Encoding", strings.Join(req.TransferEncoding, ",")),
 		zap.Bool("Close", req.Close),
-		// Form Values = url.Values
-		// Post Form Values = url.Values
-		// MultpartForm Values = *multipart.Form
-		// Trailer = Header
 		zap.String("RemoteAddr", req.RemoteAddr),
 		zap.String("RequestURI", req.RequestURI),
-		// TLS = *tls.ConnectionState
 	)
 
 	return nil
