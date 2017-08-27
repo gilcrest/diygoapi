@@ -22,11 +22,5 @@ func PathMatch(env *env.Env, rtr *mux.Router) *mux.Router {
 		Methods("POST").
 		Headers("Content-Type", "application/json")
 
-	// match only POST requests on /api/v1/appUser/create
-	// func(path string, handler http.Handler) *Route
-	rtr.Handle("/api/v1/appUser/create", Handler{env, CreateUserHandler}).
-		Methods("POST").
-		Headers("Content-Type", "application/x-www-form-urlencoded")
-
 	return rtr
 }
