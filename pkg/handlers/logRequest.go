@@ -109,13 +109,37 @@ func logBody(lgr *zap.Logger, req *http.Request) (*zap.Logger, error) {
 	return lgr, nil
 }
 
-func logHeader(lgr *zap.Logger, req *http.Request) (*zap.Logger, error) {
+func logHeader(lgr *zap.Logger, req *http.Request) (*zap.Logger, string, error) {
 	var i int
+	var cntType string
+
 	for key, valSlice := range req.Header {
 		for _, val := range valSlice {
+			if key == "Content-Type" {
+				cntType = val
+			}
 			i++
 			header := fmt.Sprintf("%s: %s", key, val)
 			lgr = lgr.With(zap.String(fmt.Sprintf("Header(%d)", i), header))
+		}
+	}
+	return lgr, cntType, nil
+}
+
+func logFormValues(lgr *zap.Logger, req *http.Request) (*zap.Logger, error) {
+
+	var i int
+
+	err := req.ParseForm()
+	if err != nil {
+		return nil, err
+	}
+
+	for key, valSlice := range req.Form {
+		for _, val := range valSlice {
+			i++
+			formValue := fmt.Sprintf("%s: %s", key, val)
+			lgr = lgr.With(zap.String(fmt.Sprintf("Form(%d)", i), formValue))
 		}
 	}
 	return lgr, nil
@@ -123,26 +147,7 @@ func logHeader(lgr *zap.Logger, req *http.Request) (*zap.Logger, error) {
 
 func logRequest(env *env.Env, req *http.Request) error {
 
-	// type Request struct {
-	//            Method string
-	//            URL *url.URL
-	//            Proto      string // "HTTP/1.0"
-	//            ProtoMajor int    // 1
-	//            ProtoMinor int    // 0
-	//            Header Header
-	//            Body io.ReadCloser
-	//            ContentLength int64
-	//            TransferEncoding []string
-	//            Close bool
-	//            Host string
-	//            Form url.Values
-	//            PostForm url.Values
-	//            MultipartForm *multipart.Form
-	//            Trailer Header
-	//            RemoteAddr string
-	//            RequestURI string
-	//            TLS *tls.ConnectionState
-	//    }
+	var cntType string
 
 	logger := env.Logger
 	defer env.Logger.Sync()
@@ -150,8 +155,11 @@ func logRequest(env *env.Env, req *http.Request) error {
 	logger.Debug("logRequest started")
 	defer logger.Debug("logRequest ended")
 
-	logger, _ = logHeader(logger, req)
+	logger, cntType, _ = logHeader(logger, req)
 	logger, _ = logBody(logger, req)
+	if cntType == "application/x-www-form-urlencoded" {
+		logger, _ = logFormValues(logger, req)
+	}
 
 	logger.Info("Request received",
 		zap.String("HTTP method", req.Method),
