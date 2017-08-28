@@ -14,6 +14,12 @@
   version = "v1.4.0"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/lib/pq"
+  packages = [".","oid"]
+  revision = "e42267488fe361b9dc034be7a6bffef5b195bceb"
+
+[[projects]]
   name = "go.uber.org/atomic"
   packages = ["."]
   revision = "4e336646b2ef9fc6e47be8e21594178f98e5ebcf"
@@ -34,6 +40,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "f68873745286bf56475e6dc567f7be4398c18fc0c4e0b7b9ed6e5bd106508dd9"
+  inputs-digest = "9bfd14ebc8da5867155a809ffab95045362c3a92e50c627c32b3733492a00bdc"
   solver-name = "gps-cdcl"
   solver-version = 1
