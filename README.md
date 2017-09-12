@@ -18,7 +18,7 @@ An attempt at creating a RESTful API template (built with Go).
 - [ ] Properly Vendored dependencies (I have no idea how to do this yet...)
 - [ ] Containerized
 - [ ] Generated Client examples
-- [ ] Extensive API Documentation for Clients of the API (see [twilio](https://www.twilio.com/docs/api/rest), [Uber](https://developer.uber.com/docs/riders/ride-requests/tutorials/api/introduction) and [mailchimp](http://developer.mailchimp.com/documentation/mailchimp/) as good examples)
+- [ ] Extensive API Documentation for Clients of the API (see [twilio](https://www.twilio.com/docs/api/rest), [Uber](https://developer.uber.com/docs/riders/ride-requests/tutorials/api/introduction), [Stripe](https://stripe.com/docs/api/go#intro) and [mailchimp](http://developer.mailchimp.com/documentation/mailchimp/) as good examples)
 
 ### Helpful Resources I've used in this app
 - JustforFunc
