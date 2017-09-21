@@ -1,22 +1,28 @@
-// User type and associated methods to create, modify, delete application users
+// Package appUser has the User type and associated methods to
+// create, modify and delete application users
 package appUser
 
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/gilcrest/go-API-template/pkg/config/db"
 )
 
+// User represents an application user.  A user can access multiple systems.
+// The User-Application relationship is kept elsewhere...
 type User struct {
-	Username  string `json:"username"`
-	MobileID  string `json:"mobile_id"`
-	Email     string `json:"email"`
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
+	Username     string    `json:"username"`
+	MobileID     string    `json:"mobile_id"`
+	Email        string    `json:"email"`
+	FirstName    string    `json:"first_name"`
+	LastName     string    `json:"last_name"`
+	CreateUserID string    `json:"create_user_id"`
+	CreateDate   time.Time `json:"create_date"`
 }
 
-// Perform business validations prior to writing to the db
+// Create performs business validations prior to writing to the db
 func (u User) Create(ctx context.Context) (int, error) {
 
 	if u.Email == "" {
@@ -26,6 +32,9 @@ func (u User) Create(ctx context.Context) (int, error) {
 	// Write to db -- createDB method returns rows impacted (should always be 1)
 	// or an error
 	rows, err := u.createDB(ctx)
+
+	u.CreateUserID = "gilcrest"
+
 	return rows, err
 }
 
