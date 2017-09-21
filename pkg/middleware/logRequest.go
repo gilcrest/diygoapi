@@ -1,4 +1,4 @@
-package handlers
+package middleware
 
 import (
 	"bytes"
@@ -11,14 +11,33 @@ import (
 	"strings"
 
 	"github.com/gilcrest/go-API-template/pkg/config/env"
+	"github.com/gilcrest/go-API-template/pkg/handlers"
 	"go.uber.org/zap"
 )
 
-// LogRequest wraps several logging functions
+// LogRequest wraps several optional logging functions
 //   printRequest - sends request output from httputil.DumpRequest to STDERR
 //   logRequest - uses logger util to log requests
 //   log2DB - logs request to relational database
-func LogRequest(env *env.Env, req *http.Request) error {
+func LogRequest(env *env.Env, h http.Handler) http.Handler {
+	return http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			fmt.Println("Before, but in wrapper - oooooooooh")
+			err := logSwitch(env, r)
+			if err != nil {
+				http.Error(w, "Unable to log request", http.StatusBadRequest)
+				return
+			}
+			h.ServeHTTP(w, r) // call original
+			fmt.Println("After, but in wrapper - oooooahahahahahhahhh")
+		})
+}
+
+// logSwitch determines which, if any, of the logging methods
+// you wish to use will be employed.  Using a cache mechanism I haven't
+// implemented yet, you will be able to turn on/off these methods on demand
+// as of right now, it's doing all of them, which is ridiculous
+func logSwitch(env *env.Env, req *http.Request) error {
 	// Check cached key:value pair to determine if printing/logging is on
 	// for the service
 	// TODO - Implement cache
@@ -42,7 +61,7 @@ func printRequest(req *http.Request) error {
 	// func DumpRequest(req *http.Request, body bool) ([]byte, error)
 	requestDump, err := httputil.DumpRequest(req, true)
 	if err != nil {
-		return HTTPStatusError{http.StatusBadRequest, err}
+		return handlers.HTTPStatusError{Code: http.StatusBadRequest, Err: err}
 	}
 	fmt.Println(string(requestDump))
 	return nil
@@ -103,7 +122,7 @@ func logBody(lgr *zap.Logger, req *http.Request) (*zap.Logger, error) {
 	// func dumpBody(req *http.Request) ([]byte, error)
 	requestDump, err := dumpBody(req)
 	if err != nil {
-		return nil, HTTPStatusError{http.StatusBadRequest, err}
+		return nil, handlers.HTTPStatusError{Code: http.StatusBadRequest, Err: err}
 	}
 	lgr = lgr.With(zap.String("Body", string(requestDump)))
 	return lgr, nil
@@ -166,7 +185,7 @@ func logFormValues(lgr *zap.Logger, req *http.Request) (*zap.Logger, error) {
 func logHostPort(lgr *zap.Logger, req *http.Request) (*zap.Logger, error) {
 	host, port, err := net.SplitHostPort(req.Host)
 	if err != nil {
-		return nil, HTTPStatusError{http.StatusBadRequest, err}
+		return nil, handlers.HTTPStatusError{Code: http.StatusBadRequest, Err: err}
 	}
 	lgr = lgr.With(zap.String("Host", host))
 	lgr = lgr.With(zap.String("Port", port))
