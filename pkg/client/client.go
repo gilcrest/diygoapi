@@ -30,10 +30,10 @@ func (c *UserClient) Create(ctx context.Context, body appUser.User) (string, err
 		return "", err
 	}
 
-	var response string
-	_, err = c.do(ctx, req, &response)
+	var rsp string
+	rsp, err = c.do(ctx, req, &response)
 
-	return response, err
+	return rsp, err
 }
 
 // newRequest generates an http.Request struct
