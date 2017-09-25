@@ -14,7 +14,7 @@ An attempt at creating a RESTful API template (built with Go).
     - [ ] logStyle 2: relational database logging (certain data points broken out into standard column datatypes, request/response stored in TEXT/CLOB datatype columns)
     - [ ] API Metrics
     - [ ] Performance Monitoring
-    - [ ] Helpful logging
+    - [ ] Helpful debug logging
 - [ ] Fault tolerant - Proper Error Raising/Handling
 - [ ] RESTful service versioning
 - [ ] Security/Authentication/Authorization using HTTPS/OAuth2, etc.
@@ -28,3 +28,23 @@ An attempt at creating a RESTful API template (built with Go).
 - JustforFunc
 - Go By Example
 - Mat Ryer
+
+----
+
+> Release roadmap below is to help me stay on track.  With my ADD brain, I often lose focus...
+
+## Items to complete for Release 0.0.1
+
+- Add unique Request-ID to response headers using util
+- Document code better
+
+## Items to complete for Release 0.0.2
+
+- Relational DB Request logging
+
+## Items to complete for Release 0.0.3
+
+- Response JSON logging and httputil.DumpResponse
+
+## Items to complete for Release 0.0.4
+
