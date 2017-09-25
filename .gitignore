@@ -1,3 +1,18 @@
+# Ignore all
+*
+
+# Unignore all with extensions
+!*.*
+
+# Unignore all dirs
+!*/
+
+### Above combination will ignore all files without extension ###
+
+# OS generated files #
+######################
+.DS_Store
+
 # Binaries for programs and plugins
 *.exe
 *.dll
