@@ -22,14 +22,12 @@ import (
 func LogRequest(env *env.Env, h http.Handler) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
-			fmt.Println("Before, but in wrapper - oooooooooh")
 			err := logSwitch(env, r)
 			if err != nil {
 				http.Error(w, "Unable to log request", http.StatusBadRequest)
 				return
 			}
 			h.ServeHTTP(w, r) // call original
-			fmt.Println("After, but in wrapper - oooooahahahahahhahhh")
 		})
 }
 
@@ -40,7 +38,7 @@ func LogRequest(env *env.Env, h http.Handler) http.Handler {
 func logSwitch(env *env.Env, req *http.Request) error {
 	// Check cached key:value pair to determine if printing/logging is on
 	// for the service
-	// TODO - Implement cache
+	// TODO - Implement cache - maybe via Redis?
 	var err error
 	err = printRequest(req)
 	if err != nil {
