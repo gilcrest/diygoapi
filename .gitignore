@@ -9,6 +9,9 @@
 
 ### Above combination will ignore all files without extension ###
 
+# vs code related files
+tasks.json
+
 # OS generated files #
 ######################
 .DS_Store

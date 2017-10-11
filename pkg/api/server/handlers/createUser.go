@@ -4,9 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/gilcrest/go-API-template/pkg/appUser"
-	"github.com/gilcrest/go-API-template/pkg/config/db"
-	"github.com/gilcrest/go-API-template/pkg/config/env"
+	"github.com/gilcrest/go-API-template/pkg/domain/appUser"
+	"github.com/gilcrest/go-API-template/pkg/env"
 )
 
 // CreateUserHandler creates a user in the database
@@ -24,12 +23,6 @@ func CreateUserHandler(env *env.Env, w http.ResponseWriter, req *http.Request) e
 
 	var err error
 
-	// db.NewContext function creates and begins a new sql.Tx, which pulls from the
-	// previously opened database (postgres) connection pool and starts a database
-	// transaction.  In addition, the pointer to this "started" sql.Tx is added to
-	// the above created context
-	ctx = db.Tx2Context(ctx, env, nil)
-
 	// Declare usr as an instance of appUser.User
 	// Decode JSON HTTP request body into a Decoder type
 	//  and unmarshal that into usr
@@ -41,13 +34,10 @@ func CreateUserHandler(env *env.Env, w http.ResponseWriter, req *http.Request) e
 	defer req.Body.Close()
 
 	// Call the create method of the appUser object to validate data and write to db
-	rows, err := usr.Create(ctx)
-
-	// TxFromContext extracts the database transaction from the context, if present.
-	tx, ok := db.TxFromContext(ctx)
+	rows, tx, err := usr.Create(ctx, env)
 
 	// If we have successfully written rows to the db, we commit the transaction
-	if ok && rows > 0 {
+	if rows == 1 {
 		err = tx.Commit()
 		if err != nil {
 			// We return a status error here, which conveniently wraps the error

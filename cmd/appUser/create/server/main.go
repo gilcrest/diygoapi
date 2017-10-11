@@ -4,9 +4,9 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gilcrest/go-API-template/pkg/config/env"
-	"github.com/gilcrest/go-API-template/pkg/handlers"
-	mwr "github.com/gilcrest/go-API-template/pkg/middleware"
+	"github.com/gilcrest/go-API-template/pkg/api/server/handlers"
+	mwr "github.com/gilcrest/go-API-template/pkg/api/server/middleware"
+	"github.com/gilcrest/go-API-template/pkg/env"
 
 	"github.com/gorilla/mux"
 )
@@ -14,7 +14,7 @@ import (
 func main() {
 
 	// Initializes "environment" type to be passed around to functions
-	env, err := env.Init()
+	env, err := env.NewEnv()
 
 	if err != nil {
 		log.Fatal(err)

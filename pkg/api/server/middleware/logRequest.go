@@ -10,15 +10,15 @@ import (
 	"net/http/httputil"
 	"strings"
 
-	"github.com/gilcrest/go-API-template/pkg/config/env"
-	"github.com/gilcrest/go-API-template/pkg/handlers"
+	"github.com/gilcrest/go-API-template/pkg/api/server/handlers"
+	"github.com/gilcrest/go-API-template/pkg/env"
 	"go.uber.org/zap"
 )
 
 // LogRequest wraps several optional logging functions
 //   printRequest - sends request output from httputil.DumpRequest to STDERR
 //   logRequest - uses logger util to log requests
-//   log2DB - logs request to relational database
+//   log2DB - logs request to relational database TODO - not yet implemented
 func LogRequest(env *env.Env, h http.Handler) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {

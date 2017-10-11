@@ -4,7 +4,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gilcrest/go-API-template/pkg/config/env"
+	"github.com/gilcrest/go-API-template/pkg/env"
 )
 
 // Error represents a handler error. It provides methods for a HTTP status
