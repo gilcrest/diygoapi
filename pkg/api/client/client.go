@@ -10,10 +10,11 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/gilcrest/go-API-template/pkg/appUser"
+	"github.com/gilcrest/go-API-template/pkg/domain/appUser"
 )
 
-// UserClient is a ...
+// UserClient struct type holds the information about
+// the REST API we are going to consume
 type UserClient struct {
 	BaseURL   *url.URL
 	UserAgent string
@@ -21,19 +22,21 @@ type UserClient struct {
 	HTTPClient *http.Client
 }
 
-// Create method is used to generate the
-func (c *UserClient) Create(ctx context.Context, body appUser.User) (string, error) {
+// Create method sets up the request, then calls the do method of said request
+//  and returns the appUser.User returned in the response body
+func (c *UserClient) Create(ctx context.Context, body *appUser.User) (*appUser.User, error) {
 
 	// get a new http.Request struct from newRequest function
-	req, err := c.newRequest("POST", "/api/v1/appUser/create", body)
+	req, err := c.newRequest("POST", "/api/v1/appUser", body)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	var rsp string
-	rsp, err = c.do(ctx, req, &response)
+	var respBody *appUser.User
 
-	return rsp, err
+	_, err = c.do(ctx, req, &respBody)
+
+	return respBody, err
 }
 
 // newRequest generates an http.Request struct
@@ -49,6 +52,9 @@ func (c *UserClient) newRequest(method, path string, body interface{}) (*http.Re
 
 	// Declare an io.ReadWriter buffer
 	var buf io.ReadWriter
+
+	// Assume if the body parameter is not null that it's JSON
+	//  and encode/stream it into the buffer initialized below
 	if body != nil {
 		buf = new(bytes.Buffer)
 		err := json.NewEncoder(buf).Encode(body)
@@ -56,14 +62,27 @@ func (c *UserClient) newRequest(method, path string, body interface{}) (*http.Re
 			return nil, err
 		}
 	}
+
+	// NewRequest returns a pointer to an http.request struct
+	//  to be used with the client.do method
 	req, err := http.NewRequest(method, u.String(), buf)
 	if err != nil {
 		return nil, err
 	}
+
+	// If body interface is not null, for now, assume JSON and
+	//  set the proper http header as such
 	if body != nil {
+		// Tell the server that the data in the body of the request
+		// is JSON
 		req.Header.Set("Content-Type", "application/json")
 	}
+
+	// Tell the server that the client will accept JSON as the
+	// response body
 	req.Header.Set("Accept", "application/json")
+
+	// Set the User-Agent
 	req.Header.Set("User-Agent", c.UserAgent)
 
 	return req, nil
@@ -71,8 +90,11 @@ func (c *UserClient) newRequest(method, path string, body interface{}) (*http.Re
 
 func (c *UserClient) do(ctx context.Context, req *http.Request, v interface{}) (*http.Response, error) {
 
+	// Take the http.Request and change it's context to the context
+	//  passed int the parameter
 	req = req.WithContext(ctx)
 
+	// Send the http request to the server and receive a response
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
 		select {
@@ -85,8 +107,7 @@ func (c *UserClient) do(ctx context.Context, req *http.Request, v interface{}) (
 	defer resp.Body.Close()
 
 	// json.NewDecoder returns a pointer to the Decoder type
-	//err = json.NewDecoder(resp.Body).Decode(v)
-	v = resp.Body
+	err = json.NewDecoder(resp.Body).Decode(v)
 
 	return resp, err
 }
