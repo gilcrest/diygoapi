@@ -4,7 +4,7 @@ An attempt at creating a RESTful API template (built with Go).
 
 - I'm learning Go as a hobby and absolutely love it.  I'm hoping to start to use Go professionally soon and in order to do so, I want to make sure I'm able to build "industrial strength" REST APIs, in order to mentor my team. The goal of this app is to make an example/template of relational database-backed APIs that have characteristics needed to ensure success in a high volume environment. 
 
-- This is a work in progress - you'll notice most things below are not checked, but I will get there!  Any feedback and/or support are welcome. I'm not an expert and have very thick skin, so please feel free to tell me how bad something is and I'll make it better.
+- This is a work in progress - you'll notice most things below are not checked, but I will get there!  Any feedback and/or support are welcome. I do not purport to be an expert and have very thick skin, so please feel free to tell me how bad something is and I'll make it better.
 
 ## Critical components of any API (in no particular order)
 
