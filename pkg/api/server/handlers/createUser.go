@@ -34,10 +34,10 @@ func CreateUserHandler(env *env.Env, w http.ResponseWriter, req *http.Request) e
 	defer req.Body.Close()
 
 	// Call the create method of the appUser object to validate data and write to db
-	rows, tx, err := usr.Create(ctx, env)
+	tx, err := usr.Create(ctx, env)
 
 	// If we have successfully written rows to the db, we commit the transaction
-	if rows == 1 {
+	if !usr.CreateDate.IsZero() {
 		err = tx.Commit()
 		if err != nil {
 			// We return a status error here, which conveniently wraps the error
@@ -47,7 +47,7 @@ func CreateUserHandler(env *env.Env, w http.ResponseWriter, req *http.Request) e
 			// handler should stop processing by returning early.
 			return HTTPStatusError{http.StatusInternalServerError, err}
 		}
-	} else if rows <= 0 {
+	} else {
 		return HTTPStatusError{http.StatusInternalServerError, err}
 	}
 
