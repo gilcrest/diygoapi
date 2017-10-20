@@ -9,7 +9,7 @@ An attempt at creating a RESTful API template (built with Go).
 ## Critical components of any API (in no particular order)
 
 - [ ] Unit Testing (with reasonably high coverage %)
-- [ ] Verbose Code Documentation
+- [x] Verbose Code Documentation
 - Instrumentation
   - request/response logging (ability to turn on and off logging type based on some type of flag)
     - [ ] logStyle 1: structured (JSON), leveled (debug, error, info, etc.) logging to stdout
@@ -41,14 +41,11 @@ Blog/Medium Posts
 - [Writing middleware in #golang and how Go makes it so much fun.](https://medium.com/@matryer/writing-middleware-in-golang-and-how-go-makes-it-so-much-fun-4375c1246e81)
 - [Standard Package Layout](https://medium.com/@benbjohnson/standard-package-layout-7cdbc8391fc1)
 - [Practical Persistence in Go: Organising Database Access](http://www.alexedwards.net/blog/organising-database-access)
+- [Writing a Go client for your RESTful API](https://medium.com/@marcus.olsson/writing-a-go-client-for-your-restful-api-c193a2f4998c)
 
 ----
 
 > Release roadmap below is to help me stay on track.  With my ADD brain, I often lose focus...g
-
-## Items to complete for Release 0.0.2
-
-- Document code better
 
 ## Items to complete for Release 0.0.3
 
