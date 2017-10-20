@@ -13,7 +13,7 @@ import (
 
 func main() {
 
-	// Initializes "environment" type to be passed around to functions
+	// Initializes "environment" struct type
 	env, err := env.NewEnv()
 
 	if err != nil {
