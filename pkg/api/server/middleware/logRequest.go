@@ -2,6 +2,8 @@ package middleware
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -9,11 +11,32 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"strings"
+	"time"
 
 	"github.com/gilcrest/go-API-template/pkg/api/server/handlers"
 	"github.com/gilcrest/go-API-template/pkg/env"
+	"github.com/rs/xid"
 	"go.uber.org/zap"
 )
+
+type APIAudit struct {
+	ctx           context.Context
+	RequestID     xid.ID    `json:"request_id"`
+	TimeStarted   time.Time `json:"time_started"`
+	TimeFinished  time.Time `json:"time_finished"`
+	TimeInMillis  int       `json:"time_in_millis"`
+	Proto         string    `json:"protocol"`
+	ProtoMajor    int       `json:"protocol_major"`
+	ProtoMinor    int       `json:"protocol_minor"`
+	Method        string    `json:"request_method"`
+	Scheme        string    `json:"scheme"`
+	Host          string    `json:"host"`
+	Port          string    `json:"port"`
+	Path          string    `json:"path"`
+	Header        string    `json:"header"`
+	ContentLength int64     `json:"content_length"`
+	RemoteAddr    string    `json:"remote_address"`
+}
 
 // LogRequest wraps several optional logging functions
 //   printRequest - sends request output from httputil.DumpRequest to STDERR
@@ -31,6 +54,43 @@ func LogRequest(env *env.Env, h http.Handler) http.Handler {
 		})
 }
 
+func newAPIAudit(req *http.Request) (*APIAudit, error) {
+	var scheme string
+	host, port, err := net.SplitHostPort(req.Host)
+
+	isHTTPS := req.TLS != nil
+
+	if isHTTPS {
+		scheme = "https"
+	} else {
+		scheme = "http"
+	}
+
+	jsonBytes, err := json.Marshal(req.Header)
+	if err != nil {
+		return nil, err
+	}
+	headerJSON := string(jsonBytes)
+
+	apiAud := APIAudit{ctx: req.Context(), // retrieve the context from the http.Request
+		RequestID:     xid.New(),
+		TimeStarted:   time.Now(),
+		Proto:         req.Proto,
+		ProtoMajor:    req.ProtoMajor,
+		ProtoMinor:    req.ProtoMinor,
+		Method:        req.Method,
+		Scheme:        scheme,
+		Host:          host,
+		Port:          port,
+		Path:          req.URL.Path,
+		Header:        headerJSON,
+		ContentLength: req.ContentLength,
+		RemoteAddr:    req.RemoteAddr}
+
+	return &apiAud, nil
+
+}
+
 // logSwitch determines which, if any, of the logging methods
 // you wish to use will be employed.  Using a cache mechanism I haven't
 // implemented yet, you will be able to turn on/off these methods on demand
@@ -40,15 +100,26 @@ func logSwitch(env *env.Env, req *http.Request) error {
 	// for the service
 	// TODO - Implement cache - maybe via Redis?
 	var err error
-	err = printRequest(req)
+
+	apiAudit, err := newAPIAudit(req)
 	if err != nil {
 		return err
 	}
-	err = logRequest(env, req)
+
+	// err = printRequest(req)
+	// if err != nil {
+	// 	return err
+	// }
+	// err = logRequest(env, req)
+	// if err != nil {
+	// 	return err
+	// }
+
+	err = logRequest2Db(env, apiAudit)
 	if err != nil {
 		return err
 	}
-	// TODO implement log2DB
+
 	return nil
 
 }
@@ -237,4 +308,78 @@ func logRequest(env *env.Env, req *http.Request) error {
 	)
 
 	return nil
+}
+
+// Creates a record in the appUser table using a stored function
+func logRequest2Db(env *env.Env, req *APIAudit) error {
+
+	var rowsInserted int
+
+	// Calls the BeginTx method of the MainDb opened database
+	tx, err := env.DS.MainDb.BeginTx(req.ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	// Prepare the sql statement using bind variables
+	stmt, err := tx.PrepareContext(req.ctx, `select api.log_request
+		(
+		p_request_id => $1,
+		p_protocol => $2,
+		p_protocol_major => $3,
+		p_protocol_minor => $4,
+		p_request_method => $5,
+		p_scheme => $6,
+		p_host => $7,
+		p_port => $8,
+		p_path => $9,
+		p_header => $10,
+		p_content_length => $11,
+		p_remote_address => $12)`)
+
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	rows, err := stmt.QueryContext(req.ctx,
+		req.RequestID,
+		req.Proto,
+		req.ProtoMajor,
+		req.ProtoMinor,
+		req.Method,
+		req.Scheme,
+		req.Host,
+		req.Port,
+		req.Path,
+		req.Header,
+		req.ContentLength,
+		req.RemoteAddr)
+
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	// Iterate through the returned record(s)
+	for rows.Next() {
+		if err := rows.Scan(&rowsInserted); err != nil {
+			return err
+		}
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return err
+	}
+
+	// If we have successfully written rows to the db
+	// we commit the transaction
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
+	return nil
+
 }

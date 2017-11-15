@@ -29,6 +29,7 @@ func main() {
 
 	// handle all requests with the Gorilla router by adding
 	// rtr to the DefaultServeMux
+	// LogRequest middleware will log request as well
 	http.Handle("/", mwr.LogRequest(env, rtr))
 
 	if err := http.ListenAndServe("127.0.0.1:8080", nil); err != nil {

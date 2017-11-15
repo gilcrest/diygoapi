@@ -1,0 +1,67 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "taskName": "Build go-api-template Server",
+            "type": "shell",
+            "command": "go build /Users/gilcrest/dev/go/src/github.com/gilcrest/go-API-template/cmd/appUser/create/server/main.go",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "taskName": "Run go-api-template Server",
+            "type": "shell",
+            "command": "go run /Users/gilcrest/dev/go/src/github.com/gilcrest/go-API-template/cmd/appUser/create/server/main.go",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },        
+        {
+            "taskName": "Build and Run go-api-template Server",
+            "type": "shell",
+            "command": "go build /Users/gilcrest/dev/go/src/github.com/gilcrest/go-API-template/cmd/appUser/create/server/main.go && go run /Users/gilcrest/dev/go/src/github.com/gilcrest/go-API-template/cmd/appUser/create/server/main.go",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "taskName": "Build go-api-template Client",
+            "type": "shell",
+            "command": "go build /Users/gilcrest/dev/go/src/github.com/gilcrest/go-API-template/cmd/appUser/create/client/main.go",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "taskName": "Build go-api-template Debug",
+            "type": "shell",
+            "command": "go build /Users/gilcrest/dev/go/src/github.com/gilcrest/go-API-template/cmd/appUser/create/debug/main.go",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "taskName": "Run go-api-template Client",
+            "type": "shell",
+            "command": "go run /Users/gilcrest/dev/go/src/github.com/gilcrest/go-API-template/cmd/appUser/create/client/main.go",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }        
+    ]
+}
