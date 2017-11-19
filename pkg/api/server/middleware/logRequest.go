@@ -13,38 +13,44 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gilcrest/go-API-template/pkg/api/server/handlers"
 	"github.com/gilcrest/go-API-template/pkg/env"
 	"github.com/rs/xid"
 	"go.uber.org/zap"
 )
 
+// APIAudit struct holds the http request and other attributes needed
+// for auditing an http request
 type APIAudit struct {
-	ctx           context.Context
-	RequestID     xid.ID    `json:"request_id"`
-	TimeStarted   time.Time `json:"time_started"`
-	TimeFinished  time.Time `json:"time_finished"`
-	TimeInMillis  int       `json:"time_in_millis"`
-	Proto         string    `json:"protocol"`
-	ProtoMajor    int       `json:"protocol_major"`
-	ProtoMinor    int       `json:"protocol_minor"`
-	Method        string    `json:"request_method"`
-	Scheme        string    `json:"scheme"`
-	Host          string    `json:"host"`
-	Port          string    `json:"port"`
-	Path          string    `json:"path"`
-	Header        string    `json:"header"`
-	ContentLength int64     `json:"content_length"`
-	RemoteAddr    string    `json:"remote_address"`
+	ctx              context.Context
+	RequestID        string    `json:"request_id"`
+	TimeStarted      time.Time `json:"time_started"`
+	TimeFinished     time.Time `json:"time_finished"`
+	TimeInMillis     int       `json:"time_in_millis"`
+	Proto            string    `json:"protocol"`
+	ProtoMajor       int       `json:"protocol_major"`
+	ProtoMinor       int       `json:"protocol_minor"`
+	Method           string    `json:"request_method"`
+	Scheme           string    `json:"scheme"`
+	Host             string    `json:"host"`
+	Port             string    `json:"port"`
+	Path             string    `json:"path"`
+	Header           string    `json:"header"`
+	Body             string    `json:"body"`
+	ContentLength    int64     `json:"content_length"`
+	TransferEncoding string    `json:"transfer_encoding"`
+	Close            bool      `json:"close"`
+	Trailer          string    `json:"trailer"`
+	RemoteAddr       string    `json:"remote_address"`
+	RequestURI       string    `json:"request_uri"`
 }
 
 // LogRequest wraps several optional logging functions
 //   printRequest - sends request output from httputil.DumpRequest to STDERR
 //   logRequest - uses logger util to log requests
 //   log2DB - logs request to relational database TODO - not yet implemented
-func LogRequest(env *env.Env, h http.Handler) http.Handler {
-	return http.HandlerFunc(
-		func(w http.ResponseWriter, r *http.Request) {
+func LogRequest(env *env.Env) Adapter {
+	return func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			err := logSwitch(env, r)
 			if err != nil {
 				http.Error(w, "Unable to log request", http.StatusBadRequest)
@@ -52,43 +58,7 @@ func LogRequest(env *env.Env, h http.Handler) http.Handler {
 			}
 			h.ServeHTTP(w, r) // call original
 		})
-}
-
-func newAPIAudit(req *http.Request) (*APIAudit, error) {
-	var scheme string
-	host, port, err := net.SplitHostPort(req.Host)
-
-	isHTTPS := req.TLS != nil
-
-	if isHTTPS {
-		scheme = "https"
-	} else {
-		scheme = "http"
 	}
-
-	jsonBytes, err := json.Marshal(req.Header)
-	if err != nil {
-		return nil, err
-	}
-	headerJSON := string(jsonBytes)
-
-	apiAud := APIAudit{ctx: req.Context(), // retrieve the context from the http.Request
-		RequestID:     xid.New(),
-		TimeStarted:   time.Now(),
-		Proto:         req.Proto,
-		ProtoMajor:    req.ProtoMajor,
-		ProtoMinor:    req.ProtoMinor,
-		Method:        req.Method,
-		Scheme:        scheme,
-		Host:          host,
-		Port:          port,
-		Path:          req.URL.Path,
-		Header:        headerJSON,
-		ContentLength: req.ContentLength,
-		RemoteAddr:    req.RemoteAddr}
-
-	return &apiAud, nil
-
 }
 
 // logSwitch determines which, if any, of the logging methods
@@ -110,10 +80,11 @@ func logSwitch(env *env.Env, req *http.Request) error {
 	// if err != nil {
 	// 	return err
 	// }
-	// err = logRequest(env, req)
-	// if err != nil {
-	// 	return err
-	// }
+
+	err = logRequest(env, apiAudit)
+	if err != nil {
+		return err
+	}
 
 	err = logRequest2Db(env, apiAudit)
 	if err != nil {
@@ -124,13 +95,90 @@ func logSwitch(env *env.Env, req *http.Request) error {
 
 }
 
+func newAPIAudit(req *http.Request) (*APIAudit, error) {
+
+	var (
+		scheme    string
+		jsonBytes []byte
+		body      []byte
+	)
+	// split host and port out for cleaner logging
+	host, port, err := net.SplitHostPort(req.Host)
+	if err != nil {
+		return nil, err
+	}
+
+	// determine if the request is an HTTPS request
+	isHTTPS := req.TLS != nil
+
+	if isHTTPS {
+		scheme = "https"
+	} else {
+		scheme = "http"
+	}
+
+	// convert the Header map from the request to an array of bytes
+	jsonBytes, err = json.Marshal(req.Header)
+	if err != nil {
+		return nil, err
+	}
+
+	// convert the array of bytes to a JSON string
+	headerJSON := string(jsonBytes)
+
+	// convert the Trailer map from the request to an array of bytes
+	jsonBytes, err = json.Marshal(req.Trailer)
+	if err != nil {
+		return nil, err
+	}
+
+	// convert the array of bytes to a JSON string
+	trailerJSON := string(jsonBytes)
+
+	// get byte Array representation of guid from xid package (12 bytes)
+	guid := xid.New()
+
+	// use the String method of the guid object to convert byte array to string (20 bytes)
+	rID := guid.String()
+
+	body, err = dumpBody(req)
+	if err != nil {
+		return nil, err
+	}
+
+	// set attributes from original request and after performing some type conversions
+	// (map to json string, etc.)
+	apiAud := APIAudit{ctx: req.Context(), // retrieve the context from the http.Request
+		RequestID:        rID,
+		TimeStarted:      time.Now(),
+		Proto:            req.Proto,
+		ProtoMajor:       req.ProtoMajor,
+		ProtoMinor:       req.ProtoMinor,
+		Method:           req.Method,
+		Scheme:           scheme,
+		Host:             host,
+		Body:             string(body),
+		Port:             port,
+		Path:             req.URL.Path,
+		Header:           headerJSON,
+		ContentLength:    req.ContentLength,
+		TransferEncoding: strings.Join(req.TransferEncoding, ","),
+		Close:            req.Close,
+		Trailer:          trailerJSON,
+		RemoteAddr:       req.RemoteAddr,
+		RequestURI:       req.RequestURI}
+
+	return &apiAud, nil
+
+}
+
 // PrintRequest wraps the call to httputil.DumpRequest
 func printRequest(req *http.Request) error {
 
 	// func DumpRequest(req *http.Request, body bool) ([]byte, error)
 	requestDump, err := httputil.DumpRequest(req, true)
 	if err != nil {
-		return handlers.HTTPStatusError{Code: http.StatusBadRequest, Err: err}
+		return err
 	}
 	fmt.Println(string(requestDump))
 	return nil
@@ -187,42 +235,6 @@ func dumpBody(req *http.Request) ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-func logBody(lgr *zap.Logger, req *http.Request) (*zap.Logger, error) {
-	// func dumpBody(req *http.Request) ([]byte, error)
-	requestDump, err := dumpBody(req)
-	if err != nil {
-		return nil, handlers.HTTPStatusError{Code: http.StatusBadRequest, Err: err}
-	}
-	lgr = lgr.With(zap.String("Body", string(requestDump)))
-	return lgr, nil
-}
-
-func logHeader(lgr *zap.Logger, req *http.Request) (*zap.Logger, error) {
-
-	for key, valSlice := range req.Header {
-		for _, val := range valSlice {
-			var i int
-			i++
-			header := fmt.Sprintf("%s: %s", key, val)
-			lgr = lgr.With(zap.String(fmt.Sprintf("Header(%d)", i), header))
-		}
-	}
-	return lgr, nil
-}
-
-func logTrailer(lgr *zap.Logger, req *http.Request) (*zap.Logger, error) {
-
-	for key, valSlice := range req.Trailer {
-		for _, val := range valSlice {
-			var i int
-			i++
-			header := fmt.Sprintf("%s: %s", key, val)
-			lgr = lgr.With(zap.String(fmt.Sprintf("Trailer(%d)", i), header))
-		}
-	}
-	return lgr, nil
-}
-
 func logFormValues(lgr *zap.Logger, req *http.Request) (*zap.Logger, error) {
 
 	var i int
@@ -251,19 +263,9 @@ func logFormValues(lgr *zap.Logger, req *http.Request) (*zap.Logger, error) {
 	return lgr, nil
 }
 
-func logHostPort(lgr *zap.Logger, req *http.Request) (*zap.Logger, error) {
-	host, port, err := net.SplitHostPort(req.Host)
-	if err != nil {
-		return nil, handlers.HTTPStatusError{Code: http.StatusBadRequest, Err: err}
-	}
-	lgr = lgr.With(zap.String("Host", host))
-	lgr = lgr.With(zap.String("Port", port))
-	return lgr, nil
-}
+func logRequest(env *env.Env, req *APIAudit) error {
 
-func logRequest(env *env.Env, req *http.Request) error {
-
-	var err error
+	//var err error
 
 	logger := env.Logger
 	defer env.Logger.Sync()
@@ -271,37 +273,24 @@ func logRequest(env *env.Env, req *http.Request) error {
 	logger.Debug("logRequest started")
 	defer logger.Debug("logRequest ended")
 
-	logger, err = logHostPort(logger, req)
-	if err != nil {
-		return err
-	}
-	logger, err = logHeader(logger, req)
-	if err != nil {
-		return err
-	}
-	logger, err = logBody(logger, req)
-	if err != nil {
-		return err
-	}
-	logger, err = logFormValues(logger, req)
-	if err != nil {
-		return err
-	}
-	logger, err = logTrailer(logger, req)
-	if err != nil {
-		return err
-	}
-	// TODO - determine what to log for TLS (*tls.ConnectionState)
+	// logger, err = logFormValues(logger, req)
+	// if err != nil {
+	// 	return err
+	// }
 
 	logger.Info("Request received",
-		zap.String("HTTP method", req.Method),
-		zap.String("URL Path", req.URL.Path[1:]),
-		zap.String("URL", req.URL.String()),
-		zap.String("Protocol", req.Proto),
-		zap.Int("ProtoMajor", req.ProtoMajor),
-		zap.Int("ProtoMinor", req.ProtoMinor),
+		zap.String("request_id", req.RequestID),
+		zap.String("protocol", req.Proto),
+		zap.Int("proto_major", req.ProtoMajor),
+		zap.Int("proto_minor", req.ProtoMinor),
+		zap.String("method", req.Method),
+		zap.String("scheme", req.Scheme),
+		zap.String("host", req.Host),
+		zap.String("port", req.Port),
+		zap.String("path", req.Path),
+		zap.String("header_json", req.Header),
 		zap.Int64("Content Length", req.ContentLength),
-		zap.String("Transfer-Encoding", strings.Join(req.TransferEncoding, ",")),
+		zap.String("Transfer-Encoding", req.TransferEncoding),
 		zap.Bool("Close", req.Close),
 		zap.String("RemoteAddr", req.RemoteAddr),
 		zap.String("RequestURI", req.RequestURI),
