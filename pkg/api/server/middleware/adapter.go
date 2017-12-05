@@ -10,13 +10,13 @@ import (
 // http.Handler, the Adapter will adapt it, and return a new (probably wrapped)
 // http.Handler for us to use in its place. So far this is not much different
 // from just wrapping http.HandlerFunc types, however, now, we can instead write
-//  functions that themselves return an Adapter.
+// functions that themselves return an Adapter. - Mat Ryer @matryer
 type Adapter func(http.Handler) http.Handler
 
 // Adapt function takes the handler you want to adapt, and a list of our
-// Adapter types. The result of our Notify function is an acceptable Adapter.
-// Our Adapt function will simply iterate over all adapters,
-// calling them one by one (in reverse order) in a chained manner,
+// Adapter types. The result of any wrapper function should be an
+// acceptable Adapter.  Our Adapt function will simply iterate over all
+// adapters, calling them one by one (in reverse order) in a chained manner,
 // returning the result of the first adapter. - Mat Ryer @matryer
 func Adapt(h http.Handler, adapters ...Adapter) http.Handler {
 	for _, adapter := range adapters {
