@@ -21,37 +21,42 @@ import (
 // APIAudit struct holds the http request and other attributes needed
 // for auditing an http request
 type APIAudit struct {
-	ctx              context.Context
-	RequestID        string    `json:"request_id"`
-	TimeStarted      time.Time `json:"time_started"`
-	TimeFinished     time.Time `json:"time_finished"`
-	TimeInMillis     int       `json:"time_in_millis"`
-	Proto            string    `json:"protocol"`
-	ProtoMajor       int       `json:"protocol_major"`
-	ProtoMinor       int       `json:"protocol_minor"`
-	Method           string    `json:"request_method"`
-	Scheme           string    `json:"scheme"`
-	Host             string    `json:"host"`
-	Port             string    `json:"port"`
-	Path             string    `json:"path"`
-	Header           string    `json:"header"`
-	Body             string    `json:"body"`
-	ContentLength    int64     `json:"content_length"`
-	TransferEncoding string    `json:"transfer_encoding"`
-	Close            bool      `json:"close"`
-	Trailer          string    `json:"trailer"`
-	RemoteAddr       string    `json:"remote_address"`
-	RequestURI       string    `json:"request_uri"`
+	ctx          context.Context
+	RequestID    string    `json:"request_id"`
+	TimeStarted  time.Time `json:"time_started"`
+	TimeFinished time.Time `json:"time_finished"`
+	TimeInMillis int       `json:"time_in_millis"`
+	request
+	response request
+}
+
+type request struct {
+	Proto            string `json:"protocol"`
+	ProtoMajor       int    `json:"protocol_major"`
+	ProtoMinor       int    `json:"protocol_minor"`
+	Method           string `json:"request_method"`
+	Scheme           string `json:"scheme"`
+	Host             string `json:"host"`
+	Port             string `json:"port"`
+	Path             string `json:"path"`
+	Header           string `json:"header"`
+	Body             string `json:"body"`
+	ContentLength    int64  `json:"content_length"`
+	TransferEncoding string `json:"transfer_encoding"`
+	Close            bool   `json:"close"`
+	Trailer          string `json:"trailer"`
+	RemoteAddr       string `json:"remote_address"`
+	RequestURI       string `json:"request_uri"`
 }
 
 // LogRequest wraps several optional logging functions
 //   printRequest - sends request output from httputil.DumpRequest to STDERR
 //   logRequest - uses logger util to log requests
 //   log2DB - logs request to relational database TODO - not yet implemented
-func LogRequest(env *env.Env) Adapter {
+func LogRequest(env *env.Env, aud *APIAudit) Adapter {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			err := logSwitch(env, r)
+			err := logSwitch(env, aud, r)
 			if err != nil {
 				http.Error(w, "Unable to log request", http.StatusBadRequest)
 				return
@@ -65,13 +70,13 @@ func LogRequest(env *env.Env) Adapter {
 // you wish to use will be employed.  Using a cache mechanism I haven't
 // implemented yet, you will be able to turn on/off these methods on demand
 // as of right now, it's doing all of them, which is ridiculous
-func logSwitch(env *env.Env, req *http.Request) error {
+func logSwitch(env *env.Env, aud *APIAudit, req *http.Request) error {
 	// Check cached key:value pair to determine if printing/logging is on
 	// for the service
 	// TODO - Implement cache - maybe via Redis?
 	var err error
 
-	apiAudit, err := newAPIAudit(req)
+	err = SetRequest(aud, req)
 	if err != nil {
 		return err
 	}
@@ -81,12 +86,12 @@ func logSwitch(env *env.Env, req *http.Request) error {
 	// 	return err
 	// }
 
-	err = logRequest(env, apiAudit)
+	err = logRequest(env, aud)
 	if err != nil {
 		return err
 	}
 
-	err = logRequest2Db(env, apiAudit)
+	err = logRequest2Db(env, aud)
 	if err != nil {
 		return err
 	}
@@ -95,17 +100,24 @@ func logSwitch(env *env.Env, req *http.Request) error {
 
 }
 
-func newAPIAudit(req *http.Request) (*APIAudit, error) {
+// SetRequest populates several core fields (TimeStarted, ctx and RequestID)
+// for the APIAudit struct being passed into the function
+func SetRequest(aud *APIAudit, req *http.Request) error {
 
 	var (
 		scheme    string
 		jsonBytes []byte
 		body      []byte
 	)
+
+	// set APIAudit TimeStarted to current time in UTC
+	loc, _ := time.LoadLocation("UTC")
+	aud.TimeStarted = time.Now().In(loc)
+
 	// split host and port out for cleaner logging
 	host, port, err := net.SplitHostPort(req.Host)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// determine if the request is an HTTPS request
@@ -120,7 +132,7 @@ func newAPIAudit(req *http.Request) (*APIAudit, error) {
 	// convert the Header map from the request to an array of bytes
 	jsonBytes, err = json.Marshal(req.Header)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// convert the array of bytes to a JSON string
@@ -129,7 +141,7 @@ func newAPIAudit(req *http.Request) (*APIAudit, error) {
 	// convert the Trailer map from the request to an array of bytes
 	jsonBytes, err = json.Marshal(req.Trailer)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// convert the array of bytes to a JSON string
@@ -143,32 +155,29 @@ func newAPIAudit(req *http.Request) (*APIAudit, error) {
 
 	body, err = dumpBody(req)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	// set attributes from original request and after performing some type conversions
-	// (map to json string, etc.)
-	apiAud := APIAudit{ctx: req.Context(), // retrieve the context from the http.Request
-		RequestID:        rID,
-		TimeStarted:      time.Now(),
-		Proto:            req.Proto,
-		ProtoMajor:       req.ProtoMajor,
-		ProtoMinor:       req.ProtoMinor,
-		Method:           req.Method,
-		Scheme:           scheme,
-		Host:             host,
-		Body:             string(body),
-		Port:             port,
-		Path:             req.URL.Path,
-		Header:           headerJSON,
-		ContentLength:    req.ContentLength,
-		TransferEncoding: strings.Join(req.TransferEncoding, ","),
-		Close:            req.Close,
-		Trailer:          trailerJSON,
-		RemoteAddr:       req.RemoteAddr,
-		RequestURI:       req.RequestURI}
+	aud.ctx = req.Context() // retrieve the context from the http.Request
+	aud.RequestID = rID
+	aud.request.Proto = req.Proto
+	aud.request.ProtoMajor = req.ProtoMajor
+	aud.request.ProtoMinor = req.ProtoMinor
+	aud.request.Method = req.Method
+	aud.request.Scheme = scheme
+	aud.request.Host = host
+	aud.request.Body = string(body)
+	aud.request.Port = port
+	aud.request.Path = req.URL.Path
+	aud.request.Header = headerJSON
+	aud.request.ContentLength = req.ContentLength
+	aud.request.TransferEncoding = strings.Join(req.TransferEncoding, ",")
+	aud.request.Close = req.Close
+	aud.request.Trailer = trailerJSON
+	aud.request.RemoteAddr = req.RemoteAddr
+	aud.request.RequestURI = req.RequestURI
 
-	return &apiAud, nil
+	return nil
 
 }
 
@@ -263,7 +272,7 @@ func logFormValues(lgr *zap.Logger, req *http.Request) (*zap.Logger, error) {
 	return lgr, nil
 }
 
-func logRequest(env *env.Env, req *APIAudit) error {
+func logRequest(env *env.Env, aud *APIAudit) error {
 
 	//var err error
 
@@ -279,71 +288,73 @@ func logRequest(env *env.Env, req *APIAudit) error {
 	// }
 
 	logger.Info("Request received",
-		zap.String("request_id", req.RequestID),
-		zap.String("protocol", req.Proto),
-		zap.Int("proto_major", req.ProtoMajor),
-		zap.Int("proto_minor", req.ProtoMinor),
-		zap.String("method", req.Method),
-		zap.String("scheme", req.Scheme),
-		zap.String("host", req.Host),
-		zap.String("port", req.Port),
-		zap.String("path", req.Path),
-		zap.String("header_json", req.Header),
-		zap.Int64("Content Length", req.ContentLength),
-		zap.String("Transfer-Encoding", req.TransferEncoding),
-		zap.Bool("Close", req.Close),
-		zap.String("RemoteAddr", req.RemoteAddr),
-		zap.String("RequestURI", req.RequestURI),
+		zap.String("request_id", aud.RequestID),
+		zap.String("protocol", aud.request.Proto),
+		zap.Int("proto_major", aud.request.ProtoMajor),
+		zap.Int("proto_minor", aud.request.ProtoMinor),
+		zap.String("method", aud.request.Method),
+		zap.String("scheme", aud.request.Scheme),
+		zap.String("host", aud.request.Host),
+		zap.String("port", aud.request.Port),
+		zap.String("path", aud.request.Path),
+		zap.String("header_json", aud.request.Header),
+		zap.Int64("Content Length", aud.request.ContentLength),
+		zap.String("Transfer-Encoding", aud.request.TransferEncoding),
+		zap.Bool("Close", aud.request.Close),
+		zap.String("RemoteAddr", aud.request.RemoteAddr),
+		zap.String("RequestURI", aud.request.RequestURI),
 	)
 
 	return nil
 }
 
 // Creates a record in the appUser table using a stored function
-func logRequest2Db(env *env.Env, req *APIAudit) error {
+func logRequest2Db(env *env.Env, aud *APIAudit) error {
 
 	var rowsInserted int
 
 	// Calls the BeginTx method of the MainDb opened database
-	tx, err := env.DS.MainDb.BeginTx(req.ctx, nil)
+	tx, err := env.DS.MainDb.BeginTx(aud.ctx, nil)
 	if err != nil {
 		return err
 	}
 
 	// Prepare the sql statement using bind variables
-	stmt, err := tx.PrepareContext(req.ctx, `select api.log_request
+	stmt, err := tx.PrepareContext(aud.ctx, `select api.log_request
 		(
 		p_request_id => $1,
-		p_protocol => $2,
-		p_protocol_major => $3,
-		p_protocol_minor => $4,
-		p_request_method => $5,
-		p_scheme => $6,
-		p_host => $7,
-		p_port => $8,
-		p_path => $9,
-		p_header => $10,
-		p_content_length => $11,
-		p_remote_address => $12)`)
+		p_request_timestamp => $2,
+		p_protocol => $3,
+		p_protocol_major => $4,
+		p_protocol_minor => $5,
+		p_request_method => $6,
+		p_scheme => $7,
+		p_host => $8,
+		p_port => $9,
+		p_path => $10,
+		p_header => $11,
+		p_content_length => $12,
+		p_remote_address => $13)`)
 
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	rows, err := stmt.QueryContext(req.ctx,
-		req.RequestID,
-		req.Proto,
-		req.ProtoMajor,
-		req.ProtoMinor,
-		req.Method,
-		req.Scheme,
-		req.Host,
-		req.Port,
-		req.Path,
-		req.Header,
-		req.ContentLength,
-		req.RemoteAddr)
+	rows, err := stmt.QueryContext(aud.ctx,
+		aud.RequestID,
+		aud.TimeStarted,
+		aud.request.Proto,
+		aud.request.ProtoMajor,
+		aud.request.ProtoMinor,
+		aud.request.Method,
+		aud.request.Scheme,
+		aud.request.Host,
+		aud.request.Port,
+		aud.request.Path,
+		aud.request.Header,
+		aud.request.ContentLength,
+		aud.request.RemoteAddr)
 
 	if err != nil {
 		return err
