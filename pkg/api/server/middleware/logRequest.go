@@ -129,22 +129,22 @@ func SetRequest(aud *APIAudit, req *http.Request) error {
 		scheme = "http"
 	}
 
-	// convert the Header map from the request to an array of bytes
+	// convert the Header map from the request to a slice of bytes
 	jsonBytes, err = json.Marshal(req.Header)
 	if err != nil {
 		return err
 	}
 
-	// convert the array of bytes to a JSON string
+	// convert the slice of bytes to a JSON string
 	headerJSON := string(jsonBytes)
 
-	// convert the Trailer map from the request to an array of bytes
+	// convert the Trailer map from the request to a slice of bytes
 	jsonBytes, err = json.Marshal(req.Trailer)
 	if err != nil {
 		return err
 	}
 
-	// convert the array of bytes to a JSON string
+	// convert the slice of bytes to a JSON string
 	trailerJSON := string(jsonBytes)
 
 	// get byte Array representation of guid from xid package (12 bytes)
