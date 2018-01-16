@@ -1,0 +1,30 @@
+{
+	"dump_request": {
+		"write": false,
+		"body": false
+	},
+	"log_json": {
+		"request": {
+			"write": false,
+			"header": false,
+			"body": false
+		},
+		"response": {
+			"write": true,
+			"header": true,
+			"body": true
+		}
+	},
+	"log_2DB": {
+		"request": {
+			"write": true,
+			"header": true,
+			"body": true
+		},
+		"response": {
+			"write": true,
+			"header": true,
+			"body": true
+		}
+	}
+}
