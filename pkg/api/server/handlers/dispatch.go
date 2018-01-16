@@ -19,8 +19,8 @@ func Dispatch(env *env.Env, rtr *mux.Router) *mux.Router {
 		Methods("POST").
 		Headers("Content-Type", "application/json")
 
-	// match only POST requests on /api/v1/appUser/create
-	rtr.Handle("/v1/appUser", mwr.Adapt(Handler{env, CreateUserHandler}, mwr.LogRequest(env, audit))).
+		// match only POST requests on /api/v1/appUser/create
+	rtr.Handle("/v1/appUser", mwr.Adapt(Handler{env, CreateUserHandler}, mwr.LogRequest(env, audit), mwr.Timer(audit))).
 		Methods("POST").
 		Headers("Content-Type", "application/json")
 
