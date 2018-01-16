@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -39,7 +40,10 @@ type Handler struct {
 
 // ServeHTTP allows Handler type to satisfy the http.Handler interface
 func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Start Handler.ServeHTTP")
+	defer fmt.Println("Finish Handler.ServeHTTP")
 	err := h.H(h.Env, w, r)
+
 	if err != nil {
 		switch e := err.(type) {
 		case Error:
