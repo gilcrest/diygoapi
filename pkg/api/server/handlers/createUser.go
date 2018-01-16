@@ -11,12 +11,15 @@ import (
 // CreateUserHandler creates a user in the database
 func CreateUserHandler(env *env.Env, w http.ResponseWriter, req *http.Request) error {
 
-	// retrieve the context from the http.Request
-	ctx := req.Context()
-
 	// Get a new logger instance
 	logger := env.Logger
 	defer env.Logger.Sync()
+
+	logger.Debug("Start CreateUserHandler")
+	defer logger.Debug("Finish CreateUserHandler")
+
+	// retrieve the context from the http.Request
+	ctx := req.Context()
 
 	logger.Debug("CreateUserHandler started")
 	defer logger.Debug("CreateUserHandler ended")
