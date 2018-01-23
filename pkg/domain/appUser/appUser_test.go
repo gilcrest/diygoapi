@@ -4,7 +4,7 @@ package appUser_test
 import (
 	"fmt"
 
-	"github.com/gilcrest/go-API-template/pkg/appUser"
+	"github.com/gilcrest/go-API-template/pkg/domain/appUser"
 )
 
 func ExampleUser() {
