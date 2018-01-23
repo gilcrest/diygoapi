@@ -4,16 +4,15 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"log"
 	"time"
 
 	"github.com/gilcrest/go-API-template/pkg/domain/appUser"
 	"github.com/gilcrest/go-API-template/pkg/env"
+	"github.com/rs/zerolog/log"
 )
 
 func main() {
-	fmt.Println("Start main")
+	log.Print("Start main")
 
 	// Start Timer
 	start := time.Now()
@@ -25,7 +24,7 @@ func main() {
 	// Initializes "environment" struct type
 	env, err := env.NewEnv()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err)
 	}
 
 	// Creates a new instance of the appUser.User struct type
@@ -38,7 +37,7 @@ func main() {
 	// Create method does validation and then inserts user into db
 	tx, err := inputUsr.Create(ctx, env)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err)
 	}
 
 	// Check to ensure that the CreateDate struct field is populated by
@@ -47,16 +46,16 @@ func main() {
 	if !inputUsr.CreateDate.IsZero() {
 		err = tx.Commit()
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal().Err(err)
 		}
 	} else {
 		err = tx.Rollback()
-		log.Fatalln("CreateDate is nil, rolled back txn")
+		log.Fatal().Err(err).Str("Rollback", "CreateDate is nil, rolled back txn")
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal().Err(err)
 		}
 	}
 
-	fmt.Printf("%.2fs elapsed\n", time.Since(start).Seconds())
+	log.Printf("%.2fs elapsed\n", time.Since(start).Seconds())
 
 }

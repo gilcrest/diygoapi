@@ -4,21 +4,22 @@ package env
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"os"
 
 	"github.com/gilcrest/go-API-template/pkg/datastore"
-	"go.uber.org/zap"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 // Env type stores common environment related items
 type Env struct {
 	DS      *datastore.Datastore
-	Logger  *zap.Logger
+	Logger  zerolog.Logger
 	LogOpts *HTTPLogOpts
 }
 
+// HTTPLogOpts represent HTTP Logging Options
 type HTTPLogOpts struct {
 	DumpRequest dumpReqOpts `json:"dump_request"`
 	Log2StdOut  reqResp     `json:"log_json"`
@@ -45,10 +46,10 @@ type reqRespOpts struct {
 func NewEnv() (*Env, error) {
 
 	// setup logger
-	logger, err := zap.NewProduction()
-	if err != nil {
-		return nil, err
-	}
+	logger := newLogger()
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	// open db connection pools
 	ds, err := datastore.NewDatastore()
@@ -69,8 +70,7 @@ func newHTTPLogOpts() *HTTPLogOpts {
 
 	raw, err := ioutil.ReadFile("../go-API-template/pkg/fileInput/httpLogOpt.json")
 	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
+		log.Fatal().Err(err)
 	}
 
 	var l HTTPLogOpts
@@ -78,4 +78,11 @@ func newHTTPLogOpts() *HTTPLogOpts {
 
 	return &l
 
+}
+
+func newLogger() zerolog.Logger {
+	zerolog.TimeFieldFormat = ""
+	lgr := zerolog.New(os.Stdout).With().Timestamp().Logger()
+
+	return lgr
 }

@@ -1,23 +1,18 @@
 package middleware
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 
 	"github.com/gilcrest/go-API-template/pkg/env"
+	"github.com/rs/zerolog/log"
 )
 
-// func NewDefaultHandler(h http.Handler, env *env.Env, aud *APIAudit) http.Handler {
-// 	fmt.Println("Start NewDefaultHandler")
-// 	defer fmt.Println("Finish NewDefaultHandler")
-// 	return LogResponse(Timer(h, aud), env, aud)
-// }
-
+// LogResponse records and logs the response code, header and body details
 func LogResponse(h http.Handler, env *env.Env, aud *APIAudit) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("Start LogResponse")
-		defer fmt.Println("Finish LogResponse")
+		log.Print("Start LogResponse")
+		defer log.Print("Finish LogResponse")
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, r)
 		// copy everything from response recorder
@@ -32,13 +27,13 @@ func LogResponse(h http.Handler, env *env.Env, aud *APIAudit) http.Handler {
 
 		// err = SetResponse(aud, rec)
 		// if err != nil {
-		// 	fmt.Println("TODO FIX THIS ERROR")
+		// 	log.Print("TODO FIX THIS ERROR")
 		// }
 
-		//fmt.Printf("%+v\n", aud)
+		//log.Printf("%+v\n", aud)
 		// err = logRespDispatch(env, aud)
 		// if err != nil {
-		// 	fmt.Println("TODO FIX THIS ERROR")
+		// 	log.Print("TODO FIX THIS ERROR")
 		// }
 
 	})

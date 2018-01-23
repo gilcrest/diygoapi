@@ -1,11 +1,10 @@
 package handlers
 
 import (
-	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/gilcrest/go-API-template/pkg/env"
+	"github.com/rs/zerolog/log"
 )
 
 // Error represents a handler error. It provides methods for a HTTP status
@@ -40,8 +39,8 @@ type Handler struct {
 
 // ServeHTTP allows Handler type to satisfy the http.Handler interface
 func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Start Handler.ServeHTTP")
-	defer fmt.Println("Finish Handler.ServeHTTP")
+	log.Print("Start Handler.ServeHTTP")
+	defer log.Print("Finish Handler.ServeHTTP")
 	err := h.H(h.Env, w, r)
 
 	if err != nil {

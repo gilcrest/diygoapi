@@ -2,14 +2,13 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"time"
 
 	"github.com/gilcrest/go-API-template/pkg/api/client"
 	"github.com/gilcrest/go-API-template/pkg/domain/appUser"
+	"github.com/rs/zerolog/log"
 )
 
 func main() {
@@ -23,7 +22,7 @@ func main() {
 	//  URL struct
 	u, err := url.Parse("http://127.0.0.1:8080/")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err)
 	}
 
 	// Initialize the UserClient struct with the formed URL from above and a pointer to
@@ -37,9 +36,11 @@ func main() {
 	user, err := clt.Create(ctx, &usr)
 	if err != nil {
 		if err == context.DeadlineExceeded {
-			log.Fatal("Response timed out, do something different here if you want to...")
+			log.Fatal().
+				Err(err).
+				Str("Timeout", "Response timed out")
 		}
-		log.Fatal(err)
+		log.Fatal().Err(err)
 	}
-	fmt.Print(user)
+	log.Print(user)
 }

@@ -12,17 +12,13 @@ import (
 func CreateUserHandler(env *env.Env, w http.ResponseWriter, req *http.Request) error {
 
 	// Get a new logger instance
-	logger := env.Logger
-	defer env.Logger.Sync()
+	log := env.Logger
 
-	logger.Debug("Start CreateUserHandler")
-	defer logger.Debug("Finish CreateUserHandler")
+	log.Debug().Msg("Start CreateUserHandler")
+	defer log.Debug().Msg("Finish CreateUserHandler")
 
 	// retrieve the context from the http.Request
 	ctx := req.Context()
-
-	logger.Debug("CreateUserHandler started")
-	defer logger.Debug("CreateUserHandler ended")
 
 	var err error
 

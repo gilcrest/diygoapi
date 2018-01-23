@@ -2,6 +2,8 @@ package env
 
 import (
 	"testing"
+
+	"github.com/gilcrest/go-API-template/pkg/datastore"
 )
 
 func TestNewDatastore(t *testing.T) {
@@ -13,7 +15,7 @@ func TestNewDatastore(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := NewDatastore()
+			_, err := datastore.NewDatastore()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewDatastore() error = %v, wantErr %v", err, tt.wantErr)
 				return

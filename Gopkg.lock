@@ -20,26 +20,20 @@
   revision = "e42267488fe361b9dc034be7a6bffef5b195bceb"
 
 [[projects]]
-  name = "go.uber.org/atomic"
+  name = "github.com/rs/xid"
   packages = ["."]
-  revision = "4e336646b2ef9fc6e47be8e21594178f98e5ebcf"
-  version = "v1.2.0"
+  revision = "02dd45c33376f85d1064355dc790dcc4850596b1"
+  version = "v1.1"
 
 [[projects]]
-  name = "go.uber.org/multierr"
-  packages = ["."]
-  revision = "3c4937480c32f4c13a875a1829af76c98ca3d40a"
-  version = "v1.1.0"
-
-[[projects]]
-  name = "go.uber.org/zap"
-  packages = [".","buffer","internal/bufferpool","internal/color","internal/exit","zapcore"]
-  revision = "9d9d6135afe89b6fc4a05e9a8552526caba38048"
-  version = "v1.5.0"
+  name = "github.com/rs/zerolog"
+  packages = [".","internal/json","log"]
+  revision = "b53826c57a6a1d8833443ebeacf1cfb62b229c64"
+  version = "v1.4.0"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "9bfd14ebc8da5867155a809ffab95045362c3a92e50c627c32b3733492a00bdc"
+  inputs-digest = "c26b0edded0ac4d5d5964f8933df6b85a09a24d4dc9593a18cdd20199d98b5f4"
   solver-name = "gps-cdcl"
   solver-version = 1

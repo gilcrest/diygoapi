@@ -1,13 +1,12 @@
 package main
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/gilcrest/go-API-template/pkg/api/server/handlers"
 	"github.com/gilcrest/go-API-template/pkg/env"
-
 	"github.com/gorilla/mux"
+	"github.com/rs/zerolog/log"
 )
 
 func main() {
@@ -16,7 +15,7 @@ func main() {
 	env, err := env.NewEnv()
 
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err)
 	}
 
 	// create a new mux (multiplex) router
@@ -36,6 +35,6 @@ func main() {
 	http.Handle("/", r)
 
 	if err := http.ListenAndServe("127.0.0.1:8080", nil); err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err)
 	}
 }

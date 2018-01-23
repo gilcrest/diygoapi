@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
@@ -16,7 +15,7 @@ import (
 
 	"github.com/gilcrest/go-API-template/pkg/env"
 	"github.com/rs/xid"
-	"go.uber.org/zap"
+	"github.com/rs/zerolog/log"
 )
 
 // const (
@@ -69,8 +68,8 @@ type request struct {
 func LogRequest(env *env.Env, aud *APIAudit) Adapter {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			fmt.Println("Start LogRequest")
-			defer fmt.Println("Finish LogRequest")
+			log.Print("Start LogRequest")
+			defer log.Print("Finish LogRequest")
 			err := logReqDispatch(env, aud, r)
 			if err != nil {
 				http.Error(w, "Unable to log request", http.StatusBadRequest)
@@ -100,7 +99,7 @@ func logReqDispatch(env *env.Env, aud *APIAudit, req *http.Request) error {
 		if err != nil {
 			return err
 		}
-		fmt.Println(string(requestDump))
+		log.Print(string(requestDump))
 		return nil
 	}
 
@@ -313,43 +312,42 @@ func dumpBody(req *http.Request) (string, error) {
 	return string(b.Bytes()), nil
 }
 
-func logFormValues(lgr *zap.Logger, req *http.Request) (*zap.Logger, error) {
+// func logFormValues(lgr zerolog.Logger, req *http.Request) (zerolog.Logger, error) {
 
-	var i int
+// 	var i int
 
-	err := req.ParseForm()
-	if err != nil {
-		return nil, err
-	}
+// 	err := req.ParseForm()
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	for key, valSlice := range req.Form {
-		for _, val := range valSlice {
-			i++
-			formValue := fmt.Sprintf("%s: %s", key, val)
-			lgr = lgr.With(zap.String(fmt.Sprintf("Form(%d)", i), formValue))
-		}
-	}
+// 	for key, valSlice := range req.Form {
+// 		for _, val := range valSlice {
+// 			i++
+// 			formValue := fmt.Sprintf("%s: %s", key, val)
+// 			lgr = lgr.With().Str(fmt.Sprintf("Form(%d)", i), formValue))
+// 		}
+// 	}
 
-	for key, valSlice := range req.PostForm {
-		for _, val := range valSlice {
-			i++
-			formValue := fmt.Sprintf("%s: %s", key, val)
-			lgr = lgr.With(zap.String(fmt.Sprintf("PostForm(%d)", i), formValue))
-		}
-	}
+// 	for key, valSlice := range req.PostForm {
+// 		for _, val := range valSlice {
+// 			i++
+// 			formValue := fmt.Sprintf("%s: %s", key, val)
+// 			lgr = lgr.With(Str(fmt.Sprintf("PostForm(%d)", i), formValue))
+// 		}
+// 	}
 
-	return lgr, nil
-}
+// 	return lgr, nil
+// }
 
 func logRequest(env *env.Env, aud *APIAudit) error {
 
 	//var err error
 
-	logger := env.Logger
-	defer env.Logger.Sync()
+	log := env.Logger
 
-	logger.Debug("logRequest started")
-	defer logger.Debug("logRequest ended")
+	log.Debug().Msg("logRequest started")
+	defer log.Debug().Msg("logRequest ended")
 
 	// logger, err = logFormValues(logger, req)
 	// if err != nil {
@@ -358,31 +356,31 @@ func logRequest(env *env.Env, aud *APIAudit) error {
 
 	// All header key:value pairs written to JSON
 	if env.LogOpts.Log2StdOut.Request.Header {
-		logger = logger.With(zap.String("header_json", aud.request.Header))
+		log = log.With().Str("header_json", aud.request.Header).Logger()
 	}
 
 	if env.LogOpts.Log2StdOut.Request.Body {
-		logger = logger.With(zap.String("body", aud.request.Body))
+		log = log.With().Str("body", aud.request.Body).Logger()
 	}
 
-	logger.Info("Request received",
-		zap.String("request_id", aud.RequestID),
-		zap.String("method", aud.request.Method),
+	log.Info().
+		Str("request_id", aud.RequestID).
+		Str("method", aud.request.Method).
 		// most url.URL components split out
-		zap.String("scheme", aud.request.Scheme),
-		zap.String("host", aud.request.Host),
-		zap.String("port", aud.request.Port),
-		zap.String("path", aud.request.Path),
+		Str("scheme", aud.request.Scheme).
+		Str("host", aud.request.Host).
+		Str("port", aud.request.Port).
+		Str("path", aud.request.Path).
 		// The protocol version for incoming server requests.
-		zap.String("protocol", aud.request.Proto),
-		zap.Int("proto_major", aud.request.ProtoMajor),
-		zap.Int("proto_minor", aud.request.ProtoMinor),
-		zap.Int64("Content Length", aud.request.ContentLength),
-		zap.String("Transfer-Encoding", aud.request.TransferEncoding),
-		zap.Bool("Close", aud.request.Close),
-		zap.String("RemoteAddr", aud.request.RemoteAddr),
-		zap.String("RequestURI", aud.request.RequestURI),
-	)
+		Str("protocol", aud.request.Proto).
+		Int("proto_major", aud.request.ProtoMajor).
+		Int("proto_minor", aud.request.ProtoMinor).
+		Int64("Content Length", aud.request.ContentLength).
+		Str("Transfer-Encoding", aud.request.TransferEncoding).
+		Bool("Close", aud.request.Close).
+		Str("RemoteAddr", aud.request.RemoteAddr).
+		Str("RequestURI", aud.request.RequestURI).
+		Msg("Request received")
 
 	return nil
 }
@@ -455,7 +453,7 @@ func logRequest2Db(env *env.Env, aud *APIAudit) error {
 		aud.response.Body)         //$19
 
 	if err != nil {
-		fmt.Println(err)
+		log.Print(err)
 		return err
 	}
 	defer rows.Close()
@@ -463,7 +461,7 @@ func logRequest2Db(env *env.Env, aud *APIAudit) error {
 	// Iterate through the returned record(s)
 	for rows.Next() {
 		if err := rows.Scan(&rowsInserted); err != nil {
-			fmt.Println(err)
+			log.Print(err)
 			return err
 		}
 	}
@@ -505,22 +503,21 @@ func logResponse(env *env.Env, aud *APIAudit) error {
 	//var err error
 
 	logger := env.Logger
-	defer env.Logger.Sync()
 
-	logger.Debug("logResponse started")
-	defer logger.Debug("logResponse ended")
+	logger.Debug().Msg("logResponse started")
+	defer logger.Debug().Msg("logResponse ended")
 
 	// logger, err = logFormValues(logger, req)
 	// if err != nil {
 	// 	return err
 	// }
 
-	logger.Info("Response Sent",
-		zap.String("request_id", aud.RequestID),
-		zap.Int("response_code", aud.ResponseCode),
-		zap.String("header_json", aud.response.Header),
-		zap.String("body", aud.response.Body),
-	)
+	logger.Info().
+		Str("request_id", aud.RequestID).
+		Int("response_code", aud.ResponseCode).
+		Str("header_json", aud.response.Header).
+		Str("body", aud.response.Body).
+		Msg("Response Sent")
 
 	return nil
 }
