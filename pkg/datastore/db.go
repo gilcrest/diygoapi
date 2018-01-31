@@ -1,4 +1,5 @@
-// Package datastore TODO
+// Package datastore has all the functions needed to start any database
+// connections as well as transactions
 package datastore
 
 import (
@@ -17,12 +18,17 @@ type Datastore struct {
 }
 
 // NewDatastore initializes the datastore struct
+// NOTE: I have chosen to use the same database for logging as
+// my "main" app database. I'd recommend having a separate db and
+// would have a separate method to start that connection pool up and
+// pass it, but since this is just an example....
 func NewDatastore() (*Datastore, error) {
-	db, err := newMainDB()
+	mdb, err := newMainDB()
 	if err != nil {
 		return nil, err
 	}
-	return &Datastore{MainDb: db, LogDb: nil}, nil
+
+	return &Datastore{MainDb: mdb, LogDb: mdb}, nil
 }
 
 // NewMainDB returns an open database handle of 0 or more underlying connections
@@ -60,28 +66,4 @@ func (ds Datastore) Tx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error
 	}
 
 	return tx, nil
-
 }
-
-// // The key type is unexported to prevent collisions with context keys defined in
-// // other packages.
-// type key int
-
-// // dbTxKey is the context key for the database txn.  Its value of zero is
-// // arbitrary.  If this package defined other context keys, they would have
-// // different integer values.
-// const dbTxKey key = 0
-
-// // Tx2Context returns Context carrying the database transaction (tx).
-// func Tx2Context(ctx context.Context, opts *sql.TxOptions) context.Context {
-// 	tx, _ := Tx(ctx, db, opts)
-// 	return context.WithValue(ctx, dbTxKey, tx)
-// }
-
-// // TxFromContext extracts the database transaction from the context, if present.
-// func TxFromContext(ctx context.Context) (*sql.Tx, bool) {
-// 	// ctx.Value returns nil if ctx has no value for the key;
-// 	// the *sql.Tx type assertion returns ok=false for nil.
-// 	dbTx, ok := ctx.Value(dbTxKey).(*sql.Tx)
-// 	return dbTx, ok
-// }
