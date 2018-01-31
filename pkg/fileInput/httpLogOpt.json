@@ -10,7 +10,7 @@
 			"body": false
 		},
 		"response": {
-			"write": true,
+			"write": false,
 			"header": true,
 			"body": true
 		}
