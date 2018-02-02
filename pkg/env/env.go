@@ -21,23 +21,43 @@ type Env struct {
 
 // HTTPLogOpts represent HTTP Logging Options
 type HTTPLogOpts struct {
-	DumpRequest dumpReqOpts `json:"dump_request"`
-	Log2StdOut  reqResp     `json:"log_json"`
-	Log2DB      reqResp     `json:"log_2DB"`
+	HTTPUtil   *httputil   `json:"httputil"`
+	Log2StdOut *log2StdOut `json:"log_json"`
+	Log2DB     *log2DB     `json:"log_2DB"`
 }
 
-type reqResp struct {
-	Request  reqRespOpts `json:"request"`
-	Response reqRespOpts `json:"response"`
+type httputil struct {
+	DumpRequest *dumpRequest
 }
 
-type dumpReqOpts struct {
-	Write bool `json:"write"`
-	Body  bool `json:"body"`
+type dumpRequest struct {
+	Enable bool `json:"enable"`
+	Body   bool `json:"body"`
 }
 
-type reqRespOpts struct {
-	Write  bool `json:"write"`
+type log2StdOut struct {
+	Request  *l2SOpt
+	Response *l2SOpt
+}
+
+// l2SOpt is the log2StdOut Options
+// Enable should be true if you want to write the log, set
+// the rOpt Header and Body accordingly if you want to write those
+type l2SOpt struct {
+	Enable  bool `json:"enable"`
+	Options *rOpt
+}
+
+type log2DB struct {
+	Enable   bool `json:"enable"`
+	Request  *rOpt
+	Response *rOpt
+}
+
+// rOpt is the http request/response logging options
+// choose whether you want to log the http headers or body
+// by setting either value to true
+type rOpt struct {
 	Header bool `json:"header"`
 	Body   bool `json:"body"`
 }
@@ -63,7 +83,6 @@ func NewEnv() (*Env, error) {
 	environment := &Env{Logger: logger, DS: ds, LogOpts: lopts}
 
 	return environment, nil
-
 }
 
 func newHTTPLogOpts() *HTTPLogOpts {
@@ -77,7 +96,6 @@ func newHTTPLogOpts() *HTTPLogOpts {
 	json.Unmarshal(raw, &l)
 
 	return &l
-
 }
 
 func newLogger() zerolog.Logger {
