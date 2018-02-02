@@ -111,11 +111,11 @@ func setResponse(aud *APIAudit, rec *httptest.ResponseRecorder) error {
 // logRespDispatch determines which, if any, of the logging methods
 // you wish to use will be employed
 func logDispatch(env *env.Env, aud *APIAudit) error {
-	if env.LogOpts.Log2StdOut.Response.Write {
+	if env.LogOpts.Log2StdOut.Response.Enable {
 		logResp2Stdout(env, aud)
 	}
 
-	if env.LogOpts.Log2DB.Request.Write {
+	if env.LogOpts.Log2DB.Enable {
 		err := logReqResp2Db(env, aud)
 		if err != nil {
 			log.Error().Err(err).Msg("")
@@ -150,7 +150,7 @@ func logReqResp2Db(env *env.Env, aud *APIAudit) error {
 		reqBody      interface{}
 	)
 
-	if env.LogOpts.Log2DB.Request.Write {
+	if env.LogOpts.Log2DB.Enable {
 		reqHdr = nil
 		if env.LogOpts.Log2DB.Request.Header {
 			// This empty string to nil conversion is probably
@@ -165,7 +165,7 @@ func logReqResp2Db(env *env.Env, aud *APIAudit) error {
 		}
 	}
 
-	if env.LogOpts.Log2DB.Response.Write {
+	if env.LogOpts.Log2DB.Enable {
 		respHdr = nil
 		if env.LogOpts.Log2DB.Response.Header {
 			// This empty string to nil conversion is probably
