@@ -4,16 +4,17 @@ A RESTful API template (built with Go).
 
 - The goal of this app is to make an example/template of relational database-backed APIs that have characteristics needed to ensure success in a high volume environment.
 
-- This is a work in progress - you'll notice most things below are not checked, but I will get there!  Any feedback and/or support are welcome. I have very thick skin, so please feel free to tell me how bad something is and I'll make it better.
+- This is a work in progress - you'll notice most things below are not checked.  Any feedback and/or support are welcome. I have very thick skin, so please feel free to tell me how bad something is and I'll make it better.
 
 ## Critical components of any API (in no particular order)
 
 - [ ] Unit Testing (with reasonably high coverage %)
 - [x] Verbose Code Documentation
 - Instrumentation
-  - request/response logging (ability to turn on and off logging type based on some type of flag)
-    - [x] logStyle 1: structured (JSON), leveled (debug, error, info, etc.) logging to stdout
-    - [ ] logStyle 2: relational database logging (certain data points broken out into standard column datatypes, request/response stored in TEXT/CLOB datatype columns)
+  - configurable http request/response logging (ability to turn on and off logging type based on some type of flag)
+    - [x] logStyle 1: httputil.DumpRequest - I don't do anything here, really - just allow you to turn this on or off depending on your choice
+    - [x] logStyle 2: structured (JSON), leveled (debug, error, info, etc.) logging to stdout
+    - [x] logStyle 3: relational database logging (certain data points broken out into standard column datatypes, request/response stored in TEXT/CLOB datatype columns)
     - [ ] API Metrics
     - [ ] Performance Monitoring
     - [ ] Helpful debug logging
