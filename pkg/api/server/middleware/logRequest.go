@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
@@ -81,17 +82,17 @@ func logReqDispatch(env *env.Env, aud *APIAudit, req *http.Request) error {
 		return err
 	}
 
-	if env.LogOpts.DumpRequest.Write {
-		requestDump, err := httputil.DumpRequest(req, env.LogOpts.DumpRequest.Body)
+	if env.LogOpts.HTTPUtil.DumpRequest.Enable {
+		requestDump, err := httputil.DumpRequest(req, env.LogOpts.HTTPUtil.DumpRequest.Body)
 		if err != nil {
 			log.Error().Err(err).Msg("")
 			return err
 		}
-		log.Print(string(requestDump))
+		fmt.Printf("httputil.DumpRequest output:\n%s", string(requestDump))
 		return nil
 	}
 
-	if env.LogOpts.Log2StdOut.Request.Write {
+	if env.LogOpts.Log2StdOut.Request.Enable {
 		err = logReq2Stdout(env, aud)
 		if err != nil {
 			log.Error().Err(err).Msg("")
@@ -284,11 +285,11 @@ func logReq2Stdout(env *env.Env, aud *APIAudit) error {
 	// }
 
 	// All header key:value pairs written to JSON
-	if env.LogOpts.Log2StdOut.Request.Header {
+	if env.LogOpts.Log2StdOut.Request.Options.Header {
 		log = log.With().Str("header_json", aud.request.Header).Logger()
 	}
 
-	if env.LogOpts.Log2StdOut.Request.Body {
+	if env.LogOpts.Log2StdOut.Request.Options.Body {
 		log = log.With().Str("body", aud.request.Body).Logger()
 	}
 
