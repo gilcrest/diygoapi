@@ -11,7 +11,7 @@ A RESTful API template (built with Go).
 - [ ] Unit Testing (with reasonably high coverage %)
 - [x] Verbose Code Documentation
 - Instrumentation
-  - configurable http request/response logging (ability to turn on and off logging type based on some type of flag)
+  - [configurable http request/response logging](#configurable-logging) (ability to turn on and off logging type based on some type of flag)
     - [x] logStyle 1: httputil.DumpRequest - I don't do anything here, really - just allow you to turn this on or off depending on your choice
     - [x] logStyle 2: structured (JSON), leveled (debug, error, info, etc.) logging to stdout
     - [x] logStyle 3: relational database logging (certain data points broken out into standard column datatypes, request/response stored in TEXT/CLOB datatype columns)
@@ -67,3 +67,61 @@ Blog/Medium Posts
 
 - Response JSON logging and httputil.DumpResponse
 - Response Relational DB Logging
+
+### Configurable Logging
+
+I allow configurable http request/response logging by importing a JSON file into a struct type that drives the rules for what logging features are turned on - you can have one (or none, if you so choose) of the three log styles turned on using this file.
+
+- log_json - logs request or response information as JSON.  You can choose to log either the request or response (or both) as well as log the header and body of each, output for a request looks something like:
+
+```json
+{"time":1517890421,"level":"info","header_json":"{\"Accept\":[\"*/*\"],\"Accept-Encoding\":[\"gzip, deflate\"],\"Cache-Control\":[\"no-cache\"],\"Connection\":[\"keep-alive\"],\"Content-Length\":[\"129\"],\"Content-Type\":[\"application/json\"],\"Postman-Token\":[\"3b9aa5b1-9094-4ab7-9643-fa226cb703fd\"],\"User-Agent\":[\"PostmanRuntime/7.1.1\"]}","body":"{\"username\": \"repoMan\",\"mobile_ID\": \"1-800-repoman\",\"email\":\"repoman@alwaysintense.com\",\"First_Name\":\"Otto\",\"Last_Name\":\"Maddox\"}","request_id":"b9sia76a68053hv84ld0","method":"POST","scheme":"http","host":"127.0.0.1","port":"8080","path":"/api/v1/appUser","protocol":"HTTP/1.1","proto_major":1,"proto_minor":1,"Content Length":129,"Transfer-Encoding":"","Close":false,"RemoteAddr":"127.0.0.1:59705","RequestURI":"/api/v1/appUser","message":"Request received"}
+```
+
+>NOTE - the HTTP header key:value pairs and json from the body are represented as escaped JSON within the actual message. If you don't want this data, set these fields to false in the JSON config file (`httpLogOpt.json`)
+
+The response output will look something like:
+
+```json
+{"time":1517890421,"level":"info","request_id":"b9sigoua68055lg37su0","response_code":200,"response_header":"{\"Content-Type\":[\"text/plain; charset=utf-8\"],\"Request-Id\":[\"123456789\"]}","response_body":"{\"username\":\"repoMan\",\"mobile_id\":\"1-800-repoman\",\"email\":\"repoman@alwaysintense.com\",\"first_name\":\"Otto\",\"last_name\":\"Maddox\",\"create_user_id\":\"gilcrest\",\"create_date\":\"2018-02-05T23:00:35.281747Z\",\"update_user_id\":\"\",\"update_date\":\"0001-01-01T00:00:00Z\"}\n{\"username\":\"repoMan\",\"mobile_id\":\"1-800-repoman\",\"email\":\"repoman@alwaysintense.com\",\"first_name\":\"Otto\",\"last_name\":\"Maddox\",\"create_user_id\":\"gilcrest\",\"create_date\":\"2018-02-05T23:00:35.281747Z\",\"update_user_id\":\"\",\"update_date\":\"0001-01-01T00:00:00Z\"}\n","message":"Response Sent"}
+```
+
+- httputil.DumpRequest - set to true to enable the
+
+```json
+{
+    "httputil": {
+        "DumpRequest": {
+            "enable": false,
+            "body": true
+        }
+    },
+    "log_json": {
+        "Request": {
+            "enable": false,
+            "Options": {
+                "header": true,
+                "body": true
+            }
+        },
+        "Response": {
+            "enable": false,
+            "Options": {
+                "header": true,
+                "body": true
+            }
+        }
+    },
+    "log_2DB": {
+        "enable": false,
+        "Request": {
+            "header": true,
+            "body": true
+        },
+        "Response": {
+            "header": true,
+            "body": true
+        }
+    }
+}
+```
