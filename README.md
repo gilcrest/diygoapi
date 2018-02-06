@@ -86,7 +86,27 @@ The response output will look something like:
 {"time":1517890421,"level":"info","request_id":"b9sigoua68055lg37su0","response_code":200,"response_header":"{\"Content-Type\":[\"text/plain; charset=utf-8\"],\"Request-Id\":[\"123456789\"]}","response_body":"{\"username\":\"repoMan\",\"mobile_id\":\"1-800-repoman\",\"email\":\"repoman@alwaysintense.com\",\"first_name\":\"Otto\",\"last_name\":\"Maddox\",\"create_user_id\":\"gilcrest\",\"create_date\":\"2018-02-05T23:00:35.281747Z\",\"update_user_id\":\"\",\"update_date\":\"0001-01-01T00:00:00Z\"}\n{\"username\":\"repoMan\",\"mobile_id\":\"1-800-repoman\",\"email\":\"repoman@alwaysintense.com\",\"first_name\":\"Otto\",\"last_name\":\"Maddox\",\"create_user_id\":\"gilcrest\",\"create_date\":\"2018-02-05T23:00:35.281747Z\",\"update_user_id\":\"\",\"update_date\":\"0001-01-01T00:00:00Z\"}\n","message":"Response Sent"}
 ```
 
-- httputil.DumpRequest - set to true to enable the
+>NOTE - same as request - the HTTP header key:value pairs and json from the body are represented as escaped JSON within the actual message. If you don't want this data, set these fields to false in the JSON config file (`httpLogOpt.json`)
+
+- log_2DB allows for logging to a PostgreSQL database instance...  
+
+- httputil.DumpRequest - set to true to enable logging the request via the [httputil.DumpRequest](https://golang.org/pkg/net/http/httputil/#DumpRequest) method. I'm not doing anything special here - just providing an easy way to turn this on or off.  Output typically looks like:
+
+```bash
+httputil.DumpRequest output:
+POST /api/v1/appUser HTTP/1.1
+Host: 127.0.0.1:8080
+Accept: */*
+Accept-Encoding: gzip, deflate
+Cache-Control: no-cache
+Connection: keep-alive
+Content-Length: 129
+Content-Type: application/json
+Postman-Token: 6d1b2461-59e2-4c87-baf5-d8e64a93c55b
+User-Agent: PostmanRuntime/7.1.1
+
+{"username": "repoMan","mobile_ID": "1-800-repoman","email":"repoman@alwaysintense.com","First_Name":"Otto","Last_Name":"Maddox"}{"time":1517893498,"level":"debug","message":"Start Handler.ServeHTTP"}
+```
 
 ```json
 {
