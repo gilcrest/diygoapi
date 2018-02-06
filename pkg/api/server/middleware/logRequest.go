@@ -50,10 +50,9 @@ type request struct {
 	RequestURI       string `json:"request_uri"`
 }
 
-// LogRequest wraps several optional logging functions
-//   printRequest - sends request output from httputil.DumpRequest to STDERR
-//   logRequest - uses logger util to log requests
-//   log2DB - logs request to relational database TODO - not yet implemented
+// LogRequest records and logs all of the fields in the http.Request struct
+// using whichever logging method is chosen (if any) - Structured (JSON),
+// Relational DB or httputil.DumpRequest
 func LogRequest(env *env.Env, aud *APIAudit) Adapter {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -70,9 +69,7 @@ func LogRequest(env *env.Env, aud *APIAudit) Adapter {
 }
 
 // logReqDispatch determines which, if any, of the logging methods
-// you wish to use will be employed.  Using a cache mechanism I haven't
-// implemented yet, you will be able to turn on/off these methods on demand
-// as of right now, it's doing all of them, which is ridiculous
+// you wish to use will be employed
 func logReqDispatch(env *env.Env, aud *APIAudit, req *http.Request) error {
 
 	var err error
