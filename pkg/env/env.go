@@ -87,7 +87,7 @@ func NewEnv() (*Env, error) {
 
 func newHTTPLogOpts() *HTTPLogOpts {
 
-	raw, err := ioutil.ReadFile("../go-API-template/pkg/fileInput/httpLogOpt.json")
+	raw, err := ioutil.ReadFile("../go-API-template/pkg/input/httpLogOpt.json")
 	if err != nil {
 		log.Fatal().Err(err)
 	}
