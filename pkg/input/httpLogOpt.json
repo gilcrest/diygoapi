@@ -1,20 +1,20 @@
 {
     "httputil": {
         "DumpRequest": {
-            "enable": true,
+            "enable": false,
             "body": true
         }
     },
     "log_json": {
         "Request": {
-            "enable": false,
+            "enable": true,
             "Options": {
                 "header": true,
                 "body": true
             }
         },
         "Response": {
-            "enable": false,
+            "enable": true,
             "Options": {
                 "header": true,
                 "body": true
