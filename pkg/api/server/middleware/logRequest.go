@@ -63,6 +63,10 @@ func LogRequest(env *env.Env, aud *APIAudit) Adapter {
 				http.Error(w, "Unable to log request", http.StatusBadRequest)
 				return
 			}
+			// Add unique Request ID to the response header
+			// This could be put in its own middleware if one chooses
+			w.Header().Set("Request-Id", aud.RequestID)
+
 			h.ServeHTTP(w, r) // call original
 		})
 	}

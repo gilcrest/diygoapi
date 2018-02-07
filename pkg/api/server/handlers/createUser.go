@@ -50,10 +50,6 @@ func CreateUserHandler(env *env.Env, w http.ResponseWriter, req *http.Request) e
 		return HTTPStatusError{http.StatusInternalServerError, err}
 	}
 
-	// TODO - Get a unique Request ID and add it to the header and logs via
-	// a middleware
-	w.Header().Set("Request-Id", "123456789")
-
 	// Encode usr struct to JSON for the response body
 	json.NewEncoder(w).Encode(*usr)
 
