@@ -10,14 +10,14 @@ A RESTful API template (built with Go).
 
 - [ ] Unit Testing (with reasonably high coverage %)
 - [x] Verbose Code Documentation
-- Instrumentation
+- [ ] Instrumentation
   - [configurable http request/response logging](#configurable-logging) (ability to turn on and off logging style based on file configuration)
     - [x] [Log Style 1](#log-style-1-structured-via-json): Structured (JSON), leveled (debug, error, info, etc.) logging to stdout
     - [x] [Log Style 2](#Log-Style-2-Relational-DB-Logging-via-PostgreSQL): Relational database logging (certain data points broken out into standard column datatypes, request/response headers and body stored in TEXT datatype columns) - I chose PostgreSQL as my db of choice, but any db could do with some tweaks
     - [x] [Log Style 3](#Log-Style-3-httputil-DumpRequest-or-DumpResponse): httputil DumpRequest or DumpResponse - I don't do anything here, really - just allow you to turn these standard functions to be turned on or off via the config file
-    - [ ] Helpful debug logging
-    - [ ] API Metrics
-    - [ ] Performance Monitoring
+  - [ ] Helpful debug logging
+  - [ ] API Metrics
+  - [ ] Performance Monitoring
 - [x] "Vendored" dependencies (done via [dep](https://golang.github.io/dep/))
   - Intentionally Minimal Dependencies
     - gorilla for routing, pq for postgres, zerolog for logging, xid for unique id generation
@@ -38,7 +38,7 @@ Configurable http request/response logging is achieved through import/marshaling
 
 ##### JSON Request Logging
 
-Set `log_json.Request.enable` to true in the [HTTP Log Config File](#Log-Config-File) to enable http request logging as JSON (so long as you have properly "chained" the LogRequest handler/adapter middleware).  The output for a request looks something like:
+Set `log_json.Request.enable` to true in the [HTTP Log Config File](#log-config-file) to enable http request logging as JSON (so long as you have properly "chained" the LogRequest handler/adapter middleware).  The output for a request looks something like:
 
 ```json
 {"time":1517970302,"level":"info","header_json":"{\"Accept\":[\"*/*\"],\"Accept-Encoding\":[\"gzip, deflate\"],\"Cache-Control\":[\"no-cache\"],\"Connection\":[\"keep-alive\"],\"Content-Length\":[\"129\"],\"Content-Type\":[\"application/json\"],\"Postman-Token\":[\"9949f5e5-b406-4e22-aff3-ab6ba6e7d841\"],\"User-Agent\":[\"PostmanRuntime/7.1.1\"]}","body":"{\"username\": \"repoMan\",\"mobile_ID\": \"1-800-repoman\",\"email\":\"repoman@alwaysintense.com\",\"First_Name\":\"Otto\",\"Last_Name\":\"Maddox\"}","request_id":"b9t66vma6806ln8iak8g","method":"POST","scheme":"http","host":"127.0.0.1","port":"8080","path":"/api/v1/appUser","protocol":"HTTP/1.1","proto_major":1,"proto_minor":1,"Content Length":129,"Transfer-Encoding":"","Close":false,"RemoteAddr":"127.0.0.1:58689","RequestURI":"/api/v1/appUser","message":"Request received"}
@@ -61,6 +61,30 @@ Set `log_json.Response.enable` to true in the [HTTP Log Config File](#Log-Config
 Set `log_2DB.enable` to true in the [HTTP Log Config File](#Log-Config-File) to enable Database logging to a PostgreSQL database.  The DDL is provided within the ddl directory (`audit_log.sql`) and consists of one table and one stored function. Once enabled, Request and Response information will be logged as one transaction to the database.  You can optionally choose to log request and response headers using the Options fields within the [HTTP Log Config File](#Log-Config-File).
 
 ![Database Log](dbLog.png)
+
+In total 19 fields are logged as part of the database transaction.
+
+| Column Name   | Datatype    | Description          |
+| ------------- | ----------- | -------------------- |
+| request_id                | VARCHAR(100)  | Unique Request ID
+| request_timestamp         | TIMESTAMP     |
+| response_code             | INTEGER       |
+| response_timestamp        | TIMESTAMP     |
+| duration_in_millis        | BIGINT        |
+| protocol                  | VARCHAR(20)   |
+| protocol_major            | INTEGER       |
+| protocol_minor            | INTEGER       |
+| request_method            | VARCHAR(10)   |
+| scheme                    | VARCHAR(100)  |
+| host                      | VARCHAR(100)  |
+| port                      | VARCHAR(100)  |
+| path                      | VARCHAR(4000) |
+| remote_address            | VARCHAR(100)  |
+| request_content_length    | BIGINT        |
+| request_header            | JSONB         |
+| request_body              | TEXT          |
+| response_header           | JSONB         |
+| response_body             | TEXT          |
 
 #### Log Style 3: httputil DumpRequest or DumpResponse
 
