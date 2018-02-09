@@ -67,24 +67,24 @@ In total 19 fields are logged as part of the database transaction.
 | Column Name   | Datatype    | Description          |
 | ------------- | ----------- | -------------------- |
 | request_id                | VARCHAR(100)  | Unique Request ID
-| request_timestamp         | TIMESTAMP     |
-| response_code             | INTEGER       |
-| response_timestamp        | TIMESTAMP     |
-| duration_in_millis        | BIGINT        |
-| protocol                  | VARCHAR(20)   |
-| protocol_major            | INTEGER       |
-| protocol_minor            | INTEGER       |
-| request_method            | VARCHAR(10)   |
-| scheme                    | VARCHAR(100)  |
-| host                      | VARCHAR(100)  |
-| port                      | VARCHAR(100)  |
-| path                      | VARCHAR(4000) |
-| remote_address            | VARCHAR(100)  |
-| request_content_length    | BIGINT        |
-| request_header            | JSONB         |
-| request_body              | TEXT          |
-| response_header           | JSONB         |
-| response_body             | TEXT          |
+| request_timestamp         | TIMESTAMP     | UTC time request received
+| response_code             | INTEGER       | HTTP Response Code
+| response_timestamp        | TIMESTAMP     | UTC time response sent
+| duration_in_millis        | BIGINT        | Response time duration in milliseconds
+| protocol                  | VARCHAR(20)   | HTTP protocol version, e.g. HTTP/1.1
+| protocol_major            | INTEGER       | HTTP protocol major version
+| protocol_minor            | INTEGER       | HTTP protocol minor version
+| request_method            | VARCHAR(10)   | Method specifies the HTTP method (GET, POST, PUT, etc.)
+| scheme                    | VARCHAR(100)  | URL scheme (http, https, etc.)
+| host                      | VARCHAR(100)  | URL host
+| port                      | VARCHAR(100)  | URL port
+| path                      | VARCHAR(4000) | URL path
+| remote_address            | VARCHAR(100)  | Network address which sent request
+| request_content_length    | BIGINT        | Request content length
+| request_header            | JSONB         | Key:Value pairs from HTTP request in JSON format
+| request_body              | TEXT          | Request body content
+| response_header           | JSONB         | Key:Value pairs from HTTP response in JSON format
+| response_body             | TEXT          | Response body content
 
 #### Log Style 3: httputil DumpRequest or DumpResponse
 
