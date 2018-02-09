@@ -74,7 +74,7 @@ In total 19 fields are logged as part of the database transaction.
 | protocol                  | VARCHAR(20)   | HTTP protocol version, e.g. HTTP/1.1
 | protocol_major            | INTEGER       | HTTP protocol major version
 | protocol_minor            | INTEGER       | HTTP protocol minor version
-| request_method            | VARCHAR(10)   | Method specifies the HTTP method (GET, POST, PUT, etc.)
+| request_method            | VARCHAR(10)   | HTTP method (GET, POST, PUT, etc.)
 | scheme                    | VARCHAR(100)  | URL scheme (http, https, etc.)
 | host                      | VARCHAR(100)  | URL host
 | port                      | VARCHAR(100)  | URL port
