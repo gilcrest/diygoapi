@@ -21,9 +21,9 @@ type Env struct {
 
 // HTTPLogOpts represent HTTP Logging Options
 type HTTPLogOpts struct {
-	HTTPUtil   *httputil   `json:"httputil"`
 	Log2StdOut *log2StdOut `json:"log_json"`
 	Log2DB     *log2DB     `json:"log_2DB"`
+	HTTPUtil   *httputil   `json:"httputil"`
 }
 
 type httputil struct {
