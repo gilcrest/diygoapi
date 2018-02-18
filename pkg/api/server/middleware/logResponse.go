@@ -16,10 +16,6 @@ func LogResponse(env *env.Env, aud *APIAudit) Adapter {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-			var (
-				err error
-			)
-
 			log.Print("Start LogResponse")
 			defer log.Print("Finish LogResponse")
 
@@ -47,14 +43,14 @@ func LogResponse(env *env.Env, aud *APIAudit) Adapter {
 			rec.Body.Write(b)
 
 			// set the response data in the APIAudit object
-			err = setResponse(aud, rec)
+			err := setResponse(aud, rec)
 			if err != nil {
 				log.Error().Err(err).Msg("")
 				http.Error(w, "Unable to set response", http.StatusBadRequest)
 			}
 
 			// call logRespDispatch to determine if and where to log
-			err = logDispatch(env, aud)
+			err = logRespDispatch(env, aud)
 			if err != nil {
 				log.Error().Err(err).Msg("")
 			}
@@ -110,7 +106,7 @@ func setResponse(aud *APIAudit, rec *httptest.ResponseRecorder) error {
 
 // logRespDispatch determines which, if any, of the logging methods
 // you wish to use will be employed
-func logDispatch(env *env.Env, aud *APIAudit) error {
+func logRespDispatch(env *env.Env, aud *APIAudit) error {
 	if env.LogOpts.Log2StdOut.Response.Enable {
 		logResp2Stdout(env, aud)
 	}
@@ -139,7 +135,8 @@ func logResp2Stdout(env *env.Env, aud *APIAudit) {
 		Msg("Response Sent")
 }
 
-// Creates a record in the appUser table using a stored function
+// logReqResp2Db creates a record in the api.audit_log table
+// using a stored function
 func logReqResp2Db(env *env.Env, aud *APIAudit) error {
 
 	var (
@@ -150,34 +147,39 @@ func logReqResp2Db(env *env.Env, aud *APIAudit) error {
 		reqBody      interface{}
 	)
 
-	if env.LogOpts.Log2DB.Enable {
-		reqHdr = nil
-		if env.LogOpts.Log2DB.Request.Header {
-			// This empty string to nil conversion is probably
-			// not necessary, but just in case to avoid db exception
-			reqHdr = strNil(aud.request.Header)
-		}
-		reqBody = nil
-		if env.LogOpts.Log2DB.Request.Body {
-			// This empty string to nil conversion is probably
-			// not necessary, but just in case to avoid db exception
-			reqBody = strNil(aud.request.Body)
-		}
+	// default reqHdr variable to nil
+	// if the Request Header logging option is enabled for db logging
+	// then check if the header string is it's zero value and if so,
+	// switch it to nil, otherwise write it to the variable
+	reqHdr = nil
+	if env.LogOpts.Log2DB.Request.Header {
+		// This empty string to nil conversion is probably
+		// not necessary, but just in case to avoid db exception
+		reqHdr = strNil(aud.request.Header)
 	}
-
-	if env.LogOpts.Log2DB.Enable {
-		respHdr = nil
-		if env.LogOpts.Log2DB.Response.Header {
-			// This empty string to nil conversion is probably
-			// not necessary, but just in case to avoid db exception
-			respHdr = strNil(aud.response.Header)
-		}
-		respBody = nil
-		if env.LogOpts.Log2DB.Response.Body {
-			// This empty string to nil conversion is probably
-			// not necessary, but just in case to avoid db exception
-			respBody = strNil(aud.response.Body)
-		}
+	// default reqBody variable to nil
+	// if the Request Body logging option is enabled for db logging
+	// then check if the header string is it's zero value and if so,
+	// switch it to nil, otherwise write it to the variable
+	reqBody = nil
+	if env.LogOpts.Log2DB.Request.Body {
+		reqBody = strNil(aud.request.Body)
+	}
+	// default respHdr variable to nil
+	// if the Response Header logging option is enabled for db logging
+	// then check if the header string is it's zero value and if so,
+	// switch it to nil, otherwise write it to the variable
+	respHdr = nil
+	if env.LogOpts.Log2DB.Response.Header {
+		respHdr = strNil(aud.response.Header)
+	}
+	// default respBody variable to nil
+	// if the Response Body logging option is enabled for db logging
+	// then check if the header string is it's zero value and if so,
+	// switch it to nil, otherwise write it to the variable
+	respBody = nil
+	if env.LogOpts.Log2DB.Response.Body {
+		respBody = strNil(aud.response.Body)
 	}
 
 	// Calls the BeginTx method of the LogDB opened database
