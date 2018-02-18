@@ -306,12 +306,12 @@ func logReq2Stdout(env *env.Env, aud *APIAudit) error {
 		Str("protocol", aud.request.Proto).
 		Int("proto_major", aud.request.ProtoMajor).
 		Int("proto_minor", aud.request.ProtoMinor).
-		Int64("Content Length", aud.request.ContentLength).
-		Str("Transfer-Encoding", aud.request.TransferEncoding).
-		Bool("Close", aud.request.Close).
-		Str("RemoteAddr", aud.request.RemoteAddr).
-		Str("RequestURI", aud.request.RequestURI).
-		Msg("Request received")
+		Int64("content_length", aud.request.ContentLength).
+		Str("transfer_encoding", aud.request.TransferEncoding).
+		Bool("close", aud.request.Close).
+		Str("remote_Addr", aud.request.RemoteAddr).
+		Str("request_URI", aud.request.RequestURI).
+		Msg("Request Received")
 
 	return nil
 }
