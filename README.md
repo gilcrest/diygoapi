@@ -96,7 +96,7 @@ In total 19 fields are logged as part of the database transaction.
 
 ##### httputil.DumpRequest
 
-Set `httputil.DumpRequest.enable` to true in the [HTTP Log Config File](#Log-Config-File) to enable logging the request via the [httputil.DumpRequest](https://golang.org/pkg/net/http/httputil/#DumpRequest) method. I'm not doing anything special here - just providing an easy way to turn this on or off.  Output typically looks like:
+Set `httputil.DumpRequest.enable` to true in the [HTTP Log Config File](#Log-Config-File) to enable logging the request via the [httputil.DumpRequest](https://golang.org/pkg/net/http/httputil/#DumpRequest) method. Nothing special here, really - just providing an easy way to turn this on or off.  Output typically looks like:
 
 ```bash
 httputil.DumpRequest output:
@@ -111,7 +111,7 @@ Content-Type: application/json
 Postman-Token: 6d1b2461-59e2-4c87-baf5-d8e64a93c55b
 User-Agent: PostmanRuntime/7.1.1
 
-{"username": "repoMan","mobile_ID": "1-800-repoman","email":"repoman@alwaysintense.com","First_Name":"Otto","Last_Name":"Maddox"}{"time":1517893498,"level":"debug","message":"Start Handler.ServeHTTP"}
+{"username": "repoMan","mobile_ID": "1-800-repoman","email":"repoman@alwaysintense.com","First_Name":"Otto","Last_Name":"Maddox"}
 ```
 
 #### Log Config File
