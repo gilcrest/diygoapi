@@ -1,6 +1,6 @@
 # go-API-template
 
-A RESTful API template (built with Go).
+A RESTful API template (built with Go) - work in progress...
 
 - The goal of this app is to make an example/template of relational database-backed APIs that have characteristics needed to ensure success in a high volume environment.
 
@@ -13,8 +13,8 @@ A RESTful API template (built with Go).
 - [ ] Instrumentation
   - [configurable http request/response logging](#configurable-logging) (ability to turn on and off logging style based on file configuration)
     - [x] [Log Style 1](#log-style-1-structured-via-json): Structured (JSON), leveled (debug, error, info, etc.) logging to stdout
-    - [x] [Log Style 2](#Log-Style-2-Relational-DB-Logging-via-PostgreSQL): Relational database logging (certain data points broken out into standard column datatypes, request/response headers and body stored in TEXT datatype columns) - I chose PostgreSQL as my db of choice, but any db could do with some tweaks
-    - [x] [Log Style 3](#Log-Style-3-httputil-DumpRequest-or-DumpResponse): httputil DumpRequest or DumpResponse - I don't do anything here, really - just allow you to turn these standard functions to be turned on or off via the config file
+    - [x] [Log Style 2](#log-style-2-relational-db-logging-via-postgreSQL): Relational database logging (certain data points broken out into standard column datatypes, request/response headers and body stored in TEXT datatype columns) - I chose PostgreSQL as my db of choice, but any db could do with some tweaks
+    - [x] [Log Style 3](#log-style-3-httputil-dumpRequest-or-dumpResponse): httputil DumpRequest or DumpResponse - I don't do anything here, really - just allow you to turn these standard functions to be turned on or off via the config file
   - [ ] Helpful debug logging
   - [ ] API Metrics
   - [ ] Performance Monitoring
