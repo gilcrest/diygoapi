@@ -58,14 +58,29 @@ func (u *User) createDB(ctx context.Context, env *env.Env) (*sql.Tx, error) {
 	}
 
 	// Prepare the sql statement using bind variables
-	stmt, err := tx.PrepareContext(ctx, "select lp.create_app_user2(p_username => $1, p_mobile_id => $2, p_email_address => $3, p_first_name => $4, p_last_name => $5, p_create_user_id => $6)")
+	stmt, err := tx.PrepareContext(ctx, `select demo.create_app_user (
+		p_username => $1,
+		p_mobile_id => $2,
+		p_email_address => $3,
+		p_first_name => $4,
+		p_last_name => $5,
+		p_create_user_id => $6)`)
+
 	if err != nil {
 		return nil, err
 	}
 	defer stmt.Close()
 
-	// Execute stored function that returns the create_date timestamp, hence the use of QueryContext instead of Exec
-	rows, err := stmt.QueryContext(ctx, u.Username, u.MobileID, u.Email, u.FirstName, u.LastName, "gilcrest")
+	// Execute stored function that returns the create_date timestamp,
+	// hence the use of QueryContext instead of Exec
+	rows, err := stmt.QueryContext(ctx,
+		u.Username,  //$1
+		u.MobileID,  //$2
+		u.Email,     //$3
+		u.FirstName, //$4
+		u.LastName,  //$5
+		"gilcrest")  //$6
+
 	if err != nil {
 		return nil, err
 	}
