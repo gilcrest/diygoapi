@@ -120,22 +120,16 @@ User-Agent: PostmanRuntime/7.1.1
 
 ```json
 {
-    "httputil": {
-        "DumpRequest": {
-            "enable": false,
-            "body": true
-        }
-    },
     "log_json": {
         "Request": {
-            "enable": false,
+            "enable": true,
             "Options": {
                 "header": true,
                 "body": true
             }
         },
         "Response": {
-            "enable": false,
+            "enable": true,
             "Options": {
                 "header": true,
                 "body": true
@@ -150,6 +144,12 @@ User-Agent: PostmanRuntime/7.1.1
         },
         "Response": {
             "header": true,
+            "body": true
+        }
+    },
+    "httputil": {
+        "DumpRequest": {
+            "enable": false,
             "body": true
         }
     }
