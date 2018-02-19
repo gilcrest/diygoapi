@@ -194,8 +194,7 @@ func logReqResp2Db(env *env.Env, aud *APIAudit) error {
 	durMS := aud.Duration / time.Millisecond
 
 	// Prepare the sql statement using bind variables
-	stmt, err := tx.PrepareContext(aud.ctx, `select api.log_request
-		(
+	stmt, err := tx.PrepareContext(aud.ctx, `select api.log_request (
 		p_request_id => $1,
 		p_request_timestamp => $2,
 		p_response_code => $3,
