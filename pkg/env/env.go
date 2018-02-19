@@ -78,14 +78,17 @@ func NewEnv() (*Env, error) {
 	}
 
 	// get logMap with initialized values
-	lopts := newHTTPLogOpts()
+	lopts, err := newHTTPLogOpts()
+	if err != nil {
+		return nil, err
+	}
 
 	environment := &Env{Logger: logger, DS: ds, LogOpts: lopts}
 
 	return environment, nil
 }
 
-func newHTTPLogOpts() *HTTPLogOpts {
+func newHTTPLogOpts() (*HTTPLogOpts, error) {
 
 	raw, err := ioutil.ReadFile("../go-API-template/pkg/input/httpLogOpt.json")
 	if err != nil {
@@ -93,9 +96,11 @@ func newHTTPLogOpts() *HTTPLogOpts {
 	}
 
 	var l HTTPLogOpts
-	json.Unmarshal(raw, &l)
+	if err := json.Unmarshal(raw, &l); err != nil {
+		return nil, err
+	}
 
-	return &l
+	return &l, nil
 }
 
 func newLogger() zerolog.Logger {
