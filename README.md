@@ -116,7 +116,7 @@ User-Agent: PostmanRuntime/7.1.1
 
 #### Log Config File
 
-`/pkg/input/httpLogOpt.json`
+`/input/httpLogOpt.json`
 
 ```json
 {

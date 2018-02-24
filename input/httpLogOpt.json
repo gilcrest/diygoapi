@@ -1,0 +1,35 @@
+{
+    "log_json": {
+        "Request": {
+            "enable": true,
+            "Options": {
+                "header": true,
+                "body": true
+            }
+        },
+        "Response": {
+            "enable": true,
+            "Options": {
+                "header": true,
+                "body": true
+            }
+        }
+    },
+    "log_2DB": {
+        "enable": false,
+        "Request": {
+            "header": true,
+            "body": true
+        },
+        "Response": {
+            "header": true,
+            "body": true
+        }
+    },
+    "httputil": {
+        "DumpRequest": {
+            "enable": false,
+            "body": true
+        }
+    }
+}
