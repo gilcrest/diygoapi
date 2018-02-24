@@ -53,7 +53,10 @@ type rOpt struct {
 
 func newHTTPLogOpts() (*HTTPLogOpts, error) {
 
-	raw, err := ioutil.ReadFile("../input/httpLogOpt.json")
+	g := os.Getenv("GOPATH")
+	filepath := g + "/src/github.com/gilcrest/go-API-template/input/httpLogOpt.json"
+
+	raw, err := ioutil.ReadFile(filepath)
 	if err != nil {
 		return nil, err
 	}
