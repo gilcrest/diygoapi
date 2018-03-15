@@ -178,3 +178,38 @@ Blog/Medium Posts
 - [Standard Package Layout](https://medium.com/@benbjohnson/standard-package-layout-7cdbc8391fc1)
 - [Practical Persistence in Go: Organising Database Access](http://www.alexedwards.net/blog/organising-database-access)
 - [Writing a Go client for your RESTful API](https://medium.com/@marcus.olsson/writing-a-go-client-for-your-restful-api-c193a2f4998c)
+
+### Directory Structure
+
+```text
+src/
+    github.com/gilcrest/go-API-template/
+        appUser/
+            handler/
+                createUser.go
+            appUser_test.go
+            appUser.go
+        cmd/
+            client/
+                main.go
+            server/
+                main.go
+        env/
+            db_test.go
+            db.go
+            env_test.go
+            env.go
+            logger_test.go
+            logger.go
+        input/
+            httpLogOpt.json
+        server/
+            dispatch/
+                dispatch.go
+            errorHandler/
+                errorHandler.go
+            middleware/
+                adapter.go
+                logRequest.go
+                logResponse.go
+```
