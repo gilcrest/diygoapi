@@ -2,10 +2,12 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/gilcrest/go-API-template/appUser"
 	"github.com/gilcrest/go-API-template/env"
+	"github.com/gilcrest/go-API-template/server/errorHandler"
 )
 
 // CreateUser creates a user in the database
@@ -28,7 +30,11 @@ func CreateUser(env *env.Env, w http.ResponseWriter, req *http.Request) error {
 	var usr *appUser.User
 	err = json.NewDecoder(req.Body).Decode(&usr)
 	if err != nil {
-		return HTTPStatusError{http.StatusInternalServerError, err}
+		return errorHandler.HTTPErr{
+			Code: http.StatusBadRequest,
+			Type: "invalid_request",
+			Err:  err,
+		}
 	}
 	defer req.Body.Close()
 
@@ -44,10 +50,18 @@ func CreateUser(env *env.Env, w http.ResponseWriter, req *http.Request) error {
 			// are worth raising a HTTP 500 over vs. which might just be a HTTP
 			// 404, 403 or 401 (as appropriate). It's also clear where our
 			// handler should stop processing by returning early.
-			return HTTPStatusError{http.StatusInternalServerError, err}
+			return errorHandler.HTTPErr{
+				Code: http.StatusBadRequest,
+				Type: "database_error",
+				Err:  err,
+			}
 		}
 	} else {
-		return HTTPStatusError{http.StatusInternalServerError, err}
+		return errorHandler.HTTPErr{
+			Code: http.StatusBadRequest,
+			Type: "database_error",
+			Err:  errors.New("Create Date not set"),
+		}
 	}
 
 	// Encode usr struct to JSON for the response body
