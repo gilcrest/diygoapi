@@ -65,8 +65,9 @@ func (h ErrHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Get a new logger instance
 	log := h.Env.Logger
 
-	log.Print("Start Handler.ServeHTTP")
-	defer log.Print("Finish Handler.ServeHTTP")
+	log.Debug().Msg("Start Handler.ServeHTTP")
+	defer log.Debug().Msg("Finish Handler.ServeHTTP")
+
 	err := h.H(h.Env, w, r)
 
 	if err != nil {
