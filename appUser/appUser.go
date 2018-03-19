@@ -5,7 +5,7 @@ package appUser
 import (
 	"context"
 	"database/sql"
-	"errors"
+	"net/mail"
 	"time"
 
 	"github.com/gilcrest/go-API-template/env"
@@ -28,15 +28,22 @@ type User struct {
 // Create performs business validations prior to writing to the db
 func (u *User) Create(ctx context.Context, env *env.Env) (*sql.Tx, error) {
 
+	// Get a new logger instance
+	log := env.Logger
+
+	log.Debug().Msg("Start User.Create")
+	defer log.Debug().Msg("Finish User.Create")
+
 	// You should add more validations than this, but since this is a template, you
 	// get the point
-	if u.Email == "" {
-		return nil, errors.New("Email must have a value")
+	_, err := mail.ParseAddress(u.Email)
+	if err != nil {
+		return nil, err
 	}
 
 	// Ideally this would be set from the user id adding the resource,
 	// but since I haven't implemented that yet, using this hack
-	u.CreateUserID = "gilcrest"
+	u.CreateUserID = "chillcrest"
 
 	// Write to db
 	tx, err := u.createDB(ctx, env)
