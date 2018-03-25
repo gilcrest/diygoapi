@@ -7,6 +7,9 @@
 # Unignore all dirs
 !*/
 
+# Unignore Dockerfile
+!Dockerfile
+
 ### Above combination will ignore all files without extension ###
 
 # vs code related files
