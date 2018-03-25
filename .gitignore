@@ -33,3 +33,6 @@ tasks.json
 
 # IntelliJ Gogland directory and files
 .idea/
+
+# Docker env files
+*.env
