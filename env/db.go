@@ -5,6 +5,9 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"strconv"
+
+	"github.com/rs/zerolog/log"
 
 	_ "github.com/lib/pq" // pq driver calls for blank identifier
 )
@@ -23,6 +26,7 @@ type Datastore struct {
 func NewDatastore() (*Datastore, error) {
 	mdb, err := newMainDB()
 	if err != nil {
+		log.Error().Err(err).Msg("Error returned from newMainDB")
 		return nil, err
 	}
 
@@ -33,20 +37,29 @@ func NewDatastore() (*Datastore, error) {
 func newMainDB() (*sql.DB, error) {
 
 	// Get Database connection credentials from environment variables
-	dbName := os.Getenv("PG_DBNAME")
-	dbUser := os.Getenv("PG_USERNAME")
-	dbPassword := os.Getenv("PG_PASSWORD")
+	dbName := os.Getenv("PG_DBNAME_TEST")
+	dbUser := os.Getenv("PG_USERNAME_TEST")
+	dbPassword := os.Getenv("PG_PASSWORD_TEST")
+	dbHost := os.Getenv("PG_HOST_TEST")
+	dbPort, err := strconv.Atoi(os.Getenv("PG_PORT_TEST"))
+	if err != nil {
+		log.Error().Err(err).Msg("Unable to complete string to int conversion for dbPort")
+		return nil, err
+	}
 
 	// Craft string for database connection
-	dbinfo := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable", dbUser, dbPassword, dbName)
+	dbinfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", dbHost, dbPort, dbUser, dbPassword, dbName)
 
 	// Open the postgres database using the postgres driver (pq)
 	// func Open(driverName, dataSourceName string) (*DB, error)
 	db, err := sql.Open("postgres", dbinfo)
 	if err != nil {
+		log.Error().Err(err).Msg("Error returned from sql.Open")
 		return nil, err
 	}
+
 	if err = db.Ping(); err != nil {
+		log.Error().Err(err).Msg("Error returned from db.Ping")
 		return nil, err
 	}
 	return db, nil
@@ -60,6 +73,7 @@ func (ds Datastore) Tx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error
 	// Calls the BeginTx method of the MainDb opened database
 	tx, err := ds.MainDb.BeginTx(ctx, opts)
 	if err != nil {
+		log.Error().Err(err).Msg("Error returned from BeginTx")
 		return nil, err
 	}
 
