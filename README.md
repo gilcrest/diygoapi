@@ -21,7 +21,7 @@ A RESTful API template (built with Go) - work in progress...
 - [x] "Vendored" dependencies (done via [dep](https://golang.github.io/dep/))
   - Intentionally Minimal Dependencies
     - gorilla for routing, pq for postgres, zerolog for logging, xid for unique id generation
-- [ ] Fault tolerant - Proper Error Raising/Handling
+- [x] [Fault tolerant - Proper Error Raising/Handling](#http-json-error-responses)
 - [ ] RESTful service versioning
 - [ ] Security/Authentication/Authorization using HTTPS/OAuth2, etc.
 - [ ] Containerized
@@ -156,7 +156,107 @@ User-Agent: PostmanRuntime/7.1.1
 }
 ```
 
-## Helpful Resources I've used in this app (outside of the standard, yet amazing blog.golang.org and golang.org/doc/, etc.)
+----
+
+### HTTP JSON Error Responses
+
+For error responses, the api sends a simple structured JSON message in the response body, similar to [Stripe](https://stripe.com/docs/api#errors), [Uber](https://developer.uber.com/docs/riders/guides/errors) and many others, e.g.:
+
+```json
+{
+    "error": {
+        "type": "validation_failed",
+        "message": "Username is a required field"
+    }
+}
+```
+
+This is achieved by wrapping the final true app handler (in the below case, CreateUser) inside an ErrHandler type within the dispatch function - `eh.ErrHandler{Env: env, H: handler.CreateUser}`. Note I’m passing in a global environment type as well. I chose this method based on a great article by Matt Silverlock on his blog [here]((https://elithrar.github.io/article/http-handler-error-handling-revisited/)).
+
+```go
+package dispatch
+
+import (
+    "github.com/gilcrest/go-API-template/appUser/handler"
+    "github.com/gilcrest/go-API-template/env"
+    eh "github.com/gilcrest/go-API-template/server/errorHandler"
+    "github.com/gilcrest/go-API-template/server/middleware"
+    "github.com/gorilla/mux"
+)
+
+// Dispatch is a way of organizing routing to handlers (versioning as well)
+func Dispatch(env *env.Env, rtr *mux.Router) *mux.Router {
+
+    // initialize new instance of APIAudit
+    audit := new(middleware.APIAudit)
+
+    // match only POST requests on /api/appUser/create
+    // This is the original (v1) version for the API and the response for this
+    // will never change with versioning in order to maintain a stable contract
+    rtr.Handle("/appUser", middleware.Adapt(eh.ErrHandler{Env: env, H: handler.CreateUser}, middleware.LogRequest(env, audit), middleware.LogResponse(env, audit))).
+        Methods("POST").
+        Headers("Content-Type", "application/json")
+
+    // match only POST requests on /api/v1/appUser/create
+    rtr.Handle("/v1/appUser", middleware.Adapt(eh.ErrHandler{Env: env, H: handler.CreateUser}, middleware.LogRequest(env, audit), middleware.LogResponse(env, audit))).
+        Methods("POST").
+        Headers("Content-Type", "application/json")
+
+    return rtr
+}
+```
+
+I’m using Matt’s article almost word for word for error handling, but made a few tweaks so that I could return a structured JSON response. Check out the server/errorHandler package for the full details.
+
+The package makes error handling pretty nice — given the wrapper logic, you’ll always return a pretty good looking error and setting up errors is pretty easy.
+
+```go
+tx, err := usr.Create(ctx, env)
+if err != nil {
+    return errorHandler.HTTPErr{
+        Code: http.StatusBadRequest,
+        Type: "validation_failed",
+        Err:  err,
+    }
+}
+```
+
+When creating errors within your app, you don’t have to have every error take the HTTPErr form — you can return normal errors lower down in the code and, depending on how you organize your code, you can catch and form the HTTPErr at a very high level so you’re not having to deal with populating a cumbersome struct all throughout your code.
+
+The SetErr method of the HTTPErr struct allows you to initialize the struct with some default values and add the actual error on the fly. For instance, below as part of my super high level edit checks on my service inputs, the HTTPErr object is initialized at the beginning of the function and then edit checks are performed and to allow for brevity in error creation.
+
+```go
+func newUser(ctx context.Context, env *env.Env, cur *createUserRequest) (*appUser.User, error) {
+// declare a new instance of appUser.User
+usr := new(appUser.User)
+// initialize an errorHandler with the default Code and Type for
+// service validations (Err is set to nil as it will be set later)
+e := errorHandler.HTTPErr{
+    Code: http.StatusBadRequest,
+    Type: "validation_error",
+    Err:  nil,
+}
+// for each field you can go through whatever validations you wish
+// and use the SetErr method of the HTTPErr struct to add the proper
+// error text
+switch {
+// Username is required
+case cur.Username == "":
+    e.SetErr("Username is a required field")
+    return nil, e
+// Username cannot be blah...
+case cur.Username == "blah":
+    e.SetErr("Username cannot be blah")
+    return nil, e
+// If we get through the switch, set the field
+default:
+    usr.Username = cur.Username
+}
+```
+
+----
+
+### Helpful Resources I've used in this app (outside of the standard, yet amazing blog.golang.org and golang.org/doc/, etc.)
 
 websites/youtube
 
