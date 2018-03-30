@@ -34,7 +34,9 @@ func main() {
 	// LogRequest middleware will log request as well
 	http.Handle("/", r)
 
-	if err := http.ListenAndServe("127.0.0.1:8080", nil); err != nil {
+	// ListenAndServe on port 8080, not specifying a particular IP address
+	// for this particular implementation
+	if err := http.ListenAndServe(":8080", nil); err != nil {
 		log.Fatal(err)
 	}
 }
