@@ -171,7 +171,7 @@ For error responses, the api sends a simple structured JSON message in the respo
 }
 ```
 
-This is achieved by wrapping the final true app handler (in the below case, CreateUser) inside an ErrHandler type within the dispatch function - `eh.ErrHandler{Env: env, H: handler.CreateUser}`. Note I’m passing in a global environment type as well. I chose this method based on a great article by Matt Silverlock on his blog [here]((https://elithrar.github.io/article/http-handler-error-handling-revisited/)).
+This is achieved by wrapping the final true app handler (in the below case, CreateUser) inside an ErrHandler type within the dispatch function - `eh.ErrHandler{Env: env, H: handler.CreateUser}`. Note I’m passing in a global environment type as well. I chose this method based on a great article by Matt Silverlock on his blog [here](https://elithrar.github.io/article/http-handler-error-handling-revisited/).
 
 ```go
 package dispatch
@@ -210,6 +210,8 @@ I’m using Matt’s article almost word for word for error handling, but made a
 
 The package makes error handling pretty nice — given the wrapper logic, you’ll always return a pretty good looking error and setting up errors is pretty easy.
 
+When creating errors within your app, you don’t have to have every error take the HTTPErr form — you can return normal errors lower down in the code and, depending on how you organize your code, you can catch and form the HTTPErr at a very high level so you’re not having to deal with populating a cumbersome struct all throughout your code. The below code snippet illustrates catching any exception thrown from within the Create method and giving the error a certain Error Code and Error Type. Within the Create method itself, errors are set using the Go error "standard".
+
 ```go
 tx, err := usr.Create(ctx, env)
 if err != nil {
@@ -221,37 +223,38 @@ if err != nil {
 }
 ```
 
-When creating errors within your app, you don’t have to have every error take the HTTPErr form — you can return normal errors lower down in the code and, depending on how you organize your code, you can catch and form the HTTPErr at a very high level so you’re not having to deal with populating a cumbersome struct all throughout your code.
-
-The SetErr method of the HTTPErr struct allows you to initialize the struct with some default values and add the actual error on the fly. For instance, below as part of my super high level edit checks on my service inputs, the HTTPErr object is initialized at the beginning of the function and then edit checks are performed and to allow for brevity in error creation.
+The SetErr method of the HTTPErr struct allows you to initialize the struct with some default values and add the actual error on the fly. For instance, below as part of my super high level edit checks on my service inputs, the HTTPErr object is initialized at the beginning of the function and then edit checks are performed to allow for brevity in error creation.
 
 ```go
 func newUser(ctx context.Context, env *env.Env, cur *createUserRequest) (*appUser.User, error) {
-// declare a new instance of appUser.User
-usr := new(appUser.User)
-// initialize an errorHandler with the default Code and Type for
-// service validations (Err is set to nil as it will be set later)
-e := errorHandler.HTTPErr{
-    Code: http.StatusBadRequest,
-    Type: "validation_error",
-    Err:  nil,
-}
-// for each field you can go through whatever validations you wish
-// and use the SetErr method of the HTTPErr struct to add the proper
-// error text
-switch {
-// Username is required
-case cur.Username == "":
-    e.SetErr("Username is a required field")
-    return nil, e
-// Username cannot be blah...
-case cur.Username == "blah":
-    e.SetErr("Username cannot be blah")
-    return nil, e
-// If we get through the switch, set the field
-default:
-    usr.Username = cur.Username
-}
+
+    // declare a new instance of appUser.User
+    usr := new(appUser.User)
+
+    // initialize an errorHandler with the default Code and Type for
+    // service validations (Err is set to nil as it will be set later)
+    e := errorHandler.HTTPErr{
+        Code: http.StatusBadRequest,
+        Type: "validation_error",
+        Err:  nil,
+    }
+
+    // for each field you can go through whatever validations you wish
+    // and use the SetErr method of the HTTPErr struct to add the proper
+    // error text
+    switch {
+    // Username is required
+    case cur.Username == "":
+        e.SetErr("Username is a required field")
+        return nil, e
+    // Username cannot be blah...
+    case cur.Username == "blah":
+        e.SetErr("Username cannot be blah")
+        return nil, e
+    default:
+        usr.Username = cur.Username
+    }
+    ...
 ```
 
 ----
