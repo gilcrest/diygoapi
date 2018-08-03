@@ -1,12 +1,12 @@
-// appUser_test validates the appUser package methods and objects
-package appUser_test
+// appuser_test validates the appuser package methods and objects
+package appuser_test
 
 import (
 	"context"
 	"fmt"
 	"testing"
 
-	"github.com/gilcrest/go-API-template/appUser"
+	"github.com/gilcrest/go-API-template/appuser"
 	"github.com/gilcrest/go-API-template/env"
 )
 
@@ -22,12 +22,20 @@ func TestCreate(t *testing.T) {
 		t.Errorf("Error Initializing env, err = %s", err)
 	}
 
-	// Creates a new instance of the appUser.User struct type
-	inputUsr := appUser.User{Username: "repoMan",
-		MobileID:  "(617) 302-7777",
-		Email:     "repoman@alwaysintense.com",
-		FirstName: "Otto",
-		LastName:  "Maddox"}
+	cur := new(appuser.CreateUserRequest)
+	cur.Username = "gilcrest"
+	cur.Password = "fakepassword"
+	cur.MobileID = "976"
+	cur.LastName = "Gilcrest"
+	cur.FirstName = "Dan"
+	cur.Email = "testcrest@gmail.com"
+	cur.UpdateUserID = "gilcrest"
+
+	// Creates a new instance of the appuser.User struct type
+	inputUsr, err := appuser.NewUser(ctx, env, cur)
+	if err != nil {
+		t.Errorf("Error committing tx, err = %s", err)
+	}
 
 	// Create method does validation and then inserts user into db
 	tx, err := inputUsr.Create(ctx, env)
@@ -38,7 +46,7 @@ func TestCreate(t *testing.T) {
 	// Check to ensure that the CreateDate struct field is populated by
 	// making sure it's not at it's zero value to ensure that the db
 	// transaction was successful before commiting
-	if !inputUsr.CreateDate.IsZero() {
+	if !inputUsr.UpdateTimestamp().IsZero() {
 		err = tx.Commit()
 		if err != nil {
 			t.Errorf("Error committing tx, err = %s", err)
@@ -53,13 +61,19 @@ func TestCreate(t *testing.T) {
 
 func ExampleUser() {
 
-	usr := appUser.User{Username: "repoMan", MobileID: "(617) 302-7777", Email: "repoman@alwaysintense.com", FirstName: "Otto", LastName: "Maddox"}
+	usr := new(appuser.User)
+	usr.SetUsername("repoMan")
+	usr.SetMobileID("(617) 302-7777")
+	usr.SetEmail("repoman@alwaysintense.com")
+	usr.SetFirstName("Otto")
+	usr.SetLastName("Maddox")
 
-	fmt.Println(usr.Username)
-	fmt.Println(usr.MobileID)
-	fmt.Println(usr.Email)
-	fmt.Println(usr.FirstName)
-	fmt.Println(usr.LastName)
+	fmt.Println(usr.Username())
+	fmt.Println(usr.MobileID())
+	fmt.Println(usr.Email())
+	fmt.Println(usr.FirstName())
+	fmt.Println(usr.LastName())
+
 	// Output:
 	// repoMan
 	// (617) 302-7777
