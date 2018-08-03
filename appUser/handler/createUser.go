@@ -1,12 +1,11 @@
 package handler
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 
-	"github.com/gilcrest/go-API-template/appUser"
+	"github.com/gilcrest/go-API-template/appuser"
 	"github.com/gilcrest/go-API-template/env"
 	"github.com/gilcrest/go-API-template/server/errorHandler"
 )
@@ -17,8 +16,8 @@ func CreateUser(env *env.Env, w http.ResponseWriter, req *http.Request) error {
 	// Get a new logger instance
 	log := env.Logger
 
-	log.Debug().Msg("Start handler.CreateUserHandler")
-	defer log.Debug().Msg("Finish handler.CreateUserHandler")
+	log.Debug().Msg("Start handler.CreateUser")
+	defer log.Debug().Msg("Finish handler.CreateUser")
 
 	// retrieve the context from the http.Request
 	ctx := req.Context()
@@ -28,7 +27,7 @@ func CreateUser(env *env.Env, w http.ResponseWriter, req *http.Request) error {
 	// Declare cur as an instance of createUserRequest
 	// Decode JSON HTTP request body into a Decoder type
 	//  and unmarshal that into cur
-	cur := new(createUserRequest)
+	cur := new(appuser.CreateUserRequest)
 	err = json.NewDecoder(req.Body).Decode(&cur)
 	if err != nil {
 		return errorHandler.HTTPErr{
@@ -39,7 +38,7 @@ func CreateUser(env *env.Env, w http.ResponseWriter, req *http.Request) error {
 	}
 	defer req.Body.Close()
 
-	usr, err := newUser(ctx, env, cur)
+	usr, err := appuser.NewUser(ctx, env, cur)
 	if err != nil {
 		// newUser returns a proper HTTPErr, so just return it
 		return err
@@ -55,7 +54,7 @@ func CreateUser(env *env.Env, w http.ResponseWriter, req *http.Request) error {
 		}
 	}
 
-	if !usr.CreateDate.IsZero() {
+	if !usr.UpdateTimestamp().IsZero() {
 		// If we have successfully written rows to the db, we commit the transaction
 		// CreateDate should only be populated if the db transaction was successful
 		// and everything is in order
@@ -103,87 +102,19 @@ func CreateUser(env *env.Env, w http.ResponseWriter, req *http.Request) error {
 
 }
 
-type createUserRequest struct {
-	Username     string `json:"username"`
-	MobileID     string `json:"mobile_id"`
-	Email        string `json:"email"`
-	FirstName    string `json:"first_name"`
-	LastName     string `json:"last_name"`
-	CreateUserID string `json:"create_user_id"`
-}
-
-type createUserResponse struct {
-	Username       string `json:"username"`
-	MobileID       string `json:"mobile_id"`
-	Email          string `json:"email"`
-	FirstName      string `json:"first_name"`
-	LastName       string `json:"last_name"`
-	CreateUserID   string `json:"create_user_id"`
-	CreateUnixTime int64  `json:"created"`
-}
-
-// newUser performs basic service validations and wires request data
-// into User business object
-func newUser(ctx context.Context, env *env.Env, cur *createUserRequest) (*appUser.User, error) {
-
-	// Get a new logger instance
-	log := env.Logger
-
-	log.Debug().Msg("Start handler.newUser")
-	defer log.Debug().Msg("Finish handler.newUser")
-
-	// declare a new instance of appUser.User
-	usr := new(appUser.User)
-
-	// initialize an errorHandler with the default Code and Type for
-	// service validations (Err is set to nil as it will be set later)
-	e := errorHandler.HTTPErr{
-		Code: http.StatusBadRequest,
-		Type: "validation_error",
-		Err:  nil,
-	}
-
-	// for each field you can go through whatever validations you wish
-	// and use the SetErr method of the HTTPErr struct to add the proper
-	// error text
-	switch {
-	// Username is required
-	case cur.Username == "":
-		e.SetErr("Username is a required field")
-		return nil, e
-	// Username cannot be blah...
-	case cur.Username == "blah":
-		e.SetErr("Username cannot be blah")
-		return nil, e
-	default:
-		usr.Username = cur.Username
-	}
-
-	// for brevity for this template, I won't perform other validations at
-	// this point and just wire the rest of the input to the business object
-	usr.MobileID = cur.MobileID
-	usr.Email = cur.Email
-	usr.FirstName = cur.FirstName
-	usr.LastName = cur.LastName
-	usr.CreateUserID = cur.CreateUserID
-
-	return usr, nil
-
-}
-
 // newCreateMemberResponse wires the member object to createMemberResponse object
 // if you need to perform any manipulation from your business object to the response object
 // you can do it here.  For instance, here's where I convert the CreateDate from a timestamp
 // to Unix time
-func newCreateUserResponse(usr *appUser.User) (*createUserResponse, error) {
-	cur := new(createUserResponse)
-	cur.Username = usr.Username
-	cur.MobileID = usr.MobileID
-	cur.Email = usr.Email
-	cur.FirstName = usr.FirstName
-	cur.LastName = usr.LastName
-	cur.CreateUserID = usr.CreateUserID
-	cur.CreateUnixTime = usr.CreateDate.Unix()
+func newCreateUserResponse(usr *appuser.User) (*appuser.CreateUserResponse, error) {
+	cur := new(appuser.CreateUserResponse)
+	cur.Username = usr.Username()
+	cur.MobileID = usr.MobileID()
+	cur.Email = usr.Email()
+	cur.FirstName = usr.FirstName()
+	cur.LastName = usr.LastName()
+	cur.UpdateUserID = usr.UpdateUserID()
+	cur.UpdateUnixTime = usr.UpdateTimestamp().Unix()
 
 	return cur, nil
 }
