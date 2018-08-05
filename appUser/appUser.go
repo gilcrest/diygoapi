@@ -6,12 +6,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"net/http"
 	"net/mail"
 	"time"
 
 	"github.com/gilcrest/go-API-template/env"
-	"github.com/gilcrest/go-API-template/server/errorHandler"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -58,37 +56,17 @@ func NewUser(ctx context.Context, env *env.Env, cur *CreateUserRequest) (*User, 
 	// Get a new logger instance
 	log := env.Logger
 
-	log.Debug().Msg("Start handler.newUser")
-	defer log.Debug().Msg("Finish handler.newUser")
+	log.Debug().Msg("Start handler.NewUser")
+	defer log.Debug().Msg("Finish handler.NewUser")
 
 	// declare a new instance of appUser.User
 	usr := new(User)
 
-	// initialize an errorHandler with the default Code and Type for
-	// service validations (Err is set to nil as it will be set later)
-	e := errorHandler.HTTPErr{
-		Code: http.StatusBadRequest,
-		Type: "validation_error",
-		Err:  nil,
+	err := usr.SetUsername(cur.Username)
+	if err != nil {
+		return nil, err
 	}
-
-	// for each field you can go through whatever validations you wish
-	// and use the SetErr method of the HTTPErr struct to add the proper
-	// error text
-	switch {
-	// Username is required
-	case cur.Username == "":
-		e.SetErr("Username is a required field")
-		return nil, e
-	// Username cannot be blah...
-	case cur.Username == "blah":
-		e.SetErr("Username cannot be blah")
-		return nil, e
-	default:
-		usr.username = cur.Username
-	}
-
-	err := usr.setPassword(ctx, env, cur.Password)
+	err = usr.setPassword(ctx, env, cur.Password)
 	if err != nil {
 		return nil, err
 	}
@@ -128,6 +106,19 @@ func (u *User) Username() string {
 
 // SetUsername is a setter for User.username
 func (u *User) SetUsername(username string) error {
+	// for each field you can go through whatever validations you wish
+	// and use the SetErr method of the HTTPErr struct to add the proper
+	// error text
+	switch {
+	// Username is required
+	case username == "":
+		return errors.New("Username is a required field")
+	// Username cannot be blah...
+	case username == "blah":
+		return errors.New("Username cannot be blah")
+	default:
+		u.username = username
+	}
 	u.username = username
 	return nil
 }
