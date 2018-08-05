@@ -40,10 +40,14 @@ func CreateUser(env *env.Env, w http.ResponseWriter, req *http.Request) error {
 
 	usr, err := appuser.NewUser(ctx, env, cur)
 	if err != nil {
-		// newUser returns a proper HTTPErr, so just return it
-		return err
+		// initialize an errorHandler with the default Code and Type for
+		// service validations (Err is set to nil as it will be set later)
+		return errorHandler.HTTPErr{
+			Code: http.StatusBadRequest,
+			Type: "validation_error",
+			Err:  err,
+		}
 	}
-
 	// Call the create method of the appUser object to validate data and write to db
 	tx, err := usr.Create(ctx, env)
 	if err != nil {
