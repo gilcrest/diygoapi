@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"time"
 
+	"github.com/gilcrest/go-API-template/db"
 	"github.com/gilcrest/go-API-template/env"
 	"github.com/rs/zerolog/log"
 )
@@ -183,7 +184,7 @@ func logReqResp2Db(env *env.Env, aud *APIAudit) error {
 	}
 
 	// Calls the BeginTx method of the LogDB opened database
-	tx, err := env.DS.LogDb.BeginTx(aud.ctx, nil)
+	tx, err := env.DS.Tx(db.LogDB)
 	if err != nil {
 		log.Error().Err(err).Msg("")
 		return err
