@@ -8,6 +8,8 @@ import (
 
 	"github.com/gilcrest/go-API-template/appuser"
 	"github.com/gilcrest/go-API-template/env"
+
+	"github.com/rs/zerolog"
 )
 
 func TestCreate(t *testing.T) {
@@ -17,7 +19,7 @@ func TestCreate(t *testing.T) {
 	defer cancel() // Cancel ctx as soon as main returns.
 
 	// Initializes "environment" struct type
-	env, err := env.NewEnv()
+	env, err := env.NewEnv(zerolog.DebugLevel)
 	if err != nil {
 		t.Errorf("Error Initializing env, err = %s", err)
 	}
