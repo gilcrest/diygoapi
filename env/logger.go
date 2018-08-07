@@ -69,8 +69,9 @@ func newHTTPLogOpts() (*HTTPLogOpts, error) {
 	return &l, nil
 }
 
-func newLogger() zerolog.Logger {
+func newLogger(lvl zerolog.Level) zerolog.Logger {
 	zerolog.TimeFieldFormat = ""
+	zerolog.SetGlobalLevel(lvl)
 	lgr := zerolog.New(os.Stdout).With().Timestamp().Logger()
 
 	return lgr
