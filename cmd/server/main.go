@@ -7,12 +7,13 @@ import (
 	"github.com/gilcrest/go-API-template/env"
 	"github.com/gilcrest/go-API-template/server/dispatch"
 	"github.com/gorilla/mux"
+	"github.com/rs/zerolog"
 )
 
 func main() {
 
 	// Initializes "environment" struct type
-	env, err := env.NewEnv()
+	env, err := env.NewEnv(zerolog.DebugLevel)
 
 	if err != nil {
 		log.Fatal(err)
