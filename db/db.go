@@ -141,7 +141,7 @@ func (ds Datastore) Tx(n name) (*sql.Tx, error) {
 func (ds Datastore) txMain() (*sql.Tx, error) {
 	const op errors.Op = "db.Datastore.txMain"
 	if ds.mainTx == nil {
-		return nil, errors.E(op, "*sql.Tx is not initialized for mainDb")
+		return nil, errors.E(op, `*sql.Tx is not initialized for mainDb. Be sure to use SetTx to start database txns `)
 	}
 	return ds.mainTx, nil
 }
