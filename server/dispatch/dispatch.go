@@ -1,9 +1,9 @@
 package dispatch
 
 import (
-	"github.com/gilcrest/go-API-template/appUser/handler"
 	"github.com/gilcrest/go-API-template/env"
 	eh "github.com/gilcrest/go-API-template/server/errorHandler"
+	"github.com/gilcrest/go-API-template/server/handler"
 	"github.com/gilcrest/go-API-template/server/middleware"
 	"github.com/gorilla/mux"
 )
@@ -23,6 +23,11 @@ func Dispatch(env *env.Env, rtr *mux.Router) *mux.Router {
 
 	// match only POST requests on /api/v1/appUser/create
 	rtr.Handle("/v1/appUser", middleware.Adapt(eh.ErrHandler{Env: env, H: handler.CreateUser}, middleware.LogRequest(env, audit), middleware.LogResponse(env, audit))).
+		Methods("POST").
+		Headers("Content-Type", "application/json")
+
+	// match only POST requests on /api/v1/appUser/create
+	rtr.Handle("/v1/login", middleware.Adapt(eh.ErrHandler{Env: env, H: handler.LoginHandler}, middleware.LogRequest(env, audit), middleware.LogResponse(env, audit))).
 		Methods("POST").
 		Headers("Content-Type", "application/json")
 
