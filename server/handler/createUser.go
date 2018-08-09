@@ -24,6 +24,12 @@ func CreateUser(env *env.Env, w http.ResponseWriter, req *http.Request) error {
 
 	var err error
 
+	// Fire up the db txns (MainDb and Logger DB)
+	err = env.DS.SetTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
 	// Declare cur as an instance of createUserRequest
 	// Decode JSON HTTP request body into a Decoder type
 	//  and unmarshal that into cur
