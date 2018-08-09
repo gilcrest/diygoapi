@@ -5,13 +5,19 @@ package appuser
 import (
 	"context"
 	"database/sql"
-	"errors"
+	"fmt"
 	"net/mail"
 	"time"
 
+	"github.com/gilcrest/go-API-template/db"
 	"github.com/gilcrest/go-API-template/env"
+	"github.com/gilcrest/go-API-template/errors"
 	"golang.org/x/crypto/bcrypt"
 )
+
+// ErrNoUser is an error when a user is passed
+// that does not exist in the db
+var ErrNoUser = errors.Str("User does not exixt")
 
 // User represents an application user.  A user can access multiple systems.
 // The User-Application relationship is kept elsewhere...
@@ -112,10 +118,10 @@ func (u *User) SetUsername(username string) error {
 	switch {
 	// Username is required
 	case username == "":
-		return errors.New("Username is a required field")
+		return errors.Str("Username is a required field")
 	// Username cannot be blah...
 	case username == "blah":
-		return errors.New("Username cannot be blah")
+		return errors.Str("Username cannot be blah")
 	default:
 		u.username = username
 	}
@@ -123,10 +129,15 @@ func (u *User) SetUsername(username string) error {
 	return nil
 }
 
+// Password is a getter for User.username
+func (u *User) Password() string {
+	return u.password
+}
+
 func (u *User) setPassword(ctx context.Context, env *env.Env, password string) error {
 
 	if password == "" {
-		return errors.New("Password is mandatory")
+		return errors.Str("Password is mandatory")
 	}
 
 	// Salt and hash the password using the bcrypt algorithm
@@ -247,8 +258,8 @@ func (u *User) createDB(ctx context.Context, env *env.Env) (*sql.Tx, error) {
 		updateTimestamp time.Time
 	)
 
-	// Calls the BeginTx method of the MainDb opened database
-	tx, err := env.DS.MainDb.BeginTx(ctx, nil)
+	// Gets the AppDB database txn
+	tx, err := env.DS.Tx(db.AppDB)
 	if err != nil {
 		return nil, err
 	}
@@ -301,4 +312,50 @@ func (u *User) createDB(ctx context.Context, env *env.Env) (*sql.Tx, error) {
 
 	return tx, nil
 
+}
+
+// UserFromUsername constructs a User given a username
+func UserFromUsername(ctx context.Context, env *env.Env, username string) (*User, error) {
+	const op errors.Op = "appuser.UserFromUsername"
+
+	// Calls the BeginTx method of the MainDb opened database
+	tx, err := env.DS.Tx(db.AppDB)
+	if err != nil {
+		return nil, errors.E(op, err)
+	}
+
+	// Prepare the sql statement using bind variables
+	row := tx.QueryRowContext(ctx,
+		`select username,
+				password,
+				mobile_id,
+				email_address,
+				first_name,
+				last_name,
+				update_client_id,
+				update_user_id,
+				update_timestamp
+  		   from demo.app_user
+          where username = $1`, username)
+
+	usr := new(User)
+	err = row.Scan(&usr.username,
+		&usr.password,
+		&usr.mobileID,
+		&usr.email,
+		&usr.firstName,
+		&usr.lastName,
+		&usr.updateClientID,
+		&usr.updateUserID,
+		&usr.updateTimestamp,
+	)
+	if err == sql.ErrNoRows {
+		return nil, errors.E(op, ErrNoUser)
+	} else if err != nil {
+		return nil, errors.E(op, err)
+	}
+
+	fmt.Printf("%+v", usr)
+
+	return usr, nil
 }
