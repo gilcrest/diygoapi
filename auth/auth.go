@@ -2,12 +2,13 @@ package auth
 
 import (
 	"context"
+	"database/sql"
+
+	"github.com/rs/zerolog"
 
 	"github.com/gilcrest/go-API-template/appuser"
 	"github.com/gilcrest/go-API-template/errors"
 	"golang.org/x/crypto/bcrypt"
-
-	"github.com/gilcrest/go-API-template/env"
 )
 
 // ErrPassNotMatch is an error when a given password hash
@@ -25,13 +26,13 @@ type JwtToken struct {
 	Token string `json:"token"`
 }
 
-// Authorise validates a user/password
+// Authorize validates a user/password
 //  If valid, the user struct will be populated and error will be nil
 //  If invalid, the user struct will be nil and an error will be populated
-func Authorise(ctx context.Context, env *env.Env, c *Credentials) (*appuser.User, error) {
+func Authorize(ctx context.Context, log zerolog.Logger, tx *sql.Tx, c *Credentials) (*appuser.User, error) {
 	const op errors.Op = "auth.validatePassword"
 
-	usr, err := appuser.UserFromUsername(ctx, env, c.Username)
+	usr, err := appuser.UserFromUsername(ctx, log, tx, c.Username)
 	if err != nil {
 		return nil, err
 	}
