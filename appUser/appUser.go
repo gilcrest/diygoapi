@@ -5,13 +5,12 @@ package appuser
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"net/mail"
 	"time"
 
-	"github.com/gilcrest/go-API-template/db"
 	"github.com/gilcrest/go-API-template/env"
 	"github.com/gilcrest/go-API-template/errors"
+	"github.com/rs/zerolog"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -55,8 +54,8 @@ type CreateUserResponse struct {
 	UpdateUnixTime int64  `json:"created"`
 }
 
-// NewUser performs basic service validations and wires request data
-// into User business object
+// NewUser constructor performs basic service validations
+//  and wires request data into User business object
 func NewUser(ctx context.Context, env *env.Env, cur *CreateUserRequest) (*User, error) {
 
 	// Get a new logger instance
@@ -65,7 +64,7 @@ func NewUser(ctx context.Context, env *env.Env, cur *CreateUserRequest) (*User, 
 	log.Debug().Msg("Start handler.NewUser")
 	defer log.Debug().Msg("Finish handler.NewUser")
 
-	// declare a new instance of appUser.User
+	// declare a new instance of appuser.User
 	usr := new(User)
 
 	err := usr.SetUsername(cur.Username)
@@ -233,10 +232,7 @@ func (u *User) SetUpdateTimestamp(updateTimestamp time.Time) error {
 }
 
 // Create performs business validations prior to writing to the db
-func (u *User) Create(ctx context.Context, env *env.Env) (*sql.Tx, error) {
-
-	// Get a new logger instance
-	log := env.Logger
+func (u *User) Create(ctx context.Context, log zerolog.Logger) error {
 
 	log.Debug().Msg("Start User.Create")
 	defer log.Debug().Msg("Finish User.Create")
@@ -245,24 +241,15 @@ func (u *User) Create(ctx context.Context, env *env.Env) (*sql.Tx, error) {
 	// but since I haven't implemented that yet, using this hack
 	u.updateUserID = "chillcrest"
 
-	// Write to db
-	tx, err := u.createDB(ctx, env)
-
-	return tx, err
+	return nil
 }
 
-// Creates a record in the appUser table using a stored function
-func (u *User) createDB(ctx context.Context, env *env.Env) (*sql.Tx, error) {
+// CreateDB creates a record in the appuser table using a stored function
+func (u *User) CreateDB(ctx context.Context, log zerolog.Logger, tx *sql.Tx) error {
 
 	var (
 		updateTimestamp time.Time
 	)
-
-	// Gets the AppDB database txn
-	tx, err := env.DS.Tx(db.AppDB)
-	if err != nil {
-		return nil, err
-	}
 
 	// Prepare the sql statement using bind variables
 	stmt, err := tx.PrepareContext(ctx, `select demo.create_app_user (
@@ -275,7 +262,7 @@ func (u *User) createDB(ctx context.Context, env *env.Env) (*sql.Tx, error) {
 		p_user_id => $7)`)
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer stmt.Close()
 
@@ -291,38 +278,32 @@ func (u *User) createDB(ctx context.Context, env *env.Env) (*sql.Tx, error) {
 		u.username)  //$7
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer rows.Close()
 
 	// Iterate through the returned record(s)
 	for rows.Next() {
 		if err := rows.Scan(&updateTimestamp); err != nil {
-			return nil, err
+			return err
 		}
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return err
 	}
 
 	// set the CreateDate field to the create_date set as part of the insert in
 	// the stored function call above
 	u.updateTimestamp = updateTimestamp
 
-	return tx, nil
+	return nil
 
 }
 
 // UserFromUsername constructs a User given a username
-func UserFromUsername(ctx context.Context, env *env.Env, username string) (*User, error) {
+func UserFromUsername(ctx context.Context, log zerolog.Logger, tx *sql.Tx, username string) (*User, error) {
 	const op errors.Op = "appuser.UserFromUsername"
-
-	// Calls the BeginTx method of the MainDb opened database
-	tx, err := env.DS.Tx(db.AppDB)
-	if err != nil {
-		return nil, errors.E(op, err)
-	}
 
 	// Prepare the sql statement using bind variables
 	row := tx.QueryRowContext(ctx,
@@ -335,11 +316,11 @@ func UserFromUsername(ctx context.Context, env *env.Env, username string) (*User
 				update_client_id,
 				update_user_id,
 				update_timestamp
-  		   from demo.app_user
+  		   from demo.user
           where username = $1`, username)
 
 	usr := new(User)
-	err = row.Scan(&usr.username,
+	err := row.Scan(&usr.username,
 		&usr.password,
 		&usr.mobileID,
 		&usr.email,
@@ -354,8 +335,6 @@ func UserFromUsername(ctx context.Context, env *env.Env, username string) (*User
 	} else if err != nil {
 		return nil, errors.E(op, err)
 	}
-
-	fmt.Printf("%+v", usr)
 
 	return usr, nil
 }
