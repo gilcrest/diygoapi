@@ -7,6 +7,8 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/rs/zerolog"
+
 	"github.com/gilcrest/go-API-template/errors"
 	"github.com/gomodule/redigo/redis"
 	"github.com/rs/zerolog/log"
@@ -28,9 +30,7 @@ const (
 // Datastore struct stores common environment related items
 type Datastore struct {
 	mainDB  *sql.DB
-	mainTx  *sql.Tx
 	logDB   *sql.DB
-	logTx   *sql.Tx
 	cacheDB *redis.Pool
 }
 
@@ -90,187 +90,6 @@ func newMainDB() (*sql.DB, error) {
 	return db, nil
 }
 
-// SetTx opens a database connection and starts a database transaction using the
-// BeginTx method which allows for rollback of the transaction if the context
-// is cancelled
-func (ds *Datastore) SetTx(ctx context.Context, opts *sql.TxOptions) error {
-	const op errors.Op = "db.Datastore.SetTx"
-
-	// Calls the BeginTx method of the MainDb opened database
-	mtx, err := ds.mainDB.BeginTx(ctx, opts)
-	if err != nil {
-		return errors.E(op, "Error returned from mainDb.BeginTx")
-	}
-
-	ds.mainTx = mtx
-
-	// Calls the BeginTx method of the MainDb opened database
-	ltx, err := ds.logDB.BeginTx(ctx, opts)
-	if err != nil {
-		return errors.E(op, "Error returned from logDb.BeginTx")
-	}
-
-	ds.logTx = ltx
-
-	return nil
-}
-
-// Tx is a getter for the *sql.Tx for the given db
-func (ds Datastore) Tx(n name) (*sql.Tx, error) {
-	const op errors.Op = "db.Datastore.Tx"
-
-	switch n {
-	case AppDB:
-		tx, err := ds.txMain()
-		if err != nil {
-			return nil, errors.E(op, err)
-		}
-		return tx, nil
-	case LogDB:
-		tx, err := ds.txLog()
-		if err != nil {
-			return nil, errors.E(op, err)
-		}
-		return tx, nil
-	default:
-		return nil, errors.E(op, "Unexpected Database Name")
-	}
-}
-
-// TxMain is a getter for the mainDb *sql.Tx
-func (ds Datastore) txMain() (*sql.Tx, error) {
-	const op errors.Op = "db.Datastore.txMain"
-	if ds.mainTx == nil {
-		return nil, errors.E(op, `*sql.Tx is not initialized for mainDb. Be sure to use SetTx to start database txns `)
-	}
-	return ds.mainTx, nil
-}
-
-// TxLog is a getter for the mainDb *sql.Tx
-func (ds Datastore) txLog() (*sql.Tx, error) {
-	const op errors.Op = "db.Datastore.txLog"
-	if ds.logTx == nil {
-		return nil, errors.E(op, "*sql.Tx is not initialized for logDb")
-	}
-	return ds.logTx, nil
-}
-
-// Commit will commit the txn for the given db
-func (ds Datastore) Commit(args ...name) error {
-	const op errors.Op = "db.Datastore.Commit"
-
-	if len(args) == 0 {
-		errors.E(op, "call to Commit with no arguments")
-	}
-
-	for _, arg := range args {
-		switch arg {
-		case AppDB:
-			err := ds.commitMainTx()
-			if err != nil {
-				return errors.E(op, err)
-			}
-		case LogDB:
-			err := ds.commitLogTx()
-			if err != nil {
-				return errors.E(op, err)
-			}
-		default:
-			return errors.E(op, "Unexpected Type")
-		}
-	}
-
-	return nil
-}
-
-func (ds Datastore) commitMainTx() error {
-	const op errors.Op = "db.Datastore.CommitMainTx"
-
-	tx, err := ds.txMain()
-	if err != nil {
-		return errors.E(op, err)
-	}
-	err = tx.Commit()
-	if err != nil {
-		return errors.E(op, err)
-	}
-
-	return nil
-}
-
-func (ds Datastore) commitLogTx() error {
-	const op errors.Op = "db.Datastore.commitLogTx"
-
-	tx, err := ds.txLog()
-	if err != nil {
-		return errors.E(op, err)
-	}
-	err = tx.Commit()
-	if err != nil {
-		return errors.E(op, err)
-	}
-
-	return nil
-}
-
-// Rollback will rollback the txn for the given db
-func (ds Datastore) Rollback(args ...name) error {
-	const op errors.Op = "db.Datastore.Rollback"
-
-	if len(args) == 0 {
-		errors.E(op, "call to Rollback with no arguments")
-	}
-
-	for _, arg := range args {
-		switch arg {
-		case AppDB:
-			err := ds.rollbackMainTx()
-			if err != nil {
-				return errors.E(op, err)
-			}
-		case LogDB:
-			err := ds.rollbackLogTx()
-			if err != nil {
-				return errors.E(op, err)
-			}
-		default:
-			return errors.E(op, "Unexpected Type")
-		}
-	}
-
-	return nil
-}
-
-func (ds Datastore) rollbackMainTx() error {
-	const op errors.Op = "db.Datastore.rollbackMainTx"
-
-	tx, err := ds.txMain()
-	if err != nil {
-		return errors.E(op, err)
-	}
-	err = tx.Rollback()
-	if err != nil {
-		return errors.E(op, err)
-	}
-
-	return nil
-}
-
-func (ds Datastore) rollbackLogTx() error {
-	const op errors.Op = "db.Datastore.rollbackLogTx"
-
-	tx, err := ds.txLog()
-	if err != nil {
-		return errors.E(op, err)
-	}
-	err = tx.Rollback()
-	if err != nil {
-		return errors.E(op, err)
-	}
-
-	return nil
-}
-
 // NewMainDB returns an pool of redis connections from
 // which an application can get a new connection
 func newCacheDb() *redis.Pool {
@@ -303,4 +122,50 @@ func (ds Datastore) RedisConn() (redis.Conn, error) {
 		return nil, err
 	}
 	return conn, nil
+}
+
+// BeginTx begins a *sql.Tx for the given db
+func (ds Datastore) BeginTx(ctx context.Context, opts *sql.TxOptions, n name) (*sql.Tx, error) {
+	const op errors.Op = "db.Datastore.BeginTx"
+
+	switch n {
+	case AppDB:
+		// Calls the BeginTx method of the mainDb opened database
+		mtx, err := ds.mainDB.BeginTx(ctx, opts)
+		if err != nil {
+			return nil, errors.E(op, err)
+		}
+
+		return mtx, nil
+	case LogDB:
+		// Calls the BeginTx method of the mogDB opened database
+		ltx, err := ds.logDB.BeginTx(ctx, opts)
+		if err != nil {
+			return nil, errors.E(op, err)
+		}
+
+		return ltx, nil
+	default:
+		return nil, errors.E(op, "Unexpected Database Name")
+	}
+}
+
+// FinalizeTx will attempt to commit or rollback the db transaction
+// If the commit is successful, no error will be nil
+// If the commit is not successful, a rollback will be attempted and
+// the error will not be nil
+func FinalizeTx(ctx context.Context, log zerolog.Logger, tx *sql.Tx, commit bool) error {
+
+	if commit {
+		err := tx.Commit()
+		if err != nil {
+			return err
+		}
+	} else {
+		err := tx.Rollback()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
