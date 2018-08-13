@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gilcrest/go-API-template/appuser"
+	"github.com/gilcrest/go-API-template/db"
 	"github.com/gilcrest/go-API-template/env"
 	"github.com/gilcrest/go-API-template/server/errorHandler"
 )
@@ -23,12 +24,6 @@ func CreateUser(env *env.Env, w http.ResponseWriter, req *http.Request) error {
 	ctx := req.Context()
 
 	var err error
-
-	// Fire up the db txns (MainDb and Logger DB)
-	err = env.DS.SetTx(ctx, nil)
-	if err != nil {
-		return err
-	}
 
 	// Declare cur as an instance of createUserRequest
 	// Decode JSON HTTP request body into a Decoder type
@@ -54,8 +49,9 @@ func CreateUser(env *env.Env, w http.ResponseWriter, req *http.Request) error {
 			Err:  err,
 		}
 	}
-	// Call the create method of the appUser object to validate data and write to db
-	tx, err := usr.Create(ctx, env)
+
+	// Call the create method of the appuser object to validate data and write to db
+	err = usr.Create(ctx, log)
 	if err != nil {
 		return errorHandler.HTTPErr{
 			Code: http.StatusBadRequest,
@@ -64,15 +60,28 @@ func CreateUser(env *env.Env, w http.ResponseWriter, req *http.Request) error {
 		}
 	}
 
+	tx, err := env.DS.BeginTx(ctx, nil, db.AppDB)
+	if err != nil {
+		return errorHandler.HTTPErr{
+			Code: http.StatusBadRequest,
+			Type: "database_error",
+			Err:  err,
+		}
+	}
+
+	// Call the create method of the appuser object to validate data and write to db
+	err = usr.CreateDB(ctx, log, tx)
+	if err != nil {
+		return errorHandler.HTTPErr{
+			Code: http.StatusBadRequest,
+			Type: "database_error",
+			Err:  err,
+		}
+	}
+
 	if !usr.UpdateTimestamp().IsZero() {
-		// If we have successfully written rows to the db, we commit the transaction
-		// CreateDate should only be populated if the db transaction was successful
-		// and everything is in order
-		err = tx.Commit()
+		err := db.FinalizeTx(ctx, log, tx, true)
 		if err != nil {
-			// We return an HTTPErr here, which wraps the error
-			// returned from our DB queries. You could argue that you may not
-			// want to send db related info back to the caller...
 			return errorHandler.HTTPErr{
 				Code: http.StatusBadRequest,
 				Type: "database_error",
@@ -80,10 +89,13 @@ func CreateUser(env *env.Env, w http.ResponseWriter, req *http.Request) error {
 			}
 		}
 	} else {
-		return errorHandler.HTTPErr{
-			Code: http.StatusBadRequest,
-			Type: "database_error",
-			Err:  errors.New("Create Date not set"),
+		db.FinalizeTx(ctx, log, tx, false)
+		if err != nil {
+			return errorHandler.HTTPErr{
+				Code: http.StatusBadRequest,
+				Type: "database_error",
+				Err:  err,
+			}
 		}
 	}
 
