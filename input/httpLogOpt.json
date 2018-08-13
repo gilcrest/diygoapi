@@ -1,14 +1,14 @@
 {
     "log_json": {
         "Request": {
-            "enable": true,
+            "enable": false,
             "Options": {
                 "header": true,
                 "body": true
             }
         },
         "Response": {
-            "enable": true,
+            "enable": false,
             "Options": {
                 "header": true,
                 "body": true
@@ -16,7 +16,7 @@
         }
     },
     "log_2DB": {
-        "enable": false,
+        "enable": true,
         "Request": {
             "header": true,
             "body": true
