@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/gilcrest/go-API-template/appUser"
+	"github.com/gilcrest/go-API-template/appuser"
 	"github.com/rs/zerolog/log"
 )
 
@@ -31,8 +31,8 @@ func main() {
 	//  then default http client in the http package
 	clt := UserClient{BaseURL: u, UserAgent: "Gilcrest", HTTPClient: http.DefaultClient}
 
-	// Initialize an instance of appUser.User
-	usr := appUser.User{Username: "repoMan", MobileID: "(617) 302-7777", Email: "repoman@alwaysintense.com", FirstName: "Otto", LastName: "Maddox"}
+	// Initialize an instance of appuser.User
+	usr := appuser.User{Username: "repoMan", MobileID: "(617) 302-7777", Email: "repoman@alwaysintense.com", FirstName: "Otto", LastName: "Maddox"}
 
 	// clt.Create does the actual http POST to the endpoint to create an application user
 	user, err := clt.Create(ctx, &usr)
@@ -57,16 +57,16 @@ type UserClient struct {
 }
 
 // Create method sets up the request, then calls the do method of said request
-//  and returns the appUser.User returned in the response body
-func (c *UserClient) Create(ctx context.Context, body *appUser.User) (*appUser.User, error) {
+//  and returns the appuser.User returned in the response body
+func (c *UserClient) Create(ctx context.Context, body *appuser.User) (*appuser.User, error) {
 
 	// get a new http.Request struct from newRequest function
-	req, err := c.newRequest("POST", "/api/v1/appUser", body)
+	req, err := c.newRequest("POST", "/api/v1/appuser", body)
 	if err != nil {
 		return nil, err
 	}
 
-	var respBody *appUser.User
+	var respBody *appuser.User
 
 	_, err = c.do(ctx, req, &respBody)
 
