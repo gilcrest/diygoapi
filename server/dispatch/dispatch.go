@@ -14,20 +14,37 @@ func Dispatch(env *env.Env, rtr *mux.Router) *mux.Router {
 	// initialize new instance of APIAudit
 	audit := new(middleware.APIAudit)
 
-	// match only POST requests on /api/appUser/create
+	// match only POST requests on /api/appuser
 	// This is the original (v1) version for the API and the response for this
 	// will never change with versioning in order to maintain a stable contract
-	rtr.Handle("/appUser", middleware.Adapt(eh.ErrHandler{Env: env, H: handler.CreateUser}, middleware.LogRequest(env, audit), middleware.LogResponse(env, audit))).
+	rtr.Handle("/appuser",
+		middleware.Adapt(eh.ErrHandler{Env: env, H: handler.CreateUser},
+			middleware.LogRequest(env, audit),
+			middleware.LogResponse(env, audit))).
 		Methods("POST").
 		Headers("Content-Type", "application/json")
 
-	// match only POST requests on /api/v1/appUser/create
-	rtr.Handle("/v1/appUser", middleware.Adapt(eh.ErrHandler{Env: env, H: handler.CreateUser}, middleware.LogRequest(env, audit), middleware.LogResponse(env, audit))).
+	// match only POST requests on /api/v1/appuser
+	rtr.Handle("/v1/appuser",
+		middleware.Adapt(eh.ErrHandler{Env: env, H: handler.CreateUser},
+			middleware.LogRequest(env, audit),
+			middleware.LogResponse(env, audit))).
 		Methods("POST").
 		Headers("Content-Type", "application/json")
 
-	// match only POST requests on /api/v1/appUser/create
-	rtr.Handle("/v1/login", middleware.Adapt(eh.ErrHandler{Env: env, H: handler.LoginHandler}, middleware.LogRequest(env, audit), middleware.LogResponse(env, audit))).
+	// match only POST requests on /api/login
+	rtr.Handle("/login",
+		middleware.Adapt(eh.ErrHandler{Env: env, H: handler.LoginHandler},
+			middleware.LogRequest(env, audit),
+			middleware.LogResponse(env, audit))).
+		Methods("POST").
+		Headers("Content-Type", "application/json")
+
+	// match only POST requests on /api/login
+	rtr.Handle("/client",
+		middleware.Adapt(eh.ErrHandler{Env: env, H: handler.CreateClientHandler},
+			middleware.LogRequest(env, audit),
+			middleware.LogResponse(env, audit))).
 		Methods("POST").
 		Headers("Content-Type", "application/json")
 
