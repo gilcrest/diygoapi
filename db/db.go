@@ -7,8 +7,6 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/rs/zerolog"
-
 	"github.com/gilcrest/go-API-template/errors"
 	"github.com/gomodule/redigo/redis"
 	"github.com/rs/zerolog/log"
@@ -148,24 +146,4 @@ func (ds Datastore) BeginTx(ctx context.Context, opts *sql.TxOptions, n name) (*
 	default:
 		return nil, errors.E(op, "Unexpected Database Name")
 	}
-}
-
-// FinalizeTx will attempt to commit or rollback the db transaction
-// If the commit is successful, no error will be nil
-// If the commit is not successful, a rollback will be attempted and
-// the error will not be nil
-func FinalizeTx(ctx context.Context, log zerolog.Logger, tx *sql.Tx, commit bool) error {
-
-	if commit {
-		err := tx.Commit()
-		if err != nil {
-			return err
-		}
-	} else {
-		err := tx.Rollback()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
