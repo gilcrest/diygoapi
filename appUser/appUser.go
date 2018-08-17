@@ -10,6 +10,7 @@ import (
 
 	"github.com/gilcrest/go-API-template/env"
 	"github.com/gilcrest/go-API-template/errors"
+	"github.com/gilcrest/go-API-template/server/response"
 	"github.com/rs/zerolog"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -45,13 +46,14 @@ type CreateUserRequest struct {
 
 // CreateUserResponse is the expected service response fields
 type CreateUserResponse struct {
-	Username       string `json:"username"`
-	MobileID       string `json:"mobile_id"`
-	Email          string `json:"email"`
-	FirstName      string `json:"first_name"`
-	LastName       string `json:"last_name"`
-	UpdateUserID   string `json:"update_user_id"`
-	UpdateUnixTime int64  `json:"created"`
+	Username       string         `json:"username"`
+	MobileID       string         `json:"mobile_id"`
+	Email          string         `json:"email"`
+	FirstName      string         `json:"first_name"`
+	LastName       string         `json:"last_name"`
+	UpdateUserID   string         `json:"update_user_id"`
+	UpdateUnixTime int64          `json:"created"`
+	Audit          *response.Info `json:"audit"`
 }
 
 // NewUser constructor performs basic service validations
