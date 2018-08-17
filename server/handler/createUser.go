@@ -5,6 +5,8 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/gilcrest/go-API-template/server/response"
+
 	"github.com/gilcrest/go-API-template/appuser"
 	"github.com/gilcrest/go-API-template/db"
 	"github.com/gilcrest/go-API-template/env"
@@ -60,6 +62,7 @@ func CreateUser(env *env.Env, w http.ResponseWriter, req *http.Request) error {
 		}
 	}
 
+	// get a new DB Tx
 	tx, err := env.DS.BeginTx(ctx, nil, db.AppDB)
 	if err != nil {
 		return errorHandler.HTTPErr{
@@ -69,7 +72,8 @@ func CreateUser(env *env.Env, w http.ResponseWriter, req *http.Request) error {
 		}
 	}
 
-	// Call the create method of the appuser object to validate data and write to db
+	// Call the create method of the User object to write
+	// to the database
 	err = usr.CreateDB(ctx, log, tx)
 	if err != nil {
 		return errorHandler.HTTPErr{
@@ -80,7 +84,7 @@ func CreateUser(env *env.Env, w http.ResponseWriter, req *http.Request) error {
 	}
 
 	if !usr.UpdateTimestamp().IsZero() {
-		err := db.FinalizeTx(ctx, log, tx, true)
+		err := tx.Commit()
 		if err != nil {
 			return errorHandler.HTTPErr{
 				Code: http.StatusBadRequest,
@@ -89,12 +93,12 @@ func CreateUser(env *env.Env, w http.ResponseWriter, req *http.Request) error {
 			}
 		}
 	} else {
-		db.FinalizeTx(ctx, log, tx, false)
+		err = tx.Rollback()
 		if err != nil {
 			return errorHandler.HTTPErr{
 				Code: http.StatusBadRequest,
 				Type: "database_error",
-				Err:  err,
+				Err:  errors.New("Database error, contact support"),
 			}
 		}
 	}
@@ -129,7 +133,18 @@ func CreateUser(env *env.Env, w http.ResponseWriter, req *http.Request) error {
 // you can do it here.  For instance, here's where I convert the CreateDate from a timestamp
 // to Unix time
 func newCreateUserResponse(usr *appuser.User) (*appuser.CreateUserResponse, error) {
+
+	aud, err := response.NewInfo()
+	if err != nil {
+		return nil, errorHandler.HTTPErr{
+			Code: http.StatusInternalServerError,
+			Type: "encode_error",
+			Err:  err,
+		}
+	}
+
 	cur := new(appuser.CreateUserResponse)
+	cur.Audit = aud
 	cur.Username = usr.Username()
 	cur.MobileID = usr.MobileID()
 	cur.Email = usr.Email()
