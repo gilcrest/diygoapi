@@ -1,13 +1,13 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"time"
 
 	"github.com/gilcrest/go-API-template/db"
 	"github.com/gilcrest/go-API-template/env"
-	"github.com/gilcrest/go-API-template/server/errorHandler"
 	"github.com/rs/zerolog/log"
 )
 
@@ -16,7 +16,9 @@ import (
 // request/response timing
 func LogResponse(env *env.Env, aud *APIAudit) Adapter {
 	return func(h http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+
+			ctx := req.Context()
 
 			log.Print("Start LogResponse")
 			defer log.Print("Finish LogResponse")
@@ -24,7 +26,7 @@ func LogResponse(env *env.Env, aud *APIAudit) Adapter {
 			startTimer(aud)
 
 			rec := httptest.NewRecorder()
-			h.ServeHTTP(rec, r)
+			h.ServeHTTP(rec, req.WithContext(ctx))
 
 			// copy everything from response recorder
 			// to actual response writer
@@ -52,7 +54,7 @@ func LogResponse(env *env.Env, aud *APIAudit) Adapter {
 			}
 
 			// call logRespDispatch to determine if and where to log
-			err = logRespDispatch(env, aud)
+			err = logRespDispatch(ctx, env, aud)
 			if err != nil {
 				log.Error().Err(err).Msg("")
 			}
@@ -108,13 +110,13 @@ func setResponse(aud *APIAudit, rec *httptest.ResponseRecorder) error {
 
 // logRespDispatch determines which, if any, of the logging methods
 // you wish to use will be employed
-func logRespDispatch(env *env.Env, aud *APIAudit) error {
+func logRespDispatch(ctx context.Context, env *env.Env, aud *APIAudit) error {
 	if env.LogOpts.Log2StdOut.Response.Enable {
 		logResp2Stdout(env, aud)
 	}
 
 	if env.LogOpts.Log2DB.Enable {
-		err := logReqResp2Db(env, aud)
+		err := logReqResp2Db(ctx, env, aud)
 		if err != nil {
 			log.Error().Err(err).Msg("")
 			return err
@@ -139,7 +141,7 @@ func logResp2Stdout(env *env.Env, aud *APIAudit) {
 
 // logReqResp2Db creates a record in the api.audit_log table
 // using a stored function
-func logReqResp2Db(env *env.Env, aud *APIAudit) error {
+func logReqResp2Db(ctx context.Context, env *env.Env, aud *APIAudit) error {
 
 	var (
 		rowsInserted int
@@ -188,16 +190,12 @@ func logReqResp2Db(env *env.Env, aud *APIAudit) error {
 	// need to do below math for milliseconds
 	durMS := aud.Duration / time.Millisecond
 
-	tx, err := env.DS.BeginTx(aud.ctx, nil, db.LogDB)
+	tx, err := env.DS.BeginTx(ctx, nil, db.LogDB)
 	if err != nil {
-		return errorHandler.HTTPErr{
-			Code: http.StatusBadRequest,
-			Type: "database_error",
-			Err:  err,
-		}
+		return err
 	}
 	// Prepare the sql statement using bind variables
-	stmt, err := tx.PrepareContext(aud.ctx, `select api.log_request (
+	stmt, err := tx.PrepareContext(ctx, `select api.log_request (
 		p_request_id => $1,
 		p_request_timestamp => $2,
 		p_response_code => $3,
@@ -224,7 +222,7 @@ func logReqResp2Db(env *env.Env, aud *APIAudit) error {
 	}
 	defer stmt.Close()
 
-	rows, err := stmt.QueryContext(aud.ctx,
+	rows, err := stmt.QueryContext(ctx,
 		aud.RequestID,             //$1
 		aud.TimeStarted,           //$2
 		aud.ResponseCode,          //$3
