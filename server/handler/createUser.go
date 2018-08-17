@@ -89,7 +89,7 @@ func CreateUser(env *env.Env, w http.ResponseWriter, req *http.Request) error {
 			return errorHandler.HTTPErr{
 				Code: http.StatusBadRequest,
 				Type: "database_error",
-				Err:  err,
+				Err:  errors.New("Database error, contact support"),
 			}
 		}
 	} else {

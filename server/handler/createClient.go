@@ -63,23 +63,17 @@ func CreateClientHandler(env *env.Env, w http.ResponseWriter, req *http.Request)
 		return errorHandler.HTTPErr{
 			Code: http.StatusBadRequest,
 			Type: "database_error",
-			Err:  err,
+			Err:  errors.New("Database error, contact support"),
 		}
 	}
 
 	if !client.DMLTime.IsZero() {
-		// If we have successfully written rows to the db, we commit the transaction
-		// CreateDate should only be populated if the db transaction was successful
-		// and everything is in order
-		err = tx.Commit()
+		err := tx.Commit()
 		if err != nil {
-			// We return an HTTPErr here, which wraps the error
-			// returned from our DB queries. You could argue that you may not
-			// want to send db related info back to the caller...
 			return errorHandler.HTTPErr{
 				Code: http.StatusBadRequest,
 				Type: "database_error",
-				Err:  err,
+				Err:  errors.New("Database error, contact support"),
 			}
 		}
 	} else {
@@ -88,13 +82,8 @@ func CreateClientHandler(env *env.Env, w http.ResponseWriter, req *http.Request)
 			return errorHandler.HTTPErr{
 				Code: http.StatusBadRequest,
 				Type: "database_error",
-				Err:  err,
+				Err:  errors.New("Database error, contact support"),
 			}
-		}
-		return errorHandler.HTTPErr{
-			Code: http.StatusBadRequest,
-			Type: "database_error",
-			Err:  errors.New("Database error encountered"),
 		}
 	}
 
