@@ -39,3 +39,6 @@ tasks.json
 
 # Docker env files
 *.env
+
+# Docker AWS build script
+dockerAWSBuild.sh
