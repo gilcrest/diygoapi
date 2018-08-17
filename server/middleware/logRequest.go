@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,14 +13,12 @@ import (
 	"time"
 
 	"github.com/gilcrest/go-API-template/env"
-	"github.com/rs/xid"
 	"github.com/rs/zerolog/log"
 )
 
-// APIAudit struct holds the http request and other attributes needed
+// APIAudit struct holds the http request attributes needed
 // for auditing an http request
 type APIAudit struct {
-	ctx          context.Context
 	RequestID    string        `json:"request_id"`
 	TimeStarted  time.Time     `json:"time_started"`
 	TimeFinished time.Time     `json:"time_finished"`
@@ -66,7 +63,7 @@ func LogRequest(env *env.Env, aud *APIAudit) Adapter {
 			// Add unique Request ID to the response header
 			// This could be put in its own middleware if one chooses
 			w.Header().Set("Request-Id", aud.RequestID)
-
+			w.Header().Set("Content-Type", "application/json")
 			h.ServeHTTP(w, r) // call original
 		})
 	}
@@ -142,20 +139,12 @@ func setRequest(aud *APIAudit, req *http.Request) error {
 		return err
 	}
 
-	// get byte Array representation of guid from xid package (12 bytes)
-	guid := xid.New()
-
-	// use the String method of the guid object to convert byte array to string (20 bytes)
-	rID := guid.String()
-
 	body, err := dumpBody(req)
 	if err != nil {
 		log.Error().Err(err).Msg("")
 		return err
 	}
 
-	aud.ctx = req.Context() // retrieve the context from the http.Request
-	aud.RequestID = rID
 	aud.request.Proto = req.Proto
 	aud.request.ProtoMajor = req.ProtoMajor
 	aud.request.ProtoMinor = req.ProtoMinor
