@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gilcrest/go-API-template/auth"
+
 	"github.com/gilcrest/go-API-template/env"
 	"github.com/rs/zerolog/log"
 )
@@ -52,19 +54,22 @@ type request struct {
 // Relational DB or httputil.DumpRequest
 func LogRequest(env *env.Env, aud *APIAudit) Adapter {
 	return func(h http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			log.Print("Start LogRequest")
 			defer log.Print("Finish LogRequest")
-			err := logReqDispatch(env, aud, r)
+
+			err := logReqDispatch(env, aud, req)
 			if err != nil {
 				http.Error(w, "Unable to log request", http.StatusBadRequest)
 				return
 			}
+
 			// Add unique Request ID to the response header
 			// This could be put in its own middleware if one chooses
-			w.Header().Set("Request-Id", aud.RequestID)
+			w.Header().Set("Request-Id", auth.RequestID(req.Context()))
 			w.Header().Set("Content-Type", "application/json")
-			h.ServeHTTP(w, r) // call original
+
+			h.ServeHTTP(w, req) // call original
 		})
 	}
 }
@@ -145,6 +150,7 @@ func setRequest(aud *APIAudit, req *http.Request) error {
 		return err
 	}
 
+	aud.RequestID = auth.RequestID(req.Context())
 	aud.request.Proto = req.Proto
 	aud.request.ProtoMajor = req.ProtoMajor
 	aud.request.ProtoMinor = req.ProtoMinor
