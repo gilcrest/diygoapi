@@ -61,7 +61,8 @@ func checkPasswordHash(password, hash string) bool {
 	return err == nil
 }
 
-func setRequestID(ctx context.Context) context.Context {
+// SetRequestID adds a unique ID as RequestID to the context
+func SetRequestID(ctx context.Context) context.Context {
 	// get byte Array representation of guid from xid package (12 bytes)
 	guid := xid.New()
 
@@ -75,7 +76,7 @@ func setRequestID(ctx context.Context) context.Context {
 }
 
 // RequestID gets the Request ID from the context.
-func RequestID(ctx context.Context) (string, bool) {
-	requestIDstr, ok := ctx.Value(requestID).(string)
-	return requestIDstr, ok
+func RequestID(ctx context.Context) string {
+	requestIDstr := ctx.Value(requestID).(string)
+	return requestIDstr
 }
