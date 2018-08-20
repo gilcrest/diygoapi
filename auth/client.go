@@ -91,7 +91,7 @@ func (c *Client) CreateClientDB(ctx context.Context, tx *sql.Tx) (*sql.Tx, error
 		p_user_id => $7)`)
 
 	if err != nil {
-		return nil, err
+		return nil, errors.E(op, err)
 	}
 	defer stmt.Close()
 
@@ -107,19 +107,19 @@ func (c *Client) CreateClientDB(ctx context.Context, tx *sql.Tx) (*sql.Tx, error
 		c.PrimaryUserID) //$7
 
 	if err != nil {
-		return nil, err
+		return nil, errors.E(op, err)
 	}
 	defer rows.Close()
 
 	// Iterate through the returned record(s)
 	for rows.Next() {
 		if err := rows.Scan(&dmlTime); err != nil {
-			return nil, err
+			return nil, errors.E(op, err)
 		}
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, errors.E(op, err)
 	}
 
 	// set the DMLTime field to the create_date set as part of the insert in
