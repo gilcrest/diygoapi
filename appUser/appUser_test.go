@@ -47,9 +47,16 @@ func TestCreate(t *testing.T) {
 	}
 
 	// Create method does validation and then inserts user into db
-	err = inputUsr.Create(ctx, log, tx)
+	err = inputUsr.Create(ctx, log)
 	if err != nil {
 		t.Errorf("Error from Create method, err = %s", err)
+	}
+
+	// Call the create method of the User object to write
+	// to the database
+	err = inputUsr.CreateDB(ctx, log, tx)
+	if err != nil {
+		t.Errorf("Error from CreateDB method, err = %s", err)
 	}
 
 	// Check to ensure that the CreateDate struct field is populated by
