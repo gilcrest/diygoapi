@@ -1,15 +1,21 @@
 package response
 
-// Info struct should be used for all responses
-type Info struct {
+import (
+	"context"
+
+	"github.com/gilcrest/go-API-template/server/todo"
+)
+
+// Audit struct should be used for all responses
+type Audit struct {
 	RequestID  string `json:"id"`
 	RequestURL string `json:"url"`
 }
 
-// NewInfo is a constructor for the Info struct
-func NewInfo() (*Info, error) {
-	info := new(Info)
-	info.RequestID = "fakeID"
+// NewAudit is a constructor for the Audit struct
+func NewAudit(ctx context.Context) (*Audit, error) {
+	info := new(Audit)
+	info.RequestID = todo.ID(ctx)
 	info.RequestURL = "fakeURL"
 	return info, nil
 }
