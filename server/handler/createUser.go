@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -105,7 +106,7 @@ func CreateUser(env *env.Env, w http.ResponseWriter, req *http.Request) error {
 
 	// If we successfully committed the db transaction, we can consider this
 	// transaction successful and return a response with the response body
-	curs, err := newCreateUserResponse(usr)
+	curs, err := newCreateUserResponse(ctx, usr)
 	if err != nil {
 		return errorHandler.HTTPErr{
 			Code: http.StatusBadRequest,
@@ -132,9 +133,9 @@ func CreateUser(env *env.Env, w http.ResponseWriter, req *http.Request) error {
 // if you need to perform any manipulation from your business object to the response object
 // you can do it here.  For instance, here's where I convert the CreateDate from a timestamp
 // to Unix time
-func newCreateUserResponse(usr *appuser.User) (*appuser.CreateUserResponse, error) {
+func newCreateUserResponse(ctx context.Context, usr *appuser.User) (*appuser.CreateUserResponse, error) {
 
-	aud, err := response.NewInfo()
+	aud, err := response.NewAudit(ctx)
 	if err != nil {
 		return nil, errorHandler.HTTPErr{
 			Code: http.StatusInternalServerError,
