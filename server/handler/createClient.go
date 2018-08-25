@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"database/sql"
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -10,6 +10,7 @@ import (
 	"github.com/gilcrest/go-API-template/db"
 	"github.com/gilcrest/go-API-template/env"
 	"github.com/gilcrest/go-API-template/server/errorHandler"
+	"github.com/gilcrest/go-API-template/server/response"
 )
 
 // CreateClientHandler is used to create a new client (aka app)
@@ -87,11 +88,43 @@ func CreateClientHandler(env *env.Env, w http.ResponseWriter, req *http.Request)
 		}
 	}
 
-	json.NewEncoder(w).Encode(&client)
+	cr, err := newClientResponse(ctx, client)
+	if err != nil {
+		return errorHandler.HTTPErr{
+			Code: http.StatusBadRequest,
+			Type: "response_error",
+			Err:  errors.New("Error generating response, contact support"),
+		}
+
+	}
+
+	json.NewEncoder(w).Encode(&cr)
 
 	return nil
 }
 
-func commitOrRollback(*sql.Tx, *auth.Client) error {
-	return nil
+func newClientResponse(ctx context.Context, c *auth.Client) (*auth.ClientResponse, error) {
+
+	cr := new(auth.ClientResponse)
+	cr.ClientID = c.ID()
+	cr.ClientName = c.Name
+	cr.ClientHomeURL = c.HomeURL
+	cr.ClientDescription = c.Description
+	cr.RedirectURI = c.RedirectURI
+	cr.PrimaryUserID = c.PrimaryUserID
+	cr.ClientSecret = c.Secret()
+	cr.ServerToken = c.ServerToken()
+	cr.DMLTime = c.DMLTime.Unix()
+
+	aud, err := response.NewAudit(ctx)
+	if err != nil {
+		return nil, errorHandler.HTTPErr{
+			Code: http.StatusInternalServerError,
+			Type: "encode_error",
+			Err:  err,
+		}
+	}
+	cr.Audit = aud
+
+	return cr, nil
 }
