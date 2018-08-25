@@ -10,9 +10,12 @@ import (
 
 	"github.com/gilcrest/go-API-template/env"
 	"github.com/gilcrest/go-API-template/errors"
+	"github.com/gilcrest/go-API-template/server/response"
 )
 
-// CreateClientRequest is used for the client service
+type clientID string
+
+// CreateClientRequest is used for the POST /client API request
 type CreateClientRequest struct {
 	ClientName        string `json:"client_name"`
 	ClientHomeURL     string `json:"homepage_url"`
@@ -21,15 +24,30 @@ type CreateClientRequest struct {
 	Username          string `json:"username"`
 }
 
+// ClientResponse is used for the /client API responses
+type ClientResponse struct {
+	ClientID          string          `json:"client_id"`
+	ClientName        string          `json:"client_name"`
+	ClientHomeURL     string          `json:"homepage_url"`
+	ClientDescription string          `json:"client_description"`
+	RedirectURI       string          `json:"redirect_uri"`
+	PrimaryUserID     string          `json:"username"`
+	ClientSecret      string          `json:"client_secret"`
+	ServerToken       string          `json:"server_token"`
+	DMLTime           int64           `json:"dml_unix_time"`
+	Audit             *response.Audit `json:"audit"`
+}
+
 // Client is used for the client service and response
 type Client struct {
-	id            string
+	id            clientID
 	Name          string
 	HomeURL       string
 	Description   string
 	RedirectURI   string
 	PrimaryUserID string
 	secret        string
+	serverToken   string
 	DMLTime       time.Time
 }
 
@@ -38,12 +56,12 @@ type Client struct {
 
 // ID is a getter for Client.id
 func (c *Client) ID() string {
-	return c.id
+	return string(c.id)
 }
 
 // SetID is a setter for Client.id
 func (c *Client) SetID() {
-	c.id = xid.New().String()
+	c.id = clientID(xid.New().String())
 }
 
 // Secret is a getter for Client.secret
@@ -54,6 +72,23 @@ func (c *Client) Secret() string {
 // SetSecret is a setter for Client.secret
 func (c *Client) SetSecret() {
 	c.secret = strings.Join([]string{xid.New().String(), xid.New().String()}, "-")
+}
+
+// ServerToken is a getter for Client.serverToken
+func (c *Client) ServerToken() string {
+	return c.serverToken
+}
+
+// SetServerToken is a setter for Client.serverToken
+func (c *Client) SetServerToken() error {
+	const op errors.Op = "auth.SetServerToken"
+
+	token, err := ServerToken()
+	if err != nil {
+		return errors.E(op, err)
+	}
+	c.serverToken = token
+	return nil
 }
 
 // NewClient is a constructor for the Client struct
@@ -70,6 +105,7 @@ func NewClient(ctx context.Context, env *env.Env, c *CreateClientRequest) (*Clie
 
 	client.SetID()
 	client.SetSecret()
+	client.SetServerToken()
 
 	return client, nil
 }
@@ -88,7 +124,8 @@ func (c *Client) CreateClientDB(ctx context.Context, tx *sql.Tx) (*sql.Tx, error
 		p_app_description => $4,
 		p_redirect_uri => $5,
 		p_client_secret => $6,
-		p_user_id => $7)`)
+		p_server_token => $7,
+		p_user_id => $8)`)
 
 	if err != nil {
 		return nil, errors.E(op, err)
@@ -104,7 +141,8 @@ func (c *Client) CreateClientDB(ctx context.Context, tx *sql.Tx) (*sql.Tx, error
 		c.Description,   //$4
 		c.RedirectURI,   //$5
 		c.secret,        //$6
-		c.PrimaryUserID) //$7
+		c.serverToken,   //$7
+		c.PrimaryUserID) //$8
 
 	if err != nil {
 		return nil, errors.E(op, err)
