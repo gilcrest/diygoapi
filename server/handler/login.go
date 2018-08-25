@@ -2,14 +2,12 @@ package handler
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
 	"net/http"
 
-	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gilcrest/go-API-template/auth"
 	"github.com/gilcrest/go-API-template/db"
 	"github.com/gilcrest/go-API-template/env"
+	"github.com/gilcrest/go-API-template/errors"
 	"github.com/gilcrest/go-API-template/server/errorHandler"
 )
 
@@ -25,17 +23,11 @@ func LoginHandler(env *env.Env, w http.ResponseWriter, req *http.Request) error 
 	// retrieve the context from the http.Request
 	ctx := req.Context()
 
-	// Begin a new LogDB txn
-	_, err := env.DS.BeginTx(ctx, nil, db.LogDB)
-	if err != nil {
-		return err
-	}
-
 	// Declare creds as an instance of auth.Credentials
 	// Decode JSON HTTP request body into a Decoder type
 	//  and unmarshal that into creds
 	creds := new(auth.Credentials)
-	err = json.NewDecoder(req.Body).Decode(&creds)
+	err := json.NewDecoder(req.Body).Decode(&creds)
 	if err != nil {
 		return errorHandler.HTTPErr{
 			Code: http.StatusBadRequest,
@@ -64,20 +56,22 @@ func LoginHandler(env *env.Env, w http.ResponseWriter, req *http.Request) error 
 		return errorHandler.HTTPErr{
 			Code: http.StatusUnauthorized,
 			Type: "unauthorised",
-			Err:  errors.New("Wrong email or password"),
+			Err:  errors.Str("Wrong email or password"),
 		}
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"username": usr.Username(),
-	})
+	// TODO - do I need to close tx?
 
-	tokenString, error := token.SignedString([]byte("secret"))
-	if error != nil {
-		fmt.Println(error)
+	jwt, err := auth.LoginToken(usr)
+	if err != nil {
+		return errorHandler.HTTPErr{
+			Code: http.StatusUnauthorized,
+			Type: "unauthorised",
+			Err:  errors.Str("Wrong email or password"),
+		}
 	}
 
-	json.NewEncoder(w).Encode(auth.JwtToken{Token: tokenString})
+	json.NewEncoder(w).Encode(jwt)
 
 	return nil
 }
