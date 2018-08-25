@@ -12,9 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gilcrest/go-API-template/auth"
-
 	"github.com/gilcrest/go-API-template/env"
+	"github.com/gilcrest/go-API-template/server/todo"
 	"github.com/rs/zerolog/log"
 )
 
@@ -66,7 +65,7 @@ func LogRequest(env *env.Env, aud *APIAudit) Adapter {
 
 			// Add unique Request ID to the response header
 			// This could be put in its own middleware if one chooses
-			w.Header().Set("Request-Id", auth.RequestID(req.Context()))
+			w.Header().Set("Request-Id", todo.ID(req.Context()))
 			w.Header().Set("Content-Type", "application/json")
 
 			h.ServeHTTP(w, req) // call original
@@ -150,7 +149,7 @@ func setRequest(aud *APIAudit, req *http.Request) error {
 		return err
 	}
 
-	aud.RequestID = auth.RequestID(req.Context())
+	aud.RequestID = todo.ID(req.Context())
 	aud.request.Proto = req.Proto
 	aud.request.ProtoMajor = req.ProtoMajor
 	aud.request.ProtoMinor = req.ProtoMinor

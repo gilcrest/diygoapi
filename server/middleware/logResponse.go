@@ -6,9 +6,9 @@ import (
 	"net/http/httptest"
 	"time"
 
-	"github.com/gilcrest/go-API-template/auth"
 	"github.com/gilcrest/go-API-template/db"
 	"github.com/gilcrest/go-API-template/env"
+	"github.com/gilcrest/go-API-template/server/todo"
 	"github.com/rs/zerolog/log"
 )
 
@@ -26,7 +26,7 @@ func LogResponse(env *env.Env, aud *APIAudit) Adapter {
 
 			startTimer(aud)
 
-			ctx = auth.SetRequestID(ctx)
+			ctx = todo.SetRequestID(ctx)
 
 			rec := httptest.NewRecorder()
 			h.ServeHTTP(rec, req.WithContext(ctx))
