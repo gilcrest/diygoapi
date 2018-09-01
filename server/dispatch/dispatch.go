@@ -1,15 +1,25 @@
 package dispatch
 
 import (
+	"github.com/gilcrest/go-API-template/db"
 	"github.com/gilcrest/go-API-template/env"
 	eh "github.com/gilcrest/go-API-template/server/errorHandler"
 	"github.com/gilcrest/go-API-template/server/handler"
 	"github.com/gilcrest/go-API-template/server/middleware"
+	"github.com/gilcrest/httplog"
 	"github.com/gorilla/mux"
 )
 
 // Dispatch is a way of organizing routing to handlers (versioning as well)
 func Dispatch(env *env.Env, rtr *mux.Router) *mux.Router {
+
+	log := env.Logger
+
+	logdb, err := env.DS.DB(db.LogDB)
+	if err != nil {
+		// TODO - bogus...
+		return nil
+	}
 
 	// initialize new instance of APIAudit
 	audit := new(middleware.APIAudit)
@@ -42,9 +52,8 @@ func Dispatch(env *env.Env, rtr *mux.Router) *mux.Router {
 
 	// match only POST requests on /api/login
 	rtr.Handle("/client",
-		middleware.Adapt(eh.ErrHandler{Env: env, H: handler.CreateClientHandler},
-			middleware.LogRequest(env, audit),
-			middleware.LogResponse(env, audit))).
+		httplog.Adapt(eh.ErrHandler{Env: env, H: handler.CreateClientHandler},
+			httplog.HTTPLog(log, logdb, nil))).
 		Methods("POST").
 		Headers("Content-Type", "application/json")
 
