@@ -147,3 +147,24 @@ func (ds Datastore) BeginTx(ctx context.Context, opts *sql.TxOptions, n name) (*
 		return nil, errors.E(op, "Unexpected Database Name")
 	}
 }
+
+// DB returns an initialized sql.DB given a database name
+func (ds Datastore) DB(n name) (*sql.DB, error) {
+	const op errors.Op = "db.Datastore.DB"
+
+	switch n {
+	case AppDB:
+		if ds.mainDB == nil {
+			return nil, errors.E(op, "AppDB has not been initialized")
+		}
+		return ds.mainDB, nil
+	case LogDB:
+		if ds.logDB == nil {
+			return nil, errors.E(op, "LogDB has not been initialized")
+		}
+		return ds.logDB, nil
+	default:
+		return nil, errors.E(op, "Unexpected Database Name")
+	}
+
+}
