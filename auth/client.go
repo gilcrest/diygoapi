@@ -10,7 +10,7 @@ import (
 
 	"github.com/gilcrest/go-API-template/env"
 	"github.com/gilcrest/go-API-template/errors"
-	"github.com/gilcrest/go-API-template/server/response"
+	"github.com/gilcrest/httplog"
 )
 
 type clientID string
@@ -26,16 +26,16 @@ type CreateClientRequest struct {
 
 // ClientResponse is used for the /client API responses
 type ClientResponse struct {
-	ClientID          string          `json:"client_id"`
-	ClientName        string          `json:"client_name"`
-	ClientHomeURL     string          `json:"homepage_url"`
-	ClientDescription string          `json:"client_description"`
-	RedirectURI       string          `json:"redirect_uri"`
-	PrimaryUserID     string          `json:"username"`
-	ClientSecret      string          `json:"client_secret"`
-	ServerToken       string          `json:"server_token"`
-	DMLTime           int64           `json:"dml_unix_time"`
-	Audit             *response.Audit `json:"audit"`
+	ClientID          string         `json:"client_id"`
+	ClientName        string         `json:"client_name"`
+	ClientHomeURL     string         `json:"homepage_url"`
+	ClientDescription string         `json:"client_description"`
+	RedirectURI       string         `json:"redirect_uri"`
+	PrimaryUserID     string         `json:"username"`
+	ClientSecret      string         `json:"client_secret"`
+	ServerToken       string         `json:"server_token"`
+	DMLTime           int64          `json:"dml_unix_time"`
+	Audit             *httplog.Audit `json:"audit"`
 }
 
 // Client is used for the client service and response
