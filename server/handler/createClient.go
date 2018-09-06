@@ -10,7 +10,7 @@ import (
 	"github.com/gilcrest/go-API-template/db"
 	"github.com/gilcrest/go-API-template/env"
 	"github.com/gilcrest/go-API-template/server/errorHandler"
-	"github.com/gilcrest/go-API-template/server/response"
+	"github.com/gilcrest/httplog"
 )
 
 // CreateClientHandler is used to create a new client (aka app)
@@ -116,7 +116,7 @@ func newClientResponse(ctx context.Context, c *auth.Client) (*auth.ClientRespons
 	cr.ServerToken = c.ServerToken()
 	cr.DMLTime = c.DMLTime.Unix()
 
-	aud, err := response.NewAudit(ctx)
+	aud, err := httplog.NewAudit(ctx, nil)
 	if err != nil {
 		return nil, errorHandler.HTTPErr{
 			Code: http.StatusInternalServerError,

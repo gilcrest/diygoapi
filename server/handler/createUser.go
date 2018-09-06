@@ -6,12 +6,11 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/gilcrest/go-API-template/server/response"
-
 	"github.com/gilcrest/go-API-template/appuser"
 	"github.com/gilcrest/go-API-template/db"
 	"github.com/gilcrest/go-API-template/env"
 	"github.com/gilcrest/go-API-template/server/errorHandler"
+	"github.com/gilcrest/httplog"
 )
 
 // CreateUser creates a user in the database
@@ -135,7 +134,7 @@ func CreateUser(env *env.Env, w http.ResponseWriter, req *http.Request) error {
 // to Unix time
 func newCreateUserResponse(ctx context.Context, usr *appuser.User) (*appuser.CreateUserResponse, error) {
 
-	aud, err := response.NewAudit(ctx)
+	aud, err := httplog.NewAudit(ctx, nil)
 	if err != nil {
 		return nil, errorHandler.HTTPErr{
 			Code: http.StatusInternalServerError,
