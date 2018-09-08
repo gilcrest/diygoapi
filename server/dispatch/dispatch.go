@@ -49,9 +49,12 @@ func Dispatch(env *env.Env, rtr *mux.Router) *mux.Router {
 	// match only POST requests on /api/login
 	rtr.Handle("/client",
 		httplog.Adapt(eh.ErrHandler{Env: env, H: handler.CreateClientHandler},
-			httplog.HTTPLog(log, logdb, nil))).
+			httplog.LogAdapter(log, logdb, nil))).
 		Methods("POST").
 		Headers("Content-Type", "application/json")
+
+	// rtr.HandleFunc("/client",
+	// httplog.Log()
 
 	return rtr
 }
