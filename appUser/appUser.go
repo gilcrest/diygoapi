@@ -8,7 +8,6 @@ import (
 	"net/mail"
 	"time"
 
-	"github.com/gilcrest/go-API-template/env"
 	"github.com/gilcrest/go-API-template/errors"
 	"github.com/gilcrest/httplog"
 	"github.com/rs/zerolog"
@@ -17,7 +16,7 @@ import (
 
 // ErrNoUser is an error when a user is passed
 // that does not exist in the db
-var ErrNoUser = errors.Str("User does not exixt")
+var ErrNoUser = errors.Str("User does not exist")
 
 // User represents an application user.  A user can access multiple systems.
 // The User-Application relationship is kept elsewhere...
@@ -58,13 +57,7 @@ type CreateUserResponse struct {
 
 // NewUser constructor performs basic service validations
 //  and wires request data into User business object
-func NewUser(ctx context.Context, env *env.Env, cur *CreateUserRequest) (*User, error) {
-
-	// Get a new logger instance
-	log := env.Logger
-
-	log.Debug().Msg("Start handler.NewUser")
-	defer log.Debug().Msg("Finish handler.NewUser")
+func NewUser(ctx context.Context, cur *CreateUserRequest) (*User, error) {
 
 	// declare a new instance of appuser.User
 	usr := new(User)
@@ -73,7 +66,7 @@ func NewUser(ctx context.Context, env *env.Env, cur *CreateUserRequest) (*User, 
 	if err != nil {
 		return nil, err
 	}
-	err = usr.setPassword(ctx, env, cur.Password)
+	err = usr.setPassword(ctx, cur.Password)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +128,7 @@ func (u *User) Password() string {
 	return u.password
 }
 
-func (u *User) setPassword(ctx context.Context, env *env.Env, password string) error {
+func (u *User) setPassword(ctx context.Context, password string) error {
 
 	if password == "" {
 		return errors.Str("Password is mandatory")
