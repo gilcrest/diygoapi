@@ -34,7 +34,7 @@ type Datastore struct {
 
 // BeginTx begins a *sql.Tx for the given db
 func (ds Datastore) BeginTx(ctx context.Context, opts *sql.TxOptions, n name) (*sql.Tx, error) {
-	const op errors.Op = "db.Datastore.BeginTx"
+	const op errors.Op = "datastore.Datastore.BeginTx"
 
 	switch n {
 	case AppDB:
@@ -60,7 +60,7 @@ func (ds Datastore) BeginTx(ctx context.Context, opts *sql.TxOptions, n name) (*
 
 // DB returns an initialized sql.DB given a database name
 func (ds Datastore) DB(n name) (*sql.DB, error) {
-	const op errors.Op = "db.Datastore.DB"
+	const op errors.Op = "datastore.Datastore.DB"
 
 	switch n {
 	case AppDB:
@@ -85,7 +85,7 @@ func (ds Datastore) DB(n name) (*sql.DB, error) {
 // would have a separate method to start that connection pool up and
 // pass it, but since this is just an example....
 func NewDatastore() (*Datastore, error) {
-	const op errors.Op = "db.NewDatastore"
+	const op errors.Op = "datastore.NewDatastore"
 
 	// Get a mainDB object (PostgreSQL)
 	mdb, err := newMainDB()
@@ -104,7 +104,7 @@ func NewDatastore() (*Datastore, error) {
 
 // NewMainDB returns an open database handle of 0 or more underlying connections
 func newMainDB() (*sql.DB, error) {
-	const op errors.Op = "db.newMainDB"
+	const op errors.Op = "datastore.newMainDB"
 
 	// Get Database connection credentials from environment variables
 	dbName := os.Getenv("PG_DBNAME_TEST")
