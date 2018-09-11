@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/gilcrest/go-API-template/errors"
-	"github.com/gilcrest/httplog"
 	"github.com/rs/zerolog"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -30,73 +29,6 @@ type User struct {
 	updateClientID  string
 	updateUserID    string
 	updateTimestamp time.Time
-}
-
-// CreateUserRequest is the expected service request fields
-type CreateUserRequest struct {
-	Username     string `json:"username"`
-	Password     string `json:"password"`
-	MobileID     string `json:"mobile_id"`
-	Email        string `json:"email"`
-	FirstName    string `json:"first_name"`
-	LastName     string `json:"last_name"`
-	UpdateUserID string `json:"udpate_user_id"`
-}
-
-// CreateUserResponse is the expected service response fields
-type CreateUserResponse struct {
-	Username       string         `json:"username"`
-	MobileID       string         `json:"mobile_id"`
-	Email          string         `json:"email"`
-	FirstName      string         `json:"first_name"`
-	LastName       string         `json:"last_name"`
-	UpdateUserID   string         `json:"update_user_id"`
-	UpdateUnixTime int64          `json:"created"`
-	Audit          *httplog.Audit `json:"audit"`
-}
-
-// NewUser constructor performs basic service validations
-//  and wires request data into User business object
-func NewUser(ctx context.Context, cur *CreateUserRequest) (*User, error) {
-
-	// declare a new instance of appuser.User
-	usr := new(User)
-
-	err := usr.SetUsername(cur.Username)
-	if err != nil {
-		return nil, err
-	}
-	err = usr.setPassword(ctx, cur.Password)
-	if err != nil {
-		return nil, err
-	}
-	err = usr.SetMobileID(cur.MobileID)
-	if err != nil {
-		return nil, err
-	}
-	err = usr.SetEmail(cur.Email)
-	if err != nil {
-		return nil, err
-	}
-	err = usr.SetFirstName(cur.FirstName)
-	if err != nil {
-		return nil, err
-	}
-	err = usr.SetLastName(cur.LastName)
-	if err != nil {
-		return nil, err
-	}
-	err = usr.SetUpdateClientID("client a")
-	if err != nil {
-		return nil, err
-	}
-	err = usr.SetUpdateUserID(cur.UpdateUserID)
-	if err != nil {
-		return nil, err
-	}
-
-	return usr, nil
-
 }
 
 // Username is a getter for User.username
@@ -128,7 +60,8 @@ func (u *User) Password() string {
 	return u.password
 }
 
-func (u *User) setPassword(ctx context.Context, password string) error {
+// SetPassword is a setter for password
+func (u *User) SetPassword(ctx context.Context, password string) error {
 
 	if password == "" {
 		return errors.Str("Password is mandatory")

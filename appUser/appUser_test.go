@@ -34,7 +34,7 @@ func TestCreate(t *testing.T) {
 	cur.UpdateUserID = "gilcrest"
 
 	// Creates a new instance of the appuser.User struct type
-	inputUsr, err := appuser.NewUser(ctx, env, cur)
+	inputUsr, err := appuser.NewUser(ctx, cur)
 	if err != nil {
 		t.Errorf("Error committing tx, err = %s", err)
 	}

@@ -9,56 +9,43 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/gilcrest/go-API-template/appuser"
+	"github.com/gilcrest/httplog"
 	"github.com/rs/zerolog/log"
 )
 
-func main() {
-
-	// Initialize an empty context (context.Background()) and then add a
-	//  timeout to it
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	// use the Parse method of the URL struct to return a properly formed
-	//  URL struct
-	u, err := url.Parse("http://127.0.0.1:8080/")
-	if err != nil {
-		log.Fatal().Err(err)
-	}
-
-	// Initialize the UserClient struct with the formed URL from above and a pointer to
-	//  then default http client in the http package
-	clt := UserClient{BaseURL: u, UserAgent: "Gilcrest", HTTPClient: http.DefaultClient}
-
-	// Initialize an instance of appuser.User
-	usr := appuser.User{Username: "repoMan", MobileID: "(617) 302-7777", Email: "repoman@alwaysintense.com", FirstName: "Otto", LastName: "Maddox"}
-
-	// clt.Create does the actual http POST to the endpoint to create an application user
-	user, err := clt.Create(ctx, &usr)
-	if err != nil {
-		if err == context.DeadlineExceeded {
-			log.Fatal().
-				Err(err).
-				Str("Timeout", "Response timed out")
-		}
-		log.Fatal().Err(err)
-	}
-	log.Print(user)
-}
-
 // UserClient struct type holds the information about
 // the REST API we are going to consume
-type UserClient struct {
-	BaseURL   *url.URL
-	UserAgent string
-
+type userClient struct {
+	BaseURL    *url.URL
+	UserAgent  string
 	HTTPClient *http.Client
 }
 
+// request is the expected service request fields
+type request struct {
+	Username  string `json:"username"`
+	Password  string `json:"password"`
+	MobileID  string `json:"mobile_id"`
+	Email     string `json:"email"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+}
+
+// response is the expected service response fields
+type response struct {
+	Username       string         `json:"username"`
+	MobileID       string         `json:"mobile_id"`
+	Email          string         `json:"email"`
+	FirstName      string         `json:"first_name"`
+	LastName       string         `json:"last_name"`
+	UpdateUserID   string         `json:"update_user_id"`
+	UpdateUnixTime int64          `json:"created"`
+	Audit          *httplog.Audit `json:"audit"`
+}
+
 // Create method sets up the request, then calls the do method of said request
-//  and returns the appuser.User returned in the response body
-func (c *UserClient) Create(ctx context.Context, body *appuser.User) (*appuser.User, error) {
+// and returns the response body
+func (c *userClient) Create(ctx context.Context, body *request) (*response, error) {
 
 	// get a new http.Request struct from newRequest function
 	req, err := c.newRequest("POST", "/api/v1/appuser", body)
@@ -66,7 +53,7 @@ func (c *UserClient) Create(ctx context.Context, body *appuser.User) (*appuser.U
 		return nil, err
 	}
 
-	var respBody *appuser.User
+	respBody := new(response)
 
 	_, err = c.do(ctx, req, &respBody)
 
@@ -75,7 +62,7 @@ func (c *UserClient) Create(ctx context.Context, body *appuser.User) (*appuser.U
 
 // newRequest generates an http.Request struct
 // which will be used in the subsequent httpClient.Do method
-func (c *UserClient) newRequest(method, path string, body interface{}) (*http.Request, error) {
+func (c *userClient) newRequest(method, path string, body interface{}) (*http.Request, error) {
 
 	// relative Path
 	rel := &url.URL{Path: path}
@@ -122,10 +109,10 @@ func (c *UserClient) newRequest(method, path string, body interface{}) (*http.Re
 	return req, nil
 }
 
-func (c *UserClient) do(ctx context.Context, req *http.Request, v interface{}) (*http.Response, error) {
+func (c *userClient) do(ctx context.Context, req *http.Request, v interface{}) (*http.Response, error) {
 
 	// Take the http.Request and change it's context to the context
-	//  passed int the parameter
+	// passed into the parameter
 	req = req.WithContext(ctx)
 
 	// Send the http request to the server and receive a response
@@ -144,4 +131,43 @@ func (c *UserClient) do(ctx context.Context, req *http.Request, v interface{}) (
 	err = json.NewDecoder(resp.Body).Decode(v)
 
 	return resp, err
+}
+
+func main() {
+
+	// Initialize an empty context (context.Background()) and then add a
+	// timeout to it
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// use the Parse method of the URL struct to return a properly formed
+	//  URL struct
+	u, err := url.Parse("http://127.0.0.1:8080/")
+	if err != nil {
+		log.Fatal().Err(err)
+	}
+
+	// Initialize the UserClient struct with the formed URL from above and a pointer to
+	//  then default http client in the http package
+	client := userClient{BaseURL: u, UserAgent: "gilcrest", HTTPClient: http.DefaultClient}
+
+	usr := new(request)
+	usr.Username = "repoMan"
+	usr.Password = "wearYourSeatbelt"
+	usr.MobileID = "(617) 302-7777"
+	usr.Email = "repoman@alwaysintense.com"
+	usr.FirstName = "Otto"
+	usr.LastName = "Maddox"
+
+	// clt.Create does the actual http POST to the endpoint to create an application user
+	user, err := client.Create(ctx, usr)
+	if err != nil {
+		if err == context.DeadlineExceeded {
+			log.Fatal().
+				Err(err).
+				Str("Timeout", "Response timed out")
+		}
+		log.Fatal().Err(err)
+	}
+	log.Print(user)
 }

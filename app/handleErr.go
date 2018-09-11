@@ -1,11 +1,11 @@
-package errorHandler
+package app
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 
-	"github.com/gilcrest/go-API-template/env"
+	"github.com/gilcrest/go-API-template/errors"
+	"github.com/rs/zerolog/log"
 )
 
 // Error represents a handler error. It provides methods for a HTTP status
@@ -30,7 +30,7 @@ func (hse HTTPErr) Error() string {
 
 // SetErr creates an error type and adds it to the struct
 func (hse *HTTPErr) SetErr(s string) {
-	hse.Err = errors.New(s)
+	hse.Err = errors.Str(s)
 }
 
 // ErrType returns a string error type/code
@@ -52,23 +52,15 @@ type svcError struct {
 	Message string `json:"message"`
 }
 
-// The ErrHandler struct that takes a configured Env and a function matching
-// our useful signature.
-type ErrHandler struct {
-	Env *env.Env
-	H   func(e *env.Env, w http.ResponseWriter, r *http.Request) error
+type handleErr struct {
+	H func(w http.ResponseWriter, r *http.Request) error
 }
 
 // ServeHTTP allows Handler type to satisfy the http.Handler interface
-func (h ErrHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h handleErr) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	const op errors.Op = "app.handleErr.ServeHTTP"
 
-	// Get a new logger instance
-	log := h.Env.Logger
-
-	log.Debug().Msg("Start Handler.ServeHTTP")
-	defer log.Debug().Msg("Finish Handler.ServeHTTP")
-
-	err := h.H(h.Env, w, r)
+	err := h.H(w, r)
 
 	if err != nil {
 		// We perform a "type switch" https://tour.golang.org/methods/16

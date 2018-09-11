@@ -1,4 +1,4 @@
-package db
+package datastore
 
 import (
 	"context"
@@ -30,6 +30,53 @@ type Datastore struct {
 	mainDB  *sql.DB
 	logDB   *sql.DB
 	cacheDB *redis.Pool
+}
+
+// BeginTx begins a *sql.Tx for the given db
+func (ds Datastore) BeginTx(ctx context.Context, opts *sql.TxOptions, n name) (*sql.Tx, error) {
+	const op errors.Op = "db.Datastore.BeginTx"
+
+	switch n {
+	case AppDB:
+		// Calls the BeginTx method of the mainDb opened database
+		mtx, err := ds.mainDB.BeginTx(ctx, opts)
+		if err != nil {
+			return nil, errors.E(op, err)
+		}
+
+		return mtx, nil
+	case LogDB:
+		// Calls the BeginTx method of the mogDB opened database
+		ltx, err := ds.logDB.BeginTx(ctx, opts)
+		if err != nil {
+			return nil, errors.E(op, err)
+		}
+
+		return ltx, nil
+	default:
+		return nil, errors.E(op, "Unexpected Database Name")
+	}
+}
+
+// DB returns an initialized sql.DB given a database name
+func (ds Datastore) DB(n name) (*sql.DB, error) {
+	const op errors.Op = "db.Datastore.DB"
+
+	switch n {
+	case AppDB:
+		if ds.mainDB == nil {
+			return nil, errors.E(op, "AppDB has not been initialized")
+		}
+		return ds.mainDB, nil
+	case LogDB:
+		if ds.logDB == nil {
+			return nil, errors.E(op, "LogDB has not been initialized")
+		}
+		return ds.logDB, nil
+	default:
+		return nil, errors.E(op, "Unexpected Database Name")
+	}
+
 }
 
 // NewDatastore initializes the datastore struct
@@ -86,85 +133,4 @@ func newMainDB() (*sql.DB, error) {
 		return nil, err
 	}
 	return db, nil
-}
-
-// NewMainDB returns an pool of redis connections from
-// which an application can get a new connection
-func newCacheDb() *redis.Pool {
-	const op errors.Op = "db.newCacheDb"
-	return &redis.Pool{
-		// Maximum number of idle connections in the pool.
-		MaxIdle: 80,
-		// max number of connections
-		MaxActive: 12000,
-		// Dial is an application supplied function for creating and
-		// configuring a connection.
-		Dial: func() (redis.Conn, error) {
-			c, err := redis.Dial("tcp", ":6379")
-			if err != nil {
-				panic(err.Error())
-			}
-			return c, err
-		},
-	}
-}
-
-// RedisConn gets a connection from ds.cacheDB redis cache
-func (ds Datastore) RedisConn() (redis.Conn, error) {
-	const op errors.Op = "db.RedisConn"
-
-	conn := ds.cacheDB.Get()
-
-	err := conn.Err()
-	if err != nil {
-		return nil, err
-	}
-	return conn, nil
-}
-
-// BeginTx begins a *sql.Tx for the given db
-func (ds Datastore) BeginTx(ctx context.Context, opts *sql.TxOptions, n name) (*sql.Tx, error) {
-	const op errors.Op = "db.Datastore.BeginTx"
-
-	switch n {
-	case AppDB:
-		// Calls the BeginTx method of the mainDb opened database
-		mtx, err := ds.mainDB.BeginTx(ctx, opts)
-		if err != nil {
-			return nil, errors.E(op, err)
-		}
-
-		return mtx, nil
-	case LogDB:
-		// Calls the BeginTx method of the mogDB opened database
-		ltx, err := ds.logDB.BeginTx(ctx, opts)
-		if err != nil {
-			return nil, errors.E(op, err)
-		}
-
-		return ltx, nil
-	default:
-		return nil, errors.E(op, "Unexpected Database Name")
-	}
-}
-
-// DB returns an initialized sql.DB given a database name
-func (ds Datastore) DB(n name) (*sql.DB, error) {
-	const op errors.Op = "db.Datastore.DB"
-
-	switch n {
-	case AppDB:
-		if ds.mainDB == nil {
-			return nil, errors.E(op, "AppDB has not been initialized")
-		}
-		return ds.mainDB, nil
-	case LogDB:
-		if ds.logDB == nil {
-			return nil, errors.E(op, "LogDB has not been initialized")
-		}
-		return ds.logDB, nil
-	default:
-		return nil, errors.E(op, "Unexpected Database Name")
-	}
-
 }
