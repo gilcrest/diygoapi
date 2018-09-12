@@ -11,6 +11,8 @@ import (
 
 func main() {
 
+	// flag allows for setting logging level, e.g. to run the server
+	// with level set to debug, it'd be: ./server loglvl=debug
 	loglvlFlag := flag.String("loglvl", "error", "sets log level")
 
 	flag.Parse()
