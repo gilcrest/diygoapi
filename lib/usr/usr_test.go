@@ -1,5 +1,5 @@
 // appuser_test validates the appuser package methods and objects
-package appuser_test
+package usr_test
 
 import (
 	"context"

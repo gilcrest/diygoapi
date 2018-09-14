@@ -7,7 +7,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/gilcrest/go-API-template/errors"
+	"github.com/gilcrest/go-API-template/lib/errors"
 	"github.com/gomodule/redigo/redis"
 	"github.com/rs/zerolog/log"
 

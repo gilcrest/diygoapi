@@ -5,8 +5,8 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/gilcrest/go-API-template/appuser"
 	"github.com/gilcrest/go-API-template/datastore"
+	"github.com/gilcrest/go-API-template/lib/usr"
 	"github.com/gilcrest/httplog"
 )
 
@@ -58,8 +58,8 @@ func (s *server) handleUserCreate(w http.ResponseWriter, req *http.Request) erro
 	}
 	defer req.Body.Close()
 
-	// declare a new instance of appuser.User
-	usr := new(appuser.User)
+	// declare a new instance of usr.User
+	usr := new(usr.User)
 
 	err = usr.SetUsername(rqst.Username)
 	if err != nil {
@@ -126,7 +126,7 @@ func (s *server) handleUserCreate(w http.ResponseWriter, req *http.Request) erro
 		}
 	}
 
-	// Call the create method of the appuser object to validate data and write to db
+	// Call the create method of the User object to validate data and write to db
 	err = usr.Create(ctx, log)
 	if err != nil {
 		return HTTPErr{

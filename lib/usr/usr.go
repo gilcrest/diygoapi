@@ -1,6 +1,6 @@
-// Package appuser has the User type and associated methods to
+// Package usr has the User type and associated methods to
 // create, modify and delete application users
-package appuser
+package usr
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"net/mail"
 	"time"
 
-	"github.com/gilcrest/go-API-template/errors"
+	"github.com/gilcrest/go-API-template/lib/errors"
 	"github.com/rs/zerolog"
 	"golang.org/x/crypto/bcrypt"
 )
