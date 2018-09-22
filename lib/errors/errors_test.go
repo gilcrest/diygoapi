@@ -11,8 +11,6 @@ import (
 	"os"
 	"os/exec"
 	"testing"
-
-	"github.com/gilcrest/fide/common"
 )
 
 func TestDebug(t *testing.T) {
@@ -26,7 +24,7 @@ func TestDebug(t *testing.T) {
 }
 func TestMarshal(t *testing.T) {
 	path := PathName("jane@doe.com/file")
-	user := common.UserName("joe@blow.com")
+	user := UserName("joe@blow.com")
 	// Single error. No user is set, so we will have a zero-length field inside.
 	e1 := E(Op("Get"), path, IO, "network unreachable")
 	// Nested error.
@@ -60,7 +58,7 @@ func TestSeparator(t *testing.T) {
 	Separator = ":: "
 	// Same pattern as above.
 	path := PathName("jane@doe.com/file")
-	user := common.UserName("joe@blow.com")
+	user := UserName("joe@blow.com")
 	// Single error. No user is set, so we will have a zero-length field inside.
 	e1 := E(Op("Get"), path, IO, "network unreachable")
 	// Nested error.
@@ -100,8 +98,8 @@ type matchTest struct {
 const (
 	path1 = PathName("john@doe.io/x")
 	path2 = PathName("john@doe.io/y")
-	john  = common.UserName("john@doe.io")
-	jane  = common.UserName("jane@doe.io")
+	john  = UserName("john@doe.io")
+	jane  = UserName("jane@doe.io")
 )
 const (
 	op  = Op("Op")

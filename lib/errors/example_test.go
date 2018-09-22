@@ -9,13 +9,12 @@ package errors_test
 import (
 	"fmt"
 
-	"github.com/gilcrest/fide/common"
-	"github.com/gilcrest/fide/errors"
+	"github.com/gilcrest/go-API-template/lib/errors"
 )
 
 func ExampleError() {
 	path := errors.PathName("jane@doe.com/file")
-	user := common.UserName("joe@blow.com")
+	user := errors.UserName("joe@blow.com")
 	// Single error.
 	e1 := errors.E(errors.Op("Get"), path, errors.IO, "network unreachable")
 	fmt.Println("\nSimple error:")
@@ -35,7 +34,7 @@ func ExampleError() {
 }
 func ExampleMatch() {
 	path := errors.PathName("jane@doe.com/file")
-	user := common.UserName("joe@blow.com")
+	user := errors.UserName("joe@blow.com")
 	err := errors.Str("network unreachable")
 	// Construct an error, one we pretend to have received from a test.
 	got := errors.E(errors.Op("Get"), path, user, errors.IO, err)

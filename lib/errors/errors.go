@@ -16,8 +16,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// Username is a string representing a user
-type Username string
+// UserName is a string representing a user
+type UserName string
 
 // Error is the type that implements the error interface.
 // It contains a number of fields, each of different type.
@@ -26,7 +26,7 @@ type Error struct {
 	// Path is the path name of the item being accessed.
 	Path PathName
 	// User is the Upspin name of the user attempting the operation.
-	User Username
+	User UserName
 	// Op is the operation being performed, usually the name of the method
 	// being invoked (Get, Put, etc.). It should not contain an at sign @.
 	Op Op
@@ -90,6 +90,9 @@ const (
 	CannotDecrypt             // No wrapped key for user with read access.
 	Transient                 // A transient error.
 	BrokenLink                // Link target does not exist.
+	Database                  // Error from database.
+	Validation                // Input validation error.
+	Unanticipated             // Unanticipated error.
 )
 
 func (k Kind) String() string {
@@ -122,6 +125,12 @@ func (k Kind) String() string {
 		return `no wrapped key for user; owner must "upspin share -fix"`
 	case Transient:
 		return "transient error"
+	case Database:
+		return "database error"
+	case Validation:
+		return "input validation error"
+	case Unanticipated:
+		return "unanticipated error"
 	}
 	return "unknown error kind"
 }
@@ -166,7 +175,7 @@ func E(args ...interface{}) error {
 		switch arg := arg.(type) {
 		case PathName:
 			e.Path = arg
-		case Username:
+		case UserName:
 			e.User = arg
 		case Op:
 			e.Op = arg
@@ -182,7 +191,7 @@ func E(args ...interface{}) error {
 					}
 				} else {
 					if e.User == "" { // Don't overwrite a valid user.
-						e.User = Username(arg)
+						e.User = UserName(arg)
 					}
 				}
 				continue
@@ -368,7 +377,7 @@ func (e *Error) UnmarshalBinary(b []byte) error {
 	}
 	data, b = getBytes(b)
 	if data != nil {
-		e.User = Username(data)
+		e.User = UserName(data)
 	}
 	data, b = getBytes(b)
 	if data != nil {

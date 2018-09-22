@@ -13,13 +13,13 @@ import (
 type Error interface {
 	error
 	Status() int
-	ErrType() string
+	ErrKind() string
 }
 
 // HTTPErr represents an error with an associated HTTP status code.
 type HTTPErr struct {
 	Code int
-	Type string
+	Kind errors.Kind
 	Err  error
 }
 
@@ -33,9 +33,9 @@ func (hse *HTTPErr) SetErr(s string) {
 	hse.Err = errors.Str(s)
 }
 
-// ErrType returns a string error type/code
-func (hse HTTPErr) ErrType() string {
-	return hse.Type
+// ErrKind returns a string denoting the "kind" of error
+func (hse HTTPErr) ErrKind() string {
+	return hse.Kind.String()
 }
 
 // Status Returns an HTTP status code.
@@ -48,19 +48,13 @@ type errResponse struct {
 }
 
 type svcError struct {
-	Type    string `json:"type"`
+	Kind    string `json:"kind"`
 	Message string `json:"message"`
 }
 
-type handleErr struct {
-	H func(w http.ResponseWriter, r *http.Request) error
-}
-
 // ServeHTTP allows Handler type to satisfy the http.Handler interface
-func (h handleErr) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	const op errors.Op = "app.handleErr.ServeHTTP"
-
-	err := h.H(w, r)
+func httpError(w http.ResponseWriter, err error) {
+	const op errors.Op = "app.httpError"
 
 	if err != nil {
 		// We perform a "type switch" https://tour.golang.org/methods/16
@@ -75,7 +69,7 @@ func (h handleErr) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 			er := errResponse{
 				Error: svcError{
-					Type:    e.ErrType(),
+					Kind:    e.ErrKind(),
 					Message: e.Error(),
 				},
 			}
@@ -91,7 +85,7 @@ func (h handleErr) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			cd := http.StatusInternalServerError
 			er := errResponse{
 				Error: svcError{
-					Type:    "unknown_error",
+					Kind:    errors.Unanticipated.String(),
 					Message: "Unexpected error - contact support",
 				},
 			}
@@ -104,5 +98,4 @@ func (h handleErr) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, string(errJSON), cd)
 		}
 	}
-
 }
