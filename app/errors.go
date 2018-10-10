@@ -52,7 +52,12 @@ type svcError struct {
 	Message string `json:"message"`
 }
 
-// ServeHTTP allows Handler type to satisfy the http.Handler interface
+// httpError takes a writer and an error, performs a type switch to
+// determine if the type is an HTTPError (which meets the Error interface
+// as defined in this package), then sends the Error as a response to the
+// client. If the type is not meet the Error interface as defined in this
+// package, then a proper error is still formed and sent to the client,
+// however, the Kind will be Unanticipated.
 func httpError(w http.ResponseWriter, err error) {
 	const op errors.Op = "app.httpError"
 
