@@ -35,12 +35,12 @@ Go-API-Template uses [httplog](https://github.com/gilcrest/httplog) to allow for
 
 ```json
 {
-    "username": "15",
-    "mobile_id": "1-800-repoman",
+    "username": "gopher",
+    "mobile_id": "617-445-2778",
     "email": "repoman@alwaysintense.com",
     "first_name": "Otto",
     "last_name": "Maddox",
-    "update_user_id": "chillcrest",
+    "update_user_id": "gilcrest",
     "created": 1539138260,
     "audit": {
         "id": "beum5l708qml02e3hvag",
@@ -69,7 +69,11 @@ For error responses, the api sends a simple structured JSON message in the respo
 }
 ```
 
-This is achieved by sending a custom `HTTPErr` error type as a parameter to the `httpError` function, which then writes then replies to the request using the `http.Error` function. The structure of HTTPErr is based on Matt Silverlock's blog post [here](https://elithrar.github.io/article/http-handler-error-handling-revisited/). You'll also note the use of constants from a custom lib/errors package. This is pretty much lifted straight from the [upspin.io](https://upspin.io/) project, with minor tweaks to suit `go-API-template` purposes.
+This is achieved by sending a custom `HTTPErr` error type as a parameter to the `httpError` function, which then writes then replies to the request using the `http.Error` function. The structure of `HTTPErr` is based on Matt Silverlock's blog post [here](https://elithrar.github.io/article/http-handler-error-handling-revisited/), but I ended up not using the wrapper/handler technique instead opting for a different approach. You'll also note the use of constants from a custom lib/errors package. This is pretty much lifted straight from the [upspin.io](https://upspin.io/) project, with minor tweaks to suit `go-API-template` purposes.
+
+The package makes error handling fun - you’ll always return a pretty good looking error and setting up errors is pretty easy.
+
+When creating errors within your app, you should not have to setup every error as an `HTTPErr`— you can return "normal" errors lower down in the code and, depending on how you organize your code, you can catch the error and form the `HTTPErr` at the highest level so you’re not having to deal with populating a cumbersome struct all throughout your code. The below example is taken from the handler, which in this case is the highest level. In this case, any errors returned from the SetUsername method can be qualified as validation errors and the error caught from this method would be a "normal" Go error.
 
 ```go
     err = usr.SetUsername(rqst.Username)
@@ -84,9 +88,6 @@ This is achieved by sending a custom `HTTPErr` error type as a parameter to the 
     }
 ```
 
-The package makes error handling fun - you’ll always return a pretty good looking error and setting up errors is pretty easy.
-
-When creating errors within your app, you should not have to setup every error as an HTTPErr — you can return normal errors lower down in the code and, depending on how you organize your code, you can catch the error and form the HTTPErr at the highest level so you’re not having to deal with populating a cumbersome struct all throughout your code.
 
 ----
 
