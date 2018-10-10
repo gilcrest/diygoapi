@@ -206,11 +206,15 @@ func (s *server) handleUserCreate() http.HandlerFunc {
 			}
 		}
 
-		resp := new(response)
+		aopt := new(httplog.AuditOpts)
+		aopt.Host = true
+		aopt.Port = true
+		aopt.Path = true
+		aopt.Query = true
 
 		// If we successfully committed the db transaction, we can consider this
 		// transaction successful and return a response with the response body
-		aud, err := httplog.NewAudit(ctx, nil)
+		aud, err := httplog.NewAudit(ctx, aopt)
 		if err != nil {
 			err = HTTPErr{
 				Code: http.StatusInternalServerError,
@@ -221,6 +225,7 @@ func (s *server) handleUserCreate() http.HandlerFunc {
 			return
 		}
 
+		resp := new(response)
 		resp.Audit = aud
 		resp.Username = usr.Username()
 		resp.MobileID = usr.MobileID()
