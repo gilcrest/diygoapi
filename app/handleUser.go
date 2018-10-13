@@ -206,14 +206,19 @@ func (s *server) handleUserCreate() http.HandlerFunc {
 			}
 		}
 
+		// If we successfully committed the db transaction, we can consider this
+		// transaction successful and return a response with the response body
+
+		// create new AuditOpts struct and set options to true that you
+		// want to see in the response body (Request ID is always present)
 		aopt := new(httplog.AuditOpts)
 		aopt.Host = true
 		aopt.Port = true
 		aopt.Path = true
 		aopt.Query = true
 
-		// If we successfully committed the db transaction, we can consider this
-		// transaction successful and return a response with the response body
+		// get a new httplog.Audit struct from NewAudit using the
+		// above set options and request context
 		aud, err := httplog.NewAudit(ctx, aopt)
 		if err != nil {
 			err = HTTPErr{
@@ -225,6 +230,8 @@ func (s *server) handleUserCreate() http.HandlerFunc {
 			return
 		}
 
+		// create a new response struct and set Audit and other
+		// relevant elements
 		resp := new(response)
 		resp.Audit = aud
 		resp.Username = usr.Username()
@@ -235,7 +242,7 @@ func (s *server) handleUserCreate() http.HandlerFunc {
 		resp.UpdateUserID = usr.UpdateUserID()
 		resp.UpdateUnixTime = usr.UpdateTimestamp().Unix()
 
-		// Encode usr struct to JSON for the response body
+		// Encode response struct to JSON for the response body
 		json.NewEncoder(w).Encode(*resp)
 		if err != nil {
 			err = HTTPErr{
