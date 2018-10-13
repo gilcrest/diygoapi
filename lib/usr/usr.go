@@ -167,7 +167,7 @@ func (u *User) Create(ctx context.Context, log zerolog.Logger) error {
 
 	// Ideally this would be set from the user id adding the resource,
 	// but since I haven't implemented that yet, using this hack
-	u.updateUserID = "chillcrest"
+	u.updateUserID = "gilcrest"
 
 	return nil
 }
