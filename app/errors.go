@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/gilcrest/go-API-template/lib/errors"
+	"github.com/gilcrest/errors"
 	"github.com/rs/zerolog/log"
 )
 

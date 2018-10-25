@@ -1,9 +1,8 @@
 package datastore
 
 import (
-	"github.com/gilcrest/go-API-template/lib/errors"
+	"github.com/gilcrest/errors"
 	"github.com/gomodule/redigo/redis"
-
 	_ "github.com/lib/pq" // pq driver calls for blank identifier
 )
 

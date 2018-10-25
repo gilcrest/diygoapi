@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gilcrest/go-API-template/datastore"
-	"github.com/gilcrest/go-API-template/lib/errors"
+	"github.com/gilcrest/errors"
 	"github.com/gilcrest/go-API-template/lib/usr"
 	"github.com/gilcrest/httplog"
 )

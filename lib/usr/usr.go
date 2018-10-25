@@ -8,7 +8,7 @@ import (
 	"net/mail"
 	"time"
 
-	"github.com/gilcrest/go-API-template/lib/errors"
+	"github.com/gilcrest/errors"
 	"github.com/rs/zerolog"
 	"golang.org/x/crypto/bcrypt"
 )

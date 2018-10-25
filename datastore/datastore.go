@@ -7,11 +7,10 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/gilcrest/go-API-template/lib/errors"
+	"github.com/gilcrest/errors"
 	"github.com/gomodule/redigo/redis"
-	"github.com/rs/zerolog/log"
-
 	_ "github.com/lib/pq" // pq driver calls for blank identifier
+	"github.com/rs/zerolog/log"
 )
 
 // name defines database name
