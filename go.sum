@@ -2,6 +2,8 @@ github.com/gilcrest/errors v0.0.0-20181025144955-e5c317432bfd h1:a5GU5dkqr3Pb2nn
 github.com/gilcrest/errors v0.0.0-20181025144955-e5c317432bfd/go.mod h1:8IIeIoFzPksn6Nk8sjcSNCB+2TKd7h8yinC0hb2pauE=
 github.com/gilcrest/httplog v0.2.0 h1:uxXyNI6Rv8Si0sw3clkaSSXnqTnhkWC1hG3nP4vpIv0=
 github.com/gilcrest/httplog v0.2.0/go.mod h1:ZwyrWWSrFnTxSCm75xSHUB+330s7q0o8VIpQroAiayc=
+github.com/gilcrest/httplog v0.3.0 h1:KJqjSn8AoEcleE0TSZopW3Do2ssAGT+VQSJ5q8yCH/A=
+github.com/gilcrest/httplog v0.3.0/go.mod h1:ZwyrWWSrFnTxSCm75xSHUB+330s7q0o8VIpQroAiayc=
 github.com/gomodule/redigo v2.0.0+incompatible h1:K/R+8tc58AaqLkqG2Ol3Qk+DR/TlNuhuh457pBFPtt0=
 github.com/gomodule/redigo v2.0.0+incompatible/go.mod h1:B4C85qUVwatsJoIUNIfCRsp7qO0iAmpGFZ4EELWSbC4=
 github.com/gorilla/mux v1.6.2 h1:Pgr17XVTNXAk3q/r4CpKzC5xBM/qW1uVLV+IhRZpIIk=
@@ -16,3 +18,5 @@ github.com/rs/zerolog v1.9.1 h1:AjV/SFRF0+gEa6rSjkh0Eji/DnkrJKVpPho6SW5g4mU=
 github.com/rs/zerolog v1.9.1/go.mod h1:YbFCdg8HfsridGWAh22vktObvhZbQsZXe4/zB0OKkWU=
 golang.org/x/crypto v0.0.0-20181015023909-0c41d7ab0a0e h1:IzypfodbhbnViNUO/MEh0FzCUooG97cIGfdggUrUSyU=
 golang.org/x/crypto v0.0.0-20181015023909-0c41d7ab0a0e/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=
+golang.org/x/crypto v0.0.0-20181025213731-e84da0312774 h1:a4tQYYYuK9QdeO/+kEvNYyuR21S+7ve5EANok6hABhI=
+golang.org/x/crypto v0.0.0-20181025213731-e84da0312774/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=
