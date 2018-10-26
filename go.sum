@@ -1,5 +1,7 @@
 github.com/gilcrest/errors v0.0.0-20181025144955-e5c317432bfd h1:a5GU5dkqr3Pb2nnt15QeQHMSd1BiSzOezSr9/jnLCd0=
 github.com/gilcrest/errors v0.0.0-20181025144955-e5c317432bfd/go.mod h1:8IIeIoFzPksn6Nk8sjcSNCB+2TKd7h8yinC0hb2pauE=
+github.com/gilcrest/errors v0.1.0 h1:nZ9/4xLtB3wu3k+Iub2tJz9U542hvJUXQQm6LPbPykQ=
+github.com/gilcrest/errors v0.1.0/go.mod h1:8IIeIoFzPksn6Nk8sjcSNCB+2TKd7h8yinC0hb2pauE=
 github.com/gilcrest/httplog v0.2.0 h1:uxXyNI6Rv8Si0sw3clkaSSXnqTnhkWC1hG3nP4vpIv0=
 github.com/gilcrest/httplog v0.2.0/go.mod h1:ZwyrWWSrFnTxSCm75xSHUB+330s7q0o8VIpQroAiayc=
 github.com/gilcrest/httplog v0.3.0 h1:KJqjSn8AoEcleE0TSZopW3Do2ssAGT+VQSJ5q8yCH/A=

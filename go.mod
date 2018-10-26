@@ -1,7 +1,7 @@
 module github.com/gilcrest/go-API-template
 
 require (
-	github.com/gilcrest/errors v0.0.0-20181025144955-e5c317432bfd
+	github.com/gilcrest/errors v0.1.0
 	github.com/gilcrest/httplog v0.3.0
 	github.com/gomodule/redigo v2.0.0+incompatible
 	github.com/gorilla/mux v1.6.2
