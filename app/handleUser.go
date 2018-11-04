@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/gilcrest/go-API-template/datastore"
 	"github.com/gilcrest/errors"
+	"github.com/gilcrest/go-API-template/datastore"
 	"github.com/gilcrest/go-API-template/lib/usr"
 	"github.com/gilcrest/httplog"
 )
@@ -52,12 +52,12 @@ func (s *server) handleUserCreate() http.HandlerFunc {
 		err = json.NewDecoder(req.Body).Decode(&rqst)
 		defer req.Body.Close()
 		if err != nil {
-			err = HTTPErr{
+			err = errors.HTTPErr{
 				Code: http.StatusBadRequest,
 				Kind: errors.Invalid,
 				Err:  err,
 			}
-			httpError(w, err)
+			errors.HTTPError(w, err)
 			return
 		}
 
@@ -66,106 +66,106 @@ func (s *server) handleUserCreate() http.HandlerFunc {
 
 		err = usr.SetUsername(rqst.Username)
 		if err != nil {
-			err = HTTPErr{
+			err = errors.HTTPErr{
 				Code: http.StatusBadRequest,
 				Kind: errors.Validation,
 				Err:  err,
 			}
-			httpError(w, err)
+			errors.HTTPError(w, err)
 			return
 		}
 		err = usr.SetPassword(ctx, rqst.Password)
 		if err != nil {
-			err = HTTPErr{
+			err = errors.HTTPErr{
 				Code: http.StatusBadRequest,
 				Kind: errors.Validation,
 				Err:  err,
 			}
-			httpError(w, err)
+			errors.HTTPError(w, err)
 			return
 		}
 		err = usr.SetMobileID(rqst.MobileID)
 		if err != nil {
-			err = HTTPErr{
+			err = errors.HTTPErr{
 				Code: http.StatusBadRequest,
 				Kind: errors.Validation,
 				Err:  err,
 			}
-			httpError(w, err)
+			errors.HTTPError(w, err)
 			return
 		}
 		err = usr.SetEmail(rqst.Email)
 		if err != nil {
-			err = HTTPErr{
+			err = errors.HTTPErr{
 				Code: http.StatusBadRequest,
 				Kind: errors.Validation,
 				Err:  err,
 			}
-			httpError(w, err)
+			errors.HTTPError(w, err)
 			return
 		}
 		err = usr.SetFirstName(rqst.FirstName)
 		if err != nil {
-			err = HTTPErr{
+			err = errors.HTTPErr{
 				Code: http.StatusBadRequest,
 				Kind: errors.Validation,
 				Err:  err,
 			}
-			httpError(w, err)
+			errors.HTTPError(w, err)
 			return
 		}
 		err = usr.SetLastName(rqst.LastName)
 		if err != nil {
-			err = HTTPErr{
+			err = errors.HTTPErr{
 				Code: http.StatusBadRequest,
 				Kind: errors.Validation,
 				Err:  err,
 			}
-			httpError(w, err)
+			errors.HTTPError(w, err)
 			return
 		}
 		err = usr.SetUpdateClientID("TBD")
 		if err != nil {
-			err = HTTPErr{
+			err = errors.HTTPErr{
 				Code: http.StatusBadRequest,
 				Kind: errors.Validation,
 				Err:  err,
 			}
-			httpError(w, err)
+			errors.HTTPError(w, err)
 			return
 		}
 		err = usr.SetUpdateUserID(rqst.UpdateUserID)
 		if err != nil {
-			err = HTTPErr{
+			err = errors.HTTPErr{
 				Code: http.StatusBadRequest,
 				Kind: errors.Validation,
 				Err:  err,
 			}
-			httpError(w, err)
+			errors.HTTPError(w, err)
 			return
 		}
 
 		// Call the create method of the User object to validate data and write to db
 		err = usr.Create(ctx, log)
 		if err != nil {
-			err = HTTPErr{
+			err = errors.HTTPErr{
 				Code: http.StatusBadRequest,
 				Kind: errors.Validation,
 				Err:  err,
 			}
-			httpError(w, err)
+			errors.HTTPError(w, err)
 			return
 		}
 
 		// get a new DB Tx
 		tx, err := s.ds.BeginTx(ctx, nil, datastore.AppDB)
 		if err != nil {
-			err = HTTPErr{
+			err = errors.HTTPErr{
 				Code: http.StatusBadRequest,
 				Kind: errors.Database,
 				Err:  err,
 			}
-			httpError(w, err)
+			errors.HTTPError(w, err)
 			return
 		}
 
@@ -173,35 +173,35 @@ func (s *server) handleUserCreate() http.HandlerFunc {
 		// to the database
 		err = usr.CreateDB(ctx, log, tx)
 		if err != nil {
-			err = HTTPErr{
+			err = errors.HTTPErr{
 				Code: http.StatusBadRequest,
 				Kind: errors.Database,
 				Err:  err,
 			}
-			httpError(w, err)
+			errors.HTTPError(w, err)
 			return
 		}
 
 		if !usr.UpdateTimestamp().IsZero() {
 			err := tx.Commit()
 			if err != nil {
-				err = HTTPErr{
+				err = errors.HTTPErr{
 					Code: http.StatusBadRequest,
 					Kind: errors.Database,
 					Err:  err,
 				}
-				httpError(w, err)
+				errors.HTTPError(w, err)
 				return
 			}
 		} else {
 			err = tx.Rollback()
 			if err != nil {
-				err = HTTPErr{
+				err = errors.HTTPErr{
 					Code: http.StatusBadRequest,
 					Kind: errors.Database,
 					Err:  err,
 				}
-				httpError(w, err)
+				errors.HTTPError(w, err)
 				return
 			}
 		}
@@ -221,12 +221,12 @@ func (s *server) handleUserCreate() http.HandlerFunc {
 		// above set options and request context
 		aud, err := httplog.NewAudit(ctx, aopt)
 		if err != nil {
-			err = HTTPErr{
+			err = errors.HTTPErr{
 				Code: http.StatusInternalServerError,
 				Kind: errors.Other,
 				Err:  err,
 			}
-			httpError(w, err)
+			errors.HTTPError(w, err)
 			return
 		}
 
@@ -245,12 +245,12 @@ func (s *server) handleUserCreate() http.HandlerFunc {
 		// Encode response struct to JSON for the response body
 		json.NewEncoder(w).Encode(*resp)
 		if err != nil {
-			err = HTTPErr{
+			err = errors.HTTPErr{
 				Code: http.StatusInternalServerError,
 				Kind: errors.Other,
 				Err:  err,
 			}
-			httpError(w, err)
+			errors.HTTPError(w, err)
 			return
 		}
 	}
