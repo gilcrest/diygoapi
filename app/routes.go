@@ -1,7 +1,6 @@
 package app
 
 import (
-	"github.com/gilcrest/auth"
 	"github.com/gilcrest/go-API-template/datastore"
 	"github.com/gilcrest/httplog"
 	"github.com/justinas/alice"
@@ -45,7 +44,7 @@ func (s *server) routes() error {
 	// (`func (http.Handler) http.Handler`)	- used with alice
 	// Also, match only POST requests with Content-Type header = application/json
 	s.router.Handle("/v1/alice/user",
-		alice.New(httplog.LogHandler(log, logdb, opts), auth.Authorize).
+		alice.New(httplog.LogHandler(log, logdb, opts), s.handleStdHeader).
 			ThenFunc(s.handleUserCreate())).
 		Methods("POST").
 		Headers("Content-Type", "application/json")
