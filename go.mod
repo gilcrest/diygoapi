@@ -1,7 +1,7 @@
 module github.com/gilcrest/go-API-template
 
 require (
-	github.com/gilcrest/auth v0.0.2
+	github.com/gilcrest/auth v0.1.0
 	github.com/gilcrest/errors v0.5.0
 	github.com/gilcrest/httplog v0.3.4
 	github.com/gilcrest/srvr v0.3.1

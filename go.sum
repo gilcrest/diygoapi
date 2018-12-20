@@ -2,6 +2,8 @@ cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMT
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
 github.com/gilcrest/auth v0.0.2 h1:5nR/4nZ9dP23nVaZZq1vy1t/beLiN58C/2SJWLuknj4=
 github.com/gilcrest/auth v0.0.2/go.mod h1:1J4E67b+IMzoqpnzmzz4TX/5hdhC2OcYwyv2gDVCx6I=
+github.com/gilcrest/auth v0.1.0 h1:n3+L6x38EObDQIt7Vk98Klh/cw5ZnyvFykJuUYSVutg=
+github.com/gilcrest/auth v0.1.0/go.mod h1:1J4E67b+IMzoqpnzmzz4TX/5hdhC2OcYwyv2gDVCx6I=
 github.com/gilcrest/date v0.1.0/go.mod h1:GWJItMJ7//n7fNttWOyn8i1xEfmfadASHRXPHHKbe8Y=
 github.com/gilcrest/errors v0.1.0/go.mod h1:8IIeIoFzPksn6Nk8sjcSNCB+2TKd7h8yinC0hb2pauE=
 github.com/gilcrest/errors v0.5.0 h1:vYj94RgAUK4RCwPpA0U77haHnvXahSbT5IXQhTNB++0=
