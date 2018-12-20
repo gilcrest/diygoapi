@@ -2,11 +2,11 @@ package main
 
 import (
 	"flag"
-	"log"
 	"net/http"
 
 	"github.com/gilcrest/go-API-template/app"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 func main() {
@@ -19,18 +19,18 @@ func main() {
 
 	loglevel := logLevel(loglvlFlag)
 
-	srv, err := app.NewServer(loglevel)
+	server, err := app.NewServer(loglevel)
 	if err != nil {
-		panic(err)
+		log.Fatal().Err(err).Msg("")
 	}
 
 	// handle all requests with the Gorilla router
-	http.Handle("/", srv.Router())
+	http.Handle("/", server.Router)
 
 	// ListenAndServe on port 8080, not specifying a particular IP address
 	// for this particular implementation
 	if err := http.ListenAndServe(":8080", nil); err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err).Msg("")
 	}
 }
 

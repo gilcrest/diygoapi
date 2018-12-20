@@ -1,73 +1,50 @@
 package app
 
 import (
-	"fmt"
-	"os"
+	"net/http"
 
-	"github.com/gilcrest/go-API-template/datastore"
-	"github.com/gorilla/mux"
+	"github.com/gilcrest/errors"
+	"github.com/gilcrest/srvr"
+	"github.com/gilcrest/srvr/datastore"
 	"github.com/rs/zerolog"
 )
 
-// Server struct stores common environment related items
-type server struct {
-	router *mux.Router
-	ds     *datastore.Datastore
-	logger zerolog.Logger
+// Server struct is a pointer to srvr.Server
+// allows additional local methods to be added
+type Server struct {
+	*srvr.Server
 }
 
-// NewServer initializes the Server struct
-func NewServer(lvl zerolog.Level) (*server, error) {
+// handleRespHeader middleware is used to add standard HTTP response headers
+func (s *Server) handleRespHeader(h http.Handler) http.Handler {
+	return http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Add("Content-Type", "application/json")
+			h.ServeHTTP(w, r) // call original
+		})
+}
 
-	// setup logger
-	log := newLogger(lvl)
+// NewServer is a constructor for the Server struct
+// Sets up the struct and registers routes
+func NewServer(lvl zerolog.Level) (*Server, error) {
+	const op errors.Op = "app.NewServer"
 
-	// open db connection pools
-	dstore, err := datastore.NewDatastore()
+	srvr, err := srvr.NewServer(lvl)
 	if err != nil {
-		return nil, err
+		return nil, errors.E(op, err)
 	}
 
-	// create a new mux (multiplex) router
-	rtr := mux.NewRouter()
+	server := &Server{srvr}
 
-	// send Router through subRouter function to add any standard
-	// Subroutes you may want for your APIs
-	rtr = newSubrouter(rtr)
+	err = server.DS.Option(datastore.InitLogDB())
+	if err != nil {
+		return nil, errors.E(op, err)
+	}
 
-	server := &server{router: rtr, ds: dstore, logger: log}
-
-	server.routes()
+	err = server.routes()
+	if err != nil {
+		return nil, errors.E(op, err)
+	}
 
 	return server, nil
-}
-
-// LogErr logs the Operation (client.Lookup, etc.) as well
-// as the error string and returns an error
-func (s *server) LogErr(op string, str string) error {
-	err := fmt.Errorf("%s: %s", op, str)
-	s.logger.Error().Err(err).Msg("")
-	return err
-}
-
-// newSubrouter adds any subRouters that you'd like to have as part of
-// every request, i.e. I always want to be sure that every request has
-// "/api" as part of it's path prefix without having to put it into
-// every handle path in my various routing functions
-func newSubrouter(rtr *mux.Router) *mux.Router {
-	sRtr := rtr.PathPrefix("/api").Subrouter()
-	return sRtr
-}
-
-// newLogger sets up
-func newLogger(lvl zerolog.Level) zerolog.Logger {
-	zerolog.TimeFieldFormat = ""
-	zerolog.SetGlobalLevel(lvl)
-	lgr := zerolog.New(os.Stdout).With().Timestamp().Logger()
-
-	return lgr
-}
-
-func (s *server) Router() *mux.Router {
-	return s.router
 }

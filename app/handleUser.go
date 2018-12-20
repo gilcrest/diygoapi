@@ -5,13 +5,13 @@ import (
 	"net/http"
 
 	"github.com/gilcrest/errors"
-	"github.com/gilcrest/go-API-template/datastore"
 	"github.com/gilcrest/go-API-template/lib/usr"
 	"github.com/gilcrest/httplog"
+	"github.com/gilcrest/srvr/datastore"
 )
 
 // handleUserCreate creates a user in the database
-func (s *server) handleUserCreate() http.HandlerFunc {
+func (s *Server) handleUserCreate() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 
 		// request is the expected service request fields
@@ -38,7 +38,7 @@ func (s *server) handleUserCreate() http.HandlerFunc {
 		}
 
 		// Get logger instance
-		log := s.logger
+		log := s.Logger
 
 		// retrieve the context from the http.Request
 		ctx := req.Context()
@@ -158,7 +158,7 @@ func (s *server) handleUserCreate() http.HandlerFunc {
 		}
 
 		// get a new DB Tx
-		tx, err := s.ds.BeginTx(ctx, nil, datastore.AppDB)
+		tx, err := s.DS.BeginTx(ctx, nil, datastore.AppDB)
 		if err != nil {
 			err = errors.HTTPErr{
 				Code: http.StatusBadRequest,
