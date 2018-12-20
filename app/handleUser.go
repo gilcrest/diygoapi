@@ -16,13 +16,13 @@ func (s *Server) handleUserCreate() http.HandlerFunc {
 
 		// request is the expected service request fields
 		type request struct {
-			Username     string `json:"username"`
-			Password     string `json:"password"`
-			MobileID     string `json:"mobile_id"`
-			Email        string `json:"email"`
-			FirstName    string `json:"first_name"`
-			LastName     string `json:"last_name"`
-			UpdateUserID string `json:"udpate_user_id"`
+			Username  string `json:"username"`
+			Password  string `json:"password"`
+			MobileID  string `json:"mobile_id"`
+			Email     string `json:"email"`
+			FirstName string `json:"first_name"`
+			LastName  string `json:"last_name"`
+			UserID    string `json:"create_user_id"`
 		}
 
 		// response is the expected service response fields
@@ -63,87 +63,16 @@ func (s *Server) handleUserCreate() http.HandlerFunc {
 
 		// declare a new instance of usr.User
 		usr := new(usr.User)
-
-		err = usr.SetUsername(rqst.Username)
-		if err != nil {
-			err = errors.HTTPErr{
-				Code: http.StatusBadRequest,
-				Kind: errors.Validation,
-				Err:  err,
-			}
-			errors.HTTPError(w, err)
-			return
-		}
-		err = usr.SetPassword(ctx, rqst.Password)
-		if err != nil {
-			err = errors.HTTPErr{
-				Code: http.StatusBadRequest,
-				Kind: errors.Validation,
-				Err:  err,
-			}
-			errors.HTTPError(w, err)
-			return
-		}
-		err = usr.SetMobileID(rqst.MobileID)
-		if err != nil {
-			err = errors.HTTPErr{
-				Code: http.StatusBadRequest,
-				Kind: errors.Validation,
-				Err:  err,
-			}
-			errors.HTTPError(w, err)
-			return
-		}
-		err = usr.SetEmail(rqst.Email)
-		if err != nil {
-			err = errors.HTTPErr{
-				Code: http.StatusBadRequest,
-				Kind: errors.Validation,
-				Err:  err,
-			}
-			errors.HTTPError(w, err)
-			return
-		}
-		err = usr.SetFirstName(rqst.FirstName)
-		if err != nil {
-			err = errors.HTTPErr{
-				Code: http.StatusBadRequest,
-				Kind: errors.Validation,
-				Err:  err,
-			}
-			errors.HTTPError(w, err)
-			return
-		}
-		err = usr.SetLastName(rqst.LastName)
-		if err != nil {
-			err = errors.HTTPErr{
-				Code: http.StatusBadRequest,
-				Kind: errors.Validation,
-				Err:  err,
-			}
-			errors.HTTPError(w, err)
-			return
-		}
-		err = usr.SetUpdateClientID("TBD")
-		if err != nil {
-			err = errors.HTTPErr{
-				Code: http.StatusBadRequest,
-				Kind: errors.Validation,
-				Err:  err,
-			}
-			errors.HTTPError(w, err)
-			return
-		}
-		err = usr.SetUpdateUserID(rqst.UpdateUserID)
-		if err != nil {
-			err = errors.HTTPErr{
-				Code: http.StatusBadRequest,
-				Kind: errors.Validation,
-				Err:  err,
-			}
-			errors.HTTPError(w, err)
-			return
-		}
+		usr.Username = rqst.Username
+		usr.Password = rqst.Password
+		usr.MobileID = rqst.MobileID
+		usr.Email = rqst.Email
+		usr.FirstName = rqst.FirstName
+		usr.LastName = rqst.LastName
+		usr.CreateClientID = "TODO"
+		usr.CreateUserID = rqst.UserID
+		usr.UpdateClientID = "TODO"
+		usr.UpdateUserID = rqst.UserID
 
 		// Call the create method of the User object to validate data and write to db
 		err = usr.Create(ctx, log)
@@ -182,7 +111,7 @@ func (s *Server) handleUserCreate() http.HandlerFunc {
 			return
 		}
 
-		if !usr.UpdateTimestamp().IsZero() {
+		if !usr.UpdateTimestamp.IsZero() {
 			err := tx.Commit()
 			if err != nil {
 				err = errors.HTTPErr{
@@ -234,13 +163,13 @@ func (s *Server) handleUserCreate() http.HandlerFunc {
 		// relevant elements
 		resp := new(response)
 		resp.Audit = aud
-		resp.Username = usr.Username()
-		resp.MobileID = usr.MobileID()
-		resp.Email = usr.Email()
-		resp.FirstName = usr.FirstName()
-		resp.LastName = usr.LastName()
-		resp.UpdateUserID = usr.UpdateUserID()
-		resp.UpdateUnixTime = usr.UpdateTimestamp().Unix()
+		resp.Username = usr.Username
+		resp.MobileID = usr.MobileID
+		resp.Email = usr.Email
+		resp.FirstName = usr.FirstName
+		resp.LastName = usr.LastName
+		resp.UpdateUserID = usr.UpdateUserID
+		resp.UpdateUnixTime = usr.UpdateTimestamp.Unix()
 
 		// Encode response struct to JSON for the response body
 		json.NewEncoder(w).Encode(*resp)

@@ -5,11 +5,6 @@ import (
 	"context"
 	"fmt"
 	"testing"
-
-	"github.com/gilcrest/go-API-template/appuser"
-	"github.com/gilcrest/go-API-template/db"
-	"github.com/gilcrest/go-API-template/env"
-	"github.com/rs/zerolog"
 )
 
 func TestCreate(t *testing.T) {
@@ -18,26 +13,14 @@ func TestCreate(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel() // Cancel ctx as soon as main returns.
 
-	// Initializes "environment" struct type
-	env, err := env.NewEnv(zerolog.DebugLevel)
-	if err != nil {
-		t.Errorf("Error Initializing env, err = %s", err)
-	}
-
-	cur := new(appuser.CreateUserRequest)
-	cur.Username = "gilcrest"
-	cur.Password = "fakepassword"
-	cur.MobileID = "976"
-	cur.LastName = "Gilcrest"
-	cur.FirstName = "Dan"
-	cur.Email = "testcrest@gmail.com"
-	cur.UpdateUserID = "gilcrest"
-
-	// Creates a new instance of the appuser.User struct type
-	inputUsr, err := appuser.NewUser(ctx, cur)
-	if err != nil {
-		t.Errorf("Error committing tx, err = %s", err)
-	}
+	usr := new(usr.User)
+	usr.Username = "gilcrest"
+	usr.Password = "fakepassword"
+	usr.MobileID = "976"
+	usr.LastName = "Gilcrest"
+	usr.FirstName = "Dan"
+	usr.Email = "testcrest@gmail.com"
+	usr.UpdateUserID = "gilcrest"
 
 	log := env.Logger
 
