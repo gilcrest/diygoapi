@@ -113,9 +113,9 @@ func (u *User) CreateDB(ctx context.Context, log zerolog.Logger, tx *sql.Tx) err
 		p_password => $3,
 		p_first_name => $4,
 		p_last_name => $5,
-		p_email_address => $6,
+		p_email => $6,
 		p_mobile_id => $7,
-		p_client_id => $8
+		p_client_id => $8,
 		p_create_username => $9)`)
 
 	if err != nil {
