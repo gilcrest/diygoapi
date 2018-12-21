@@ -37,9 +37,6 @@ func (s *Server) handleUserCreate() http.HandlerFunc {
 			Audit          *httplog.Audit `json:"audit"`
 		}
 
-		// Get logger instance
-		log := s.Logger
-
 		// retrieve the context from the http.Request
 		ctx := req.Context()
 
@@ -75,7 +72,7 @@ func (s *Server) handleUserCreate() http.HandlerFunc {
 		usr.UpdateUserID = rqst.UserID
 
 		// Call the create method of the User object to validate data and write to db
-		err = usr.Create(ctx, log)
+		err = usr.Create(ctx, s.Logger)
 		if err != nil {
 			err = errors.HTTPErr{
 				Code: http.StatusBadRequest,
@@ -100,7 +97,7 @@ func (s *Server) handleUserCreate() http.HandlerFunc {
 
 		// Call the create method of the User object to write
 		// to the database
-		err = usr.CreateDB(ctx, log, tx)
+		err = usr.CreateDB(ctx, s.Logger, tx)
 		if err != nil {
 			err = errors.HTTPErr{
 				Code: http.StatusBadRequest,
