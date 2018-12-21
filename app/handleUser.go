@@ -16,13 +16,13 @@ func (s *Server) handleUserCreate() http.HandlerFunc {
 
 		// request is the expected service request fields
 		type request struct {
-			Username  string `json:"username"`
-			Password  string `json:"password"`
-			MobileID  string `json:"mobile_id"`
-			Email     string `json:"email"`
-			FirstName string `json:"first_name"`
-			LastName  string `json:"last_name"`
-			UserID    string `json:"create_user_id"`
+			Username       string `json:"username"`
+			Password       string `json:"password"`
+			MobileID       string `json:"mobile_id"`
+			Email          string `json:"email"`
+			FirstName      string `json:"first_name"`
+			LastName       string `json:"last_name"`
+			CreateUsername string `json:"create_username"`
 		}
 
 		// response is the expected service response fields
@@ -32,7 +32,7 @@ func (s *Server) handleUserCreate() http.HandlerFunc {
 			Email          string         `json:"email"`
 			FirstName      string         `json:"first_name"`
 			LastName       string         `json:"last_name"`
-			UpdateUserID   string         `json:"update_user_id"`
+			UpdateUsername string         `json:"update_username"`
 			UpdateUnixTime int64          `json:"created"`
 			Audit          *httplog.Audit `json:"audit"`
 		}
@@ -42,9 +42,9 @@ func (s *Server) handleUserCreate() http.HandlerFunc {
 
 		var err error
 
-		// Declare cur as an instance of createUserRequest
+		// Declare rqst as an instance of request
 		// Decode JSON HTTP request body into a Decoder type
-		//  and unmarshal that into cur
+		//  and unmarshal that into rqst
 		rqst := new(request)
 		err = json.NewDecoder(req.Body).Decode(&rqst)
 		defer req.Body.Close()
@@ -67,9 +67,9 @@ func (s *Server) handleUserCreate() http.HandlerFunc {
 		usr.FirstName = rqst.FirstName
 		usr.LastName = rqst.LastName
 		usr.CreateClientID = "TODO"
-		usr.CreateUserID = rqst.UserID
+		usr.CreateUsername = rqst.CreateUsername
 		usr.UpdateClientID = "TODO"
-		usr.UpdateUserID = rqst.UserID
+		usr.UpdateUsername = rqst.CreateUsername
 
 		// Call the create method of the User object to validate data and write to db
 		err = usr.Create(ctx, s.Logger)
@@ -165,7 +165,7 @@ func (s *Server) handleUserCreate() http.HandlerFunc {
 		resp.Email = usr.Email
 		resp.FirstName = usr.FirstName
 		resp.LastName = usr.LastName
-		resp.UpdateUserID = usr.UpdateUserID
+		resp.UpdateUsername = usr.UpdateUsername
 		resp.UpdateUnixTime = usr.UpdateTimestamp.Unix()
 
 		// Encode response struct to JSON for the response body

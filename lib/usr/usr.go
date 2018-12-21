@@ -107,14 +107,16 @@ func (u *User) CreateDB(ctx context.Context, log zerolog.Logger, tx *sql.Tx) err
 	)
 
 	// Prepare the sql statement using bind variables
-	stmt, err := tx.PrepareContext(ctx, `select demo.create_app_user (
-		p_username => $1,
-		p_password => $2,
-		p_mobile_id => $3,
-		p_email_address => $4,
-		p_first_name => $5,
-		p_last_name => $6,
-		p_user_id => $7)`)
+	stmt, err := tx.PrepareContext(ctx, `select auth.create_user (
+		p_pgm => $1,
+		p_username => $2,
+		p_password => $3,
+		p_first_name => $4,
+		p_last_name => $5,
+		p_email_address => $6,
+		p_mobile_id => $7,
+		p_client_id => $8
+		p_create_username => $9)`)
 
 	if err != nil {
 		return err
@@ -124,13 +126,15 @@ func (u *User) CreateDB(ctx context.Context, log zerolog.Logger, tx *sql.Tx) err
 	// Execute stored function that returns the create_date timestamp,
 	// hence the use of QueryContext instead of Exec
 	rows, err := stmt.QueryContext(ctx,
-		u.Username,  //$1
-		u.Password,  //$2
-		u.MobileID,  //$3
-		u.Email,     //$4
-		u.FirstName, //$5
-		u.LastName,  //$6
-		u.Username)  //$7
+		0,                //$1
+		u.Username,       //$2
+		u.Password,       //$3
+		u.FirstName,      //$4
+		u.LastName,       //$5
+		u.Email,          //$6
+		u.MobileID,       //$7
+		u.CreateClientID, //$8
+		u.CreateUsername) //$9
 
 	if err != nil {
 		return err
@@ -182,7 +186,7 @@ func UserFromUsername(ctx context.Context, log zerolog.Logger, tx *sql.Tx, usern
 		&usr.FirstName,
 		&usr.LastName,
 		&usr.UpdateClientID,
-		&usr.UpdateUserID,
+		&usr.UpdateUsername,
 		&usr.UpdateTimestamp,
 	)
 	if err == sql.ErrNoRows {

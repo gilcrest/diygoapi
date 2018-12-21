@@ -6,9 +6,9 @@ import "time"
 // an action was taken and by whom
 type Audit struct {
 	CreateClientID  string
-	CreateUserID    string
+	CreateUsername  string
 	CreateTimestamp time.Time
 	UpdateClientID  string
-	UpdateUserID    string
+	UpdateUsername  string
 	UpdateTimestamp time.Time
 }
