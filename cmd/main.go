@@ -4,7 +4,7 @@ import (
 	"flag"
 	"net/http"
 
-	"github.com/gilcrest/go-API-template/app"
+	"github.com/gilcrest/go-API-template/server"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -19,7 +19,7 @@ func main() {
 
 	loglevel := logLevel(loglvlFlag)
 
-	server, err := app.NewServer(loglevel)
+	server, err := server.NewServer(loglevel)
 	if err != nil {
 		log.Fatal().Err(err).Msg("")
 	}

@@ -9,8 +9,8 @@ import (
 	"net/mail"
 	"time"
 
+	"github.com/gilcrest/audit"
 	"github.com/gilcrest/errors"
-	"github.com/gilcrest/go-API-template/lib/audit"
 	"github.com/rs/zerolog"
 	"golang.org/x/crypto/bcrypt"
 )

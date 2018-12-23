@@ -1,4 +1,4 @@
-package app
+package server
 
 import (
 	"net/http"
@@ -27,7 +27,7 @@ func (s *Server) handleRespHeader(h http.Handler) http.Handler {
 // NewServer is a constructor for the Server struct
 // Sets up the struct and registers routes
 func NewServer(lvl zerolog.Level) (*Server, error) {
-	const op errors.Op = "app.NewServer"
+	const op errors.Op = "server.NewServer"
 
 	srvr, err := srvr.NewServer(lvl)
 	if err != nil {

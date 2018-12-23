@@ -1,4 +1,4 @@
-package app
+package server
 
 import (
 	"github.com/gilcrest/auth"
@@ -10,7 +10,7 @@ import (
 
 // routes registers handlers to the router
 func (s *Server) routes() error {
-	const op errors.Op = "app.routes"
+	const op errors.Op = "server.routes"
 
 	// Get pointer to logging database to pass into httplog
 	// Only need this if you plan to use the PostgreSQL
