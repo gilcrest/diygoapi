@@ -16,8 +16,6 @@ github.com/gilcrest/httplog v0.3.4/go.mod h1:ZwyrWWSrFnTxSCm75xSHUB+330s7q0o8VIp
 github.com/gilcrest/rand v0.3.0/go.mod h1:Qh83+hXt2ZMdIU/8fo7p/683AWruc9Erm9RWWc/IyWk=
 github.com/gilcrest/srvr v0.3.1 h1:YWw9OKbGUet3fsTC4Zx6AnUVvUO9swUkyrD7tXSzJ8s=
 github.com/gilcrest/srvr v0.3.1/go.mod h1:IzRDwSV0WIKa7lxCN30CrqyxGFEp3fUmmy0g6cu44m4=
-github.com/gilcrest/usr v0.0.0-20181223041443-2215c8386f57 h1:efI5aj9TJR4H8cE539hSvpP24gvbhR/TglleI4vhcdg=
-github.com/gilcrest/usr v0.0.0-20181223041443-2215c8386f57/go.mod h1:XDtd99T5C8wjmNZ4tRksc2a+J09X/wMFWfhNYs10ruM=
 github.com/gomodule/redigo v2.0.0+incompatible h1:K/R+8tc58AaqLkqG2Ol3Qk+DR/TlNuhuh457pBFPtt0=
 github.com/gomodule/redigo v2.0.0+incompatible/go.mod h1:B4C85qUVwatsJoIUNIfCRsp7qO0iAmpGFZ4EELWSbC4=
 github.com/gorilla/context v1.1.1 h1:AWwleXJkX/nhcU9bZSnZoi3h/qGYqQAGhq6zZe/aQW8=
