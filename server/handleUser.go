@@ -5,9 +5,9 @@ import (
 	"net/http"
 
 	"github.com/gilcrest/errors"
+	"github.com/gilcrest/go-API-template/lib/usr"
 	"github.com/gilcrest/httplog"
 	"github.com/gilcrest/srvr/datastore"
-	"github.com/gilcrest/usr/lib/usr"
 )
 
 // handleUserCreate creates a user in the database
