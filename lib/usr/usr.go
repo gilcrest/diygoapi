@@ -59,7 +59,6 @@ func (u *User) validate() error {
 	return nil
 }
 
-// SetPassword is a setter for password
 func (u *User) hashPassword() error {
 	const op errors.Op = "usr.User.hashPassword"
 
@@ -74,7 +73,6 @@ func (u *User) hashPassword() error {
 	return nil
 }
 
-// SetEmail is a setter for User.email
 func (u *User) validateEmail() error {
 	const op errors.Op = "usr.User.validateEmail"
 	_, err := mail.ParseAddress(u.Email)
@@ -98,7 +96,7 @@ func (u *User) Create(ctx context.Context, log zerolog.Logger) error {
 	return nil
 }
 
-// CreateDB creates a record in the appuser table using a stored function
+// CreateDB creates a record in the user table using a stored function
 func (u *User) CreateDB(ctx context.Context, log zerolog.Logger, tx *sql.Tx) error {
 	const op errors.Op = "usr.User.CreateDB"
 
