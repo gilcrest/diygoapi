@@ -41,24 +41,24 @@ func (s *Server) routes() error {
 	// function (`LogHandler`) that takes a handler and returns a handler (aka Constructor)
 	// (`func (http.Handler) http.Handler`)	- used with alice
 	// Also, match only POST requests with Content-Type header = application/json
-	s.Router.Handle("/v1/alice/user",
+	s.Router.Handle("/v1/alice/movie",
 		alice.New(httplog.LogHandler(s.Logger, logdb, opts), s.handleRespHeader, servertoken.Handler(s.Logger, appdb)).
-			ThenFunc(s.handleUserCreate())).
+			ThenFunc(s.handlePost())).
 		Methods("POST").
 		Headers("Content-Type", "application/json")
 
 	// HandlerFunc middleware example
 	// function takes an http.HandlerFunc and returns an http.HandlerFunc
 	// Also, match only POST requests with Content-Type header = application/json
-	s.Router.HandleFunc("/v1/handlefunc/user",
-		httplog.LogHandlerFunc(s.handleUserCreate(), s.Logger, logdb, opts)).
+	s.Router.HandleFunc("/v1/handlefunc/movie",
+		httplog.LogHandlerFunc(s.handlePost(), s.Logger, logdb, opts)).
 		Methods("POST").
 		Headers("Content-Type", "application/json")
 
 	// Adapter Type middleware example
 	// Also, match only POST requests with Content-Type header = application/json
-	s.Router.Handle("/v1/adapter/user",
-		httplog.Adapt(s.handleUserCreate(),
+	s.Router.Handle("/v1/adapter/movie",
+		httplog.Adapt(s.handlePost(),
 			httplog.LogAdapter(s.Logger, logdb, opts))).
 		Methods("POST").
 		Headers("Content-Type", "application/json")

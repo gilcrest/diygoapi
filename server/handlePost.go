@@ -3,38 +3,40 @@ package server
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/gilcrest/errors"
-	"github.com/gilcrest/go-API-template/lib/usr"
 	"github.com/gilcrest/httplog"
+	"github.com/gilcrest/movie"
 	"github.com/gilcrest/srvr/datastore"
 )
 
-// handleUserCreate creates a user in the database
-func (s *Server) handleUserCreate() http.HandlerFunc {
+// handlePost handles POST requests for the /movie endpoint
+// and creates a movie in the database
+func (s *Server) handlePost() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 
 		// request is the expected service request fields
 		type request struct {
-			Username       string `json:"username"`
-			Password       string `json:"password"`
-			MobileID       string `json:"mobile_id"`
-			Email          string `json:"email"`
-			FirstName      string `json:"first_name"`
-			LastName       string `json:"last_name"`
-			CreateUsername string `json:"create_username"`
+			Title    string `json:"title"`
+			Year     int    `json:"year"`
+			Rated    string `json:"rated"`
+			Released string `json:"releaseDate"`
+			RunTime  int    `json:"runTime"`
+			Director string `json:"director"`
+			Writer   string `json:"writer"`
 		}
 
 		// response is the expected service response fields
 		type response struct {
-			Username       string         `json:"username"`
-			MobileID       string         `json:"mobile_id"`
-			Email          string         `json:"email"`
-			FirstName      string         `json:"first_name"`
-			LastName       string         `json:"last_name"`
-			UpdateUsername string         `json:"update_username"`
-			UpdateUnixTime int64          `json:"created"`
-			Audit          *httplog.Audit `json:"audit"`
+			Title    string         `json:"title"`
+			Year     int            `json:"year"`
+			Rated    string         `json:"rated"`
+			Released string         `json:"releaseDate"`
+			RunTime  int            `json:"runTime"`
+			Director string         `json:"director"`
+			Writer   string         `json:"writer"`
+			Audit    *httplog.Audit `json:"audit"`
 		}
 
 		// retrieve the context from the http.Request
@@ -59,20 +61,17 @@ func (s *Server) handleUserCreate() http.HandlerFunc {
 		}
 
 		// declare a new instance of usr.User
-		usr := new(usr.User)
-		usr.Username = rqst.Username
-		usr.Password = rqst.Password
-		usr.MobileID = rqst.MobileID
-		usr.Email = rqst.Email
-		usr.FirstName = rqst.FirstName
-		usr.LastName = rqst.LastName
-		usr.CreateClientID = "TODO"
-		usr.CreateUsername = rqst.CreateUsername
-		usr.UpdateClientID = "TODO"
-		usr.UpdateUsername = rqst.CreateUsername
+		movie := new(movie.Movie)
+		movie.Title = rqst.Title
+		movie.Year = rqst.Year
+		movie.Rated = rqst.Rated
+		movie.Released = time.Date(2018, time.September, 23, 0, 0, 0, 0, time.Local) //rqst.Released
+		movie.RunTime = rqst.RunTime
+		movie.Director = rqst.Director
+		movie.Writer = rqst.Writer
 
 		// Call the create method of the User object to validate data and write to db
-		err = usr.Create(ctx, s.Logger)
+		err = movie.Validate()
 		if err != nil {
 			err = errors.HTTPErr{
 				Code: http.StatusBadRequest,
@@ -97,7 +96,7 @@ func (s *Server) handleUserCreate() http.HandlerFunc {
 
 		// Call the create method of the User object to write
 		// to the database
-		err = usr.CreateDB(ctx, s.Logger, tx)
+		tx, err = movie.Create(ctx, s.Logger, tx)
 		if err != nil {
 			err = errors.HTTPErr{
 				Code: http.StatusBadRequest,
@@ -108,7 +107,7 @@ func (s *Server) handleUserCreate() http.HandlerFunc {
 			return
 		}
 
-		if !usr.UpdateTimestamp.IsZero() {
+		if !movie.CreateTimestamp.IsZero() {
 			err := tx.Commit()
 			if err != nil {
 				err = errors.HTTPErr{
@@ -160,13 +159,13 @@ func (s *Server) handleUserCreate() http.HandlerFunc {
 		// relevant elements
 		resp := new(response)
 		resp.Audit = aud
-		resp.Username = usr.Username
-		resp.MobileID = usr.MobileID
-		resp.Email = usr.Email
-		resp.FirstName = usr.FirstName
-		resp.LastName = usr.LastName
-		resp.UpdateUsername = usr.UpdateUsername
-		resp.UpdateUnixTime = usr.UpdateTimestamp.Unix()
+		resp.Title = movie.Title
+		resp.Year = movie.Year
+		resp.Rated = movie.Rated
+		resp.Released = movie.Released.String()
+		resp.RunTime = movie.RunTime
+		resp.Director = movie.Director
+		resp.Writer = movie.Writer
 
 		// Encode response struct to JSON for the response body
 		json.NewEncoder(w).Encode(*resp)
