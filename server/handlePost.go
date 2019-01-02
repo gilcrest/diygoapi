@@ -18,24 +18,24 @@ func (s *Server) handlePost() http.HandlerFunc {
 
 		// request is the expected service request fields
 		type request struct {
-			Title    string `json:"title"`
-			Year     int    `json:"year"`
-			Rated    string `json:"rated"`
-			Released string `json:"releaseDate"`
-			RunTime  int    `json:"runTime"`
-			Director string `json:"director"`
-			Writer   string `json:"writer"`
+			Title    string `json:"Title"`
+			Year     int    `json:"Year"`
+			Rated    string `json:"Rated"`
+			Released string `json:"ReleaseDate"`
+			RunTime  int    `json:"RunTime"`
+			Director string `json:"Director"`
+			Writer   string `json:"Writer"`
 		}
 
 		// response is the expected service response fields
 		type response struct {
-			Title    string         `json:"title"`
-			Year     int            `json:"year"`
-			Rated    string         `json:"rated"`
-			Released string         `json:"releaseDate"`
-			RunTime  int            `json:"runTime"`
-			Director string         `json:"director"`
-			Writer   string         `json:"writer"`
+			Title    string         `json:"Title"`
+			Year     int            `json:"Year"`
+			Rated    string         `json:"Rated"`
+			Released string         `json:"ReleaseDate"`
+			RunTime  int            `json:"RunTime"`
+			Director string         `json:"Director"`
+			Writer   string         `json:"Writer"`
 			Audit    *httplog.Audit `json:"audit"`
 		}
 
@@ -43,6 +43,7 @@ func (s *Server) handlePost() http.HandlerFunc {
 		ctx := req.Context()
 
 		var err error
+		const dateFormat string = "Jan 02 2006"
 
 		// Declare rqst as an instance of request
 		// Decode JSON HTTP request body into a Decoder type
@@ -65,7 +66,17 @@ func (s *Server) handlePost() http.HandlerFunc {
 		movie.Title = rqst.Title
 		movie.Year = rqst.Year
 		movie.Rated = rqst.Rated
-		movie.Released = time.Date(2018, time.September, 23, 0, 0, 0, 0, time.Local) //rqst.Released
+		t, err := time.Parse(dateFormat, rqst.Released)
+		if err != nil {
+			err = errors.HTTPErr{
+				Code: http.StatusBadRequest,
+				Kind: errors.Invalid,
+				Err:  err,
+			}
+			errors.HTTPError(w, err)
+			return
+		}
+		movie.Released = t
 		movie.RunTime = rqst.RunTime
 		movie.Director = rqst.Director
 		movie.Writer = rqst.Writer
@@ -158,14 +169,14 @@ func (s *Server) handlePost() http.HandlerFunc {
 		// create a new response struct and set Audit and other
 		// relevant elements
 		resp := new(response)
-		resp.Audit = aud
 		resp.Title = movie.Title
 		resp.Year = movie.Year
 		resp.Rated = movie.Rated
-		resp.Released = movie.Released.String()
+		resp.Released = movie.Released.Format(dateFormat)
 		resp.RunTime = movie.RunTime
 		resp.Director = movie.Director
 		resp.Writer = movie.Writer
+		resp.Audit = aud
 
 		// Encode response struct to JSON for the response body
 		json.NewEncoder(w).Encode(*resp)
