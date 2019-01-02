@@ -1,9 +1,9 @@
 package server
 
 import (
-	"github.com/gilcrest/auth"
 	"github.com/gilcrest/errors"
 	"github.com/gilcrest/httplog"
+	"github.com/gilcrest/servertoken"
 	"github.com/gilcrest/srvr/datastore"
 	"github.com/justinas/alice"
 )
@@ -42,7 +42,7 @@ func (s *Server) routes() error {
 	// (`func (http.Handler) http.Handler`)	- used with alice
 	// Also, match only POST requests with Content-Type header = application/json
 	s.Router.Handle("/v1/alice/user",
-		alice.New(httplog.LogHandler(s.Logger, logdb, opts), s.handleRespHeader, auth.ServerTokenHandler(s.Logger, appdb)).
+		alice.New(httplog.LogHandler(s.Logger, logdb, opts), s.handleRespHeader, servertoken.Handler(s.Logger, appdb)).
 			ThenFunc(s.handleUserCreate())).
 		Methods("POST").
 		Headers("Content-Type", "application/json")
