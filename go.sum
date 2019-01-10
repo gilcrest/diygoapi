@@ -1,6 +1,8 @@
 github.com/gilcrest/apiclient v0.4.0/go.mod h1:5G5lobQ3BhHDZDVP8JBl3KjWg5Otx7X0f8334sQALe8=
 github.com/gilcrest/apiclient v0.5.0 h1:rcLpS1DT41SYomby3742Q6VFCoB+9H5B5jh3EJpcewk=
 github.com/gilcrest/apiclient v0.5.0/go.mod h1:5G5lobQ3BhHDZDVP8JBl3KjWg5Otx7X0f8334sQALe8=
+github.com/gilcrest/apiclient v0.6.0 h1:t2px3DKqw+sueJsXHSIUOoI4sogNi/iBBPqXWcH6C7k=
+github.com/gilcrest/apiclient v0.6.0/go.mod h1:5G5lobQ3BhHDZDVP8JBl3KjWg5Otx7X0f8334sQALe8=
 github.com/gilcrest/dbaudit v0.0.1 h1:nyo6TWrYMh2iVjj+BrMBXZuHEaCQ1hAkWZPWERuMnJc=
 github.com/gilcrest/dbaudit v0.0.1/go.mod h1:OcMzt09D4e+8qZIEPaL9pGDzmAYtvKBcEnxzFhXE+nY=
 github.com/gilcrest/dbaudit v0.2.0 h1:Cinkum53Qw7g5cfvhuDeuNLRZ5dHfsjf90OX5SaAAAk=
@@ -11,6 +13,8 @@ github.com/gilcrest/httplog v0.3.5 h1:jjYHKVtp7SG4pB01wJyQIowzpdRt0T/hlDjLYIMscW
 github.com/gilcrest/httplog v0.3.5/go.mod h1:G0KEIJbRjKY5RKuBYGnSUWKBHwYAEyQ6B/ylpEtW3DY=
 github.com/gilcrest/movie v0.1.0 h1:vA9MD3fkeYe8KJRvuu2oU1ge4t3ZHHelLQuwItPhTKs=
 github.com/gilcrest/movie v0.1.0/go.mod h1:gaCcMIl3CpJ5GmKIlmRcfj2I+NsF1vOKpuE/hBAs1WU=
+github.com/gilcrest/movie v0.2.0 h1:C9aIxNZ0W4FTn0vc/pNPdjxI0j6Rqc+qGmKZaYSFqeM=
+github.com/gilcrest/movie v0.2.0/go.mod h1:kPA8VS8cXOKrQc3Djehq+t4XakEHS4+EuzZdg1le5X4=
 github.com/gilcrest/rand v0.3.0 h1:WbOVoc1vPlN2FXORfVzZAYLC1nUVBXoEUfKht4AR9GE=
 github.com/gilcrest/rand v0.3.0/go.mod h1:Qh83+hXt2ZMdIU/8fo7p/683AWruc9Erm9RWWc/IyWk=
 github.com/gilcrest/servertoken v0.1.1 h1:ZSooe7gdK+EPUPgXryV3AlO+00S8fuG0QKSs+2PtlZE=
