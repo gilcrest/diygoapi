@@ -29,14 +29,15 @@ func (s *Server) handlePost() http.HandlerFunc {
 
 		// response is the expected service response fields
 		type response struct {
-			Title    string         `json:"Title"`
-			Year     int            `json:"Year"`
-			Rated    string         `json:"Rated"`
-			Released string         `json:"ReleaseDate"`
-			RunTime  int            `json:"RunTime"`
-			Director string         `json:"Director"`
-			Writer   string         `json:"Writer"`
-			Audit    *httplog.Audit `json:"audit"`
+			Title           string         `json:"Title"`
+			Year            int            `json:"Year"`
+			Rated           string         `json:"Rated"`
+			Released        string         `json:"ReleaseDate"`
+			RunTime         int            `json:"RunTime"`
+			Director        string         `json:"Director"`
+			Writer          string         `json:"Writer"`
+			CreateTimestamp string         `json:"CreateTimestamp"`
+			Audit           *httplog.Audit `json:"audit"`
 		}
 
 		// retrieve the context from the http.Request
@@ -81,7 +82,8 @@ func (s *Server) handlePost() http.HandlerFunc {
 		movie.Director = rqst.Director
 		movie.Writer = rqst.Writer
 
-		// Call the create method of the User object to validate data and write to db
+		// Call the Validate method of the movie object
+		// to validate request input data
 		err = movie.Validate()
 		if err != nil {
 			err = errors.HTTPErr{
@@ -107,39 +109,27 @@ func (s *Server) handlePost() http.HandlerFunc {
 
 		// Call the create method of the User object to write
 		// to the database
-		tx, err = movie.Create(ctx, s.Logger, tx)
+		err = movie.Create(ctx, s.Logger, tx)
 		if err != nil {
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				err = errors.HTTPErr{
+					Code: http.StatusBadRequest,
+					Kind: errors.Database,
+					Err:  errors.Str("Database error, contact support"),
+				}
+				errors.HTTPError(w, err)
+				return
+			}
+		}
+
+		if err := tx.Commit(); err != nil {
 			err = errors.HTTPErr{
 				Code: http.StatusBadRequest,
 				Kind: errors.Database,
-				Err:  err,
+				Err:  errors.Str("Database error, contact support"),
 			}
 			errors.HTTPError(w, err)
 			return
-		}
-
-		if !movie.CreateTimestamp.IsZero() {
-			err := tx.Commit()
-			if err != nil {
-				err = errors.HTTPErr{
-					Code: http.StatusBadRequest,
-					Kind: errors.Database,
-					Err:  err,
-				}
-				errors.HTTPError(w, err)
-				return
-			}
-		} else {
-			err = tx.Rollback()
-			if err != nil {
-				err = errors.HTTPErr{
-					Code: http.StatusBadRequest,
-					Kind: errors.Database,
-					Err:  err,
-				}
-				errors.HTTPError(w, err)
-				return
-			}
 		}
 
 		// If we successfully committed the db transaction, we can consider this
@@ -176,6 +166,7 @@ func (s *Server) handlePost() http.HandlerFunc {
 		resp.RunTime = movie.RunTime
 		resp.Director = movie.Director
 		resp.Writer = movie.Writer
+		resp.CreateTimestamp = movie.CreateTimestamp.Format(time.RFC3339)
 		resp.Audit = aud
 
 		// Encode response struct to JSON for the response body
