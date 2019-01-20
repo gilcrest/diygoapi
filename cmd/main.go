@@ -11,14 +11,16 @@ import (
 
 func main() {
 
-	// flag allows for setting logging level, e.g. to run the server
+	// loglvl flag allows for setting logging level, e.g. to run the server
 	// with level set to debug, it'd be: ./server loglvl=debug
 	loglvlFlag := flag.String("loglvl", "error", "sets log level")
 
 	flag.Parse()
 
+	// get appropriate zerolog.Level based on flag
 	loglevel := logLevel(loglvlFlag)
 
+	// call constructor for Server struct
 	server, err := server.NewServer(loglevel)
 	if err != nil {
 		log.Fatal().Err(err).Msg("")
