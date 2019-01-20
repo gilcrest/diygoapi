@@ -2,7 +2,7 @@ module github.com/gilcrest/go-API-template
 
 require (
 	github.com/gilcrest/errors v0.5.0
-	github.com/gilcrest/httplog v0.3.5
+	github.com/gilcrest/httplog v0.4.0
 	github.com/gilcrest/movie v0.2.0
 	github.com/gilcrest/servertoken v0.2.0
 	github.com/gilcrest/srvr v0.4.0
