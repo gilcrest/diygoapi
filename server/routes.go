@@ -29,7 +29,7 @@ func (s *Server) routes() error {
 	// httplog.NewOpts gets a new httplog.Opts struct
 	// (with all flags set to false)
 	opts := new(httplog.Opts)
-	opts.Option(httplog.L2DB(true, true, true, true))
+	opts.Option(httplog.Log2Database(true, true, true, true, true))
 
 	// function (`LogHandler`) that takes a handler and returns a handler (aka Constructor)
 	// (`func (http.Handler) http.Handler`)	- used with alice
