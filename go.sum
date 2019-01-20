@@ -5,8 +5,8 @@ github.com/gilcrest/dbaudit v0.2.0 h1:Cinkum53Qw7g5cfvhuDeuNLRZ5dHfsjf90OX5SaAAA
 github.com/gilcrest/dbaudit v0.2.0/go.mod h1:9gwgeuR2maHOpzNWpb54xi/Il2UAbBqGkS2vfqtEsWs=
 github.com/gilcrest/errors v0.5.0 h1:vYj94RgAUK4RCwPpA0U77haHnvXahSbT5IXQhTNB++0=
 github.com/gilcrest/errors v0.5.0/go.mod h1:8IIeIoFzPksn6Nk8sjcSNCB+2TKd7h8yinC0hb2pauE=
-github.com/gilcrest/httplog v0.4.0 h1:CxYC4ZHQGD1v7tNH0BqKW7VmiqP6HZlNgf42v/K9MLs=
-github.com/gilcrest/httplog v0.4.0/go.mod h1:G0KEIJbRjKY5RKuBYGnSUWKBHwYAEyQ6B/ylpEtW3DY=
+github.com/gilcrest/httplog v0.5.0 h1:7xV1k8wTi9PfWCDKAftBdSjF/AUfut5CL0kbGloLHQ4=
+github.com/gilcrest/httplog v0.5.0/go.mod h1:G0KEIJbRjKY5RKuBYGnSUWKBHwYAEyQ6B/ylpEtW3DY=
 github.com/gilcrest/movie v0.2.0 h1:C9aIxNZ0W4FTn0vc/pNPdjxI0j6Rqc+qGmKZaYSFqeM=
 github.com/gilcrest/movie v0.2.0/go.mod h1:kPA8VS8cXOKrQc3Djehq+t4XakEHS4+EuzZdg1le5X4=
 github.com/gilcrest/rand v0.3.0 h1:WbOVoc1vPlN2FXORfVzZAYLC1nUVBXoEUfKht4AR9GE=
