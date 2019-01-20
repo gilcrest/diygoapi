@@ -29,20 +29,16 @@ func (s *Server) routes() error {
 	// httplog.NewOpts gets a new httplog.Opts struct
 	// (with all flags set to false)
 	opts := new(httplog.Opts)
-
-	// For the examples below, I chose to turn on db logging only
-	// Log the request headers only (body has password on this api!)
-	// Log both the response headers and body
-	opts.Log2DB.Enable = true
-	opts.Log2DB.Request.Header = true
-	opts.Log2DB.Response.Header = true
-	opts.Log2DB.Response.Body = true
+	opts.Option(httplog.L2DB(true, true, true, true))
 
 	// function (`LogHandler`) that takes a handler and returns a handler (aka Constructor)
 	// (`func (http.Handler) http.Handler`)	- used with alice
 	// Also, match only POST requests with Content-Type header = application/json
 	s.Router.Handle("/v1/alice/movie",
-		alice.New(httplog.LogHandler(s.Logger, logdb, opts), s.handleRespHeader, servertoken.Handler(s.Logger, appdb)).
+		alice.New(
+			httplog.LogHandler(s.Logger, logdb, opts),
+			s.handleRespHeader,
+			servertoken.Handler(s.Logger, appdb)).
 			ThenFunc(s.handlePost())).
 		Methods("POST").
 		Headers("Content-Type", "application/json")
