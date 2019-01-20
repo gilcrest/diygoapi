@@ -29,18 +29,24 @@ func (s *Server) handleRespHeader(h http.Handler) http.Handler {
 func NewServer(lvl zerolog.Level) (*Server, error) {
 	const op errors.Op = "server.NewServer"
 
+	// call constructor for Server struct from srvr module
 	srvr, err := srvr.NewServer(lvl)
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
 
+	// Use composition to make srvr.Server struct part of
+	// local Server struct
 	server := &Server{srvr}
 
+	// Use Datastore(DS) Option method to initialize logging
+	// database
 	err = server.DS.Option(datastore.InitLogDB())
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
 
+	// routes registers handlers to the Server router
 	err = server.routes()
 	if err != nil {
 		return nil, errors.E(op, err)
