@@ -86,7 +86,7 @@ func (s *Server) handlePost() http.HandlerFunc {
 			// an errors.Error - use Kind, Code and Parameter coming
 			// up from the error
 			if e, ok := err.(*errors.Error); ok {
-				err := errors.RE(http.StatusBadRequest, e.Kind, e.Code, err)
+				err := errors.RE(http.StatusBadRequest, e.Kind, e.Code, e.Param, err)
 				errors.HTTPError(w, err)
 				return
 			}
