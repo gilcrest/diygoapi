@@ -12,6 +12,8 @@ github.com/gilcrest/errors v0.10.0 h1:DmpvPIonI2jXQX6a4zJr0SRKzyu2J3a37ftIP4YLzf
 github.com/gilcrest/errors v0.10.0/go.mod h1:I/pp6AMNqp5tNurktyBw7Lu4BQu3FfsU2W/hM5yuwFE=
 github.com/gilcrest/errors v0.12.0 h1:ZdeBiLZ9rlggr0A7GaJmalrt/RQ5zDw6yv7zQ9E4gas=
 github.com/gilcrest/errors v0.12.0/go.mod h1:I/pp6AMNqp5tNurktyBw7Lu4BQu3FfsU2W/hM5yuwFE=
+github.com/gilcrest/errors v0.13.0 h1:+kafAgZTSdC47FUdSBrdYZN641XnFqu9AhjcfQFd8DI=
+github.com/gilcrest/errors v0.13.0/go.mod h1:I/pp6AMNqp5tNurktyBw7Lu4BQu3FfsU2W/hM5yuwFE=
 github.com/gilcrest/httplog v0.7.0 h1:YAV6QN+G+D0PSFpVIqwPDBmTqXYualsdr+zkJcOYkK8=
 github.com/gilcrest/httplog v0.7.0/go.mod h1:nG/087CjhU+FGU53wMQqFQ1SlUmu9M/z7vu2wR3wDog=
 github.com/gilcrest/movie v0.4.0 h1:06ImTXQg6yoZv49OxPH3XlwvHdtJhG4wo+ja+LWQaGY=
