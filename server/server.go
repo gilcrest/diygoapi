@@ -27,7 +27,7 @@ func (s *Server) handleRespHeader(h http.Handler) http.Handler {
 // NewServer is a constructor for the Server struct
 // Sets up the struct and registers routes
 func NewServer(lvl zerolog.Level) (*Server, error) {
-	const op errors.Op = "server.NewServer"
+	const op errors.Op = "server/NewServer"
 
 	// call constructor for Server struct from srvr module
 	srvr, err := srvr.NewServer(lvl)
