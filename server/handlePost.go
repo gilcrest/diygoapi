@@ -40,11 +40,12 @@ func (s *Server) handlePost() http.HandlerFunc {
 			Audit           *httplog.Audit `json:"audit"`
 		}
 
-		// retrieve the context from the http.Request
-		ctx := req.Context()
+		const dateFormat string = "Jan 02 2006"
 
 		var err error
-		const dateFormat string = "Jan 02 2006"
+
+		// retrieve the context from the http.Request
+		ctx := req.Context()
 
 		// Declare rqst as an instance of request
 		// Decode JSON HTTP request body into a Decoder type
