@@ -3,8 +3,10 @@ github.com/gilcrest/alice v1.0.0/go.mod h1:q5HRhK5WEyU1pDBIIfmYapVGLd/IAAPwiO8LN
 github.com/gilcrest/apiclient v0.4.0/go.mod h1:5G5lobQ3BhHDZDVP8JBl3KjWg5Otx7X0f8334sQALe8=
 github.com/gilcrest/apiclient v0.6.0 h1:t2px3DKqw+sueJsXHSIUOoI4sogNi/iBBPqXWcH6C7k=
 github.com/gilcrest/apiclient v0.6.0/go.mod h1:5G5lobQ3BhHDZDVP8JBl3KjWg5Otx7X0f8334sQALe8=
+github.com/gilcrest/apiclient v0.9.1/go.mod h1:nHqdp3XJkv240BsgceDQA7CjIMPRg2Z7UxcxJHm7J0I=
 github.com/gilcrest/dbaudit v0.2.0 h1:Cinkum53Qw7g5cfvhuDeuNLRZ5dHfsjf90OX5SaAAAk=
 github.com/gilcrest/dbaudit v0.2.0/go.mod h1:9gwgeuR2maHOpzNWpb54xi/Il2UAbBqGkS2vfqtEsWs=
+github.com/gilcrest/dbaudit v0.3.1/go.mod h1:FtlITlZj0au3Os/XJgCt7rhgdi4ezzYkC52qFJmvLHA=
 github.com/gilcrest/errors v0.5.0 h1:vYj94RgAUK4RCwPpA0U77haHnvXahSbT5IXQhTNB++0=
 github.com/gilcrest/errors v0.5.0/go.mod h1:8IIeIoFzPksn6Nk8sjcSNCB+2TKd7h8yinC0hb2pauE=
 github.com/gilcrest/errors v0.8.0/go.mod h1:I/pp6AMNqp5tNurktyBw7Lu4BQu3FfsU2W/hM5yuwFE=
@@ -16,6 +18,7 @@ github.com/gilcrest/httplog v0.7.0 h1:YAV6QN+G+D0PSFpVIqwPDBmTqXYualsdr+zkJcOYkK
 github.com/gilcrest/httplog v0.7.0/go.mod h1:nG/087CjhU+FGU53wMQqFQ1SlUmu9M/z7vu2wR3wDog=
 github.com/gilcrest/movie v0.4.1 h1:h2Sd63zicIh4jUW7c3ayIIpWyp9v9MjCAH8GUnIS3V4=
 github.com/gilcrest/movie v0.4.1/go.mod h1:yWxMrJ06BVOxTjb7IWpJtD4rlYIXCGZHH0Tyt8k+4Rw=
+github.com/gilcrest/movie v0.5.0/go.mod h1:pFX+b+dwqDST5XmVRVwpFCs6YjBXRxcxf2javqIJCeE=
 github.com/gilcrest/rand v0.3.0 h1:WbOVoc1vPlN2FXORfVzZAYLC1nUVBXoEUfKht4AR9GE=
 github.com/gilcrest/rand v0.3.0/go.mod h1:Qh83+hXt2ZMdIU/8fo7p/683AWruc9Erm9RWWc/IyWk=
 github.com/gilcrest/servertoken v0.2.0 h1:2IhbKLd0ss18sZwW1Y/tET1YXmh0x4kd/GZcjoI+Dck=
@@ -40,3 +43,4 @@ github.com/rs/zerolog v1.9.1 h1:AjV/SFRF0+gEa6rSjkh0Eji/DnkrJKVpPho6SW5g4mU=
 github.com/rs/zerolog v1.9.1/go.mod h1:YbFCdg8HfsridGWAh22vktObvhZbQsZXe4/zB0OKkWU=
 github.com/rs/zerolog v1.11.0 h1:DRuq/S+4k52uJzBQciUcofXx45GrMC6yrEbb/CoK6+M=
 github.com/rs/zerolog v1.11.0/go.mod h1:YbFCdg8HfsridGWAh22vktObvhZbQsZXe4/zB0OKkWU=
+github.com/rs/zerolog v1.12.0/go.mod h1:YbFCdg8HfsridGWAh22vktObvhZbQsZXe4/zB0OKkWU=
