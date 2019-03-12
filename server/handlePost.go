@@ -42,10 +42,19 @@ func (s *Server) handlePost() http.HandlerFunc {
 
 		const dateFormat string = "Jan 02 2006"
 
-		var err error
-
 		// retrieve the context from the http.Request
 		ctx := req.Context()
+
+		// get a new httplog.Audit struct from NewAudit
+		aud, err := httplog.NewAudit(ctx)
+		if err != nil {
+			// log error
+			s.Logger.Error().Err(err).Str("RequestID", aud.RequestID).Msg("")
+			// response error
+			err = errors.RE(http.StatusInternalServerError, errors.Other, err)
+			errors.HTTPError(w, err)
+			return
+		}
 
 		// Declare rqst as an instance of request
 		// Decode JSON HTTP request body into a Decoder type
@@ -79,25 +88,7 @@ func (s *Server) handlePost() http.HandlerFunc {
 		movie.Director = rqst.Director
 		movie.Writer = rqst.Writer
 
-		// Call the Validate method of the movie object
-		// to validate request input data
-		err = movie.Validate()
-		if err != nil {
-			// Do a type assertion on the Error coming back, should be
-			// an errors.Error - use Kind, Code and Parameter coming
-			// up from the error
-			if e, ok := err.(*errors.Error); ok {
-				err := errors.RE(http.StatusBadRequest, e.Kind, e.Code, e.Param, err)
-				errors.HTTPError(w, err)
-				return
-			}
-			// if falls through type assertion, then serve an unanticipated error
-			err := errors.RE(http.StatusInternalServerError, errors.Unanticipated)
-			errors.HTTPError(w, err)
-			return
-		}
-
-		// get a new DB Tx
+		// get a new DB Tx from the PostgreSQL datastore within the server struct
 		tx, err := s.DS.BeginTx(ctx, nil, datastore.AppDB)
 		if err != nil {
 			err = errors.RE(http.StatusInternalServerError, errors.Database)
@@ -105,44 +96,28 @@ func (s *Server) handlePost() http.HandlerFunc {
 			return
 		}
 
-		// Call the create method of the User object to write
-		// to the database
-		err = movie.CreateDB(ctx, s.Logger, tx)
+		// Call the create method of the Movie object to validate and insert the data
+		err = movie.Create(ctx, s.Logger, tx)
 		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				err = errors.RE(http.StatusInternalServerError, errors.Database)
-				errors.HTTPError(w, err)
-				return
-			}
-			// Do a type assertion on the Error coming back, if an errors.Error
-			// then use code coming up from the error
+			// log error
+			s.Logger.Error().Err(err).Str("RequestID", aud.RequestID).Msg("")
+			// All errors should be an errors.Error type
+			// Use Kind, Code and Error from lower level errors to populate
+			// RE (Response Error)
 			if e, ok := err.(*errors.Error); ok {
-				err := errors.RE(http.StatusBadRequest, errors.Validation, e.Code, err)
+				err := errors.RE(http.StatusBadRequest, e.Kind, e.Param, e.Code, err)
 				errors.HTTPError(w, err)
 				return
 			}
-			err = errors.RE(http.StatusInternalServerError, errors.Database)
+
+			// if falls through type assertion, then serve an unanticipated error
+			err := errors.RE(http.StatusInternalServerError, errors.Unanticipated)
 			errors.HTTPError(w, err)
 			return
 		}
 
-		if err := tx.Commit(); err != nil {
-			err = errors.RE(http.StatusInternalServerError, errors.Database)
-			errors.HTTPError(w, err)
-			return
-		}
-
-		// If we successfully committed the db transaction, we can consider this
+		// If we successfully created/committed the db transaction, we can consider this
 		// transaction successful and return a response with the response body
-
-		// get a new httplog.Audit struct from NewAudit using the
-		// above set options and request context
-		aud, err := httplog.NewAudit(ctx)
-		if err != nil {
-			err = errors.RE(http.StatusInternalServerError, errors.Unanticipated)
-			errors.HTTPError(w, err)
-			return
-		}
 
 		// create a new response struct and set Audit and other
 		// relevant elements
