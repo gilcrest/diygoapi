@@ -35,7 +35,7 @@ func NewServer(lvl zerolog.Level) (*Server, error) {
 		return nil, errors.E(op, err)
 	}
 
-	// Use composition to make srvr.Server struct part of
+	// Use type embedding to make srvr.Server struct part of
 	// local Server struct
 	server := &Server{srvr}
 
