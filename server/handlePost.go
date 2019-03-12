@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/gilcrest/errors"
-	"github.com/gilcrest/httplog"
 	"github.com/gilcrest/movie"
 	"github.com/gilcrest/srvr/datastore"
 )
@@ -29,15 +28,14 @@ func (s *Server) handlePost() http.HandlerFunc {
 
 		// response is the expected service response fields
 		type response struct {
-			Title           string         `json:"Title"`
-			Year            int            `json:"Year"`
-			Rated           string         `json:"Rated"`
-			Released        string         `json:"ReleaseDate"`
-			RunTime         int            `json:"RunTime"`
-			Director        string         `json:"Director"`
-			Writer          string         `json:"Writer"`
-			CreateTimestamp string         `json:"CreateTimestamp"`
-			Audit           *httplog.Audit `json:"audit"`
+			Title           string `json:"Title"`
+			Year            int    `json:"Year"`
+			Rated           string `json:"Rated"`
+			Released        string `json:"ReleaseDate"`
+			RunTime         int    `json:"RunTime"`
+			Director        string `json:"Director"`
+			Writer          string `json:"Writer"`
+			CreateTimestamp string `json:"CreateTimestamp"`
 		}
 
 		const dateFormat string = "Jan 02 2006"
@@ -45,22 +43,11 @@ func (s *Server) handlePost() http.HandlerFunc {
 		// retrieve the context from the http.Request
 		ctx := req.Context()
 
-		// get a new httplog.Audit struct from NewAudit
-		aud, err := httplog.NewAudit(ctx)
-		if err != nil {
-			// log error
-			s.Logger.Error().Err(err).Str("RequestID", aud.RequestID).Msg("")
-			// response error
-			err = errors.RE(http.StatusInternalServerError, errors.Other, err)
-			errors.HTTPError(w, err)
-			return
-		}
-
 		// Declare rqst as an instance of request
 		// Decode JSON HTTP request body into a Decoder type
-		//  and unmarshal that into rqst
+		// and unmarshal that into rqst
 		rqst := new(request)
-		err = json.NewDecoder(req.Body).Decode(&rqst)
+		err := json.NewDecoder(req.Body).Decode(&rqst)
 		defer req.Body.Close()
 		if err != nil {
 			err = errors.RE(http.StatusBadRequest, errors.InvalidRequest, err)
@@ -68,7 +55,7 @@ func (s *Server) handlePost() http.HandlerFunc {
 			return
 		}
 
-		// declare a new instance of usr.User
+		// declare a new instance of movie.Movie
 		movie := new(movie.Movie)
 		movie.Title = rqst.Title
 		movie.Year = rqst.Year
@@ -100,7 +87,7 @@ func (s *Server) handlePost() http.HandlerFunc {
 		err = movie.Create(ctx, s.Logger, tx)
 		if err != nil {
 			// log error
-			s.Logger.Error().Err(err).Str("RequestID", aud.RequestID).Msg("")
+			s.Logger.Error().Err(err).Msg("")
 			// All errors should be an errors.Error type
 			// Use Kind, Code and Error from lower level errors to populate
 			// RE (Response Error)
@@ -130,7 +117,6 @@ func (s *Server) handlePost() http.HandlerFunc {
 		resp.Director = movie.Director
 		resp.Writer = movie.Writer
 		resp.CreateTimestamp = movie.CreateTimestamp.Format(time.RFC3339)
-		resp.Audit = aud
 
 		// Encode response struct to JSON for the response body
 		json.NewEncoder(w).Encode(*resp)

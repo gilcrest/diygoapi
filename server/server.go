@@ -5,7 +5,6 @@ import (
 
 	"github.com/gilcrest/errors"
 	"github.com/gilcrest/srvr"
-	"github.com/gilcrest/srvr/datastore"
 	"github.com/rs/zerolog"
 )
 
@@ -38,13 +37,6 @@ func NewServer(lvl zerolog.Level) (*Server, error) {
 	// Use type embedding to make srvr.Server struct part of
 	// local Server struct
 	server := &Server{srvr}
-
-	// Use Datastore(DS) Option method to initialize logging
-	// database
-	err = server.DS.Option(datastore.InitLogDB())
-	if err != nil {
-		return nil, errors.E(op, err)
-	}
 
 	// routes registers handlers to the Server router
 	err = server.routes()
