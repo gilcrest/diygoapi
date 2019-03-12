@@ -4,7 +4,7 @@ import (
 	"flag"
 	"net/http"
 
-	"github.com/gilcrest/go-API-template/server"
+	"github.com/gilcrest/go-api-basic/server"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
