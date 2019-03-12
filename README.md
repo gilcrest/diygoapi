@@ -15,9 +15,6 @@ A RESTful API template (built with Go) - work in progress...
   - [ ] Helpful debug logging
   - [ ] API Metrics
   - [ ] Performance Monitoring
-- [ ] "Vendored" dependencies (done via go modules)
-  - Intentionally Minimal Dependencies
-    - gorilla for routing, pq for postgres, zerolog for logging, xid for unique id generation
 - [x] [Fault tolerant - Proper Error Raising/Handling](#http-json-error-responses)
 - [ ] RESTful service versioning
 - [ ] Security/Authentication/Authorization using HTTPS/OAuth2, etc.
@@ -63,11 +60,16 @@ For error responses, the api sends a simple structured JSON message in the respo
 ```json
 {
     "error": {
-        "kind": "input validation error",
-        "message": "Username is a required field"
+        "kind": "input_validation_error",
+        "param": "Year",
+        "message": "The first film was in 1878, Year must be >= 1878"
     }
 }
 ```
+
+This is achieved using a carve-out of the [Upspin project](https://github.com/upspin/upspin) and specifically the error handling functionality summarized so eloquently by Rob Pike in [this article](https://commandcenter.blogspot.com/2017/12/error-handling-in-upspin.html). My copy of the errors functionality has changes that suit my use cases. Namely, I have built a new function `errors.RE` (for **R**esponse **E**rror), which allows the engineer to easily build an HTTP response error.
+
+
 
 This is achieved by sending a custom `HTTPErr` error type as a parameter to the `httpError` function, which then writes then replies to the request using the `http.Error` function. The structure of `HTTPErr` is based on Matt Silverlock's blog post [here](https://elithrar.github.io/article/http-handler-error-handling-revisited/), but I ended up not using the wrapper/handler technique instead opting for a different approach. You'll also note the use of constants from a custom lib/errors package. This is pretty much lifted straight from the [upspin.io](https://upspin.io/) project, with minor tweaks to suit `go-API-template` purposes.
 
