@@ -10,7 +10,7 @@ import (
 
 // routes registers handlers to the router
 func (s *Server) routes() error {
-	const op errors.Op = "server/routes"
+	const op errors.Op = "server/Server.routes"
 
 	// Get pointer to logging database to pass into httplog
 	// Only need this if you plan to use the PostgreSQL
@@ -26,9 +26,17 @@ func (s *Server) routes() error {
 		return errors.E(op, err)
 	}
 
-	// httplog.NewOpts gets a new httplog.Opts struct
-	// (with all flags set to false)
+	// httplog.NewOpts gets a pointer to a new httplog.Opts struct
 	opts := new(httplog.Opts)
+
+	// Use the Options method to set the database logging options
+	// Log2Database sets the options for logging to the database.
+	// enable turns on the functionality - if this is set to false, the
+	// parameters afterward are irrelevant as nothing will log.
+	// reqHdr logs http request headers
+	// reqBody logs the http request body
+	// respHdr logs http response headers
+	// respBody logs the http response body
 	opts.Option(httplog.Log2Database(true, true, true, true, true))
 
 	// function (`LogHandler`) that takes a handler and returns a handler (aka Constructor)
