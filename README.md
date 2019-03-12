@@ -69,8 +69,6 @@ For error responses, the api sends a simple structured JSON message in the respo
 
 This is achieved using a carve-out of the [Upspin project](https://github.com/upspin/upspin) and specifically the error handling functionality summarized so eloquently by Rob Pike in [this article](https://commandcenter.blogspot.com/2017/12/error-handling-in-upspin.html). My copy of the errors functionality has changes that suit my use cases. Namely, I have built a new function `errors.RE` (for **R**esponse **E**rror), which allows the engineer to easily build an HTTP response error.
 
-
-
 This is achieved by sending a custom `HTTPErr` error type as a parameter to the `httpError` function, which then writes then replies to the request using the `http.Error` function. The structure of `HTTPErr` is based on Matt Silverlock's blog post [here](https://elithrar.github.io/article/http-handler-error-handling-revisited/), but I ended up not using the wrapper/handler technique instead opting for a different approach. You'll also note the use of constants from a custom lib/errors package. This is pretty much lifted straight from the [upspin.io](https://upspin.io/) project, with minor tweaks to suit `go-API-template` purposes.
 
 The package makes error handling fun - you’ll always return a pretty good looking error and setting up errors is pretty easy.
@@ -89,7 +87,6 @@ When creating errors within your app, you should not have to setup every error a
         return
     }
 ```
-
 
 ----
 
