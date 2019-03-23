@@ -1,42 +1,30 @@
 package server
 
 import (
-	"net/http"
-
+	"github.com/gilcrest/env"
 	"github.com/gilcrest/errors"
-	"github.com/gilcrest/srvr"
 	"github.com/rs/zerolog"
 )
 
-// Server struct is a pointer to srvr.Server
-// allows additional local methods to be added
+// Server struct contains the environment and additional methods
+// for running our HTTP server
 type Server struct {
-	*srvr.Server
-}
-
-// handleRespHeader middleware is used to add standard HTTP response headers
-func (s *Server) handleRespHeader(h http.Handler) http.Handler {
-	return http.HandlerFunc(
-		func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Add("Content-Type", "application/json")
-			h.ServeHTTP(w, r) // call original
-		})
+	*env.Env
 }
 
 // NewServer is a constructor for the Server struct
 // Sets up the struct and registers routes
-func NewServer(lvl zerolog.Level) (*Server, error) {
+func NewServer(name env.Name, lvl zerolog.Level) (*Server, error) {
 	const op errors.Op = "server/NewServer"
 
-	// call constructor for Server struct from srvr module
-	srvr, err := srvr.NewServer(lvl)
+	// call constructor for Env struct from env module
+	env, err := env.NewEnv(name, lvl)
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
 
-	// Use type embedding to make srvr.Server struct part of
-	// local Server struct
-	server := &Server{srvr}
+	// Use type embedding to make env.Env struct part of Server struct
+	server := &Server{env}
 
 	// routes registers handlers to the Server router
 	err = server.routes()

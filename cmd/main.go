@@ -4,6 +4,7 @@ import (
 	"flag"
 	"net/http"
 
+	"github.com/gilcrest/env"
 	"github.com/gilcrest/go-api-basic/server"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -15,13 +16,22 @@ func main() {
 	// with level set to debug, it'd be: ./server loglvl=debug
 	loglvlFlag := flag.String("loglvl", "error", "sets log level")
 
+	// env flag allows for setting environment, e.g. Production, QA, etc.
+	// example: env=dev, env=qa, env=stg, env=prod
+	envFlag := flag.String("env", "dev", "sets log level")
+
 	flag.Parse()
 
 	// get appropriate zerolog.Level based on flag
 	loglevel := logLevel(loglvlFlag)
+	log.Log().Msgf("Logging Level set to %s", loglevel)
+
+	// get appropriate env.Name based on flag
+	eName := envName(envFlag)
+	log.Log().Msgf("Environment set to %s", eName)
 
 	// call constructor for Server struct
-	server, err := server.NewServer(loglevel)
+	server, err := server.NewServer(eName, loglevel)
 	if err != nil {
 		log.Fatal().Err(err).Msg("")
 	}
@@ -60,4 +70,26 @@ func logLevel(s *string) zerolog.Level {
 		lvl = zerolog.ErrorLevel
 	}
 	return lvl
+}
+
+func envName(s *string) env.Name {
+
+	var name env.Name
+
+	// dereference the string pointer to get flag value
+	ds := *s
+
+	switch ds {
+	case "dev":
+		name = env.Dev
+	case "qa":
+		name = env.QA
+	case "stg":
+		name = env.Staging
+	case "prod":
+		name = env.Production
+	default:
+		name = env.Dev
+	}
+	return name
 }

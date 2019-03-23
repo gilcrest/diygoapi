@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gilcrest/env/datastore"
 	"github.com/gilcrest/errors"
 	"github.com/gilcrest/movie"
-	"github.com/gilcrest/srvr/datastore"
 )
 
 // handlePost handles POST requests for the /movie endpoint
@@ -28,13 +28,7 @@ func (s *Server) handlePost() http.HandlerFunc {
 
 		// response is the expected service response fields
 		type response struct {
-			Title           string `json:"Title"`
-			Year            int    `json:"Year"`
-			Rated           string `json:"Rated"`
-			Released        string `json:"ReleaseDate"`
-			RunTime         int    `json:"RunTime"`
-			Director        string `json:"Director"`
-			Writer          string `json:"Writer"`
+			request
 			CreateTimestamp string `json:"CreateTimestamp"`
 		}
 
@@ -103,8 +97,8 @@ func (s *Server) handlePost() http.HandlerFunc {
 			return
 		}
 
-		// If we successfully created/committed the db transaction, we can consider this
-		// transaction successful and return a response with the response body
+		// If we got this far, we created/committed the db transaction and can consider
+		// this transaction successful and return a response
 
 		// create a new response struct and set Audit and other
 		// relevant elements

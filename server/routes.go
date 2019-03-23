@@ -1,10 +1,12 @@
 package server
 
 import (
+	"net/http"
+
 	"github.com/gilcrest/alice"
+	"github.com/gilcrest/env/datastore"
 	"github.com/gilcrest/errors"
 	"github.com/gilcrest/servertoken"
-	"github.com/gilcrest/srvr/datastore"
 )
 
 // routes registers handlers to the router
@@ -20,11 +22,20 @@ func (s *Server) routes() error {
 	// Match only POST requests with Content-Type header = application/json
 	s.Router.Handle("/v1/movie",
 		alice.New(
-			s.handleRespHeader,
+			s.handleStdResponseHeader,
 			servertoken.Handler(s.Logger, appdb)).
 			ThenFunc(s.handlePost())).
 		Methods("POST").
 		Headers("Content-Type", "application/json")
 
 	return nil
+}
+
+// handleStdResponseHeader middleware is used to add standard HTTP response headers
+func (s *Server) handleStdResponseHeader(h http.Handler) http.Handler {
+	return http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Add("Content-Type", "application/json")
+			h.ServeHTTP(w, r) // call original
+		})
 }
