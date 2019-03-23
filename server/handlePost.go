@@ -32,6 +32,7 @@ func (s *Server) handlePost() http.HandlerFunc {
 			CreateTimestamp string `json:"CreateTimestamp"`
 		}
 
+		// dateFormat is the expected date format for any date fields
 		const dateFormat string = "Jan 02 2006"
 
 		// retrieve the context from the http.Request
