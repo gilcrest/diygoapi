@@ -33,6 +33,7 @@ func (s *Server) handlePost() http.HandlerFunc {
 		}
 
 		// dateFormat is the expected date format for any date fields
+		// in the request
 		const dateFormat string = "Jan 02 2006"
 
 		// retrieve the context from the http.Request
