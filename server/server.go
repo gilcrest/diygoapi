@@ -6,7 +6,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// Server struct contains the environment and additional methods
+// Server struct contains the environment (env.Env) and additional methods
 // for running our HTTP server
 type Server struct {
 	*env.Env
