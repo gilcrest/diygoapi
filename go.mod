@@ -4,7 +4,7 @@ go 1.12
 
 require (
 	github.com/gilcrest/alice v1.0.0
-	github.com/gilcrest/envy v0.0.1
+	github.com/gilcrest/env v0.1.0
 	github.com/gilcrest/errors v0.13.1
 	github.com/gilcrest/movie v0.5.1
 	github.com/gilcrest/servertoken v0.4.2
