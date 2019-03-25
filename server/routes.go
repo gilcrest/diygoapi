@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gilcrest/alice"
-	"github.com/gilcrest/envy/datastore"
+	"github.com/gilcrest/env/datastore"
 	"github.com/gilcrest/errors"
 	"github.com/gilcrest/servertoken"
 )
