@@ -4,7 +4,7 @@ import (
 	"flag"
 	"net/http"
 
-	"github.com/gilcrest/env"
+	"github.com/gilcrest/envy"
 	"github.com/gilcrest/go-api-basic/server"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -26,7 +26,7 @@ func main() {
 	loglevel := logLevel(loglvlFlag)
 	log.Log().Msgf("Logging Level set to %s", loglevel)
 
-	// get appropriate env.Name based on flag
+	// get appropriate envy.Name based on flag
 	eName := envName(envFlag)
 	log.Log().Msgf("Environment set to %s", eName)
 
@@ -72,24 +72,24 @@ func logLevel(s *string) zerolog.Level {
 	return lvl
 }
 
-func envName(s *string) env.Name {
+func envName(s *string) envy.Name {
 
-	var name env.Name
+	var name envy.Name
 
 	// dereference the string pointer to get flag value
 	ds := *s
 
 	switch ds {
 	case "dev":
-		name = env.Dev
+		name = envy.Dev
 	case "qa":
-		name = env.QA
+		name = envy.QA
 	case "stg":
-		name = env.Staging
+		name = envy.Staging
 	case "prod":
-		name = env.Production
+		name = envy.Production
 	default:
-		name = env.Dev
+		name = envy.Dev
 	}
 	return name
 }
