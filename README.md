@@ -10,7 +10,7 @@ The following is an in-depth walkthrough of this repo as well as the module depe
 
 The [API/server layer module](https://github.com/gilcrest/go-api-basic) is the starting point and as such has the main package/function within the cmd directory. In it, I'm checking for a logging level command line flag. I'm using zerolog throughout my modules as my logger.
 
-![API Walkthrough Image 1](https://github.com/gilcrest/go-api-basic/image/walk1.png)
+![API Walkthrough Image 1](./image/walk1.png)
 
 I'm then calling the NewServer function in the server package to construct a new server using the aforementioned logging level. The server's multiplex router is Gorilla, which is registered as the handler for http.Handle. Finally, http.ListenAndServe is run to truly start the server and listen for incoming requests.
 Let's dig into the server.NewServer function above, as there are some peculiar things I should explain. In the server package, there is also a Server struct, which is composed of a pointer to the Server struct from the srvr module, as below:
