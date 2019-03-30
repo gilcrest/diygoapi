@@ -12,19 +12,25 @@ The following is an in-depth walkthrough of this repo as well as the module depe
 
 Before even getting into the full walkthrough, I wanted to review the [errors module](https://github.com/gilcrest/errors) as without a doubt, you'll see it called throughout the application. The errors module is basically a carve out of the error handling used in the [upspin library](https://github.com/upspin/upspin/tree/master/errors) with some tweaks and additions I made for my own needs. Rob Pike has a [fantastic post](https://commandcenter.blogspot.com/2017/12/error-handling-in-upspin.html) about errors and the upspin implementation. I've taken that and added my own twist. 
 
-My general idea for error handling throughout this API and dependent modules is to raise an error using the errors.E function as seen below. 
+My general idea for error handling throughout this API and dependent modules is to always raise an error using the errors.E function as seen in this simple error handle below. Errors.E is neat - you can pass in any one of a number of approved types and the function helps form the error. In all error cases, I pass the errors.Op as the errors.E function helps build a pseudo stack trace for the error as it goes up through the code.
 
-typical error: ![API Walkthrough Image 2](./image/walk2.png)
+<img src="./image/errors1.png" alt="Simple Error" width="500"/>
 
-This function is really neat - you pass in one or many of several types and the function builds the error for you. The types are listed below:
+The following example shows a more robust validation example. In it, you'll notice that if you need to define your own error quickly, you can just use a string and insert that into an error as well.
 
-<!-- ![API Walkthrough Image 3](./image/walk3.png) -->
+<img src="./image/errors2.png" alt="Error type" width="800"/>
 
-<img src="./image/walk3.png" alt="drawing" width="600"/>
+You may also notice the errors.MissingField function used to validate missing input on fields, which comes from [this Mat Ryer post](https://medium.com/@matryer/patterns-for-decoding-and-validating-input-in-go-data-apis-152291ac7372)
 
-For example, you can see in  error handle above, I have defined a constant of errors.Op and added that to the error as well as put the actual error inside as well. If you need to define your own error quickly, you can just use a string and insert that into an error as well, as seen in this next example.
+```go
+// MissingField is an error type that can be used when
+// validating input fields that do not have a value, but should
+type MissingField string
 
-
+func (e MissingField) Error() string {
+	return string(e) + " is required"
+}
+```
 
 As errors go up the stack from whatever depth of code they're in, Upspin captures the operation and adds that to the error string as a pseudo stack trace that is super helpful for debugging. However, I don't want this type of internal stack information exposed to end users in the response - I only want the error message. As such, just prior to shipping the response, I log the error and then add the error to a function I created called errors.RE (**R**esponse **E**rror). This function effectively strips the stack information and just sends the original error message along with whatever http status code you select as well as whatever errors.Kind, Code or Parameter you choose to set. The response will look like so:
 
