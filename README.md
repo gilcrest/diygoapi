@@ -6,7 +6,29 @@ A RESTful API template (built with Go) - work in progress...
 
 ## API Walkthrough
 
-The following is an in-depth walkthrough of this repo as well as the module dependencies that are called within. This walkthrough has a lot of detail. I know I'll lose people due to the length and detail, but, I think, for some, this might be helpful.
+The following is an in-depth walkthrough of this repo as well as the module dependencies that are called within. This walkthrough has a stupid amount of detail. I know I'll lose the TL;DR crowd, but, I think, for some, this might be helpful.
+
+### Errors
+
+Before even getting into the full walkthrough, I wanted to review the [errors module](https://github.com/gilcrest/errors) as without a doubt, you'll see it called throughout the application. The errors module is basically a carve out of the error handling used in the [upspin library](https://github.com/upspin/upspin/tree/master/errors) with some tweaks and additions I made for my own needs. Rob Pike has a [fantastic post](https://commandcenter.blogspot.com/2017/12/error-handling-in-upspin.html) about errors and the upspin implementation. I've taken that and added my own twist. 
+
+My general idea for error handling throughout this API and dependent modules is to raise an error using the errors.E function as seen below. 
+
+typical error: ![API Walkthrough Image 2](./image/walk2.png)
+
+This function is really neat - you pass in one or many of several types and the function builds the error for you. The types are listed below:
+
+<!-- ![API Walkthrough Image 3](./image/walk3.png) -->
+
+<img src="./image/walk3.png" alt="drawing" width="600"/>
+
+For example, you can see in  error handle above, I have defined a constant of errors.Op and added that to the error as well as put the actual error inside as well. If you need to define your own error quickly, you can just use a string and insert that into an error as well, as seen in this next example.
+
+
+
+As errors go up the stack from whatever depth of code they're in, Upspin captures the operation and adds that to the error string as a pseudo stack trace that is super helpful for debugging. However, I don't want this type of internal stack information exposed to end users in the response - I only want the error message. As such, just prior to shipping the response, I log the error and then add the error to a function I created called errors.RE (**R**esponse **E**rror). This function effectively strips the stack information and just sends the original error message along with whatever http status code you select as well as whatever errors.Kind, Code or Parameter you choose to set. The response will look like so:
+
+
 
 The [API/server layer module](https://github.com/gilcrest/go-api-basic) is the starting point and as such has the main package/function within the cmd directory. In it, I'm checking for a logging level command line flag. I'm using zerolog throughout my modules as my logger.
 
