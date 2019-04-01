@@ -32,13 +32,6 @@ func (s *Server) handlePost() http.HandlerFunc {
 			CreateTimestamp string `json:"CreateTimestamp"`
 		}
 
-		// dateFormat is the expected date format for any date fields
-		// in the request
-		const dateFormat string = "Jan 02 2006"
-
-		// retrieve the context from the http.Request
-		ctx := req.Context()
-
 		// Declare rqst as an instance of request
 		// Decode JSON HTTP request body into a Decoder type
 		// and unmarshal that into rqst
@@ -50,6 +43,10 @@ func (s *Server) handlePost() http.HandlerFunc {
 			errors.HTTPError(w, err)
 			return
 		}
+
+		// dateFormat is the expected date format for any date fields
+		// in the request
+		const dateFormat string = "Jan 02 2006"
 
 		// declare a new instance of movie.Movie
 		movie := new(movie.Movie)
@@ -70,6 +67,9 @@ func (s *Server) handlePost() http.HandlerFunc {
 		movie.RunTime = rqst.RunTime
 		movie.Director = rqst.Director
 		movie.Writer = rqst.Writer
+
+		// retrieve the context from the http.Request
+		ctx := req.Context()
 
 		// get a new DB Tx from the PostgreSQL datastore within the server struct
 		tx, err := s.DS.BeginTx(ctx, nil, datastore.AppDB)
