@@ -2,18 +2,26 @@
 
 A RESTful API template (built with Go) - work in progress...
 
-- The goal of this repo/API is to make an example/template of relational database-backed APIs that have characteristics needed to ensure success in a high volume environment.
+The goal of this repo/API is to make an example/template of a relational database-backed HTTP API that has characteristics needed to ensure success in a high volume environment. I'm gearing this towards beginners, as I struggled with a lot of this over the past couple of years and would like to help others getting started.
+
+This does not have everything you would need, however, as that would be quite large, but I do have another repo, where I'm attempting to put that together as well.
+
+## Thanks / Attribution
+
+I should say that most of the ideas I'm presenting here are not my own - I learned them from reading a number of books and blogs from extremely talented individuals. Here is the list (in no particular order)
+
+- [Mat Ryer](https://medium.com/@matryer)
 
 ## API Walkthrough
 
-The following is an in-depth walkthrough of this repo as well as the module dependencies that are called within. This walkthrough has a stupid amount of detail. I know I'll lose the TL;DR crowd, but, I think, for some, this might be helpful. Sections:
+The following is an in-depth walkthrough of this repo as well as the module dependencies that are called within. This walkthrough has a stupid amount of detail. Sections:
 
 - [Errors](#Errors)
 - [API/Handlers/Main](#Main-API-Module)
 
 ### Errors
 
-Before even getting into the full walkthrough, I wanted to review the [errors module](https://github.com/gilcrest/errors) and the approach to error handling. The errors module is basically a carve out of the error handling used in the [upspin library](https://github.com/upspin/upspin/tree/master/errors) with some tweaks and additions I made for my own needs. Rob Pike has a [fantastic post](https://commandcenter.blogspot.com/2017/12/error-handling-in-upspin.html) about errors and the Upspin implementation. I've taken that and added my own twist.
+Before even getting into the full walkthrough, I wanted to review the [errors module](https://github.com/gilcrest/errors) and the approach to error handling. The `errors module` is basically a carve out of the error handling used in the [upspin library](https://github.com/upspin/upspin/tree/master/errors) with some tweaks and additions I made for my own needs. Rob Pike has a [fantastic post](https://commandcenter.blogspot.com/2017/12/error-handling-in-upspin.html) about errors and the Upspin implementation. I've taken that and added my own twist.
 
 My general idea for error handling throughout this API and dependent modules is to always raise an error using the errors.E function as seen in this simple error handle below. Errors.E is neat - you can pass in any one of a number of approved types and the function helps form the error. In all error cases, I pass the errors.Op as the errors.E function helps build a pseudo stack trace for the error as it goes up through the code. Here's a snippet showing a typical, simple example of using the errors.E function.
 
@@ -229,8 +237,153 @@ Next, the URL path and handlers are register to the router embedded in the serve
         Headers("Content-Type", "application/json")
 ```
 
-I am using [my own fork](https://github.com/gilcrest/alice) of [Justinas Stankevičius' alice library](https://github.com/justinas/alice) as a module to make middleware chaining easier. Hopefully the original alice library will enable modules and I'll go back, but until then I'll keep my own fork as it has properly setup modules files.
+To go through the Handle registration item by item - [my own fork](https://github.com/gilcrest/alice) as a module of [Justinas Stankevičius' alice library](https://github.com/justinas/alice) is being used to make middleware chaining easier. Hopefully the original alice library will enable modules and I'll go back, but until then I'll keep my own fork as it has properly setup modules files.
 
-The first middleware in the chain above `s.handleStdResponseHeader` simply adds standard response headers - right now, it's just the Content-Type:application/json header, but it's an easy place to other headers one may deem standard.
+Next, the first middleware in the chain above `s.handleStdResponseHeader` simply adds standard response headers. As of now, it's just the `Content-Type:application/json` header, but it's an easy place to other headers one may deem standard.
 
-The second middleware in the chain above, `servertoken.Handler` is an http handler from my [servertoken module](https://github.com/gilcrest/servertoken).
+```go
+// handleStdResponseHeader middleware is used to add standard HTTP response headers
+func (s *Server) handleStdResponseHeader(h http.Handler) http.Handler {
+    return http.HandlerFunc(
+        func(w http.ResponseWriter, r *http.Request) {
+            w.Header().Add("Content-Type", "application/json")
+            h.ServeHTTP(w, r) // call original
+        })
+}
+```
+
+Next, the second middleware in the chain above (`servertoken.Handler`) validates that the caller of the API is authorized. Details for what's happening in this `servertoken module` can be found [here](https://github.com/gilcrest/servertoken).
+
+The final handler, `s.handlePost`, which hangs off the `Server` struct mentioned above, is meant to handle `POST` requests to the route registered for the API ("/v1/movie").
+
+Inside the `handlePost` method, a private request and response struct are defined. I like this technique as it gives me complete control over what is coming and going from the API.
+
+```go
+// handlePost handles POST requests for the /movie endpoint
+// and creates a movie in the database
+func (s *Server) handlePost() http.HandlerFunc {
+    return func(w http.ResponseWriter, req *http.Request) {
+
+        // request is the expected service request fields
+        type request struct {
+            Title    string `json:"Title"`
+            Year     int    `json:"Year"`
+            Rated    string `json:"Rated"`
+            Released string `json:"ReleaseDate"`
+            RunTime  int    `json:"RunTime"`
+            Director string `json:"Director"`
+            Writer   string `json:"Writer"`
+        }
+
+        // response is the expected service response fields
+        type response struct {
+            request
+            CreateTimestamp string `json:"CreateTimestamp"`
+        }
+```
+
+The request is Decoded into an instance of the request struct.
+
+```go
+        // Declare rqst as an instance of request
+        // Decode JSON HTTP request body into a Decoder type
+        // and unmarshal that into rqst
+        rqst := new(request)
+        err := json.NewDecoder(req.Body).Decode(&rqst)
+        defer req.Body.Close()
+        if err != nil {
+            err = errors.RE(http.StatusBadRequest, errors.InvalidRequest, err)
+            errors.HTTPError(w, err)
+            return
+        }
+```
+
+Then request is mapped to the business struct (`movie.Movie`) from the [movie module](https://github.com/gilcrest/movie). This is a demo API, so the [movie module] (e.g. [imdb.com](https://www.imdb.com/)) contains basic CRUD (**C**reate, **R**ead, **U**pdate, **D**elete) operations for a movie database (as of this writing, it's only Create, but the goal is to have examples for everything). Some quick top-level validations around date formatting are done (see time.Parse below)
+
+```go
+        // dateFormat is the expected date format for any date fields
+        // in the request
+        const dateFormat string = "Jan 02 2006"
+
+        // declare a new instance of movie.Movie
+        movie := new(movie.Movie)
+        movie.Title = rqst.Title
+        movie.Year = rqst.Year
+        movie.Rated = rqst.Rated
+        t, err := time.Parse(dateFormat, rqst.Released)
+        if err != nil {
+            err = errors.RE(http.StatusBadRequest,
+                errors.Validation,
+                errors.Code("invalid_date_format"),
+                errors.Parameter("ReleaseDate"),
+                err)
+            errors.HTTPError(w, err)
+            return
+        }
+        movie.Released = t
+        movie.RunTime = rqst.RunTime
+        movie.Director = rqst.Director
+        movie.Writer = rqst.Writer
+```
+
+The context is pulled from the incoming request and a database transaction is started using the AppDB from the Server struct
+
+```go
+        // retrieve the context from the http.Request
+        ctx := req.Context()
+
+        // get a new DB Tx from the PostgreSQL datastore within the server struct
+        tx, err := s.DS.BeginTx(ctx, nil, datastore.AppDB)
+        if err != nil {
+            err = errors.RE(http.StatusInternalServerError, errors.Database)
+            errors.HTTPError(w, err)
+            return
+        }
+```
+
+The `Create` method of the `movie.Movie` struct is called using the context and database transaction from above as well as the Logger from the server. The error handling is important here, but it is discussed at length in the [errors section](#Errors). For more information on what's happening inside the `movie module` click [here](https://github.com/gilcrest/movie). In summary though, the `movie module` has the "business logic" for the API - it is doing deeper input validations, exercising any business rules and creating/reading/updating/deleting the data in the database (as well as handling commit or rollback).
+
+```go
+        // Call the create method of the Movie object to validate and insert the data
+        err = movie.Create(ctx, s.Logger, tx)
+        if err != nil {
+            // log error
+            s.Logger.Error().Err(err).Msg("")
+            // Type assertion is used - all errors should be an *errors.Error type
+            // Use Kind, Param, Code and Error from lower level errors to populate RE (Response Error)
+            if e, ok := err.(*errors.Error); ok {
+                err := errors.RE(http.StatusBadRequest, e.Kind, e.Param, e.Code, err)
+                errors.HTTPError(w, err)
+                return
+            }
+
+            // if falls through type assertion, then serve an unanticipated error
+            err := errors.RE(http.StatusInternalServerError, errors.Unanticipated)
+            errors.HTTPError(w, err)
+            return
+        }
+```
+
+If we got this far, the db transaction has been created/committed - we can consider this transaction successful and return a response. An instance of the response struct is initialized and populated with data from the `movie.Movie` struct and the response is encoded and sent back to the caller.
+
+```go
+        // create a new response struct and set Audit and other
+        // relevant elements
+        resp := new(response)
+        resp.Title = movie.Title
+        resp.Year = movie.Year
+        resp.Rated = movie.Rated
+        resp.Released = movie.Released.Format(dateFormat)
+        resp.RunTime = movie.RunTime
+        resp.Director = movie.Director
+        resp.Writer = movie.Writer
+        resp.CreateTimestamp = movie.CreateTimestamp.Format(time.RFC3339)
+
+        // Encode response struct to JSON for the response body
+        json.NewEncoder(w).Encode(*resp)
+        if err != nil {
+            err = errors.RE(http.StatusInternalServerError, errors.Internal)
+            errors.HTTPError(w, err)
+            return
+        }
+```
