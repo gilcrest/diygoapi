@@ -23,15 +23,15 @@ func main() {
 	flag.Parse()
 
 	// get appropriate zerolog.Level based on flag
-	loglevel := logLevel(loglvlFlag)
-	log.Log().Msgf("Logging Level set to %s", loglevel)
+	lvl := logLevel(loglvlFlag)
+	log.Log().Msgf("Logging Level set to %s", lvl)
 
 	// get appropriate env.Name based on flag
 	eName := envName(envFlag)
 	log.Log().Msgf("Environment set to %s", eName)
 
 	// call constructor for Server struct
-	server, err := server.NewServer(eName, loglevel)
+	server, err := server.NewServer(eName, lvl)
 	if err != nil {
 		log.Fatal().Err(err).Msg("")
 	}
