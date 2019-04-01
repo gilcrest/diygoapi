@@ -85,7 +85,7 @@ func (s *Server) handlePost() http.HandlerFunc {
 			// log error
 			s.Logger.Error().Err(err).Msg("")
 			// Type assertion is used - all errors should be an *errors.Error type
-			// Use Kind, Code and Error from lower level errors to populate RE (Response Error)
+			// Use Kind, Param, Code and Error from lower level errors to populate RE (Response Error)
 			if e, ok := err.(*errors.Error); ok {
 				err := errors.RE(http.StatusBadRequest, e.Kind, e.Param, e.Code, err)
 				errors.HTTPError(w, err)
