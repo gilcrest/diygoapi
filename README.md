@@ -2,15 +2,18 @@
 
 A RESTful API template (built with Go) - work in progress...
 
-The goal of this repo/API is to make an example/template of a relational database-backed HTTP API that has characteristics needed to ensure success in a high volume environment. I'm gearing this towards beginners, as I struggled with a lot of this over the past couple of years and would like to help others getting started.
-
-This does not have everything you would need, however, as that would be quite large, but I do have another repo, where I'm attempting to put that together as well.
+The goal of this repo/API is to make an example/template of a relational database-backed REST HTTP API that has characteristics needed to ensure success in a high volume environment. I'm gearing this towards beginners, as I struggled with a lot of this over the past couple of years and would like to help others getting started. I have [another repo](https://github.com/gilcrest/go-api-expanded) which is really an extension of this one, but has more components (like request/response logging via the [httplog module](https://github.com/gilcrest/httplog)). I'm working on the documentation for that, but wanted to have this repo for simplicity sake.
 
 ## Thanks / Attribution
 
-I should say that most of the ideas I'm presenting here are not my own - I learned them from reading a number of books and blogs from extremely talented individuals. Here is the list (in no particular order)
+I should say that most of the ideas I'm presenting here are not my own - I learned them from reading a number of books and blogs from extremely talented individuals. Here is a list (in no particular order) of influences:
 
+- [Rob Pike](https://twitter.com/rob_pike?lang=en)
+- [Jaana B Dogan](https://twitter.com/rakyll?ref_src=twsrc%5Egoogle%7Ctwcamp%5Eserp%7Ctwgr%5Eauthor)
 - [Mat Ryer](https://medium.com/@matryer)
+- [Jon Calhoun](https://www.calhoun.io/about)
+- [Matt Silverlock](https://twitter.com/elithrar?lang=en)
+- [Alex Edwards](https://www.alexedwards.net/)
 
 ## API Walkthrough
 
@@ -61,7 +64,7 @@ func (e MissingField) Error() string {
 }
 ```
 
-As stated before, as errors go up the stack from whatever depth of code they're in, Upspin captures the operation and adds that to the error string as a pseudo stack trace that is super helpful for debugging. However, I don't want this type of internal stack information exposed to end users in the response - I only want the error message. As such, just prior to shipping the response, I log the error (to capture the stack info) and call a custom function I built called `errors.RE` (**R**esponse **E**rror). This function effectively strips the stack information and just sends the original error message along with whatever http status code you select as well as whatever errors.Kind, Code or Parameter you choose to set. An example of error handling at the highest level (from the POST handler) is below:
+As stated before, as errors go up the stack from whatever depth of code they're in, Upspin captures the operation and adds that to the error string as a pseudo stack trace that is super helpful for debugging. However, I don't want this type of internal stack information exposed to end users in the response - I only want the error message. As such, just prior to shipping the response, I log the error (to capture the stack info) and call a custom function I built called `errors.RE` (**R**esponse **E**rror). This function effectively strips the stack information and just sends the original error message along with whatever http status code you select as well as whatever errors.Kind, Code or Parameter you choose to set. The `RE` function returns an error of type `errors.HTTPErr`.  An example of error handling at the highest level (from the POST handler) is below:
 
 ```go
 // Call the create method of the Movie object to validate and insert the data
@@ -84,7 +87,7 @@ if err != nil {
 }
 ```
 
-The response body will look something like this:
+The final statement above before returning the errors is a call to the `errors.HTTPError` function. This function determines if an error is of type `errors.HTTPErr` and if so, forms the error json - the response body will look something like this:
 
 ```json
 {
@@ -364,7 +367,7 @@ The `Create` method of the `movie.Movie` struct is called using the context and 
         }
 ```
 
-If we got this far, the db transaction has been created/committed - we can consider this transaction successful and return a response. An instance of the response struct is initialized and populated with data from the `movie.Movie` struct and the response is encoded and sent back to the caller.
+If we got this far, the db transaction has been created/committed - we can consider this transaction successful and return a response. An instance of the response struct is initialized and populated with data from the `movie.Movie` struct and the response is encoded and sent back to the caller!
 
 ```go
         // create a new response struct and set Audit and other
