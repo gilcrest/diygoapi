@@ -17,16 +17,13 @@ I should say that most of the ideas I'm presenting here are not my own - I learn
 
 ## API Walkthrough
 
-The following is an in-depth walkthrough of this repo as well as the module dependencies that are called within. This walkthrough has a stupid amount of detail. Sections:
-
-- [Errors](#Errors)
-- [API/Handlers/Main](#Main-API-Module)
+The following is an in-depth walkthrough of this repo as well as the module dependencies that are called within. This walkthrough has a stupid amount of detail. This is a demo API, so the "business" intent of it is to support basic CRUD (**C**reate, **R**ead, **U**pdate, **D**elete) operations for a movie database (as of this writing, it's only Create, but the goal is to have examples for everything).
 
 ### Errors
 
-Before even getting into the full walkthrough, I wanted to review the [errors module](https://github.com/gilcrest/errors) and the approach to error handling. The `errors module` is basically a carve out of the error handling used in the [upspin library](https://github.com/upspin/upspin/tree/master/errors) with some tweaks and additions I made for my own needs. Rob Pike has a [fantastic post](https://commandcenter.blogspot.com/2017/12/error-handling-in-upspin.html) about errors and the Upspin implementation. I've taken that and added my own twist.
+Before even getting into the full walkthrough, I wanted to review the [errors module](https://github.com/gilcrest/errors) and the approach taken for error handling. The `errors module` is basically a carve out of the error handling used in the [upspin library](https://github.com/upspin/upspin/tree/master/errors) with some tweaks and additions I made for my own needs. Rob Pike has a [fantastic post](https://commandcenter.blogspot.com/2017/12/error-handling-in-upspin.html) about errors and the Upspin implementation. I've taken that and added my own twist.
 
-My general idea for error handling throughout this API and dependent modules is to always raise an error using the errors.E function as seen in this simple error handle below. Errors.E is neat - you can pass in any one of a number of approved types and the function helps form the error. In all error cases, I pass the errors.Op as the errors.E function helps build a pseudo stack trace for the error as it goes up through the code. Here's a snippet showing a typical, simple example of using the errors.E function.
+My general idea for error handling throughout this API and dependent modules is to always raise an error using the `errors.E` function as seen in this simple error handle below. `errors.E` is neat - you can pass in any one of a number of approved types and the function helps form the error. In all error cases, I pass the `errors.Op` as the `errors.E` function helps build a pseudo stack trace for the error as it goes up through the code. Here's a snippet showing a typical, simple example of using the errors.E function.
 
 ```go
 func NewServer(name env.Name, lvl zerolog.Level) (*Server, error) {
@@ -39,7 +36,7 @@ func NewServer(name env.Name, lvl zerolog.Level) (*Server, error) {
     }
 ```
 
-The following snippet shows a more robust validation example. In it, you'll notice that if you need to define your own error quickly, you can just use a string and insert that into an error as well.
+The following snippet shows a more robust validation example. In it, you'll notice that if you need to define your own error quickly, you can just use a string and that becomes the error string as well.
 
 ```go
 func (m *Movie) validate() error {
@@ -52,7 +49,7 @@ func (m *Movie) validate() error {
         return errors.E(op, errors.Validation, errors.Parameter("Year"), "The first film was in 1878, Year must be >= 1878")
 ```
 
-In this you'll notice the errors.MissingField function used to validate missing input on fields, which comes from [this Mat Ryer post](https://medium.com/@matryer/patterns-for-decoding-and-validating-input-in-go-data-apis-152291ac7372)
+In the above snippet, the errors.MissingField function used to validate missing input on fields comes from [this Mat Ryer post](https://medium.com/@matryer/patterns-for-decoding-and-validating-input-in-go-data-apis-152291ac7372) and is pretty handy.
 
 ```go
 // MissingField is an error type that can be used when
@@ -101,7 +98,7 @@ The final statement above before returning the errors is a call to the `errors.H
 
 ### Main API Module
 
-The [Main API/server layer module](https://github.com/gilcrest/go-api-basic) is the starting point and as such has the main package/function within the cmd directory. In it, I'm checking for both a log level and environment command line flags and running them through 2 simple functions (`logLevel` and `envName`) to get the correct string value given the flag input. I'm using [zerolog](https://github.com/rs/zerolog) throughout my modules as the logger.
+The [Main API/server layer module](https://github.com/gilcrest/go-api-basic) is the starting point and as such has the main package/function within the cmd directory. In it, I'm checking for both log level and environment command line flags and running them through 2 simple functions (`logLevel` and `envName`) to get the correct string value given the flag input. I'm using [zerolog](https://github.com/rs/zerolog) throughout my modules as the logger.
 
 ```go
 func main() {
@@ -162,7 +159,9 @@ type Server struct {
 }
 ```
 
-This struct uses [type embedding](https://golang.org/doc/effective_go.html#embedding), which allows the `Server` struct to take on all the properties of the `Env` struct from the `env module` (things like database setup, logger, multiplexer, etc.), but also allows for extending the struct with API-specific methods for routing logic and handlers. The `Env` struct in the env module has the following structure:
+The `Server` struct uses [type embedding](https://golang.org/doc/effective_go.html#embedding), which allows it to take on all the properties of the `Env` struct from the `env module` (things like database setup, logger, multiplexer, etc.), but also allows for extending the struct with API-specific methods for routing logic and handlers.
+
+The `Env` struct in the env module has the following structure:
 
 ```go
 // Env struct stores common environment related items
@@ -228,7 +227,7 @@ func (s *Server) routes() error {
     }
 ```
 
-Next, the URL path and handlers are register to the router embedded in the server (s).
+Next, the URL path and handlers are register to the router embedded in the server.
 
 ```go
     s.Router.Handle("/v1/movie",
@@ -240,7 +239,9 @@ Next, the URL path and handlers are register to the router embedded in the serve
         Headers("Content-Type", "application/json")
 ```
 
-To go through the Handle registration item by item - [my own fork](https://github.com/gilcrest/alice) as a module of [Justinas Stankevičius' alice library](https://github.com/justinas/alice) is being used to make middleware chaining easier. Hopefully the original alice library will enable modules and I'll go back, but until then I'll keep my own fork as it has properly setup modules files.
+The `Methods("POST").` means this route will only take POST request, and for REST this means we're looking at our Create method of the (CRUD) we talked about above. Other methods (Read(GET), Update(PUT), and Delete(DELETE)) will be documented later. The `Headers("Content-Type", "application/json")` means that this route requires that this request header be present.
+
+To go through the `v1/movie` Handle registration item by item - [my own fork](https://github.com/gilcrest/alice) as a module of [Justinas Stankevičius' alice library](https://github.com/justinas/alice) is being used to make middleware chaining easier. Hopefully the original alice library will enable modules and I'll go back, but until then I'll keep my own fork as it has properly setup modules files.
 
 Next, the first middleware in the chain above `s.handleStdResponseHeader` simply adds standard response headers. As of now, it's just the `Content-Type:application/json` header, but it's an easy place to other headers one may deem standard.
 
@@ -301,7 +302,7 @@ The request is Decoded into an instance of the request struct.
         }
 ```
 
-Then request is mapped to the business struct (`movie.Movie`) from the [movie module](https://github.com/gilcrest/movie). This is a demo API, so the [movie module] (e.g. [imdb.com](https://www.imdb.com/)) contains basic CRUD (**C**reate, **R**ead, **U**pdate, **D**elete) operations for a movie database (as of this writing, it's only Create, but the goal is to have examples for everything). Some quick top-level validations around date formatting are done (see time.Parse below)
+The request is mapped to the business struct (`movie.Movie`) from the [movie module](https://github.com/gilcrest/movie). Some quick top-level validations around date formatting are done (see time.Parse below)
 
 ```go
         // dateFormat is the expected date format for any date fields
@@ -344,7 +345,7 @@ The context is pulled from the incoming request and a database transaction is st
         }
 ```
 
-The `Create` method of the `movie.Movie` struct is called using the context and database transaction from above as well as the Logger from the server. The error handling is important here, but it is discussed at length in the [errors section](#Errors). For more information on what's happening inside the `movie module` click [here](https://github.com/gilcrest/movie). In summary though, the `movie module` has the "business logic" for the API - it is doing deeper input validations, exercising any business rules and creating/reading/updating/deleting the data in the database (as well as handling commit or rollback).
+The `Create` method of the `movie.Movie` struct is called using the context and database transaction from above as well as the Logger from the server. The error handling is important here, but it is discussed at length in the [errors section](#Errors). For more information on what's happening inside the `movie module` check the Readme [here](https://github.com/gilcrest/movie). In summary though, the `movie module` has the "business logic" for the API - it is doing deeper input validations, exercising any business rules and creating/reading/updating/deleting the data in the database (as well as handling commit or rollback).
 
 ```go
         // Call the create method of the Movie object to validate and insert the data
@@ -390,3 +391,5 @@ If we got this far, the db transaction has been created/committed - we can consi
             return
         }
 ```
+
+Questions/Concerns? Want more detail? Feel free to [open an issue](https://github.com/gilcrest/go-api-basic/issues) and label it appropriately. Thanks!
