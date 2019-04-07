@@ -302,7 +302,23 @@ The request is Decoded into an instance of the request struct.
         }
 ```
 
-The request is mapped to the business struct (`movie.Movie`) from the [movie module](https://github.com/gilcrest/movie). Some quick top-level validations around date formatting are done (see time.Parse below)
+The request is mapped to the business struct (`movie.Movie`) from the [movie module](https://github.com/gilcrest/movie).
+
+```go
+// Movie holds details of a movie
+type Movie struct {
+    Title    string
+    Year     int
+    Rated    string
+    Released time.Time
+    RunTime  int
+    Director string
+    Writer   string
+    dbaudit.Audit
+}
+```
+
+As part of the mapping, quick input validations around date formatting are done (see time.Parse below)
 
 ```go
         // dateFormat is the expected date format for any date fields
