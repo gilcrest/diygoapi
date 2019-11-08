@@ -2,7 +2,7 @@
 
 A RESTful API template (built with Go) - work in progress...
 
-11/7/2019 - *I have just completed a major refactor and will completely document it. The below notes are not up to date. My goal is to finish re-documenting this app by 11/20/2019*
+11/7/2019 - **I have just completed a major refactor and will completely document it. The below notes are not up to date. My goal is to finish re-documenting this app by 11/20/2019**
 
 The goal of this repo/API is to make an example/template of a relational database-backed REST HTTP API that has characteristics needed to ensure success in a high volume environment. I'm gearing this towards beginners, as I struggled with a lot of this over the past couple of years and would like to help others getting started. I have [another repo](https://github.com/gilcrest/go-api-expanded) which is really an extension of this one, but has more components (like request/response logging via the [httplog module](https://github.com/gilcrest/httplog)). I'm working on the documentation for that, but wanted to have this repo for simplicity sake.
 
