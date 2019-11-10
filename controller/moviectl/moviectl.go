@@ -39,7 +39,7 @@ type AddMovieResponse struct {
 
 type addMovieController struct {
 	Request *AddMovieRequest
-	Persist movieds.MoviePersistence
+	MovieDS movieds.MovieDS
 }
 
 func (amc addMovieController) Add(ctx context.Context) (*AddMovieResponse, error) {
@@ -57,7 +57,7 @@ func (amc addMovieController) Add(ctx context.Context) (*AddMovieResponse, error
 
 	aud := new(audit.Audit)
 
-	err = amc.Persist.Store(ctx, m, aud)
+	err = amc.MovieDS.Store(ctx, m, aud)
 	if err != nil {
 		return nil, errs.E(op, errs.Database, err)
 	}
@@ -117,11 +117,9 @@ func AddMovie(ctx context.Context, db *sql.DB, log zerolog.Logger, r *AddMovieRe
 		return nil, errs.E(op, errs.Database, err)
 	}
 
-	p := new(movieds.MovieDB)
-	p.Tx = tx
-	p.Log = log
+	mdb := movieds.ProvideMovieDS(tx, log)
 
-	amc := addMovieController{Request: r, Persist: p}
+	amc := addMovieController{Request: r, MovieDS: mdb}
 	resp, err := amc.Add(ctx)
 	if err != nil {
 		if rollbackErr := tx.Rollback(); rollbackErr != nil {
@@ -144,18 +142,6 @@ func AddMovie(ctx context.Context, db *sql.DB, log zerolog.Logger, r *AddMovieRe
 	return resp, nil
 }
 
-// func Create(ctx context.Context, log zerolog.Logger, tx *sql.Tx) error {
-// 	const op errors.Op = "movie/Movie.Create"
-// 	// Validate input data
-// 	err := m.validate()
-// 	if err != nil {
-// 		if e, ok := err.(*errors.Error); ok {
-// 			return errors.E(errors.Validation, e.Param, err)
-// 		}
-// 		// should not get here, but just in case
-// 		return errors.E(errors.Validation, err)
-// 	}
-
 // 	// Pull client information from Server token and set
 // 	createClient, err := apiclient.ViaServerToken(ctx, tx)
 // 	if err != nil {
@@ -163,26 +149,3 @@ func AddMovie(ctx context.Context, db *sql.DB, log zerolog.Logger, r *AddMovieRe
 // 	}
 // 	m.CreateClient.Number = createClient.Number
 // 	m.UpdateClient.Number = createClient.Number
-
-// 	// Create the user record in the database
-// 	err = m.createDB(ctx, log, tx)
-// 	if err != nil {
-// 		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-// 			return errors.E(op, errors.Database, err)
-// 		}
-// 		// Kind could be Database or Exist from db, so
-// 		// use type assertion and send both up
-// 		if e, ok := err.(*errors.Error); ok {
-// 			return errors.E(e.Kind, e.Code, e.Param, err)
-// 		}
-// 		// Should not actually fall to here, but including as
-// 		// good practice
-// 		return errors.E(op, errors.Database, err)
-// 	}
-
-// 	if err := tx.Commit(); err != nil {
-// 		return errors.E(op, errors.Database, err)
-// 	}
-
-// 	return nil
-// }

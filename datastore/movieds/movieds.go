@@ -10,8 +10,8 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// MoviePersistence is the interface for the persistence layer
-type MoviePersistence interface {
+// MovieDS is the interface for the persistence layer for a movie
+type MovieDS interface {
 	Store(context.Context, *movie.Movie, *audit.Audit) error
 }
 
@@ -77,4 +77,10 @@ func (mdb *MovieDB) Store(ctx context.Context, m *movie.Movie, a *audit.Audit) e
 	}
 
 	return nil
+}
+
+// ProvideMovieDS takes in a Datastore, pulls a txn from it
+// and returns
+func ProvideMovieDS(tx *sql.Tx, log zerolog.Logger) MovieDS {
+	return &MovieDB{Tx: tx, Log: log}
 }
