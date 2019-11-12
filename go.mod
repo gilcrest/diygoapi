@@ -3,7 +3,6 @@ module github.com/gilcrest/go-api-basic
 go 1.13
 
 require (
-	github.com/gilcrest/errors v0.16.0
 	github.com/google/uuid v1.1.1
 	github.com/google/wire v0.3.0
 	github.com/gorilla/mux v1.7.3
