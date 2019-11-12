@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/gilcrest/errors"
 	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/gilcrest/go-api-basic/datastore/movieds"
 	"github.com/gilcrest/go-api-basic/domain/audit"
@@ -133,7 +132,7 @@ func AddMovie(ctx context.Context, ds datastore.Datastore, log zerolog.Logger, r
 	}
 
 	if err := ds.CommitTx(); err != nil {
-		return nil, errs.E(op, errors.Database, err)
+		return nil, errs.E(op, errs.Database, err)
 	}
 
 	return resp, nil
@@ -142,7 +141,7 @@ func AddMovie(ctx context.Context, ds datastore.Datastore, log zerolog.Logger, r
 // Pull client information from Server token and set
 // 	createClient, err := apiclient.ViaServerToken(ctx, tx)
 // 	if err != nil {
-// 		return errors.E(op, errors.Internal, err)
+// 		return errs.E(op, errs.Internal, err)
 // 	}
 // 	m.CreateClient.Number = createClient.Number
 // 	m.UpdateClient.Number = createClient.Number
