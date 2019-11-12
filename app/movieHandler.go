@@ -1,18 +1,16 @@
-package handler
+package app
 
 import (
-	"database/sql"
 	"encoding/json"
 	"net/http"
 
 	"github.com/gilcrest/go-api-basic/controller/moviectl"
 	"github.com/gilcrest/go-api-basic/domain/errs"
-	"github.com/rs/zerolog"
 )
 
 // AddMovie handles POST requests for the /movie endpoint
 // and creates a movie in the database
-func AddMovie(db *sql.DB, log zerolog.Logger) http.HandlerFunc {
+func (app *Application) AddMovie() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		const op errs.Op = "handle/AddMovie"
 
@@ -33,7 +31,7 @@ func AddMovie(db *sql.DB, log zerolog.Logger) http.HandlerFunc {
 
 		// Send the request context and request object to the controller
 		// Receive a response or error in return
-		resp, err := moviectl.AddMovie(ctx, db, log, rqst)
+		resp, err := moviectl.AddMovie(ctx, app.DS, app.Logger, rqst)
 		if err != nil {
 			err = errs.RE(http.StatusBadRequest, errs.InvalidRequest, err)
 			errs.HTTPError(w, err)

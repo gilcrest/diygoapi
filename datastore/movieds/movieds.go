@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/gilcrest/go-api-basic/domain/audit"
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/movie"
@@ -81,6 +82,12 @@ func (mdb *MovieDB) Store(ctx context.Context, m *movie.Movie, a *audit.Audit) e
 
 // ProvideMovieDS takes in a Datastore, pulls a txn from it
 // and returns
-func ProvideMovieDS(tx *sql.Tx, log zerolog.Logger) MovieDS {
-	return &MovieDB{Tx: tx, Log: log}
+func ProvideMovieDS(ds datastore.Datastore, log zerolog.Logger) (MovieDS, error) {
+	const op errs.Op = "movie/Movie.createDB"
+
+	tx, err := ds.Tx()
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+	return &MovieDB{Tx: tx, Log: log}, nil
 }

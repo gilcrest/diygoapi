@@ -2,10 +2,10 @@ package moviectl
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"github.com/gilcrest/errors"
+	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/gilcrest/go-api-basic/datastore/movieds"
 	"github.com/gilcrest/go-api-basic/domain/audit"
 	"github.com/gilcrest/go-api-basic/domain/errs"
@@ -42,7 +42,7 @@ type addMovieController struct {
 	MovieDS movieds.MovieDS
 }
 
-func (amc addMovieController) Add(ctx context.Context) (*AddMovieResponse, error) {
+func (amc addMovieController) add(ctx context.Context) (*AddMovieResponse, error) {
 	const op errs.Op = "domain/movie/AddMovie"
 
 	m, err := provideMovie(amc.Request)
@@ -63,6 +63,10 @@ func (amc addMovieController) Add(ctx context.Context) (*AddMovieResponse, error
 	}
 
 	return provideAddMovieResponse(m, aud), nil
+}
+
+func provideAddMovieController(r *AddMovieRequest, ds movieds.MovieDS) *addMovieController {
+	return &addMovieController{Request: r, MovieDS: ds}
 }
 
 // provideAddMovieResponse is an initializer for AddMovieResponse
@@ -108,41 +112,34 @@ func provideMovie(am *AddMovieRequest) (*movie.Movie, error) {
 	}, nil
 }
 
-// AddMovie adds a movie to the catalog
-func AddMovie(ctx context.Context, db *sql.DB, log zerolog.Logger, r *AddMovieRequest) (*AddMovieResponse, error) {
+// AddMovie adds a movie to the catalog.
+func AddMovie(ctx context.Context, ds datastore.Datastore, log zerolog.Logger, r *AddMovieRequest) (*AddMovieResponse, error) {
 	const op errs.Op = "controller/moviectl/AddMovie"
 
-	tx, err := db.BeginTx(ctx, nil)
+	err := ds.BeginTx(ctx)
 	if err != nil {
-		return nil, errs.E(op, errs.Database, err)
+		return nil, errs.E(op, err)
 	}
 
-	mdb := movieds.ProvideMovieDS(tx, log)
-
-	amc := addMovieController{Request: r, MovieDS: mdb}
-	resp, err := amc.Add(ctx)
+	mds, err := movieds.ProvideMovieDS(ds, log)
 	if err != nil {
-		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return nil, errs.E(op, errors.Database, err)
-		}
-		// Kind could be Database or Exist from db, so
-		// use type assertion and send both up
-		if e, ok := err.(*errors.Error); ok {
-			return nil, errs.E(e.Kind, e.Code, e.Param, err)
-		}
-		// Should not actually fall to here, but including as
-		// good practice
-		return nil, errs.E(op, errors.Database, err)
+		return nil, errs.E(op, err)
 	}
 
-	if err := tx.Commit(); err != nil {
+	amc := provideAddMovieController(r, mds)
+	resp, err := amc.add(ctx)
+	if err != nil {
+		return nil, ds.RollbackTx(err)
+	}
+
+	if err := ds.CommitTx(); err != nil {
 		return nil, errs.E(op, errors.Database, err)
 	}
 
 	return resp, nil
 }
 
-// 	// Pull client information from Server token and set
+// Pull client information from Server token and set
 // 	createClient, err := apiclient.ViaServerToken(ctx, tx)
 // 	if err != nil {
 // 		return errors.E(op, errors.Internal, err)

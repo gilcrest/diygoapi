@@ -1,23 +1,23 @@
-package main
+package datastore
 
 import (
 	"testing"
 )
 
-func Test_newDB(t *testing.T) {
+func Test_ProvideDB(t *testing.T) {
 	type args struct {
-		n dbName
+		n DBName
 	}
 	tests := []struct {
 		name string
 		args args
 	}{
-		{"App DB", args{appDB}},
-		{"Log DB", args{logDB}},
+		{"App DB", args{AppDB}},
+		{"Log DB", args{LogDB}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			db, err := newDB(tt.args.n)
+			db, err := ProvideDB(tt.args.n)
 			if err != nil {
 				t.Errorf("Error from newDB = %v", err)
 			}

@@ -1,125 +1,64 @@
-package main
+package app
 
 import (
-	"database/sql"
-	"os"
+	"net/http"
 
-	"github.com/gorilla/mux"
+	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 )
 
-// application is the main server struct for Guestbook. It contains the state of
+// Application is the main server struct for Guestbook. It contains the state of
 // the most recently read message of the day.
-type application struct {
-	envName envName
-	// multiplex router
-	router *mux.Router
+type Application struct {
+	EnvName EnvName
 	// PostgreSQL database
-	db *sql.DB
+	DS datastore.Datastore
 	// Logger
-	logger zerolog.Logger
+	Logger zerolog.Logger
 }
 
-// newApplication creates a new application struct
-func provideApplication(nm envName, rtr *mux.Router, db *sql.DB, logger zerolog.Logger) *application {
-	return &application{
-		envName: nm,
-		router:  rtr,
-		db:      db,
-		logger:  logger,
+// ProvideApplication creates a new application struct
+func ProvideApplication(en EnvName, ds datastore.Datastore, log zerolog.Logger) *Application {
+	return &Application{
+		EnvName: en,
+		DS:      ds,
+		Logger:  log,
 	}
 }
 
-// envName is the environment Name int representation
+// EnvName is the environment Name int representation
 // Using iota, 1 (Production) is the lowest,
 // 2 (Staging) is 2nd lowest, and so on...
-type envName uint8
+type EnvName uint8
 
 // EnvName of environment.
 const (
-	production envName = iota + 1 // Production (1)
-	staging                       // Staging (2)
-	qa                            // QA (3)
-	dev                           // Dev (4)
+	Production EnvName = iota + 1 // Production (1)
+	Staging                       // Staging (2)
+	QA                            // QA (3)
+	Dev                           // Dev (4)
 )
 
-func (n envName) String() string {
+func (n EnvName) String() string {
 	switch n {
-	case production:
+	case Production:
 		return "Production"
-	case staging:
+	case Staging:
 		return "Staging"
-	case qa:
+	case QA:
 		return "QA"
-	case dev:
+	case Dev:
 		return "Dev"
 	}
 	return "unknown_name"
 }
 
-// provideName sets up the environment (e.g. Production, Staging, QA, etc.)
-// It takes a pointer to a string as that is how a parsed command line flag provides
-// and the intention is for the name to be set at run time
-func provideName(flags *cliFlags) envName {
-
-	var name envName
-
-	switch flags.envName {
-	case "dev":
-		name = dev
-	case "qa":
-		name = qa
-	case "stg":
-		name = staging
-	case "prod":
-		name = production
-	default:
-		name = dev
-	}
-
-	log.Log().Msgf("Environment set to %s", name)
-
-	return name
-}
-
-// ProvideLogger sets up the zerolog.Logger
-func provideLogger(lvl zerolog.Level) zerolog.Logger {
-	// empty string for TimeFieldFormat will write logs with UNIX time
-	zerolog.TimeFieldFormat = ""
-	// set logging level based on input
-	zerolog.SetGlobalLevel(lvl)
-	// start a new logger with Stdout as the target
-	lgr := zerolog.New(os.Stdout).With().Timestamp().Logger()
-
-	return lgr
-}
-
-// ProvideLogLevel sets up the logging level (e.g. Debug, Info, Error, etc.)
-// It takes a pointer to a string as that is how a parsed command line flag provides
-// and the intention is for the name to be set at run time
-func provideLogLevel(flags *cliFlags) zerolog.Level {
-
-	var lvl zerolog.Level
-
-	switch flags.logLevel {
-	case "debug":
-		lvl = zerolog.DebugLevel
-	case "info":
-		lvl = zerolog.InfoLevel
-	case "warn":
-		lvl = zerolog.WarnLevel
-	case "fatal":
-		lvl = zerolog.FatalLevel
-	case "panic":
-		lvl = zerolog.PanicLevel
-	case "disabled":
-		lvl = zerolog.Disabled
-	default:
-		lvl = zerolog.ErrorLevel
-	}
-
-	log.Log().Msgf("Logging Level set to %s", lvl)
-
-	return lvl
+// StdResponseHeader middleware is used to add
+// standard HTTP response headers
+func (app *Application) StdResponseHeader(h http.Handler) http.Handler {
+	return http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Add("Content-Type", "application/json")
+			h.ServeHTTP(w, r) // call original
+		})
 }

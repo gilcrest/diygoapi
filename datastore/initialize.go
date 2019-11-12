@@ -1,4 +1,4 @@
-package main
+package datastore
 
 import (
 	"database/sql"
@@ -11,15 +11,15 @@ import (
 	_ "github.com/lib/pq" // pq driver calls for blank identifier
 )
 
-// dbName defines database name
-type dbName int
+// DBName defines database name
+type DBName int
 
 const (
 	// AppDB represents main application database
-	appDB dbName = iota
+	AppDB DBName = iota
 
 	// LogDB represents http logging database
-	logDB
+	LogDB
 )
 
 // OS Environment variables for the App DB PostgreSQL Database
@@ -40,21 +40,8 @@ const (
 	envLogDBPort     = "PG_LOG_PORT"
 )
 
-// ProvideDatastore initializes the datastore struct
-func provideAppDB() (*sql.DB, error) {
-	const op errs.Op = "main/provideAppDB"
-
-	// Get an AppDB (PostgreSQL)
-	adb, err := newDB(appDB)
-	if err != nil {
-		return nil, errs.E(op, err)
-	}
-
-	return adb, nil
-}
-
-// newDB returns an open database handle of 0 or more underlying connections
-func newDB(n dbName) (*sql.DB, error) {
+// ProvideDB returns an open database handle of 0 or more underlying connections
+func ProvideDB(n DBName) (*sql.DB, error) {
 	const op errs.Op = "main/newDB"
 
 	// Get Database connection credentials from environment variables
@@ -84,55 +71,55 @@ func newDB(n dbName) (*sql.DB, error) {
 	return db, nil
 }
 
-func dbEnvName(n dbName) string {
+func dbEnvName(n DBName) string {
 	switch n {
-	case appDB:
+	case AppDB:
 		return envAppDBName
-	case logDB:
+	case LogDB:
 		return envLogDBName
 	default:
 		return ""
 	}
 }
 
-func dbEnvUser(n dbName) string {
+func dbEnvUser(n DBName) string {
 	switch n {
-	case appDB:
+	case AppDB:
 		return envAppDBUser
-	case logDB:
+	case LogDB:
 		return envLogDBUser
 	default:
 		return ""
 	}
 }
 
-func dbEnvPassword(n dbName) string {
+func dbEnvPassword(n DBName) string {
 	switch n {
-	case appDB:
+	case AppDB:
 		return envAppDBPassword
-	case logDB:
+	case LogDB:
 		return envLogDBPassword
 	default:
 		return ""
 	}
 }
 
-func dbEnvHost(n dbName) string {
+func dbEnvHost(n DBName) string {
 	switch n {
-	case appDB:
+	case AppDB:
 		return envAppDBHost
-	case logDB:
+	case LogDB:
 		return envLogDBHost
 	default:
 		return ""
 	}
 }
 
-func dbEnvPort(n dbName) string {
+func dbEnvPort(n DBName) string {
 	switch n {
-	case appDB:
+	case AppDB:
 		return envAppDBPort
-	case logDB:
+	case LogDB:
 		return envLogDBPort
 	default:
 		return ""
