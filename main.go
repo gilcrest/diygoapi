@@ -17,6 +17,7 @@ import (
 type cliFlags struct {
 	logLevel string
 	envName  string
+	mock     bool
 }
 
 func main() {
@@ -28,9 +29,14 @@ func main() {
 	flag.StringVar(&cf.logLevel, "loglvl", "error", "sets log level (debug, info, warn, fatal, panic, disabled)")
 
 	// env flag allows for setting environment, e.g. Production, QA, etc.
-	// example: env=dev, env=qa, env=stg, env=prod
+	// example: -env=dev, -env=qa, -env=stg, -env=prod
 	// If not set, defaults to dev
 	flag.StringVar(&cf.envName, "env", "dev", "sets app environment (dev, qa, stg, prod)")
+
+	// mock flag will set the app to "mock mode" and no database
+	// calls will be submitted and a mock (aka "stubbed") response
+	// will be returned. If not set, defaults to false (not in "mock mode")
+	flag.BoolVar(&cf.mock, "mock", false, "API will not submit anything to the database and return a mocked response")
 
 	flag.Parse()
 
@@ -49,10 +55,10 @@ func main() {
 	}
 }
 
-// provideName sets up the environment (e.g. Production, Staging, QA, etc.)
+// provideEnvName sets up the environment name (e.g. Production, Staging, QA, etc.)
 // It takes a pointer to a string as that is how a parsed command line flag provides
 // and the intention is for the name to be set at run time
-func provideName(flags *cliFlags) app.EnvName {
+func provideEnvName(flags *cliFlags) app.EnvName {
 
 	var name app.EnvName
 
@@ -115,8 +121,13 @@ func provideLogLevel(flags *cliFlags) zerolog.Level {
 	return lvl
 }
 
-func provideDBName(flags *cliFlags) datastore.DBName {
-	return datastore.AppDB
+func provideDSName(flags *cliFlags) datastore.DSName {
+
+	if flags.mock {
+		return datastore.MockDatastore
+	}
+
+	return datastore.AppDatastore
 }
 
 func provideRouter(app *app.Application) *mux.Router {
@@ -133,7 +144,7 @@ func provideRouter(app *app.Application) *mux.Router {
 	// Match only POST requests with Content-Type header = application/json
 	rtr.Handle("/v1/movie",
 		alice.New(
-			app.StdResponseHeader).
+			app.AddStandardResponseHeaders).
 			ThenFunc(app.AddMovie())).
 		Methods("POST").
 		Headers("Content-Type", "application/json")
