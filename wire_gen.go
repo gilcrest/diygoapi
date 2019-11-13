@@ -14,13 +14,12 @@ import (
 // Injectors from wireInject.go:
 
 func setupRouter(flags *cliFlags) (*mux.Router, error) {
-	envName := provideName(flags)
-	dbName := provideDBName(flags)
-	db, err := datastore.ProvideDB(dbName)
+	envName := provideEnvName(flags)
+	dsName := provideDSName(flags)
+	datastoreDatastore, err := datastore.ProvideDatastore(dsName)
 	if err != nil {
 		return nil, err
 	}
-	datastoreDatastore := datastore.ProvideDS(db)
 	level := provideLogLevel(flags)
 	logger := provideLogger(level)
 	application := app.ProvideApplication(envName, datastoreDatastore, logger)
