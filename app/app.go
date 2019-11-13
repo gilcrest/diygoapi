@@ -17,6 +17,16 @@ type Application struct {
 	Logger zerolog.Logger
 }
 
+// AddStandardResponseHeaders middleware is used to add any
+// standard HTTP response headers
+func (app *Application) AddStandardResponseHeaders(h http.Handler) http.Handler {
+	return http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Add("Content-Type", "application/json")
+			h.ServeHTTP(w, r) // call original
+		})
+}
+
 // ProvideApplication creates a new application struct
 func ProvideApplication(en EnvName, ds datastore.Datastore, log zerolog.Logger) *Application {
 	return &Application{
@@ -51,14 +61,4 @@ func (n EnvName) String() string {
 		return "Dev"
 	}
 	return "unknown_name"
-}
-
-// StdResponseHeader middleware is used to add
-// standard HTTP response headers
-func (app *Application) StdResponseHeader(h http.Handler) http.Handler {
-	return http.HandlerFunc(
-		func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Add("Content-Type", "application/json")
-			h.ServeHTTP(w, r) // call original
-		})
 }
