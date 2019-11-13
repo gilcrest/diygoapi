@@ -17,6 +17,36 @@ type Datastore interface {
 	CommitTx() error
 }
 
+// DSName defines the name for the Datastore
+type DSName int
+
+const (
+	// AppDatastore represents main application database
+	AppDatastore DSName = iota
+	// LogDatastore represents http logging database
+	LogDatastore
+	// MockDatastore represents a Mocked Database
+	MockDatastore
+)
+
+// OS Environment variables for the App DB PostgreSQL Database
+const (
+	envAppDBName     = "PG_APP_DBNAME"
+	envAppDBUser     = "PG_APP_USERNAME"
+	envAppDBPassword = "PG_APP_PASSWORD"
+	envAppDBHost     = "PG_APP_HOST"
+	envAppDBPort     = "PG_APP_PORT"
+)
+
+// OS Environment variables for the Log DB PostgreSQL Database
+const (
+	envLogDBName     = "PG_LOG_DBNAME"
+	envLogDBUser     = "PG_LOG_USERNAME"
+	envLogDBPassword = "PG_LOG_PASSWORD"
+	envLogDBHost     = "PG_LOG_HOST"
+	envLogDBPort     = "PG_LOG_PORT"
+)
+
 // DS is a concrete implementation for a database
 type DS struct {
 	DB *sql.DB
@@ -60,8 +90,8 @@ func (db *DS) RollbackTx(err error) error {
 	}
 	// If rollback was successful, error should be an errs.Error
 	// If so, surface error Kind, Code and Param to keep in tact
-	var e errs.Error
-	if errors.As(err, e) {
+	var e *errs.Error
+	if errors.As(err, &e) {
 		return errs.E(e.Kind, e.Code, e.Param, err)
 	}
 	// Should not actually fall to here, but including as
@@ -81,9 +111,20 @@ func (db *DS) CommitTx() error {
 	return nil
 }
 
-// ProvideDS provides either a DS struct, which has a concrete
+// ProvideDatastore provides either a DS struct, which has a concrete
 // implementation of a database or a MockDS struct which is a mocked
 // DB implementation
-func ProvideDS(db *sql.DB) Datastore {
-	return &DS{DB: db}
+func ProvideDatastore(n DSName) (Datastore, error) {
+	const op errs.Op = "datastore/ProvideDatastore"
+
+	if n == MockDatastore {
+		return &MockDS{}, nil
+	}
+
+	db, err := provideDB(n)
+	if err != nil {
+		return nil, errs.E(op, errs.Database, err)
+	}
+
+	return &DS{DB: db}, nil
 }

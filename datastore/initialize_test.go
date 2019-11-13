@@ -4,20 +4,20 @@ import (
 	"testing"
 )
 
-func Test_ProvideDB(t *testing.T) {
+func Test_provideDB(t *testing.T) {
 	type args struct {
-		n DBName
+		n DSName
 	}
 	tests := []struct {
 		name string
 		args args
 	}{
-		{"App DB", args{AppDB}},
-		{"Log DB", args{LogDB}},
+		{"App DB", args{AppDatastore}},
+		{"Log DB", args{LogDatastore}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			db, err := ProvideDB(tt.args.n)
+			db, err := provideDB(tt.args.n)
 			if err != nil {
 				t.Errorf("Error from newDB = %v", err)
 			}

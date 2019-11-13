@@ -16,6 +16,29 @@ type MovieDS interface {
 	Store(context.Context, *movie.Movie, *audit.Audit) error
 }
 
+// ProvideMovieDS sets up either a concrete MovieDB or a MockMovieDB
+// depending on the underlying struct of the Datastore passed in
+func ProvideMovieDS(ds datastore.Datastore, log zerolog.Logger) (MovieDS, error) {
+	const op errs.Op = "movieds/ProvideMovieDS"
+
+	var mdb MockMovieDB
+
+	// Use a type assertion to determine if the datastore is a Mock
+	// Datastore, if so, then return MockMovieDB
+	_, ok := ds.(*datastore.MockDS)
+	if ok {
+		return mdb, nil
+	}
+
+	// The datastore is not a mock, pull the real transaction from
+	// the concrete datastore and return MovieDB
+	tx, err := ds.Tx()
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+	return &MovieDB{Tx: tx, Log: log}, nil
+}
+
 // MovieDB is the database implementation for CRUD operations for a movie
 type MovieDB struct {
 	Tx  *sql.Tx
@@ -78,16 +101,4 @@ func (mdb *MovieDB) Store(ctx context.Context, m *movie.Movie, a *audit.Audit) e
 	}
 
 	return nil
-}
-
-// ProvideMovieDS takes in a Datastore, pulls a txn from it
-// and returns
-func ProvideMovieDS(ds datastore.Datastore, log zerolog.Logger) (MovieDS, error) {
-	const op errs.Op = "movie/Movie.createDB"
-
-	tx, err := ds.Tx()
-	if err != nil {
-		return nil, errs.E(op, err)
-	}
-	return &MovieDB{Tx: tx, Log: log}, nil
 }
