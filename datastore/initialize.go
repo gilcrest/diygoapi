@@ -13,7 +13,7 @@ import (
 
 // ProvideDB returns an open database handle of 0 or more underlying connections
 func provideDB(n DSName) (*sql.DB, error) {
-	const op errs.Op = "main/newDB"
+	const op errs.Op = "datastore/provideDB"
 
 	// If we are in "mock mode", we return a nil database
 	if n == MockDatastore {
