@@ -71,7 +71,7 @@ func provideAddMovieController(r *AddMovieRequest, ds movieds.MovieDS) *addMovie
 // provideAddMovieResponse is an initializer for AddMovieResponse
 func provideAddMovieResponse(m *movie.Movie, a *audit.Audit) *AddMovieResponse {
 	return &AddMovieResponse{
-		ID:              m.ID,
+		ID:              m.ID.String(),
 		Title:           m.Title,
 		Year:            m.Year,
 		Rated:           m.Rated,

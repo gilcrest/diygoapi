@@ -5,12 +5,12 @@ import (
 	"time"
 
 	"github.com/gilcrest/go-api-basic/domain/errs"
-	"github.com/rs/xid"
+	"github.com/google/uuid"
 )
 
 // Movie holds details of a movie
 type Movie struct {
-	ID       string
+	ID       uuid.UUID
 	Title    string
 	Year     int
 	Rated    string
@@ -49,7 +49,7 @@ func (m *Movie) validate() error {
 func (m *Movie) Add(ctx context.Context) error {
 	const op errs.Op = "movie/Movie.Create"
 
-	m.ID = xid.New().String()
+	m.ID = uuid.New()
 
 	// Validate input data
 	err := m.validate()

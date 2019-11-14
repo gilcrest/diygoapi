@@ -47,15 +47,16 @@ func (mdb *MovieDB) Store(ctx context.Context, m *movie.Movie, a *audit.Audit) e
 	select o_create_timestamp,
 		   o_update_timestamp
 	  from demo.create_movie (
-		p_title => $1,
-		p_year => $2,
-		p_rated => $3,
-		p_released => $4,
-		p_run_time => $5,
-		p_director => $6,
-		p_writer => $7,
-		p_create_client_id => $8,
-		p_create_user_id => $9)`)
+		p_id => $1,
+		p_title => $2,
+		p_year => $3,
+		p_rated => $4,
+		p_released => $5,
+		p_run_time => $6,
+		p_director => $7,
+		p_writer => $8,
+		p_create_client_id => $9,
+		p_create_user_id => $10)`)
 
 	if err != nil {
 		return errs.E(op, err)
@@ -65,15 +66,16 @@ func (mdb *MovieDB) Store(ctx context.Context, m *movie.Movie, a *audit.Audit) e
 	// Execute stored function that returns the create_date timestamp,
 	// hence the use of QueryContext instead of Exec
 	rows, err := stmt.QueryContext(ctx,
-		m.Title,          //$1
-		m.Year,           //$2
-		m.Rated,          //$3
-		m.Released,       //$4
-		m.RunTime,        //$5
-		m.Director,       //$6
-		m.Writer,         //$7
-		a.CreateClientID, //$8
-		a.CreatePersonID) //$9
+		m.ID,             //$1
+		m.Title,          //$2
+		m.Year,           //$3
+		m.Rated,          //$4
+		m.Released,       //$5
+		m.RunTime,        //$6
+		m.Director,       //$7
+		m.Writer,         //$8
+		a.CreateClientID, //$9
+		a.CreatePersonID) //$10
 
 	if err != nil {
 		return errs.E(op, err)
