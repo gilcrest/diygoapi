@@ -2,7 +2,6 @@ package movieds
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/gilcrest/go-api-basic/domain/audit"
@@ -18,31 +17,25 @@ type MovieDS interface {
 
 // ProvideMovieDS sets up either a concrete MovieDB or a MockMovieDB
 // depending on the underlying struct of the Datastore passed in
-func ProvideMovieDS(ds datastore.Datastore, log zerolog.Logger) (MovieDS, error) {
+func ProvideMovieDS(d datastore.Datastore, log zerolog.Logger) (MovieDS, error) {
 	const op errs.Op = "movieds/ProvideMovieDS"
 
-	var mdb MockMovieDB
-
-	// Use a type assertion to determine if the datastore is a Mock
-	// Datastore, if so, then return MockMovieDB
-	_, ok := ds.(*datastore.MockDS)
-	if ok {
-		return mdb, nil
+	// Use a type switch to determine if the datastore is a Mock
+	// Datastore, if so, then return MockMovieDB, otherwise use
+	// composition to add the Datastore to the MovieDB struct
+	switch ds := d.(type) {
+	case *datastore.MockDS:
+		return &MockMovieDB{}, nil
+	case *datastore.DS:
+		return &MovieDB{DS: ds}, nil
+	default:
+		return nil, errs.E(op, "Unknown type for datastore.Datastore")
 	}
-
-	// The datastore is not a mock, pull the real transaction from
-	// the concrete datastore and return MovieDB
-	tx, err := ds.Tx()
-	if err != nil {
-		return nil, errs.E(op, err)
-	}
-	return &MovieDB{Tx: tx, Log: log}, nil
 }
 
 // MovieDB is the database implementation for CRUD operations for a movie
 type MovieDB struct {
-	Tx  *sql.Tx
-	Log zerolog.Logger
+	*datastore.DS
 }
 
 // Store creates a record in the user table using a stored function
