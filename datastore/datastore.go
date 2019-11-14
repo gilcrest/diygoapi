@@ -12,7 +12,6 @@ import (
 // Datastore is an interface for working with the Database
 type Datastore interface {
 	BeginTx(context.Context) error
-	Tx() (*sql.Tx, error)
 	RollbackTx(error) error
 	CommitTx() error
 }
@@ -50,42 +49,31 @@ const (
 // DS is a concrete implementation for a database
 type DS struct {
 	DB *sql.DB
-	tx *sql.Tx
+	Tx *sql.Tx
 }
 
 // BeginTx is a wrapper for sql.DB.BeginTx in order to expose from
 // the Datastore interface
 func (db *DS) BeginTx(ctx context.Context) error {
-	const op errs.Op = "movie/Movie.createDB"
+	const op errs.Op = "datastore/DS.BeginTx"
 
 	tx, err := db.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return errs.E(op, errs.Database, err)
 	}
 
-	db.tx = tx
+	db.Tx = tx
 
 	return nil
-}
-
-// Tx exposes the Tx stored in the struct in order to be exposed from
-// the Datastore interface.
-func (db *DS) Tx() (*sql.Tx, error) {
-	const op errs.Op = "movie/Movie.createDB"
-
-	if db.tx == nil {
-		return nil, errs.E(op, "DB Transaction has not been started")
-	}
-	return db.tx, nil
 }
 
 // RollbackTx is a wrapper for sql.Tx.Rollback in order to expose from
 // the Datastore interface. Proper error handling is also considered.
 func (db *DS) RollbackTx(err error) error {
-	const op errs.Op = "movie/Movie.createDB"
+	const op errs.Op = "datastore/DS.RollbackTx"
 
 	// Attempt to rollback the transaction
-	if rollbackErr := db.tx.Rollback(); rollbackErr != nil {
+	if rollbackErr := db.Tx.Rollback(); rollbackErr != nil {
 		return errs.E(op, errs.Database, err)
 	}
 	// If rollback was successful, error should be an errs.Error
@@ -102,9 +90,9 @@ func (db *DS) RollbackTx(err error) error {
 // CommitTx is a wrapper for sql.Tx.Commit in order to expose from
 // the Datastore interface. Proper error handling is also considered.
 func (db *DS) CommitTx() error {
-	const op errs.Op = "movie/Movie.createDB"
+	const op errs.Op = "datastore/DS.CommitTx"
 
-	if err := db.tx.Commit(); err != nil {
+	if err := db.Tx.Commit(); err != nil {
 		return errs.E(op, errs.Database, err)
 	}
 
