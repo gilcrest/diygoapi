@@ -42,7 +42,7 @@ type addMovieController struct {
 }
 
 func (amc addMovieController) add(ctx context.Context) (*AddMovieResponse, error) {
-	const op errs.Op = "domain/movie/AddMovie"
+	const op errs.Op = "controller/addMovieController/add"
 
 	m, err := provideMovie(amc.Request)
 	if err != nil {
@@ -89,7 +89,7 @@ const dateFormat string = "Jan 02 2006"
 
 // ProvideMovie is an initializer for the Movie struct
 func provideMovie(am *AddMovieRequest) (*movie.Movie, error) {
-	const op errs.Op = "domain/movie/ProvideMovie"
+	const op errs.Op = "controller/moviectl/ProvideMovie"
 
 	t, err := time.Parse(dateFormat, am.Released)
 	if err != nil {
