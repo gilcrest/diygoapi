@@ -12,7 +12,7 @@ import (
 // and creates a movie in the database
 func (app *Application) AddMovie() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		const op errs.Op = "handle/AddMovie"
+		const op errs.Op = "app/Application.AddMovie"
 
 		// Declare rqst as an instance of moviectl.AddMovieRequest
 		rqst := new(moviectl.AddMovieRequest)
