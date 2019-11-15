@@ -3,11 +3,11 @@ package movieds
 import (
 	"context"
 
+	"github.com/gilcrest/go-api-basic/app"
 	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/gilcrest/go-api-basic/domain/audit"
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/movie"
-	"github.com/rs/zerolog"
 )
 
 // MovieDS is the interface for the persistence layer for a movie
@@ -17,13 +17,13 @@ type MovieDS interface {
 
 // ProvideMovieDS sets up either a concrete MovieDB or a MockMovieDB
 // depending on the underlying struct of the Datastore passed in
-func ProvideMovieDS(d datastore.Datastore, log zerolog.Logger) (MovieDS, error) {
+func ProvideMovieDS(app *app.Application) (MovieDS, error) {
 	const op errs.Op = "movieds/ProvideMovieDS"
 
-	// Use a type switch to determine if the datastore is a Mock
+	// Use a type switch to determine if the app datastore is a Mock
 	// Datastore, if so, then return MockMovieDB, otherwise use
 	// composition to add the Datastore to the MovieDB struct
-	switch ds := d.(type) {
+	switch ds := app.DS.(type) {
 	case *datastore.MockDS:
 		return &MockMovieDB{}, nil
 	case *datastore.DS:
