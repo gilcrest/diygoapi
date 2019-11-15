@@ -25,16 +25,29 @@ func (ctl *MovieController) Add(ctx context.Context, r *AddMovieRequest) (*AddMo
 		return nil, errs.E(op, err)
 	}
 
-	mds, err := movieds.ProvideMovieDS(ctl.App.DS, ctl.App.Logger)
+	mds, err := movieds.ProvideMovieDS(ctl.App)
 	if err != nil {
 		return nil, errs.E(op, err)
 	}
 
-	amc := provideAddMovieController(r, mds)
-	resp, err := amc.add(ctx)
+	m, err := provideMovie(r)
 	if err != nil {
-		return nil, ctl.App.DS.RollbackTx(err)
+		return nil, errs.E(op, err)
 	}
+
+	err = m.Add(ctx)
+	if err != nil {
+		return nil, errs.E(err)
+	}
+
+	aud := new(audit.Audit)
+
+	err = mds.Store(ctx, m, aud)
+	if err != nil {
+		return nil, errs.E(op, errs.Database, ctl.App.DS.RollbackTx(err))
+	}
+
+	resp := provideAddMovieResponse(m, aud)
 
 	if err := ctl.App.DS.CommitTx(); err != nil {
 		return nil, errs.E(op, errs.Database, err)
@@ -70,38 +83,6 @@ type AddMovieResponse struct {
 	Director        string `json:"Director"`
 	Writer          string `json:"Writer"`
 	CreateTimestamp string `json:"CreateTimestamp"`
-}
-
-type addMovieController struct {
-	Request *AddMovieRequest
-	MovieDS movieds.MovieDS
-}
-
-func (amc addMovieController) add(ctx context.Context) (*AddMovieResponse, error) {
-	const op errs.Op = "controller/addMovieController/add"
-
-	m, err := provideMovie(amc.Request)
-	if err != nil {
-		return nil, errs.E(op, err)
-	}
-
-	err = m.Add(ctx)
-	if err != nil {
-		return nil, errs.E(err)
-	}
-
-	aud := new(audit.Audit)
-
-	err = amc.MovieDS.Store(ctx, m, aud)
-	if err != nil {
-		return nil, errs.E(op, errs.Database, err)
-	}
-
-	return provideAddMovieResponse(m, aud), nil
-}
-
-func provideAddMovieController(r *AddMovieRequest, ds movieds.MovieDS) *addMovieController {
-	return &addMovieController{Request: r, MovieDS: ds}
 }
 
 // provideAddMovieResponse is an initializer for AddMovieResponse

@@ -29,9 +29,10 @@ func (ah *AppHandler) AddMovie() http.HandlerFunc {
 		// retrieve the context from the http.Request
 		ctx := req.Context()
 
+		// Initialize the MovieController
 		mc := moviectl.ProvideMovieController(ah.App)
 
-		// Send the request context and request object to the controller
+		// Send the request context and request struct to the controller
 		// Receive a response or error in return
 		resp, err := mc.Add(ctx, rqst)
 		if err != nil {
