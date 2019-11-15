@@ -1,4 +1,4 @@
-package app
+package handler
 
 import (
 	"encoding/json"
@@ -10,7 +10,7 @@ import (
 
 // AddMovie handles POST requests for the /movie endpoint
 // and creates a movie in the database
-func (app *Application) AddMovie() http.HandlerFunc {
+func (ah *AppHandler) AddMovie() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		const op errs.Op = "app/Application.AddMovie"
 
@@ -29,9 +29,11 @@ func (app *Application) AddMovie() http.HandlerFunc {
 		// retrieve the context from the http.Request
 		ctx := req.Context()
 
+		mc := moviectl.ProvideMovieController(ah.App)
+
 		// Send the request context and request object to the controller
 		// Receive a response or error in return
-		resp, err := moviectl.AddMovie(ctx, app.DS, app.Logger, rqst)
+		resp, err := mc.Add(ctx, rqst)
 		if err != nil {
 			err = errs.RE(http.StatusBadRequest, errs.InvalidRequest, err)
 			errs.HTTPError(w, err)

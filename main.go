@@ -7,6 +7,7 @@ import (
 
 	"github.com/gilcrest/go-api-basic/app"
 	"github.com/gilcrest/go-api-basic/datastore"
+	"github.com/gilcrest/go-api-basic/handler"
 	"github.com/gorilla/mux"
 	"github.com/justinas/alice"
 	"github.com/rs/zerolog"
@@ -130,7 +131,7 @@ func provideDSName(flags *cliFlags) datastore.DSName {
 	return datastore.AppDatastore
 }
 
-func provideRouter(app *app.Application) *mux.Router {
+func provideRouter(hdl *handler.AppHandler) *mux.Router {
 	// create a new mux (multiplex) router
 	rtr := mux.NewRouter()
 
@@ -144,8 +145,8 @@ func provideRouter(app *app.Application) *mux.Router {
 	// Match only POST requests with Content-Type header = application/json
 	rtr.Handle("/v1/movie",
 		alice.New(
-			app.AddStandardResponseHeaders).
-			ThenFunc(app.AddMovie())).
+			hdl.AddStandardResponseHeaders).
+			ThenFunc(hdl.AddMovie())).
 		Methods("POST").
 		Headers("Content-Type", "application/json")
 

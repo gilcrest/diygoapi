@@ -8,6 +8,7 @@ package main
 import (
 	"github.com/gilcrest/go-api-basic/app"
 	"github.com/gilcrest/go-api-basic/datastore"
+	"github.com/gilcrest/go-api-basic/handler"
 	"github.com/gorilla/mux"
 )
 
@@ -23,6 +24,7 @@ func setupRouter(flags *cliFlags) (*mux.Router, error) {
 	level := provideLogLevel(flags)
 	logger := provideLogger(level)
 	application := app.ProvideApplication(envName, datastoreDatastore, logger)
-	router := provideRouter(application)
+	appHandler := handler.ProvideAppHandler(application)
+	router := provideRouter(appHandler)
 	return router, nil
 }

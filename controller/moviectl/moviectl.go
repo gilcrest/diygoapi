@@ -4,13 +4,49 @@ import (
 	"context"
 	"time"
 
-	"github.com/gilcrest/go-api-basic/datastore"
+	"github.com/gilcrest/go-api-basic/app"
 	"github.com/gilcrest/go-api-basic/datastore/movieds"
 	"github.com/gilcrest/go-api-basic/domain/audit"
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/movie"
-	"github.com/rs/zerolog"
 )
+
+// MovieController is used as the base controller for the Movie logic
+type MovieController struct {
+	App *app.Application
+}
+
+// Add adds a movie to the catalog.
+func (ctl *MovieController) Add(ctx context.Context, r *AddMovieRequest) (*AddMovieResponse, error) {
+	const op errs.Op = "controller/moviectl/AddMovie"
+
+	err := ctl.App.DS.BeginTx(ctx)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	mds, err := movieds.ProvideMovieDS(ctl.App.DS, ctl.App.Logger)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	amc := provideAddMovieController(r, mds)
+	resp, err := amc.add(ctx)
+	if err != nil {
+		return nil, ctl.App.DS.RollbackTx(err)
+	}
+
+	if err := ctl.App.DS.CommitTx(); err != nil {
+		return nil, errs.E(op, errs.Database, err)
+	}
+
+	return resp, nil
+}
+
+// ProvideMovieController initializes MovieController
+func ProvideMovieController(app *app.Application) *MovieController {
+	return &MovieController{App: app}
+}
 
 // AddMovieRequest is the request struct
 type AddMovieRequest struct {
@@ -109,33 +145,6 @@ func provideMovie(am *AddMovieRequest) (*movie.Movie, error) {
 		Director: am.Director,
 		Writer:   am.Writer,
 	}, nil
-}
-
-// AddMovie adds a movie to the catalog.
-func AddMovie(ctx context.Context, ds datastore.Datastore, log zerolog.Logger, r *AddMovieRequest) (*AddMovieResponse, error) {
-	const op errs.Op = "controller/moviectl/AddMovie"
-
-	err := ds.BeginTx(ctx)
-	if err != nil {
-		return nil, errs.E(op, err)
-	}
-
-	mds, err := movieds.ProvideMovieDS(ds, log)
-	if err != nil {
-		return nil, errs.E(op, err)
-	}
-
-	amc := provideAddMovieController(r, mds)
-	resp, err := amc.add(ctx)
-	if err != nil {
-		return nil, ds.RollbackTx(err)
-	}
-
-	if err := ds.CommitTx(); err != nil {
-		return nil, errs.E(op, errs.Database, err)
-	}
-
-	return resp, nil
 }
 
 // Pull client information from Server token and set

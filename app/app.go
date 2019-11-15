@@ -1,8 +1,6 @@
 package app
 
 import (
-	"net/http"
-
 	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/rs/zerolog"
 )
@@ -15,16 +13,6 @@ type Application struct {
 	DS datastore.Datastore
 	// Logger
 	Logger zerolog.Logger
-}
-
-// AddStandardResponseHeaders middleware is used to add any
-// standard HTTP response headers
-func (app *Application) AddStandardResponseHeaders(h http.Handler) http.Handler {
-	return http.HandlerFunc(
-		func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Add("Content-Type", "application/json")
-			h.ServeHTTP(w, r) // call original
-		})
 }
 
 // ProvideApplication creates a new application struct
