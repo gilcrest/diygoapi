@@ -6,9 +6,9 @@ import (
 
 	"github.com/gilcrest/go-api-basic/app"
 	"github.com/gilcrest/go-api-basic/datastore/movieds"
-	"github.com/gilcrest/go-api-basic/domain/audit"
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/movie"
+	"github.com/rs/xid"
 )
 
 // MovieController is used as the base controller for the Movie logic
@@ -17,8 +17,8 @@ type MovieController struct {
 }
 
 // Add adds a movie to the catalog.
-func (ctl *MovieController) Add(ctx context.Context, r *AddMovieRequest) (*AddMovieResponse, error) {
-	const op errs.Op = "controller/moviectl/AddMovie"
+func (ctl *MovieController) Add(ctx context.Context, r *AddMovieRequest) (*MovieResponse, error) {
+	const op errs.Op = "controller/moviectl/MovieController.Add"
 
 	err := ctl.App.DS.BeginTx(ctx)
 	if err != nil {
@@ -40,18 +40,40 @@ func (ctl *MovieController) Add(ctx context.Context, r *AddMovieRequest) (*AddMo
 		return nil, errs.E(err)
 	}
 
-	aud := new(audit.Audit)
-
-	err = mds.Store(ctx, m, aud)
+	err = mds.Store(ctx, m)
 	if err != nil {
 		return nil, errs.E(op, errs.Database, ctl.App.DS.RollbackTx(err))
 	}
 
-	resp := provideAddMovieResponse(m, aud)
+	resp := provideMovieResponse(m)
 
 	if err := ctl.App.DS.CommitTx(); err != nil {
 		return nil, errs.E(op, errs.Database, err)
 	}
+
+	return resp, nil
+}
+
+// FindByID finds a movie given its' unique ID
+func (ctl *MovieController) FindByID(ctx context.Context, id string) (*MovieResponse, error) {
+	const op errs.Op = "controller/moviectl/FindByID"
+
+	mds, err := movieds.ProvideMovieDS(ctl.App)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	i, err := xid.FromString(id)
+	if err != nil {
+		return nil, errs.E(op, errs.Validation, "Invalid id in URL path")
+	}
+
+	m, err := mds.FindByID(ctx, i)
+	if err != nil {
+		return nil, errs.E(op, errs.Database, ctl.App.DS.RollbackTx(err))
+	}
+
+	resp := provideMovieResponse(m)
 
 	return resp, nil
 }
@@ -72,9 +94,9 @@ type AddMovieRequest struct {
 	Writer   string `json:"Writer"`
 }
 
-// AddMovieResponse is the response struct
-type AddMovieResponse struct {
-	ID              string `json:"ID"`
+// MovieResponse is the response struct
+type MovieResponse struct {
+	ExtlID          string `json:"ExtlID"`
 	Title           string `json:"Title"`
 	Year            int    `json:"Year"`
 	Rated           string `json:"Rated"`
@@ -85,10 +107,10 @@ type AddMovieResponse struct {
 	CreateTimestamp string `json:"CreateTimestamp"`
 }
 
-// provideAddMovieResponse is an initializer for AddMovieResponse
-func provideAddMovieResponse(m *movie.Movie, a *audit.Audit) *AddMovieResponse {
-	return &AddMovieResponse{
-		ID:              m.ID.String(),
+// provideMovieResponse is an initializer for AddMovieResponse
+func provideMovieResponse(m *movie.Movie) *MovieResponse {
+	return &MovieResponse{
+		ExtlID:          m.ExtlID.String(),
 		Title:           m.Title,
 		Year:            m.Year,
 		Rated:           m.Rated,
@@ -96,7 +118,7 @@ func provideAddMovieResponse(m *movie.Movie, a *audit.Audit) *AddMovieResponse {
 		RunTime:         m.RunTime,
 		Director:        m.Director,
 		Writer:          m.Writer,
-		CreateTimestamp: a.CreateTimestamp.Format(time.RFC3339),
+		CreateTimestamp: m.CreateTimestamp.Format(time.RFC3339),
 	}
 }
 
@@ -127,11 +149,3 @@ func provideMovie(am *AddMovieRequest) (*movie.Movie, error) {
 		Writer:   am.Writer,
 	}, nil
 }
-
-// Pull client information from Server token and set
-// 	createClient, err := apiclient.ViaServerToken(ctx, tx)
-// 	if err != nil {
-// 		return errs.E(op, errs.Internal, err)
-// 	}
-// 	m.CreateClient.Number = createClient.Number
-// 	m.UpdateClient.Number = createClient.Number

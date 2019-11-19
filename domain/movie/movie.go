@@ -6,18 +6,22 @@ import (
 
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/google/uuid"
+	"github.com/rs/xid"
 )
 
 // Movie holds details of a movie
 type Movie struct {
-	ID       uuid.UUID
-	Title    string
-	Year     int
-	Rated    string
-	Released time.Time
-	RunTime  int
-	Director string
-	Writer   string
+	ID              uuid.UUID
+	ExtlID          xid.ID
+	Title           string
+	Year            int
+	Rated           string
+	Released        time.Time
+	RunTime         int
+	Director        string
+	Writer          string
+	CreateTimestamp time.Time
+	UpdateTimestamp time.Time
 }
 
 // Validate does basic input validation and ensures the struct is
@@ -47,9 +51,10 @@ func (m *Movie) validate() error {
 
 // Add performs business validations prior to writing to the db
 func (m *Movie) Add(ctx context.Context) error {
-	const op errs.Op = "movie/Movie.Create"
+	const op errs.Op = "movie/Movie.Add"
 
 	m.ID = uuid.New()
+	m.ExtlID = xid.New()
 
 	// Validate input data
 	err := m.validate()
