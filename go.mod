@@ -9,5 +9,5 @@ require (
 	github.com/justinas/alice v1.2.0
 	github.com/lib/pq v1.2.0
 	github.com/rs/xid v1.2.1
-	github.com/rs/zerolog v1.16.0
+	github.com/rs/zerolog v1.17.2
 )
