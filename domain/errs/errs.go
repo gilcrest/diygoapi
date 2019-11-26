@@ -64,8 +64,8 @@ type Op string
 // indented on a new line. A server may instead choose to keep each
 // error on a single line by modifying the separator string, perhaps
 // to ":: ".
-// var Separator = ":\n\t"
-var Separator = "] "
+// was previously var Separator = ":\n\t" changed to remove Global var
+const Separator = "] "
 
 // Kind defines the kind of error this is, mostly for use by systems
 // such as FUSE that must act differently depending on the error.
