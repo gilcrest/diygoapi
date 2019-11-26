@@ -160,5 +160,15 @@ func provideRouter(hdl *handler.AppHandler) *mux.Router {
 		Methods("GET").
 		Headers("Content-Type", "application/json")
 
+	// Match only GET requests /api/v1/movies
+	// with the Content-Type header = application/json
+	rtr.Handle("/v1/movies",
+		alice.New(
+			hdl.AddStandardResponseHeaders,
+			hdl.AddRequestID).
+			ThenFunc(hdl.FindAll())).
+		Methods("GET").
+		Headers("Content-Type", "application/json")
+
 	return rtr
 }
