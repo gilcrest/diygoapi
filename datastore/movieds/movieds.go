@@ -3,7 +3,6 @@ package movieds
 import (
 	"context"
 	"database/sql"
-	"time"
 
 	"github.com/gilcrest/go-api-basic/app"
 	"github.com/gilcrest/go-api-basic/datastore"
@@ -156,17 +155,60 @@ func (mdb *MovieDB) FindByID(ctx context.Context, extlID xid.ID) (*movie.Movie, 
 func (mdb *MovieDB) FindAll(ctx context.Context) ([]*movie.Movie, error) {
 	const op errs.Op = "movieds/MockMovieDB.FindAll"
 
-	m1 := new(movie.Movie)
-	m1.ExtlID = xid.New()
-	m1.Title = "Clockwork Orange"
-	m1.CreateTimestamp = time.Now()
+	// declare a slice of pointers to movie.Movie
+	var s []*movie.Movie
 
-	m2 := new(movie.Movie)
-	m2.ExtlID = xid.New()
-	m2.Title = "Repo Man"
-	m2.CreateTimestamp = time.Now()
+	// use QueryContext to get back sql.Rows
+	rows, err := mdb.DB.QueryContext(ctx,
+		`select movie_id,
+				extl_id,
+				title,
+				year,
+				rated,
+				released,
+				run_time,
+				director,
+				writer,
+				create_timestamp,
+				update_timestamp
+		   from demo.movie m;`)
+	if err != nil {
+		return nil, errs.E(op, errs.Database, err)
+	}
+	defer rows.Close()
 
-	s := []*movie.Movie{m1, m2}
+	// iterate through each row and scan the results into
+	// a movie.Movie. Append movie.Movie to the slice
+	// defined above
+	for rows.Next() {
+		m := new(movie.Movie)
+		err = rows.Scan(
+			&m.ID,
+			&m.ExtlID,
+			&m.Title,
+			&m.Year,
+			&m.Rated,
+			&m.Released,
+			&m.RunTime,
+			&m.Director,
+			&m.Writer,
+			&m.CreateTimestamp,
+			&m.UpdateTimestamp)
 
+		if err == sql.ErrNoRows {
+			return nil, errs.E(op, errs.NotExist, err)
+		} else if err != nil {
+			return nil, errs.E(op, err)
+		}
+
+		s = append(s, m)
+	}
+	// Rows.Err will report the last error encountered by Rows.Scan.
+	err = rows.Err()
+	if err != nil {
+		return nil, errs.E(op, errs.Database, err)
+	}
+
+	// return the slice
 	return s, nil
 }
