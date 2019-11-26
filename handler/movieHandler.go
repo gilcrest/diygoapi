@@ -9,7 +9,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// AddMovie handles POST requests for the /movie endpoint
+// AddMovie handles POST requests for the /movies endpoint
 // and creates a movie in the database
 func (ah *AppHandler) AddMovie() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -31,7 +31,7 @@ func (ah *AppHandler) AddMovie() http.HandlerFunc {
 		ctx := r.Context()
 
 		// Initialize the MovieController
-		mc := moviectl.ProvideMovieController(ah.App)
+		mc := moviectl.ProvideMovieController(ah.App, ah.RequestID)
 
 		// Send the request context and request struct to the controller
 		// Receive a response or error in return
@@ -52,7 +52,7 @@ func (ah *AppHandler) AddMovie() http.HandlerFunc {
 	}
 }
 
-// FindByID handles GET requests for the /movie endpoint
+// FindByID handles GET requests for the /movies/{id} endpoint
 // and finds a movie by it's ID
 func (ah *AppHandler) FindByID() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -65,7 +65,7 @@ func (ah *AppHandler) FindByID() http.HandlerFunc {
 		ctx := r.Context()
 
 		// Initialize the MovieController
-		mc := moviectl.ProvideMovieController(ah.App)
+		mc := moviectl.ProvideMovieController(ah.App, ah.RequestID)
 
 		// Send the request context and request struct to the controller
 		// Receive a response or error in return
@@ -77,7 +77,38 @@ func (ah *AppHandler) FindByID() http.HandlerFunc {
 		}
 
 		// Encode response struct to JSON for the response body
-		json.NewEncoder(w).Encode(*resp)
+		json.NewEncoder(w).Encode(resp)
+		if err != nil {
+			err = errs.RE(http.StatusInternalServerError, errs.Internal)
+			errs.HTTPError(w, err)
+			return
+		}
+	}
+}
+
+// FindAll handles GET requests for the /movies endpoint
+// and finds all movies
+func (ah *AppHandler) FindAll() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		const op errs.Op = "handler/AppHandler.FindByID"
+
+		// retrieve the context from the http.Request
+		ctx := r.Context()
+
+		// Initialize the MovieController
+		mc := moviectl.ProvideMovieController(ah.App, ah.RequestID)
+
+		// Send the request context and request struct to the controller
+		// Receive a response or error in return
+		resp, err := mc.FindAll(ctx, r)
+		if err != nil {
+			err = errs.RE(http.StatusBadRequest, errs.InvalidRequest, err)
+			errs.HTTPError(w, err)
+			return
+		}
+
+		// Encode response struct to JSON for the response body
+		json.NewEncoder(w).Encode(resp)
 		if err != nil {
 			err = errs.RE(http.StatusInternalServerError, errs.Internal)
 			errs.HTTPError(w, err)
