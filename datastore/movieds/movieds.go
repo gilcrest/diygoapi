@@ -3,6 +3,7 @@ package movieds
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/gilcrest/go-api-basic/app"
 	"github.com/gilcrest/go-api-basic/datastore"
@@ -16,6 +17,7 @@ import (
 type MovieDS interface {
 	Store(context.Context, *movie.Movie) error
 	FindByID(context.Context, xid.ID) (*movie.Movie, error)
+	FindAll(context.Context) ([]*movie.Movie, error)
 }
 
 // ProvideMovieDS sets up either a concrete MovieDB or a MockMovieDB
@@ -148,4 +150,23 @@ func (mdb *MovieDB) FindByID(ctx context.Context, extlID xid.ID) (*movie.Movie, 
 	}
 
 	return m, nil
+}
+
+// FindAll returns a slice of Movie structs to populate the response
+func (mdb *MovieDB) FindAll(ctx context.Context) ([]*movie.Movie, error) {
+	const op errs.Op = "movieds/MockMovieDB.FindAll"
+
+	m1 := new(movie.Movie)
+	m1.ExtlID = xid.New()
+	m1.Title = "Clockwork Orange"
+	m1.CreateTimestamp = time.Now()
+
+	m2 := new(movie.Movie)
+	m2.ExtlID = xid.New()
+	m2.Title = "Repo Man"
+	m2.CreateTimestamp = time.Now()
+
+	s := []*movie.Movie{m1, m2}
+
+	return s, nil
 }
