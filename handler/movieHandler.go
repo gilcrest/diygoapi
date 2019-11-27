@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/gilcrest/go-api-basic/controller"
 	"github.com/gilcrest/go-api-basic/controller/moviectl"
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gorilla/mux"
@@ -16,7 +17,7 @@ func (ah *AppHandler) AddMovie() http.HandlerFunc {
 		const op errs.Op = "handler/AppHandler.AddMovie"
 
 		// Declare rqst as an instance of moviectl.AddMovieRequest
-		rqst := new(moviectl.AddMovieRequest)
+		rqst := new(moviectl.MovieRequest)
 		// Decode JSON HTTP request body into a Decoder type
 		// and unmarshal that into rqst
 		err := json.NewDecoder(r.Body).Decode(&rqst)
@@ -30,8 +31,12 @@ func (ah *AppHandler) AddMovie() http.HandlerFunc {
 		// retrieve the context from the http.Request
 		ctx := r.Context()
 
+		requestID := controller.NewRequestID(ah.RequestID)
+
+		srf := controller.NewStandardResponseFields(requestID, r)
+
 		// Initialize the MovieController
-		mc := moviectl.ProvideMovieController(ah.App, ah.RequestID)
+		mc := moviectl.ProvideMovieController(ah.App, srf)
 
 		// Send the request context and request struct to the controller
 		// Receive a response or error in return
@@ -64,8 +69,12 @@ func (ah *AppHandler) FindByID() http.HandlerFunc {
 		// retrieve the context from the http.Request
 		ctx := r.Context()
 
+		requestID := controller.NewRequestID(ah.RequestID)
+
+		srf := controller.NewStandardResponseFields(requestID, r)
+
 		// Initialize the MovieController
-		mc := moviectl.ProvideMovieController(ah.App, ah.RequestID)
+		mc := moviectl.ProvideMovieController(ah.App, srf)
 
 		// Send the request context and request struct to the controller
 		// Receive a response or error in return
@@ -95,8 +104,12 @@ func (ah *AppHandler) FindAll() http.HandlerFunc {
 		// retrieve the context from the http.Request
 		ctx := r.Context()
 
+		requestID := controller.NewRequestID(ah.RequestID)
+
+		srf := controller.NewStandardResponseFields(requestID, r)
+
 		// Initialize the MovieController
-		mc := moviectl.ProvideMovieController(ah.App, ah.RequestID)
+		mc := moviectl.ProvideMovieController(ah.App, srf)
 
 		// Send the request context and request struct to the controller
 		// Receive a response or error in return

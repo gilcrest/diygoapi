@@ -15,12 +15,12 @@ import (
 
 // MovieController is used as the base controller for the Movie logic
 type MovieController struct {
-	App       *app.Application
-	RequestID xid.ID
+	App *app.Application
+	SRF controller.StandardResponseFields
 }
 
-// AddMovieRequest is the request struct
-type AddMovieRequest struct {
+// MovieRequest is the request struct
+type MovieRequest struct {
 	Title    string `json:"Title"`
 	Year     int    `json:"Year"`
 	Rated    string `json:"Rated"`
@@ -30,9 +30,9 @@ type AddMovieRequest struct {
 	Writer   string `json:"Writer"`
 }
 
-// MovieResponse is the response struct
+// MovieResponse is the response struct for a single Movie
 type MovieResponse struct {
-	ExtlID          string `json:"ExtlID"`
+	ExtlID          xid.ID `json:"ExtlID"`
 	Title           string `json:"Title"`
 	Year            int    `json:"Year"`
 	Rated           string `json:"Rated"`
@@ -43,16 +43,22 @@ type MovieResponse struct {
 	CreateTimestamp string `json:"CreateTimestamp"`
 }
 
-// MoviesResponse is the response struct for multiple Movies
-type MoviesResponse struct {
-	*controller.StandardResponseFields
+// ListMovieResponse is the response struct for multiple Movies
+type ListMovieResponse struct {
+	controller.StandardResponseFields
 	Data []*MovieResponse `json:"data"`
 }
 
-// provideMovieResponse is an initializer for AddMovieResponse
-func provideMovieResponse(m *movie.Movie) *MovieResponse {
+// SingleMovieResponse is the response struct for multiple Movies
+type SingleMovieResponse struct {
+	controller.StandardResponseFields
+	Data *MovieResponse `json:"data"`
+}
+
+// provideMovieResponse is an initializer for MovieResponse
+func (ctl *MovieController) provideMovieResponse(m *movie.Movie) *MovieResponse {
 	return &MovieResponse{
-		ExtlID:          m.ExtlID.String(),
+		ExtlID:          m.ExtlID,
 		Title:           m.Title,
 		Year:            m.Year,
 		Rated:           m.Rated,
@@ -65,12 +71,12 @@ func provideMovieResponse(m *movie.Movie) *MovieResponse {
 }
 
 // ProvideMovieController initializes MovieController
-func ProvideMovieController(app *app.Application, id xid.ID) *MovieController {
-	return &MovieController{App: app, RequestID: id}
+func ProvideMovieController(app *app.Application, srf controller.StandardResponseFields) *MovieController {
+	return &MovieController{App: app, SRF: srf}
 }
 
 // Add adds a movie to the catalog.
-func (ctl *MovieController) Add(ctx context.Context, r *AddMovieRequest) (*MovieResponse, error) {
+func (ctl *MovieController) Add(ctx context.Context, r *MovieRequest) (*MovieResponse, error) {
 	const op errs.Op = "controller/moviectl/MovieController.Add"
 
 	err := ctl.App.DS.BeginTx(ctx)
@@ -98,7 +104,7 @@ func (ctl *MovieController) Add(ctx context.Context, r *AddMovieRequest) (*Movie
 		return nil, errs.E(op, errs.Database, ctl.App.DS.RollbackTx(err))
 	}
 
-	resp := provideMovieResponse(m)
+	resp := ctl.provideMovieResponse(m)
 
 	if err := ctl.App.DS.CommitTx(); err != nil {
 		return nil, errs.E(op, errs.Database, err)
@@ -108,7 +114,7 @@ func (ctl *MovieController) Add(ctx context.Context, r *AddMovieRequest) (*Movie
 }
 
 // FindByID finds a movie given its' unique ID
-func (ctl *MovieController) FindByID(ctx context.Context, id string) (*MovieResponse, error) {
+func (ctl *MovieController) FindByID(ctx context.Context, id string) (*SingleMovieResponse, error) {
 	const op errs.Op = "controller/moviectl/FindByID"
 
 	mds, err := movieds.ProvideMovieDS(ctl.App)
@@ -126,13 +132,15 @@ func (ctl *MovieController) FindByID(ctx context.Context, id string) (*MovieResp
 		return nil, errs.E(op, errs.Database, ctl.App.DS.RollbackTx(err))
 	}
 
-	resp := provideMovieResponse(m)
+	mr := ctl.provideMovieResponse(m)
 
-	return resp, nil
+	response := ctl.NewSingleMovieResponse(mr)
+
+	return response, nil
 }
 
 // FindAll finds the entire set of Movies
-func (ctl *MovieController) FindAll(ctx context.Context, r *http.Request) (*MoviesResponse, error) {
+func (ctl *MovieController) FindAll(ctx context.Context, r *http.Request) (*ListMovieResponse, error) {
 	const op errs.Op = "controller/moviectl/FindByID"
 
 	mds, err := movieds.ProvideMovieDS(ctl.App)
@@ -145,25 +153,30 @@ func (ctl *MovieController) FindAll(ctx context.Context, r *http.Request) (*Movi
 		return nil, errs.E(op, errs.Database, ctl.App.DS.RollbackTx(err))
 	}
 
-	resp := ctl.provideMoviesResponse(ms, r)
+	response := ctl.NewListMovieResponse(ms, r)
 
-	return resp, nil
+	return response, nil
 }
 
-// provideMoviesResponse is an initializer for MoviesResponse
-func (ctl *MovieController) provideMoviesResponse(ms []*movie.Movie, r *http.Request) *MoviesResponse {
-	const op errs.Op = "controller/moviectl/provideMoviesResponse"
+// NewListMovieResponse is an initializer for ListMovieResponse
+func (ctl *MovieController) NewListMovieResponse(ms []*movie.Movie, r *http.Request) *ListMovieResponse {
+	const op errs.Op = "controller/moviectl/NewListMovieResponse"
 
 	var s []*MovieResponse
 
 	for _, m := range ms {
-		mr := provideMovieResponse(m)
+		mr := ctl.provideMovieResponse(m)
 		s = append(s, mr)
 	}
 
-	sr := controller.NewStandardResponseFields(ctl.RequestID, r)
+	return &ListMovieResponse{StandardResponseFields: ctl.SRF, Data: s}
+}
 
-	return &MoviesResponse{sr, s}
+// NewSingleMovieResponse is an initializer for SingleMovieResponse
+func (ctl *MovieController) NewSingleMovieResponse(mr *MovieResponse) *SingleMovieResponse {
+	const op errs.Op = "controller/moviectl/NewSingleMovieResponse"
+
+	return &SingleMovieResponse{StandardResponseFields: ctl.SRF, Data: mr}
 }
 
 // dateFormat is the expected date format for any date fields
@@ -171,7 +184,7 @@ func (ctl *MovieController) provideMoviesResponse(ms []*movie.Movie, r *http.Req
 const dateFormat string = "Jan 02 2006"
 
 // ProvideMovie is an initializer for the Movie struct
-func provideMovie(am *AddMovieRequest) (*movie.Movie, error) {
+func provideMovie(am *MovieRequest) (*movie.Movie, error) {
 	const op errs.Op = "controller/moviectl/ProvideMovie"
 
 	t, err := time.Parse(dateFormat, am.Released)
