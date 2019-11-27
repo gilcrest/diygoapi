@@ -146,7 +146,8 @@ func provideRouter(hdl *handler.AppHandler) *mux.Router {
 	// with Content-Type header = application/json
 	rtr.Handle("/v1/movies",
 		alice.New(
-			hdl.AddStandardResponseHeaders).
+			hdl.AddStandardResponseHeaders,
+			hdl.AddRequestID).
 			ThenFunc(hdl.AddMovie())).
 		Methods("POST").
 		Headers("Content-Type", "application/json")
@@ -155,7 +156,8 @@ func provideRouter(hdl *handler.AppHandler) *mux.Router {
 	// with the Content-Type header = application/json
 	rtr.Handle("/v1/movies/{id}",
 		alice.New(
-			hdl.AddStandardResponseHeaders).
+			hdl.AddStandardResponseHeaders,
+			hdl.AddRequestID).
 			ThenFunc(hdl.FindByID())).
 		Methods("GET").
 		Headers("Content-Type", "application/json")
