@@ -17,6 +17,7 @@ type MovieDS interface {
 	Store(context.Context, *movie.Movie) error
 	FindByID(context.Context, xid.ID) (*movie.Movie, error)
 	FindAll(context.Context) ([]*movie.Movie, error)
+	Update(context.Context, xid.ID, *movie.Movie) error
 }
 
 // ProvideMovieDS sets up either a concrete MovieDB or a MockMovieDB
@@ -104,6 +105,14 @@ func (mdb *MovieDB) Store(ctx context.Context, m *movie.Movie) error {
 	if err := rows.Err(); err != nil {
 		return errs.E(op, err)
 	}
+
+	return nil
+}
+
+// Update updates a record in the database using the external ID of
+// the Movie
+func (mdb *MovieDB) Update(context.Context, xid.ID, *movie.Movie) error {
+	const op errs.Op = "movieds/MockMovieDB.Update"
 
 	return nil
 }

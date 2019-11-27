@@ -15,9 +15,16 @@ type MockMovieDB struct {
 	Log zerolog.Logger
 }
 
-// Store creates a record in the user table using a stored function
+// Store is a mock for creating a record
 func (mdb MockMovieDB) Store(ctx context.Context, m *movie.Movie) error {
 	const op errs.Op = "movieds/MockMovieDB.Store"
+
+	return nil
+}
+
+// Update is a mock for updating a record
+func (mdb MockMovieDB) Update(context.Context, xid.ID, *movie.Movie) error {
+	const op errs.Op = "movieds/MockMovieDB.Update"
 
 	return nil
 }
