@@ -14,10 +14,10 @@ import (
 
 // MovieDS is the interface for the persistence layer for a movie
 type MovieDS interface {
-	Store(context.Context, *movie.Movie) error
+	Create(context.Context, *movie.Movie) error
 	FindByID(context.Context, xid.ID) (*movie.Movie, error)
 	FindAll(context.Context) ([]*movie.Movie, error)
-	Update(context.Context, xid.ID, *movie.Movie) error
+	Update(context.Context, *movie.Movie) error
 }
 
 // NewMovieDS sets up either a concrete MovieDB or a MockMovieDB
@@ -43,8 +43,8 @@ type MovieDB struct {
 	*datastore.DS
 }
 
-// Store creates a record in the user table using a stored function
-func (mdb *MovieDB) Store(ctx context.Context, m *movie.Movie) error {
+// Create inserts a record in the user table using a stored function
+func (mdb *MovieDB) Create(ctx context.Context, m *movie.Movie) error {
 	const op errs.Op = "movie/Movie.createDB"
 
 	// Prepare the sql statement using bind variables
@@ -111,8 +111,62 @@ func (mdb *MovieDB) Store(ctx context.Context, m *movie.Movie) error {
 
 // Update updates a record in the database using the external ID of
 // the Movie
-func (mdb *MovieDB) Update(context.Context, xid.ID, *movie.Movie) error {
+func (mdb *MovieDB) Update(ctx context.Context, m *movie.Movie) error {
 	const op errs.Op = "movieds/MockMovieDB.Update"
+
+	// Prepare the sql statement using bind variables
+	stmt, err := mdb.Tx.PrepareContext(ctx, `
+	update demo.movie
+	   set title = $1,
+		   year = $2,
+		   rated = $3,
+		   released = $4,
+		   run_time = $5,
+		   director = $6,
+		   writer = $7,
+		   update_user_id = $8
+	 where extl_id = $9
+	 returning update_timestamp`)
+
+	if err != nil {
+		return errs.E(op, err)
+	}
+	defer stmt.Close()
+
+	// At some point, I will add a whole user flow, but for now
+	// faking a user uuid....
+	fakeUserID := uuid.New()
+
+	// Execute stored function that returns the create_date timestamp,
+	// hence the use of QueryContext instead of Exec
+	rows, err := stmt.QueryContext(ctx,
+		m.Title,           //$1
+		m.Year,            //$2
+		m.Rated,           //$3
+		m.Released,        //$4
+		m.RunTime,         //$5
+		m.Director,        //$6
+		m.Writer,          //$7
+		fakeUserID,        //$8
+		m.ExtlID.String()) //$9
+
+	if err != nil {
+		return errs.E(op, err)
+	}
+	defer rows.Close()
+
+	// Iterate through the returned record(s)
+	for rows.Next() {
+		if err := rows.Scan(&m.UpdateTimestamp); err != nil {
+			return errs.E(op, err)
+		}
+	}
+
+	// If any error was encountered while iterating through rows.Next above
+	// it will be returned here
+	if err := rows.Err(); err != nil {
+		return errs.E(op, err)
+	}
 
 	return nil
 }
@@ -135,7 +189,7 @@ func (mdb *MovieDB) FindByID(ctx context.Context, extlID xid.ID) (*movie.Movie, 
 				create_timestamp,
 				update_timestamp
 		   from demo.movie m
-		  where extl_id = $1;`, extlID)
+		  where extl_id = $1`, extlID)
 
 	m := new(movie.Movie)
 	err := row.Scan(
@@ -180,7 +234,7 @@ func (mdb *MovieDB) FindAll(ctx context.Context) ([]*movie.Movie, error) {
 				writer,
 				create_timestamp,
 				update_timestamp
-		   from demo.movie m;`)
+		   from demo.movie m`)
 	if err != nil {
 		return nil, errs.E(op, errs.Database, err)
 	}
