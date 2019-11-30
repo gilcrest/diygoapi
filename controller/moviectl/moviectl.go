@@ -70,8 +70,8 @@ func (ctl *MovieController) provideMovieResponse(m *movie.Movie) *MovieResponse 
 	}
 }
 
-// ProvideMovieController initializes MovieController
-func ProvideMovieController(app *app.Application, srf controller.StandardResponseFields) *MovieController {
+// NewMovieController initializes MovieController
+func NewMovieController(app *app.Application, srf controller.StandardResponseFields) *MovieController {
 	return &MovieController{App: app, SRF: srf}
 }
 
@@ -84,7 +84,45 @@ func (ctl *MovieController) Add(ctx context.Context, r *MovieRequest) (*MovieRes
 		return nil, errs.E(op, err)
 	}
 
-	mds, err := movieds.ProvideMovieDS(ctl.App)
+	mds, err := movieds.NewMovieDS(ctl.App)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	m, err := provideMovie(r)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	err = m.Add(ctx)
+	if err != nil {
+		return nil, errs.E(err)
+	}
+
+	err = mds.Store(ctx, m)
+	if err != nil {
+		return nil, errs.E(op, errs.Database, ctl.App.DS.RollbackTx(err))
+	}
+
+	resp := ctl.provideMovieResponse(m)
+
+	if err := ctl.App.DS.CommitTx(); err != nil {
+		return nil, errs.E(op, errs.Database, err)
+	}
+
+	return resp, nil
+}
+
+// Update updates the movie given the id sent in
+func (ctl *MovieController) Update(ctx context.Context, id string, r *MovieRequest) (*MovieResponse, error) {
+	const op errs.Op = "controller/moviectl/MovieController.Update"
+
+	err := ctl.App.DS.BeginTx(ctx)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	mds, err := movieds.NewMovieDS(ctl.App)
 	if err != nil {
 		return nil, errs.E(op, err)
 	}
@@ -117,7 +155,7 @@ func (ctl *MovieController) Add(ctx context.Context, r *MovieRequest) (*MovieRes
 func (ctl *MovieController) FindByID(ctx context.Context, id string) (*SingleMovieResponse, error) {
 	const op errs.Op = "controller/moviectl/FindByID"
 
-	mds, err := movieds.ProvideMovieDS(ctl.App)
+	mds, err := movieds.NewMovieDS(ctl.App)
 	if err != nil {
 		return nil, errs.E(op, err)
 	}
@@ -143,7 +181,7 @@ func (ctl *MovieController) FindByID(ctx context.Context, id string) (*SingleMov
 func (ctl *MovieController) FindAll(ctx context.Context, r *http.Request) (*ListMovieResponse, error) {
 	const op errs.Op = "controller/moviectl/FindByID"
 
-	mds, err := movieds.ProvideMovieDS(ctl.App)
+	mds, err := movieds.NewMovieDS(ctl.App)
 	if err != nil {
 		return nil, errs.E(op, err)
 	}
@@ -183,9 +221,9 @@ func (ctl *MovieController) NewSingleMovieResponse(mr *MovieResponse) *SingleMov
 // in the request
 const dateFormat string = "Jan 02 2006"
 
-// ProvideMovie is an initializer for the Movie struct
+// NewMovie is an initializer for the Movie struct
 func provideMovie(am *MovieRequest) (*movie.Movie, error) {
-	const op errs.Op = "controller/moviectl/ProvideMovie"
+	const op errs.Op = "controller/moviectl/NewMovie"
 
 	t, err := time.Parse(dateFormat, am.Released)
 	if err != nil {

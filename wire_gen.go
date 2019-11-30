@@ -17,14 +17,14 @@ import (
 func setupRouter(flags *cliFlags) (*mux.Router, error) {
 	envName := provideEnvName(flags)
 	dsName := provideDSName(flags)
-	datastoreDatastore, err := datastore.ProvideDatastore(dsName)
+	datastoreDatastore, err := datastore.NewDatastore(dsName)
 	if err != nil {
 		return nil, err
 	}
 	level := provideLogLevel(flags)
 	logger := provideLogger(level)
-	application := app.ProvideApplication(envName, datastoreDatastore, logger)
-	appHandler := handler.ProvideAppHandler(application)
+	application := app.NewApplication(envName, datastoreDatastore, logger)
+	appHandler := handler.NewAppHandler(application)
 	router := provideRouter(appHandler)
 	return router, nil
 }

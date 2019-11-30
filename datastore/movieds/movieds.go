@@ -20,10 +20,10 @@ type MovieDS interface {
 	Update(context.Context, xid.ID, *movie.Movie) error
 }
 
-// ProvideMovieDS sets up either a concrete MovieDB or a MockMovieDB
+// NewMovieDS sets up either a concrete MovieDB or a MockMovieDB
 // depending on the underlying struct of the Datastore passed in
-func ProvideMovieDS(app *app.Application) (MovieDS, error) {
-	const op errs.Op = "movieds/ProvideMovieDS"
+func NewMovieDS(app *app.Application) (MovieDS, error) {
+	const op errs.Op = "movieds/NewMovieDS"
 
 	// Use a type switch to determine if the app datastore is a Mock
 	// Datastore, if so, then return MockMovieDB, otherwise use

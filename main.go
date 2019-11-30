@@ -81,7 +81,7 @@ func provideEnvName(flags *cliFlags) app.EnvName {
 	return name
 }
 
-// ProvideLogger sets up the zerolog.Logger
+// NewLogger sets up the zerolog.Logger
 func provideLogger(lvl zerolog.Level) zerolog.Logger {
 	// empty string for TimeFieldFormat will write logs with UNIX time
 	zerolog.TimeFieldFormat = ""
@@ -93,7 +93,7 @@ func provideLogger(lvl zerolog.Level) zerolog.Logger {
 	return lgr
 }
 
-// ProvideLogLevel sets up the logging level (e.g. Debug, Info, Error, etc.)
+// NewLogLevel sets up the logging level (e.g. Debug, Info, Error, etc.)
 // It takes a pointer to a string as that is how a parsed command line flag provides
 // and the intention is for the name to be set at run time
 func provideLogLevel(flags *cliFlags) zerolog.Level {

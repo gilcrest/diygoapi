@@ -45,7 +45,7 @@ func (ah *AppHandler) AddRequestID(h http.Handler) http.Handler {
 		})
 }
 
-// ProvideAppHandler initializes the AppHandler
-func ProvideAppHandler(app *app.Application) *AppHandler {
+// NewAppHandler initializes the AppHandler
+func NewAppHandler(app *app.Application) *AppHandler {
 	return &AppHandler{App: app}
 }

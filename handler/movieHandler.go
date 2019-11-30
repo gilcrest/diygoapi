@@ -31,7 +31,7 @@ func (ah *AppHandler) AddMovie() http.HandlerFunc {
 		ctx := r.Context()
 
 		// Initialize the MovieController
-		mc := moviectl.ProvideMovieController(ah.App, ah.StandardResponseFields)
+		mc := moviectl.NewMovieController(ah.App, ah.StandardResponseFields)
 
 		// Send the request context and request struct to the controller
 		// Receive a response or error in return
@@ -65,7 +65,7 @@ func (ah *AppHandler) FindByID() http.HandlerFunc {
 		ctx := r.Context()
 
 		// Initialize the MovieController
-		mc := moviectl.ProvideMovieController(ah.App, ah.StandardResponseFields)
+		mc := moviectl.NewMovieController(ah.App, ah.StandardResponseFields)
 
 		// Send the request context and request struct to the controller
 		// Receive a response or error in return
@@ -90,13 +90,44 @@ func (ah *AppHandler) FindByID() http.HandlerFunc {
 // and finds all movies
 func (ah *AppHandler) FindAll() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		const op errs.Op = "handler/AppHandler.FindByID"
+		const op errs.Op = "handler/AppHandler.FindAll"
 
 		// retrieve the context from the http.Request
 		ctx := r.Context()
 
 		// Initialize the MovieController
-		mc := moviectl.ProvideMovieController(ah.App, ah.StandardResponseFields)
+		mc := moviectl.NewMovieController(ah.App, ah.StandardResponseFields)
+
+		// Send the request context and request struct to the controller
+		// Receive a response or error in return
+		resp, err := mc.FindAll(ctx, r)
+		if err != nil {
+			err = errs.RE(http.StatusBadRequest, errs.InvalidRequest, err)
+			errs.HTTPError(w, err)
+			return
+		}
+
+		// Encode response struct to JSON for the response body
+		json.NewEncoder(w).Encode(resp)
+		if err != nil {
+			err = errs.RE(http.StatusInternalServerError, errs.Internal)
+			errs.HTTPError(w, err)
+			return
+		}
+	}
+}
+
+// FindAll handles GET requests for the /movies endpoint
+// and finds all movies
+func (ah *AppHandler) Update() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		const op errs.Op = "handler/AppHandler.Update"
+
+		// retrieve the context from the http.Request
+		ctx := r.Context()
+
+		// Initialize the MovieController
+		mc := moviectl.NewMovieController(ah.App, ah.StandardResponseFields)
 
 		// Send the request context and request struct to the controller
 		// Receive a response or error in return

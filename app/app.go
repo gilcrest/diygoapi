@@ -15,8 +15,8 @@ type Application struct {
 	Logger zerolog.Logger
 }
 
-// ProvideApplication creates a new application struct
-func ProvideApplication(en EnvName, ds datastore.Datastore, log zerolog.Logger) *Application {
+// NewApplication creates a new application struct
+func NewApplication(en EnvName, ds datastore.Datastore, log zerolog.Logger) *Application {
 	return &Application{
 		EnvName: en,
 		DS:      ds,

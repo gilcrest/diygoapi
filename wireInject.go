@@ -15,9 +15,9 @@ func setupRouter(flags *cliFlags) (*mux.Router, error) {
 		provideLogger,
 		provideEnvName,
 		provideDSName,
-		datastore.ProvideDatastore,
-		app.ProvideApplication,
-		handler.ProvideAppHandler,
+		datastore.NewDatastore,
+		app.NewApplication,
+		handler.NewAppHandler,
 		provideRouter)
 	return &mux.Router{}, nil
 }

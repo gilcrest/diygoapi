@@ -104,11 +104,11 @@ func (db *DS) CommitTx() error {
 	return nil
 }
 
-// ProvideDatastore provides either a DS struct, which has a concrete
+// NewDatastore provides either a DS struct, which has a concrete
 // implementation of a database or a MockDS struct which is a mocked
 // DB implementation
-func ProvideDatastore(n DSName) (Datastore, error) {
-	const op errs.Op = "datastore/ProvideDatastore"
+func NewDatastore(n DSName) (Datastore, error) {
+	const op errs.Op = "datastore/NewDatastore"
 
 	if n == MockDatastore {
 		return &MockDS{}, nil
