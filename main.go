@@ -56,10 +56,10 @@ func main() {
 	}
 }
 
-// provideEnvName sets up the environment name (e.g. Production, Staging, QA, etc.)
-// It takes a pointer to a string as that is how a parsed command line flag provides
+// newEnvName sets up the environment name (e.g. Production, Staging, QA, etc.)
+// It takes a pointer to a string as that is how a parsed command line flag news
 // and the intention is for the name to be set at run time
-func provideEnvName(flags *cliFlags) app.EnvName {
+func newEnvName(flags *cliFlags) app.EnvName {
 
 	var name app.EnvName
 
@@ -82,7 +82,7 @@ func provideEnvName(flags *cliFlags) app.EnvName {
 }
 
 // NewLogger sets up the zerolog.Logger
-func provideLogger(lvl zerolog.Level) zerolog.Logger {
+func newLogger(lvl zerolog.Level) zerolog.Logger {
 	// empty string for TimeFieldFormat will write logs with UNIX time
 	zerolog.TimeFieldFormat = ""
 	// set logging level based on input
@@ -94,9 +94,9 @@ func provideLogger(lvl zerolog.Level) zerolog.Logger {
 }
 
 // NewLogLevel sets up the logging level (e.g. Debug, Info, Error, etc.)
-// It takes a pointer to a string as that is how a parsed command line flag provides
+// It takes a pointer to a string as that is how a parsed command line flag news
 // and the intention is for the name to be set at run time
-func provideLogLevel(flags *cliFlags) zerolog.Level {
+func newLogLevel(flags *cliFlags) zerolog.Level {
 
 	var lvl zerolog.Level
 
@@ -122,7 +122,7 @@ func provideLogLevel(flags *cliFlags) zerolog.Level {
 	return lvl
 }
 
-func provideDSName(flags *cliFlags) datastore.DSName {
+func newDSName(flags *cliFlags) datastore.DSName {
 
 	if flags.mock {
 		return datastore.MockDatastore
@@ -131,7 +131,7 @@ func provideDSName(flags *cliFlags) datastore.DSName {
 	return datastore.AppDatastore
 }
 
-func provideRouter(hdl *handler.AppHandler) *mux.Router {
+func newRouter(hdl *handler.AppHandler) *mux.Router {
 	// create a new mux (multiplex) router
 	rtr := mux.NewRouter()
 

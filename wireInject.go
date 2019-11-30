@@ -11,13 +11,13 @@ import (
 )
 
 func setupRouter(flags *cliFlags) (*mux.Router, error) {
-	wire.Build(provideLogLevel,
-		provideLogger,
-		provideEnvName,
-		provideDSName,
+	wire.Build(newLogLevel,
+		newLogger,
+		newEnvName,
+		newDSName,
 		datastore.NewDatastore,
 		app.NewApplication,
 		handler.NewAppHandler,
-		provideRouter)
+		newRouter)
 	return &mux.Router{}, nil
 }

@@ -15,16 +15,16 @@ import (
 // Injectors from wireInject.go:
 
 func setupRouter(flags *cliFlags) (*mux.Router, error) {
-	envName := provideEnvName(flags)
-	dsName := provideDSName(flags)
+	envName := newEnvName(flags)
+	dsName := newDSName(flags)
 	datastoreDatastore, err := datastore.NewDatastore(dsName)
 	if err != nil {
 		return nil, err
 	}
-	level := provideLogLevel(flags)
-	logger := provideLogger(level)
+	level := newLogLevel(flags)
+	logger := newLogger(level)
 	application := app.NewApplication(envName, datastoreDatastore, logger)
 	appHandler := handler.NewAppHandler(application)
-	router := provideRouter(appHandler)
+	router := newRouter(appHandler)
 	return router, nil
 }

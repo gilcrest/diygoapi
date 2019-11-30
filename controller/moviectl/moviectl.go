@@ -55,8 +55,8 @@ type SingleMovieResponse struct {
 	Data *MovieResponse `json:"data"`
 }
 
-// provideMovieResponse is an initializer for MovieResponse
-func (ctl *MovieController) provideMovieResponse(m *movie.Movie) *MovieResponse {
+// newMovieResponse is an initializer for MovieResponse
+func (ctl *MovieController) newMovieResponse(m *movie.Movie) *MovieResponse {
 	return &MovieResponse{
 		ExtlID:          m.ExtlID,
 		Title:           m.Title,
@@ -89,7 +89,7 @@ func (ctl *MovieController) Add(ctx context.Context, r *MovieRequest) (*MovieRes
 		return nil, errs.E(op, err)
 	}
 
-	m, err := provideMovie(r)
+	m, err := newMovie(r)
 	if err != nil {
 		return nil, errs.E(op, err)
 	}
@@ -99,12 +99,12 @@ func (ctl *MovieController) Add(ctx context.Context, r *MovieRequest) (*MovieRes
 		return nil, errs.E(err)
 	}
 
-	err = mds.Store(ctx, m)
+	err = mds.Create(ctx, m)
 	if err != nil {
 		return nil, errs.E(op, errs.Database, ctl.App.DS.RollbackTx(err))
 	}
 
-	resp := ctl.provideMovieResponse(m)
+	resp := ctl.newMovieResponse(m)
 
 	if err := ctl.App.DS.CommitTx(); err != nil {
 		return nil, errs.E(op, errs.Database, err)
@@ -117,6 +117,11 @@ func (ctl *MovieController) Add(ctx context.Context, r *MovieRequest) (*MovieRes
 func (ctl *MovieController) Update(ctx context.Context, id string, r *MovieRequest) (*MovieResponse, error) {
 	const op errs.Op = "controller/moviectl/MovieController.Update"
 
+	i, err := xid.FromString(id)
+	if err != nil {
+		return nil, errs.E(op, errs.Validation, "Invalid id in URL path")
+	}
+
 	err := ctl.App.DS.BeginTx(ctx)
 	if err != nil {
 		return nil, errs.E(op, err)
@@ -127,22 +132,22 @@ func (ctl *MovieController) Update(ctx context.Context, id string, r *MovieReque
 		return nil, errs.E(op, err)
 	}
 
-	m, err := provideMovie(r)
+	m, err := newMovie(r)
 	if err != nil {
 		return nil, errs.E(op, err)
 	}
 
-	err = m.Add(ctx)
+	err = m.Update(ctx)
 	if err != nil {
 		return nil, errs.E(err)
 	}
 
-	err = mds.Store(ctx, m)
+	err = mds.Update(ctx, m)
 	if err != nil {
 		return nil, errs.E(op, errs.Database, ctl.App.DS.RollbackTx(err))
 	}
 
-	resp := ctl.provideMovieResponse(m)
+	resp := ctl.newMovieResponse(m)
 
 	if err := ctl.App.DS.CommitTx(); err != nil {
 		return nil, errs.E(op, errs.Database, err)
@@ -170,7 +175,7 @@ func (ctl *MovieController) FindByID(ctx context.Context, id string) (*SingleMov
 		return nil, errs.E(op, errs.Database, ctl.App.DS.RollbackTx(err))
 	}
 
-	mr := ctl.provideMovieResponse(m)
+	mr := ctl.newMovieResponse(m)
 
 	response := ctl.NewSingleMovieResponse(mr)
 
@@ -203,7 +208,7 @@ func (ctl *MovieController) NewListMovieResponse(ms []*movie.Movie, r *http.Requ
 	var s []*MovieResponse
 
 	for _, m := range ms {
-		mr := ctl.provideMovieResponse(m)
+		mr := ctl.newMovieResponse(m)
 		s = append(s, mr)
 	}
 
@@ -222,7 +227,7 @@ func (ctl *MovieController) NewSingleMovieResponse(mr *MovieResponse) *SingleMov
 const dateFormat string = "Jan 02 2006"
 
 // NewMovie is an initializer for the Movie struct
-func provideMovie(am *MovieRequest) (*movie.Movie, error) {
+func newMovie(am *MovieRequest) (*movie.Movie, error) {
 	const op errs.Op = "controller/moviectl/NewMovie"
 
 	t, err := time.Parse(dateFormat, am.Released)

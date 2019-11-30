@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func Test_provideDB(t *testing.T) {
+func Test_newDB(t *testing.T) {
 	type args struct {
 		n DSName
 	}
@@ -17,7 +17,7 @@ func Test_provideDB(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			db, err := provideDB(tt.args.n)
+			db, err := newDB(tt.args.n)
 			if err != nil {
 				t.Errorf("Error from newDB = %v", err)
 			}

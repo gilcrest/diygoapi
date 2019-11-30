@@ -114,7 +114,7 @@ func NewDatastore(n DSName) (Datastore, error) {
 		return &MockDS{}, nil
 	}
 
-	db, err := provideDB(n)
+	db, err := newDB(n)
 	if err != nil {
 		return nil, errs.E(op, errs.Database, err)
 	}
@@ -122,9 +122,9 @@ func NewDatastore(n DSName) (Datastore, error) {
 	return &DS{DB: db}, nil
 }
 
-// provideDB returns an open database handle of 0 or more underlying connections
-func provideDB(n DSName) (*sql.DB, error) {
-	const op errs.Op = "datastore/provideDB"
+// newDB returns an open database handle of 0 or more underlying connections
+func newDB(n DSName) (*sql.DB, error) {
+	const op errs.Op = "datastore/newDB"
 
 	// If we are in "mock mode", we return a nil database
 	if n == MockDatastore {
