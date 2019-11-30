@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/gilcrest/go-api-basic/controller"
 	"github.com/gilcrest/go-api-basic/controller/moviectl"
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gorilla/mux"
@@ -31,12 +30,8 @@ func (ah *AppHandler) AddMovie() http.HandlerFunc {
 		// retrieve the context from the http.Request
 		ctx := r.Context()
 
-		requestID := controller.NewRequestID(ah.RequestID)
-
-		srf := controller.NewStandardResponseFields(requestID, r)
-
 		// Initialize the MovieController
-		mc := moviectl.ProvideMovieController(ah.App, srf)
+		mc := moviectl.ProvideMovieController(ah.App, ah.StandardResponseFields)
 
 		// Send the request context and request struct to the controller
 		// Receive a response or error in return
@@ -69,12 +64,8 @@ func (ah *AppHandler) FindByID() http.HandlerFunc {
 		// retrieve the context from the http.Request
 		ctx := r.Context()
 
-		requestID := controller.NewRequestID(ah.RequestID)
-
-		srf := controller.NewStandardResponseFields(requestID, r)
-
 		// Initialize the MovieController
-		mc := moviectl.ProvideMovieController(ah.App, srf)
+		mc := moviectl.ProvideMovieController(ah.App, ah.StandardResponseFields)
 
 		// Send the request context and request struct to the controller
 		// Receive a response or error in return
@@ -104,12 +95,8 @@ func (ah *AppHandler) FindAll() http.HandlerFunc {
 		// retrieve the context from the http.Request
 		ctx := r.Context()
 
-		requestID := controller.NewRequestID(ah.RequestID)
-
-		srf := controller.NewStandardResponseFields(requestID, r)
-
 		// Initialize the MovieController
-		mc := moviectl.ProvideMovieController(ah.App, srf)
+		mc := moviectl.ProvideMovieController(ah.App, ah.StandardResponseFields)
 
 		// Send the request context and request struct to the controller
 		// Receive a response or error in return
