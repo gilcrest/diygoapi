@@ -117,11 +117,26 @@ func (ah *AppHandler) FindAll() http.HandlerFunc {
 	}
 }
 
-// FindAll handles GET requests for the /movies endpoint
-// and finds all movies
+// Update handles PUT requests for the /movies endpoint
+// and updates the given movie
 func (ah *AppHandler) Update() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op errs.Op = "handler/AppHandler.Update"
+
+		vars := mux.Vars(r)
+		id := vars["id"]
+
+		// Declare rqst as an instance of moviectl.AddMovieRequest
+		rqst := new(moviectl.MovieRequest)
+		// Decode JSON HTTP request body into a Decoder type
+		// and unmarshal that into rqst
+		err := json.NewDecoder(r.Body).Decode(&rqst)
+		defer r.Body.Close()
+		if err != nil {
+			err = errs.RE(http.StatusBadRequest, errs.InvalidRequest, errs.E(op, err))
+			errs.HTTPError(w, err)
+			return
+		}
 
 		// retrieve the context from the http.Request
 		ctx := r.Context()
@@ -131,7 +146,7 @@ func (ah *AppHandler) Update() http.HandlerFunc {
 
 		// Send the request context and request struct to the controller
 		// Receive a response or error in return
-		resp, err := mc.FindAll(ctx, r)
+		resp, err := mc.Update(ctx, id, rqst)
 		if err != nil {
 			err = errs.RE(http.StatusBadRequest, errs.InvalidRequest, err)
 			errs.HTTPError(w, err)

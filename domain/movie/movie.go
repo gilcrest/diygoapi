@@ -68,3 +68,22 @@ func (m *Movie) Add(ctx context.Context) error {
 
 	return nil
 }
+
+// Update performs business validations prior to writing to the db
+func (m *Movie) Update(ctx context.Context, id xid.ID) error {
+	const op errs.Op = "movie/Movie.Add"
+
+	m.ExtlID = id
+
+	// Validate input data
+	err := m.validate()
+	if err != nil {
+		if e, ok := err.(*errs.Error); ok {
+			return errs.E(errs.Validation, e.Param, err)
+		}
+		// should not get here, but just in case
+		return errs.E(errs.Validation, err)
+	}
+
+	return nil
+}

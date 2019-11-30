@@ -126,7 +126,8 @@ func (mdb *MovieDB) Update(ctx context.Context, m *movie.Movie) error {
 		   writer = $7,
 		   update_user_id = $8
 	 where extl_id = $9
-	 returning update_timestamp`)
+	 returning create_timestamp,
+	           update_timestamp`)
 
 	if err != nil {
 		return errs.E(op, err)
@@ -157,7 +158,7 @@ func (mdb *MovieDB) Update(ctx context.Context, m *movie.Movie) error {
 
 	// Iterate through the returned record(s)
 	for rows.Next() {
-		if err := rows.Scan(&m.UpdateTimestamp); err != nil {
+		if err := rows.Scan(&m.CreateTimestamp, &m.UpdateTimestamp); err != nil {
 			return errs.E(op, err)
 		}
 	}

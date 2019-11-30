@@ -172,5 +172,15 @@ func newRouter(hdl *handler.AppHandler) *mux.Router {
 		Methods("GET").
 		Headers("Content-Type", "application/json")
 
+	// Match only PUT requests having an ID at /api/v1/movies/{id}
+	// with the Content-Type header = application/json
+	rtr.Handle("/v1/movies/{id}",
+		alice.New(
+			hdl.AddStandardResponseHeaders,
+			hdl.AddRequestID).
+			ThenFunc(hdl.Update())).
+		Methods("PUT").
+		Headers("Content-Type", "application/json")
+
 	return rtr
 }

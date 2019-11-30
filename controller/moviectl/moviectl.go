@@ -41,6 +41,7 @@ type MovieResponse struct {
 	Director        string `json:"Director"`
 	Writer          string `json:"Writer"`
 	CreateTimestamp string `json:"CreateTimestamp"`
+	UpdateTimestamp string `json:"UpdateTimestamp"`
 }
 
 // ListMovieResponse is the response struct for multiple Movies
@@ -67,6 +68,7 @@ func (ctl *MovieController) newMovieResponse(m *movie.Movie) *MovieResponse {
 		Director:        m.Director,
 		Writer:          m.Writer,
 		CreateTimestamp: m.CreateTimestamp.Format(time.RFC3339),
+		UpdateTimestamp: m.UpdateTimestamp.Format(time.RFC3339),
 	}
 }
 
@@ -122,7 +124,7 @@ func (ctl *MovieController) Update(ctx context.Context, id string, r *MovieReque
 		return nil, errs.E(op, errs.Validation, "Invalid id in URL path")
 	}
 
-	err := ctl.App.DS.BeginTx(ctx)
+	err = ctl.App.DS.BeginTx(ctx)
 	if err != nil {
 		return nil, errs.E(op, err)
 	}
@@ -137,7 +139,7 @@ func (ctl *MovieController) Update(ctx context.Context, id string, r *MovieReque
 		return nil, errs.E(op, err)
 	}
 
-	err = m.Update(ctx)
+	err = m.Update(ctx, i)
 	if err != nil {
 		return nil, errs.E(err)
 	}
