@@ -6,7 +6,7 @@ import (
 
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/movie"
-	"github.com/rs/xid"
+	"github.com/gilcrest/go-api-basic/domain/random"
 	"github.com/rs/zerolog"
 )
 
@@ -30,11 +30,11 @@ func (mdb MockMovieDB) Update(ctx context.Context, m *movie.Movie) error {
 }
 
 // FindByID returns a Movie struct to populate the response
-func (mdb MockMovieDB) FindByID(ctx context.Context, extlID xid.ID) (*movie.Movie, error) {
+func (mdb MockMovieDB) FindByID(ctx context.Context, extlID string) (*movie.Movie, error) {
 	const op errs.Op = "movieds/MockMovieDB.FindByID"
 
 	m1 := new(movie.Movie)
-	m1.ExtlID = xid.New()
+	m1.ExtlID = extlID
 	m1.Title = "The Thing"
 	m1.Year = 1982
 	m1.Rated = "R"
@@ -52,7 +52,11 @@ func (mdb MockMovieDB) FindAll(ctx context.Context) ([]*movie.Movie, error) {
 	const op errs.Op = "movieds/MockMovieDB.FindAll"
 
 	m1 := new(movie.Movie)
-	m1.ExtlID = xid.New()
+	eid1, err := random.CryptoString(15)
+	if err != nil {
+		return nil, errs.E(op, errs.Internal, err)
+	}
+	m1.ExtlID = eid1
 	m1.Title = "The Thing"
 	m1.Year = 1982
 	m1.Rated = "R"
@@ -63,7 +67,11 @@ func (mdb MockMovieDB) FindAll(ctx context.Context) ([]*movie.Movie, error) {
 	m1.CreateTimestamp = time.Now()
 
 	m2 := new(movie.Movie)
-	m2.ExtlID = xid.New()
+	eid2, err := random.CryptoString(15)
+	if err != nil {
+		return nil, errs.E(op, errs.Internal, err)
+	}
+	m2.ExtlID = eid2
 	m2.Title = "Repo Man"
 	m2.Year = 1984
 	m2.Rated = "R"

@@ -5,14 +5,14 @@ import (
 	"time"
 
 	"github.com/gilcrest/go-api-basic/domain/errs"
+	"github.com/gilcrest/go-api-basic/domain/random"
 	"github.com/google/uuid"
-	"github.com/rs/xid"
 )
 
 // Movie holds details of a movie
 type Movie struct {
 	ID              uuid.UUID
-	ExtlID          xid.ID
+	ExtlID          string
 	Title           string
 	Year            int
 	Rated           string
@@ -54,10 +54,14 @@ func (m *Movie) Add(ctx context.Context) error {
 	const op errs.Op = "movie/Movie.Add"
 
 	m.ID = uuid.New()
-	m.ExtlID = xid.New()
+	id, err := random.CryptoString(15)
+	if err != nil {
+		return errs.E(errs.Validation, errs.Internal, err)
+	}
+	m.ExtlID = id
 
 	// Validate input data
-	err := m.validate()
+	err = m.validate()
 	if err != nil {
 		if e, ok := err.(*errs.Error); ok {
 			return errs.E(errs.Validation, e.Param, err)
@@ -70,10 +74,11 @@ func (m *Movie) Add(ctx context.Context) error {
 }
 
 // Update performs business validations prior to writing to the db
-func (m *Movie) Update(ctx context.Context, id xid.ID) error {
+func (m *Movie) Update(ctx context.Context, id string) error {
 	const op errs.Op = "movie/Movie.Add"
 
 	m.ExtlID = id
+	m.UpdateTimestamp = time.Now().UTC()
 
 	// Validate input data
 	err := m.validate()

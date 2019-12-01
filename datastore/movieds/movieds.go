@@ -9,13 +9,12 @@ import (
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/movie"
 	"github.com/google/uuid"
-	"github.com/rs/xid"
 )
 
 // MovieDS is the interface for the persistence layer for a movie
 type MovieDS interface {
 	Create(context.Context, *movie.Movie) error
-	FindByID(context.Context, xid.ID) (*movie.Movie, error)
+	FindByID(context.Context, string) (*movie.Movie, error)
 	FindAll(context.Context) ([]*movie.Movie, error)
 	Update(context.Context, *movie.Movie) error
 }
@@ -76,17 +75,17 @@ func (mdb *MovieDB) Create(ctx context.Context, m *movie.Movie) error {
 	// Execute stored function that returns the create_date timestamp,
 	// hence the use of QueryContext instead of Exec
 	rows, err := stmt.QueryContext(ctx,
-		m.ID,              //$1
-		m.ExtlID.String(), //$2
-		m.Title,           //$3
-		m.Year,            //$4
-		m.Rated,           //$5
-		m.Released,        //$6
-		m.RunTime,         //$7
-		m.Director,        //$8
-		m.Writer,          //$9
-		fakeUserID,        //$10
-		fakeUserID)        //$11
+		m.ID,       //$1
+		m.ExtlID,   //$2
+		m.Title,    //$3
+		m.Year,     //$4
+		m.Rated,    //$5
+		m.Released, //$6
+		m.RunTime,  //$7
+		m.Director, //$8
+		m.Writer,   //$9
+		fakeUserID, //$10
+		fakeUserID) //$11
 
 	if err != nil {
 		return errs.E(op, err)
@@ -124,10 +123,10 @@ func (mdb *MovieDB) Update(ctx context.Context, m *movie.Movie) error {
 		   run_time = $5,
 		   director = $6,
 		   writer = $7,
-		   update_user_id = $8
-	 where extl_id = $9
-	 returning create_timestamp,
-	           update_timestamp`)
+		   update_user_id = $8,
+		   update_timestamp = $9
+	 where extl_id = $10
+ returning movie_id, create_timestamp`)
 
 	if err != nil {
 		return errs.E(op, err)
@@ -149,7 +148,8 @@ func (mdb *MovieDB) Update(ctx context.Context, m *movie.Movie) error {
 		m.Director,        //$6
 		m.Writer,          //$7
 		fakeUserID,        //$8
-		m.ExtlID.String()) //$9
+		m.UpdateTimestamp, //$9
+		m.ExtlID)          //$10
 
 	if err != nil {
 		return errs.E(op, err)
@@ -158,7 +158,7 @@ func (mdb *MovieDB) Update(ctx context.Context, m *movie.Movie) error {
 
 	// Iterate through the returned record(s)
 	for rows.Next() {
-		if err := rows.Scan(&m.CreateTimestamp, &m.UpdateTimestamp); err != nil {
+		if err := rows.Scan(&m.ID, &m.CreateTimestamp); err != nil {
 			return errs.E(op, err)
 		}
 	}
@@ -169,11 +169,23 @@ func (mdb *MovieDB) Update(ctx context.Context, m *movie.Movie) error {
 		return errs.E(op, err)
 	}
 
+	// The table's primary key is not returned as part of the
+	// RETURNING clause, which means the row was not actually updated.
+	// The update request does not contain this key (I don't believe
+	// in exposing primary keys), so this is a way of returning data
+	// from an update statement and checking whether or not the
+	// update was actually successful. Typically you would use
+	// db.Exec and check RowsAffected (like I do in delete), but I
+	// wanted to show an alternative here
+	if m.ID == uuid.Nil {
+		return errs.E(op, errs.Database, "Invalid ID - no records updated")
+	}
+
 	return nil
 }
 
 // FindByID returns a Movie struct to populate the response
-func (mdb *MovieDB) FindByID(ctx context.Context, extlID xid.ID) (*movie.Movie, error) {
+func (mdb *MovieDB) FindByID(ctx context.Context, extlID string) (*movie.Movie, error) {
 	const op errs.Op = "movieds/MovieDB.FindByID"
 
 	// Prepare the sql statement using bind variables

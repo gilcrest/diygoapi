@@ -10,7 +10,6 @@ import (
 	"github.com/gilcrest/go-api-basic/datastore/movieds"
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/movie"
-	"github.com/rs/xid"
 )
 
 // MovieController is used as the base controller for the Movie logic
@@ -32,7 +31,7 @@ type MovieRequest struct {
 
 // MovieResponse is the response struct for a single Movie
 type MovieResponse struct {
-	ExtlID          xid.ID `json:"ExtlID"`
+	ExtlID          string `json:"ExtlID"`
 	Title           string `json:"Title"`
 	Year            int    `json:"Year"`
 	Rated           string `json:"Rated"`
@@ -119,12 +118,7 @@ func (ctl *MovieController) Add(ctx context.Context, r *MovieRequest) (*MovieRes
 func (ctl *MovieController) Update(ctx context.Context, id string, r *MovieRequest) (*MovieResponse, error) {
 	const op errs.Op = "controller/moviectl/MovieController.Update"
 
-	i, err := xid.FromString(id)
-	if err != nil {
-		return nil, errs.E(op, errs.Validation, "Invalid id in URL path")
-	}
-
-	err = ctl.App.DS.BeginTx(ctx)
+	err := ctl.App.DS.BeginTx(ctx)
 	if err != nil {
 		return nil, errs.E(op, err)
 	}
@@ -139,7 +133,7 @@ func (ctl *MovieController) Update(ctx context.Context, id string, r *MovieReque
 		return nil, errs.E(op, err)
 	}
 
-	err = m.Update(ctx, i)
+	err = m.Update(ctx, id)
 	if err != nil {
 		return nil, errs.E(err)
 	}
@@ -167,12 +161,7 @@ func (ctl *MovieController) FindByID(ctx context.Context, id string) (*SingleMov
 		return nil, errs.E(op, err)
 	}
 
-	i, err := xid.FromString(id)
-	if err != nil {
-		return nil, errs.E(op, errs.Validation, "Invalid id in URL path")
-	}
-
-	m, err := mds.FindByID(ctx, i)
+	m, err := mds.FindByID(ctx, id)
 	if err != nil {
 		return nil, errs.E(op, errs.Database, ctl.App.DS.RollbackTx(err))
 	}
