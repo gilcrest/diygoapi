@@ -20,27 +20,27 @@ type MovieController struct {
 
 // MovieRequest is the request struct
 type MovieRequest struct {
-	Title    string `json:"Title"`
-	Year     int    `json:"Year"`
-	Rated    string `json:"Rated"`
-	Released string `json:"ReleaseDate"`
-	RunTime  int    `json:"RunTime"`
-	Director string `json:"Director"`
-	Writer   string `json:"Writer"`
+	Title    string `json:"title"`
+	Year     int    `json:"year"`
+	Rated    string `json:"rated"`
+	Released string `json:"release_date"`
+	RunTime  int    `json:"run_time"`
+	Director string `json:"director"`
+	Writer   string `json:"writer"`
 }
 
 // MovieResponse is the response struct for a single Movie
 type MovieResponse struct {
-	ExtlID          string `json:"ExtlID"`
-	Title           string `json:"Title"`
-	Year            int    `json:"Year"`
-	Rated           string `json:"Rated"`
-	Released        string `json:"ReleaseDate"`
-	RunTime         int    `json:"RunTime"`
-	Director        string `json:"Director"`
-	Writer          string `json:"Writer"`
-	CreateTimestamp string `json:"CreateTimestamp"`
-	UpdateTimestamp string `json:"UpdateTimestamp"`
+	ExtlID          string `json:"extl_id"`
+	Title           string `json:"title"`
+	Year            int    `json:"year"`
+	Rated           string `json:"rated"`
+	Released        string `json:"release_date"`
+	RunTime         int    `json:"run_time"`
+	Director        string `json:"director"`
+	Writer          string `json:"writer"`
+	CreateTimestamp string `json:"create_timestamp"`
+	UpdateTimestamp string `json:"update_timestamp"`
 }
 
 // ListMovieResponse is the response struct for multiple Movies
@@ -53,6 +53,28 @@ type ListMovieResponse struct {
 type SingleMovieResponse struct {
 	controller.StandardResponseFields
 	Data *MovieResponse `json:"data"`
+}
+
+// DeleteMovieResponse is the response struct for deleted Movies
+type DeleteMovieResponse struct {
+	controller.StandardResponseFields
+	Data struct {
+		ExtlID  string `json:"ExtlID"`
+		Deleted bool   `json:"deleted"`
+	} `json:"data"`
+}
+
+func newDeleteMovieResponse(m *movie.Movie, srf controller.StandardResponseFields) *DeleteMovieResponse {
+	return &DeleteMovieResponse{
+		StandardResponseFields: srf,
+		Data: struct {
+			ExtlID  string "json:\"ExtlID\""
+			Deleted bool   "json:\"deleted\""
+		}{
+			ExtlID:  m.ExtlID,
+			Deleted: true,
+		},
+	}
 }
 
 // newMovieResponse is an initializer for MovieResponse
@@ -154,7 +176,7 @@ func (ctl *MovieController) Update(ctx context.Context, id string, r *MovieReque
 
 // FindByID finds a movie given its' unique ID
 func (ctl *MovieController) FindByID(ctx context.Context, id string) (*SingleMovieResponse, error) {
-	const op errs.Op = "controller/moviectl/FindByID"
+	const op errs.Op = "controller/moviectl/MovieController.FindByID"
 
 	mds, err := movieds.NewMovieDS(ctl.App)
 	if err != nil {
@@ -175,7 +197,7 @@ func (ctl *MovieController) FindByID(ctx context.Context, id string) (*SingleMov
 
 // FindAll finds the entire set of Movies
 func (ctl *MovieController) FindAll(ctx context.Context, r *http.Request) (*ListMovieResponse, error) {
-	const op errs.Op = "controller/moviectl/FindByID"
+	const op errs.Op = "controller/moviectl/MovieController.FindAll"
 
 	mds, err := movieds.NewMovieDS(ctl.App)
 	if err != nil {
@@ -194,7 +216,7 @@ func (ctl *MovieController) FindAll(ctx context.Context, r *http.Request) (*List
 
 // NewListMovieResponse is an initializer for ListMovieResponse
 func (ctl *MovieController) NewListMovieResponse(ms []*movie.Movie, r *http.Request) *ListMovieResponse {
-	const op errs.Op = "controller/moviectl/NewListMovieResponse"
+	const op errs.Op = "controller/moviectl/MovieController.NewListMovieResponse"
 
 	var s []*MovieResponse
 
@@ -208,7 +230,7 @@ func (ctl *MovieController) NewListMovieResponse(ms []*movie.Movie, r *http.Requ
 
 // NewSingleMovieResponse is an initializer for SingleMovieResponse
 func (ctl *MovieController) NewSingleMovieResponse(mr *MovieResponse) *SingleMovieResponse {
-	const op errs.Op = "controller/moviectl/NewSingleMovieResponse"
+	const op errs.Op = "controller/moviectl/MovieController.NewSingleMovieResponse"
 
 	return &SingleMovieResponse{StandardResponseFields: ctl.SRF, Data: mr}
 }
@@ -239,4 +261,37 @@ func newMovie(am *MovieRequest) (*movie.Movie, error) {
 		Director: am.Director,
 		Writer:   am.Writer,
 	}, nil
+}
+
+// Delete removes the movie given the id sent in
+func (ctl *MovieController) Delete(ctx context.Context, id string) (*DeleteMovieResponse, error) {
+	const op errs.Op = "controller/moviectl/MovieController.Update"
+
+	mds, err := movieds.NewMovieDS(ctl.App)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	m, err := mds.FindByID(ctx, id)
+	if err != nil {
+		return nil, errs.E(op, errs.Database, ctl.App.DS.RollbackTx(err))
+	}
+
+	err = ctl.App.DS.BeginTx(ctx)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	err = mds.Delete(ctx, m)
+	if err != nil {
+		return nil, errs.E(op, errs.Database, ctl.App.DS.RollbackTx(err))
+	}
+
+	resp := newDeleteMovieResponse(m, ctl.SRF)
+
+	if err := ctl.App.DS.CommitTx(); err != nil {
+		return nil, errs.E(op, errs.Database, err)
+	}
+
+	return resp, nil
 }
