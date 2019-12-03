@@ -17,6 +17,7 @@ type MovieDS interface {
 	FindByID(context.Context, string) (*movie.Movie, error)
 	FindAll(context.Context) ([]*movie.Movie, error)
 	Update(context.Context, *movie.Movie) error
+	Delete(context.Context, *movie.Movie) error
 }
 
 // NewMovieDS sets up either a concrete MovieDB or a MockMovieDB
@@ -169,14 +170,14 @@ func (mdb *MovieDB) Update(ctx context.Context, m *movie.Movie) error {
 		return errs.E(op, err)
 	}
 
-	// The table's primary key is not returned as part of the
-	// RETURNING clause, which means the row was not actually updated.
+	// If the table's primary key is not returned as part of the
+	// RETURNING clause, this means the row was not actually updated.
 	// The update request does not contain this key (I don't believe
 	// in exposing primary keys), so this is a way of returning data
 	// from an update statement and checking whether or not the
 	// update was actually successful. Typically you would use
 	// db.Exec and check RowsAffected (like I do in delete), but I
-	// wanted to show an alternative here
+	// wanted to show an alternative which can be useful here
 	if m.ID == uuid.Nil {
 		return errs.E(op, errs.Database, "Invalid ID - no records updated")
 	}
@@ -229,7 +230,7 @@ func (mdb *MovieDB) FindByID(ctx context.Context, extlID string) (*movie.Movie, 
 
 // FindAll returns a slice of Movie structs to populate the response
 func (mdb *MovieDB) FindAll(ctx context.Context) ([]*movie.Movie, error) {
-	const op errs.Op = "movieds/MockMovieDB.FindAll"
+	const op errs.Op = "movieds/MovieDB.FindAll"
 
 	// declare a slice of pointers to movie.Movie
 	var s []*movie.Movie
@@ -287,4 +288,30 @@ func (mdb *MovieDB) FindAll(ctx context.Context) ([]*movie.Movie, error) {
 
 	// return the slice
 	return s, nil
+}
+
+// Delete removes the Movie record from the table
+func (mdb *MovieDB) Delete(ctx context.Context, m *movie.Movie) error {
+	const op errs.Op = "movie/MovieDB.Delete"
+
+	result, execErr := mdb.Tx.ExecContext(ctx,
+		`DELETE from demo.movie 
+		  WHERE movie_id = ?`, m.ID)
+	if execErr != nil {
+		return errs.E(op, errs.Database, execErr)
+	}
+
+	// Only 1 row should be deleted, check the result count to
+	// ensure this is correct
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return errs.E(op, errs.Database, err)
+	}
+	if rowsAffected == 0 {
+		return errs.E(op, errs.Database, "No Rows Deleted")
+	} else if rowsAffected > 1 {
+		return errs.E(op, errs.Database, "Too Many Rows Deleted")
+	}
+
+	return nil
 }

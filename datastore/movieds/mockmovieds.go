@@ -85,3 +85,10 @@ func (mdb MockMovieDB) FindAll(ctx context.Context) ([]*movie.Movie, error) {
 
 	return s, nil
 }
+
+// Delete mocks removing the Movie record from the table
+func (mdb MockMovieDB) Delete(ctx context.Context, m *movie.Movie) error {
+	const op errs.Op = "movie/MockMovieDB.Delete"
+
+	return nil
+}
