@@ -159,8 +159,7 @@ func newRouter(hdl *handler.AppHandler) *mux.Router {
 			hdl.AddStandardResponseHeaders,
 			hdl.AddRequestID).
 			ThenFunc(hdl.FindByID())).
-		Methods("GET").
-		Headers("Content-Type", "application/json")
+		Methods("GET")
 
 	// Match only GET requests /api/v1/movies
 	// with the Content-Type header = application/json
@@ -169,8 +168,7 @@ func newRouter(hdl *handler.AppHandler) *mux.Router {
 			hdl.AddStandardResponseHeaders,
 			hdl.AddRequestID).
 			ThenFunc(hdl.FindAll())).
-		Methods("GET").
-		Headers("Content-Type", "application/json")
+		Methods("GET")
 
 	// Match only PUT requests having an ID at /api/v1/movies/{id}
 	// with the Content-Type header = application/json
@@ -181,6 +179,14 @@ func newRouter(hdl *handler.AppHandler) *mux.Router {
 			ThenFunc(hdl.Update())).
 		Methods("PUT").
 		Headers("Content-Type", "application/json")
+
+	// Match only DELETE requests having an ID at /api/v1/movies/{id}
+	rtr.Handle("/v1/movies/{id}",
+		alice.New(
+			hdl.AddStandardResponseHeaders,
+			hdl.AddRequestID).
+			ThenFunc(hdl.Delete())).
+		Methods("DELETE")
 
 	return rtr
 }
