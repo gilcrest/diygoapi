@@ -295,8 +295,8 @@ func (mdb *MovieDB) Delete(ctx context.Context, m *movie.Movie) error {
 	const op errs.Op = "movie/MovieDB.Delete"
 
 	result, execErr := mdb.Tx.ExecContext(ctx,
-		`DELETE from demo.movie 
-		  WHERE movie_id = ?`, m.ID)
+		`DELETE from demo.movie
+		  WHERE movie_id = $1`, m.ID)
 	if execErr != nil {
 		return errs.E(op, errs.Database, execErr)
 	}
