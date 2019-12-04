@@ -59,7 +59,7 @@ type SingleMovieResponse struct {
 type DeleteMovieResponse struct {
 	controller.StandardResponseFields
 	Data struct {
-		ExtlID  string `json:"ExtlID"`
+		ExtlID  string `json:"extl_id"`
 		Deleted bool   `json:"deleted"`
 	} `json:"data"`
 }
@@ -68,7 +68,7 @@ func newDeleteMovieResponse(m *movie.Movie, srf controller.StandardResponseField
 	return &DeleteMovieResponse{
 		StandardResponseFields: srf,
 		Data: struct {
-			ExtlID  string "json:\"ExtlID\""
+			ExtlID  string "json:\"extl_id\""
 			Deleted bool   "json:\"deleted\""
 		}{
 			ExtlID:  m.ExtlID,
