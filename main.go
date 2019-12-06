@@ -1,8 +1,8 @@
 package main
 
 import (
+	"context"
 	"flag"
-	"net/http"
 	"os"
 
 	"github.com/gilcrest/go-api-basic/app"
@@ -12,12 +12,13 @@ import (
 	"github.com/justinas/alice"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"gocloud.dev/server"
 )
 
 // cliFlags are the command line flags parsed at startup
 type cliFlags struct {
 	logLevel string
-	envName  string
+	env      string
 	mock     bool
 }
 
@@ -32,28 +33,49 @@ func main() {
 	// env flag allows for setting environment, e.g. Production, QA, etc.
 	// example: -env=dev, -env=qa, -env=stg, -env=prod
 	// If not set, defaults to dev
-	flag.StringVar(&cf.envName, "env", "dev", "sets app environment (dev, qa, stg, prod)")
+	flag.StringVar(&cf.env, "env", "local", "sets app environment (local, qa, stg, prod)")
 
 	// mock flag will set the app to "mock mode" and no database
 	// calls will be submitted and a mock (aka "stubbed") response
 	// will be returned. If not set, defaults to false (not in "mock mode")
 	flag.BoolVar(&cf.mock, "mock", false, "API will not submit anything to the database and return a mocked response")
 
+	addr := flag.String("listen", ":8080", "port to listen for HTTP on")
+
 	flag.Parse()
 
-	rtr, err := setupRouter(cf)
+	ctx := context.Background()
+	var srv *server.Server
+	var cleanup func()
+	var err error
+	switch cf.env {
+	case "local":
+		srv, cleanup, err = setupLocal(ctx, cf)
+	default:
+		log.Fatal().Msgf("unknown -env=%s", cf.env)
+	}
 	if err != nil {
-		log.Fatal().Err(err).Msg("")
+		log.Fatal().Err(err).Msg("Error returned from main switch")
 	}
+	defer cleanup()
 
-	// handle all requests with the Gorilla router
-	http.Handle("/", rtr)
+	// Listen and serve HTTP.
+	log.Printf("Running, connected to %q cloud", cf.env)
+	log.Fatal().Err(srv.ListenAndServe(*addr))
 
-	// ListenAndServe on port 8080, not specifying a particular IP address
-	// for this particular implementation
-	if err := http.ListenAndServe(":8080", nil); err != nil {
-		log.Fatal().Err(err).Msg("")
-	}
+	// rtr, err := setupRouter(cf)
+	// if err != nil {
+	// 	log.Fatal().Err(err).Msg("")
+	// }
+
+	// // handle all requests with the Gorilla router
+	// http.Handle("/", rtr)
+
+	// // ListenAndServe on port 8080, not specifying a particular IP address
+	// // for this particular implementation
+	// if err := http.ListenAndServe(":8080", nil); err != nil {
+	// 	log.Fatal().Err(err).Msg("")
+	// }
 }
 
 // newEnvName sets up the environment name (e.g. Production, Staging, QA, etc.)
@@ -63,9 +85,9 @@ func newEnvName(flags *cliFlags) app.EnvName {
 
 	var name app.EnvName
 
-	switch flags.envName {
-	case "dev":
-		name = app.Dev
+	switch flags.env {
+	case "local":
+		name = app.Local
 	case "qa":
 		name = app.QA
 	case "stg":
@@ -73,7 +95,7 @@ func newEnvName(flags *cliFlags) app.EnvName {
 	case "prod":
 		name = app.Production
 	default:
-		name = app.Dev
+		name = app.Local
 	}
 
 	log.Log().Msgf("Environment set to %s", name)
