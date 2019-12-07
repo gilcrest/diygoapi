@@ -185,7 +185,7 @@ func (ctl *MovieController) FindByID(ctx context.Context, id string) (*SingleMov
 
 	m, err := mds.FindByID(ctx, id)
 	if err != nil {
-		return nil, errs.E(op, errs.Database, ctl.App.DS.RollbackTx(err))
+		return nil, errs.E(op, errs.Database, err)
 	}
 
 	mr := ctl.newMovieResponse(m)
@@ -206,7 +206,7 @@ func (ctl *MovieController) FindAll(ctx context.Context, r *http.Request) (*List
 
 	ms, err := mds.FindAll(ctx)
 	if err != nil {
-		return nil, errs.E(op, errs.Database, ctl.App.DS.RollbackTx(err))
+		return nil, errs.E(op, errs.Database, err)
 	}
 
 	response := ctl.NewListMovieResponse(ms, r)
@@ -267,6 +267,11 @@ func newMovie(am *MovieRequest) (*movie.Movie, error) {
 func (ctl *MovieController) Delete(ctx context.Context, id string) (*DeleteMovieResponse, error) {
 	const op errs.Op = "controller/moviectl/MovieController.Update"
 
+	err := ctl.App.DS.BeginTx(ctx)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
 	mds, err := movieds.NewMovieDS(ctl.App)
 	if err != nil {
 		return nil, errs.E(op, err)
@@ -275,11 +280,6 @@ func (ctl *MovieController) Delete(ctx context.Context, id string) (*DeleteMovie
 	m, err := mds.FindByID(ctx, id)
 	if err != nil {
 		return nil, errs.E(op, errs.Database, ctl.App.DS.RollbackTx(err))
-	}
-
-	err = ctl.App.DS.BeginTx(ctx)
-	if err != nil {
-		return nil, errs.E(op, err)
 	}
 
 	err = mds.Delete(ctx, m)
