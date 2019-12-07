@@ -81,12 +81,15 @@ func (db *DS) RollbackTx(err error) error {
 	if rollbackErr := db.Tx.Rollback(); rollbackErr != nil {
 		return errs.E(op, errs.Database, err)
 	}
-	// If rollback was successful, error should be an errs.Error
-	// If so, surface error Kind, Code and Param to keep in tact
+
+	// If rollback was successful, error passed in as parameter
+	// should be an errs.Error type. If so, surface error Kind,
+	// Code and Param to keep in tact
 	var e *errs.Error
 	if errors.As(err, &e) {
 		return errs.E(e.Kind, e.Code, e.Param, err)
 	}
+
 	// Should not actually fall to here, but including as
 	// good practice
 	return errs.E(op, errs.Database, err)
