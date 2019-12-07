@@ -220,7 +220,7 @@ func (mdb *MovieDB) FindByID(ctx context.Context, extlID string) (*movie.Movie, 
 		&m.UpdateTimestamp)
 
 	if err == sql.ErrNoRows {
-		return nil, errs.E(op, errs.NotExist, err)
+		return nil, errs.E(op, errs.NotExist, "No record found for given ID")
 	} else if err != nil {
 		return nil, errs.E(op, err)
 	}
@@ -231,9 +231,6 @@ func (mdb *MovieDB) FindByID(ctx context.Context, extlID string) (*movie.Movie, 
 // FindAll returns a slice of Movie structs to populate the response
 func (mdb *MovieDB) FindAll(ctx context.Context) ([]*movie.Movie, error) {
 	const op errs.Op = "movieds/MovieDB.FindAll"
-
-	// declare a slice of pointers to movie.Movie
-	var s []*movie.Movie
 
 	// use QueryContext to get back sql.Rows
 	rows, err := mdb.DB.QueryContext(ctx,
@@ -253,6 +250,9 @@ func (mdb *MovieDB) FindAll(ctx context.Context) ([]*movie.Movie, error) {
 		return nil, errs.E(op, errs.Database, err)
 	}
 	defer rows.Close()
+	// declare a slice of pointers to movie.Movie
+	// var s []*movie.Movie
+	s := make([]*movie.Movie, 0)
 
 	// iterate through each row and scan the results into
 	// a movie.Movie. Append movie.Movie to the slice
@@ -272,18 +272,31 @@ func (mdb *MovieDB) FindAll(ctx context.Context) ([]*movie.Movie, error) {
 			&m.CreateTimestamp,
 			&m.UpdateTimestamp)
 
-		if err == sql.ErrNoRows {
-			return nil, errs.E(op, errs.NotExist, err)
-		} else if err != nil {
-			return nil, errs.E(op, err)
+		if err != nil {
+			return nil, errs.E(op, errs.Database, err)
 		}
 
 		s = append(s, m)
 	}
+
+	// If the database is being written to ensure to check for Close
+	// errors that may be returned from the driver. The query may
+	// encounter an auto-commit error and be forced to rollback changes.
+	rerr := rows.Close()
+	if rerr != nil {
+		return nil, errs.E(op, errs.Database, err)
+	}
+
 	// Rows.Err will report the last error encountered by Rows.Scan.
 	err = rows.Err()
 	if err != nil {
 		return nil, errs.E(op, errs.Database, err)
+	}
+
+	// Determine if slice has not been populated. In this case, return
+	// an error as we should receive rows
+	if len(s) == 0 {
+		return nil, errs.E(op, errs.Validation, "No rows returned")
 	}
 
 	// return the slice
@@ -297,6 +310,7 @@ func (mdb *MovieDB) Delete(ctx context.Context, m *movie.Movie) error {
 	result, execErr := mdb.Tx.ExecContext(ctx,
 		`DELETE from demo.movie
 		  WHERE movie_id = $1`, m.ID)
+
 	if execErr != nil {
 		return errs.E(op, errs.Database, execErr)
 	}
