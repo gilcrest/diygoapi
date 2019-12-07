@@ -10,4 +10,6 @@ require (
 	github.com/lib/pq v1.2.0
 	github.com/rs/xid v1.2.1
 	github.com/rs/zerolog v1.17.2
+	go.opencensus.io v0.22.2
+	gocloud.dev v0.18.0
 )
