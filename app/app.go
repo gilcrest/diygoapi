@@ -34,7 +34,7 @@ const (
 	Production EnvName = iota + 1 // Production (1)
 	Staging                       // Staging (2)
 	QA                            // QA (3)
-	Dev                           // Dev (4)
+	Local                         // Local (4)
 )
 
 func (n EnvName) String() string {
@@ -45,8 +45,8 @@ func (n EnvName) String() string {
 		return "Staging"
 	case QA:
 		return "QA"
-	case Dev:
-		return "Dev"
+	case Local:
+		return "Local"
 	}
 	return "unknown_name"
 }
