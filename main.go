@@ -44,6 +44,8 @@ func main() {
 
 	flag.Parse()
 
+	log.Log().Msgf("Server Mock Mode set to %t\n", cf.mock)
+
 	ctx := context.Background()
 	var srv *server.Server
 	var cleanup func()
