@@ -24,32 +24,38 @@ import (
 	"time"
 )
 
-// Injectors from wireInject.go:
+// Injectors from inject_main.go:
 
-func setupLocal(ctx context.Context, flags *cliFlags) (*server.Server, func(), error) {
-	envName := newEnvName(flags)
-	dsName := newDSName(flags)
-	datastoreDatastore, err := datastore.NewDatastore(dsName)
+func setupLocal(ctx context.Context, envName app.EnvName, dsName datastore.DSName, loglvl zerolog.Level) (*server.Server, func(), error) {
+	db, cleanup, err := datastore.NewLocalDB(dsName)
 	if err != nil {
 		return nil, nil, err
 	}
-	level := newLogLevel(flags)
-	logger := newLogger(level)
+	datastoreDatastore, err := datastore.NewDatastore(dsName, db)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	logger := newLogger(loglvl)
 	application := app.NewApplication(envName, datastoreDatastore, logger)
 	appHandler := handler.NewAppHandler(application)
 	router := newRouter(appHandler)
 	mainRequestLogger := newRequestLogger(logger)
+	v, cleanup2 := appHealthChecks(db)
 	exporter := _wireExporterValue
 	sampler := trace.AlwaysSample()
 	defaultDriver := server.NewDefaultDriver()
 	options := &server.Options{
 		RequestLogger:         mainRequestLogger,
+		HealthChecks:          v,
 		TraceExporter:         exporter,
 		DefaultSamplingPolicy: sampler,
 		Driver:                defaultDriver,
 	}
 	serverServer := server.New(router, options)
 	return serverServer, func() {
+		cleanup2()
+		cleanup()
 	}, nil
 }
 
@@ -57,17 +63,48 @@ var (
 	_wireExporterValue = trace.Exporter(nil)
 )
 
-// wireInject.go:
+func setupLocalMock(ctx context.Context, envName app.EnvName, dsName datastore.DSName, loglvl zerolog.Level) (*server.Server, func(), error) {
+	db := datastore.NewMockDB(dsName)
+	datastoreDatastore, err := datastore.NewDatastore(dsName, db)
+	if err != nil {
+		return nil, nil, err
+	}
+	logger := newLogger(loglvl)
+	application := app.NewApplication(envName, datastoreDatastore, logger)
+	appHandler := handler.NewAppHandler(application)
+	router := newRouter(appHandler)
+	mainRequestLogger := newRequestLogger(logger)
+	v, cleanup := appHealthChecks(db)
+	exporter := _wireTraceExporterValue
+	sampler := trace.AlwaysSample()
+	defaultDriver := server.NewDefaultDriver()
+	options := &server.Options{
+		RequestLogger:         mainRequestLogger,
+		HealthChecks:          v,
+		TraceExporter:         exporter,
+		DefaultSamplingPolicy: sampler,
+		Driver:                defaultDriver,
+	}
+	serverServer := server.New(router, options)
+	return serverServer, func() {
+		cleanup()
+	}, nil
+}
+
+var (
+	_wireTraceExporterValue = trace.Exporter(nil)
+)
+
+// inject_main.go:
 
 // applicationSet is the Wire provider set for the Guestbook application that
 // does not depend on the underlying platform.
-var applicationSet = wire.NewSet(app.NewApplication, newRouter, wire.Bind(new(http.Handler), new(*mux.Router)), handler.NewAppHandler, newLogger,
-	newLogLevel, datastore.NewDatastore, newDSName,
-	newEnvName,
+var applicationSet = wire.NewSet(app.NewApplication, appHealthChecks,
+	newRouter, wire.Bind(new(http.Handler), new(*mux.Router)), handler.NewAppHandler, newLogger, datastore.NewDatastore,
 )
 
 // goCloudServerSet
-var goCloudServerSet = wire.NewSet(trace.AlwaysSample, server.New, wire.Struct(new(server.Options), "RequestLogger", "TraceExporter", "DefaultSamplingPolicy", "Driver"), server.NewDefaultDriver, wire.Bind(new(driver.Server), new(*server.DefaultDriver)), wire.Bind(new(requestlog.Logger), new(*requestLogger)), newRequestLogger)
+var goCloudServerSet = wire.NewSet(trace.AlwaysSample, server.New, wire.Struct(new(server.Options), "RequestLogger", "HealthChecks", "TraceExporter", "DefaultSamplingPolicy", "Driver"), server.NewDefaultDriver, wire.Bind(new(driver.Server), new(*server.DefaultDriver)), wire.Bind(new(requestlog.Logger), new(*requestLogger)), newRequestLogger)
 
 type requestLogger struct {
 	log zerolog.Logger
