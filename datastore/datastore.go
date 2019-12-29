@@ -3,6 +3,7 @@ package datastore
 import (
 	"context"
 	"database/sql"
+	"os"
 
 	"errors"
 
@@ -41,8 +42,116 @@ func (n DSName) String() string {
 		return "Logging"
 	case MockDatastore:
 		return "Mock"
+	case GCPCPDatastore:
+		return "GCP Cloud Proxy"
 	}
 	return "unknown_datastore_name"
+}
+
+// NewDatastore provides either a DS struct, which has a concrete
+// implementation of a database or a MockDS struct which is a mocked
+// DB implementation
+func NewDatastore(n DSName, db *sql.DB) (Datastore, error) {
+	const op errs.Op = "datastore/NewDatastore"
+
+	switch n {
+	case MockDatastore:
+		return &MockDS{}, nil
+	default:
+		return &DS{DB: db}, nil
+	}
+}
+
+func dbEnv(n DSName) (map[string]string, error) {
+	const op errs.Op = "datastore/dbEnv"
+
+	// Constants for the local PostgreSQL Database connection
+	const (
+		localDBName     string = "PG_APP_DBNAME"
+		localDBUser     string = "PG_APP_USERNAME"
+		localDBPassword string = "PG_APP_PASSWORD"
+		localDBHost     string = "PG_APP_HOST"
+		localDBPort     string = "PG_APP_PORT"
+	)
+
+	// Constants for the local PostgreSQL Google Cloud Proxy Database
+	// connection
+	const (
+		gcpCPDBName     string = "PG_GCP_CP_DBNAME"
+		gcpCPDBUser     string = "PG_GCP_CP_USERNAME"
+		gcpCPDBPassword string = "PG_GCP_CP_PASSWORD"
+		gcpCPDBHost     string = "PG_GCP_CP_HOST"
+		gcpCPDBPort     string = "PG_GCP_CP_PORT"
+	)
+
+	var (
+		ok       bool
+		dbName   string
+		user     string
+		password string
+		host     string
+		port     string
+	)
+
+	// In the below switch, I am deliberately skipping the boolean
+	// to check for existence in the map since this is such a
+	// controlled implementation, it would make the code less
+	// readable to have to include error handling
+	switch n {
+	case LocalDatastore:
+		dbName, ok = os.LookupEnv(localDBName)
+		if !ok {
+			return nil, errs.E(op, "No environment variable found for %s", localDBName)
+		}
+		user, ok = os.LookupEnv(localDBUser)
+		if !ok {
+			return nil, errs.E(op, "No environment variable found for %s", localDBUser)
+		}
+		password, ok = os.LookupEnv(localDBPassword)
+		if !ok {
+			return nil, errs.E(op, "No environment variable found for %s", localDBPassword)
+		}
+		host, ok = os.LookupEnv(localDBHost)
+		if !ok {
+			return nil, errs.E(op, "No environment variable found for %s", localDBHost)
+		}
+		port, ok = os.LookupEnv(localDBPort)
+		if !ok {
+			return nil, errs.E(op, "No environment variable found for %s", localDBPort)
+		}
+	case GCPCPDatastore:
+		dbName, ok = os.LookupEnv(gcpCPDBName)
+		if !ok {
+			return nil, errs.E(op, "No environment variable found for %s", gcpCPDBName)
+		}
+		user, ok = os.LookupEnv(gcpCPDBUser)
+		if !ok {
+			return nil, errs.E(op, "No environment variable found for %s", gcpCPDBUser)
+		}
+		password, ok = os.LookupEnv(gcpCPDBPassword)
+		if !ok {
+			return nil, errs.E(op, "No environment variable found for %s", gcpCPDBPassword)
+		}
+		host, ok = os.LookupEnv(gcpCPDBHost)
+		if !ok {
+			return nil, errs.E(op, "No environment variable found for %s", gcpCPDBHost)
+		}
+		port, ok = os.LookupEnv(gcpCPDBPort)
+		if !ok {
+			return nil, errs.E(op, "No environment variable found for %s", gcpCPDBPort)
+		}
+	default:
+		return nil, errs.E(op, "Unrecognized DSName")
+	}
+
+	dbEnvMap := map[string]string{
+		"dbname":   dbName,
+		"user":     user,
+		"password": password,
+		"host":     host,
+		"port":     port}
+
+	return dbEnvMap, nil
 }
 
 // DS is a concrete implementation for a database
@@ -99,20 +208,4 @@ func (db *DS) CommitTx() error {
 	}
 
 	return nil
-}
-
-// NewDatastore provides either a DS struct, which has a concrete
-// implementation of a database or a MockDS struct which is a mocked
-// DB implementation
-func NewDatastore(n DSName, db *sql.DB) (Datastore, error) {
-	const op errs.Op = "datastore/NewDatastore"
-
-	switch n {
-	case MockDatastore:
-		return &MockDS{}, nil
-	case LocalDatastore:
-		return &DS{DB: db}, nil
-	default:
-		return nil, errs.E(op, "Unknown Datastore")
-	}
 }
