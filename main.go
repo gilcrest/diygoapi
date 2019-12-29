@@ -68,6 +68,8 @@ func main() {
 			srv, cleanup, err = setupLocal(ctx, envName, dsName, loglvl)
 		case datastore.MockDatastore:
 			srv, cleanup, err = setupLocalMock(ctx, envName, dsName, loglvl)
+		case datastore.GCPCPDatastore:
+			srv, cleanup, err = setupLocal(ctx, envName, dsName, loglvl)
 		default:
 			log.Fatal().Msgf("unknown datastore name = %s", dsName)
 		}
@@ -114,6 +116,8 @@ func newDSName(flags *cliFlags) datastore.DSName {
 		return datastore.MockDatastore
 	case "local":
 		return datastore.LocalDatastore
+	case "gcpcp":
+		return datastore.GCPCPDatastore
 	default:
 		return datastore.MockDatastore
 	}
