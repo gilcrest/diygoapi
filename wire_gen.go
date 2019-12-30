@@ -41,7 +41,7 @@ func setupLocal(ctx context.Context, envName app.EnvName, dsName datastore.DSNam
 	appHandler := handler.NewAppHandler(application)
 	router := newRouter(appHandler)
 	mainRequestLogger := newRequestLogger(logger)
-	v, cleanup2 := appHealthChecks(db)
+	v, cleanup2 := appHealthChecks(dsName, db)
 	exporter := _wireExporterValue
 	sampler := trace.AlwaysSample()
 	defaultDriver := server.NewDefaultDriver()
@@ -74,7 +74,7 @@ func setupLocalMock(ctx context.Context, envName app.EnvName, dsName datastore.D
 	appHandler := handler.NewAppHandler(application)
 	router := newRouter(appHandler)
 	mainRequestLogger := newRequestLogger(logger)
-	v, cleanup := appHealthChecks(db)
+	v, cleanup := appHealthChecks(dsName, db)
 	exporter := _wireTraceExporterValue
 	sampler := trace.AlwaysSample()
 	defaultDriver := server.NewDefaultDriver()
@@ -138,10 +138,25 @@ func newRequestLogger(l zerolog.Logger) *requestLogger {
 // appHealthChecks returns a health check for the database. This will signal
 // to Kubernetes or other orchestrators that the server should not receive
 // traffic until the server is able to connect to its database.
-func appHealthChecks(db *sql.DB) ([]health.Checker, func()) {
-	dbCheck := sqlhealth.New(db)
-	list := []health.Checker{dbCheck}
-	return list, func() {
-		dbCheck.Stop()
+func appHealthChecks(n datastore.DSName, db *sql.DB) ([]health.Checker, func()) {
+	if n != datastore.MockDatastore {
+		dbCheck := sqlhealth.New(db)
+		list := []health.Checker{dbCheck}
+		return list, func() {
+			dbCheck.Stop()
+		}
 	}
+	mockCheck := new(mockChecker)
+	list := []health.Checker{mockCheck}
+	return list, func() {}
+}
+
+// mockChecker mocks the health of a SQL database.
+type mockChecker struct {
+	healthy bool
+}
+
+// mockChecker returns a nil error, signifying the mock db is up
+func (c *mockChecker) CheckHealth() error {
+	return nil
 }

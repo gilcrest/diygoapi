@@ -103,10 +103,25 @@ func setupLocalMock(ctx context.Context, envName app.EnvName, dsName datastore.D
 // appHealthChecks returns a health check for the database. This will signal
 // to Kubernetes or other orchestrators that the server should not receive
 // traffic until the server is able to connect to its database.
-func appHealthChecks(db *sql.DB) ([]health.Checker, func()) {
-	dbCheck := sqlhealth.New(db)
-	list := []health.Checker{dbCheck}
-	return list, func() {
-		dbCheck.Stop()
+func appHealthChecks(n datastore.DSName, db *sql.DB) ([]health.Checker, func()) {
+	if n != datastore.MockDatastore {
+		dbCheck := sqlhealth.New(db)
+		list := []health.Checker{dbCheck}
+		return list, func() {
+			dbCheck.Stop()
+		}
 	}
+	mockCheck := new(mockChecker)
+	list := []health.Checker{mockCheck}
+	return list, func() {}
+}
+
+// mockChecker mocks the health of a SQL database.
+type mockChecker struct {
+	healthy bool
+}
+
+// mockChecker returns a nil error, signifying the mock db is up
+func (c *mockChecker) CheckHealth() error {
+	return nil
 }
