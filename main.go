@@ -65,11 +65,13 @@ func main() {
 	case envName == app.Local:
 		switch dsName {
 		case datastore.LocalDatastore:
-			srv, cleanup, err = setupLocal(ctx, envName, dsName, loglvl)
-		case datastore.MockDatastore:
-			srv, cleanup, err = setupLocalMock(ctx, envName, dsName, loglvl)
+			srv, cleanup, err = setupApp(ctx, envName, dsName, loglvl)
 		case datastore.GCPCPDatastore:
-			srv, cleanup, err = setupLocal(ctx, envName, dsName, loglvl)
+			srv, cleanup, err = setupApp(ctx, envName, dsName, loglvl)
+		case datastore.GCPDatastore:
+			srv, cleanup, err = setupApp(ctx, envName, dsName, loglvl)
+		case datastore.MockDatastore:
+			srv, cleanup, err = setupAppwMock(ctx, envName, dsName, loglvl)
 		default:
 			log.Fatal().Msgf("unknown datastore name = %s", dsName)
 		}
@@ -118,6 +120,8 @@ func newDSName(flags *cliFlags) datastore.DSName {
 		return datastore.LocalDatastore
 	case "gcpcp":
 		return datastore.GCPCPDatastore
+	case "gcp":
+		return datastore.GCPDatastore
 	default:
 		return datastore.MockDatastore
 	}
