@@ -74,22 +74,22 @@ func newRequestLogger(l zerolog.Logger) *requestLogger {
 	return &requestLogger{log: l}
 }
 
-// setupLocal is a Wire injector function that sets up the
-// application using a local PostgreSQL implementation
-func setupLocal(ctx context.Context, envName app.EnvName, dsName datastore.DSName, loglvl zerolog.Level) (*server.Server, func(), error) {
+// setupApp is a Wire injector function that sets up the
+// application using a PostgreSQL implementation
+func setupApp(ctx context.Context, envName app.EnvName, dsName datastore.DSName, loglvl zerolog.Level) (*server.Server, func(), error) {
 	// This will be filled in by Wire with providers from the provider sets in
 	// wire.Build.
 	wire.Build(
 		wire.InterfaceValue(new(trace.Exporter), trace.Exporter(nil)),
 		goCloudServerSet,
 		applicationSet,
-		datastore.NewLocalDB)
+		datastore.NewDB)
 	return nil, nil, nil
 }
 
-// setupLocalMock is a Wire injector function that sets up the
+// setupAppwMock is a Wire injector function that sets up the
 // application using a mock db implementation
-func setupLocalMock(ctx context.Context, envName app.EnvName, dsName datastore.DSName, loglvl zerolog.Level) (*server.Server, func(), error) {
+func setupAppwMock(ctx context.Context, envName app.EnvName, dsName datastore.DSName, loglvl zerolog.Level) (*server.Server, func(), error) {
 	// This will be filled in by Wire with providers from the provider sets in
 	// wire.Build.
 	wire.Build(
