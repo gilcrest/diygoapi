@@ -26,8 +26,8 @@ import (
 
 // Injectors from inject_main.go:
 
-func setupLocal(ctx context.Context, envName app.EnvName, dsName datastore.DSName, loglvl zerolog.Level) (*server.Server, func(), error) {
-	db, cleanup, err := datastore.NewLocalDB(dsName)
+func setupApp(ctx context.Context, envName app.EnvName, dsName datastore.DSName, loglvl zerolog.Level) (*server.Server, func(), error) {
+	db, cleanup, err := datastore.NewDB(dsName)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -63,7 +63,7 @@ var (
 	_wireExporterValue = trace.Exporter(nil)
 )
 
-func setupLocalMock(ctx context.Context, envName app.EnvName, dsName datastore.DSName, loglvl zerolog.Level) (*server.Server, func(), error) {
+func setupAppwMock(ctx context.Context, envName app.EnvName, dsName datastore.DSName, loglvl zerolog.Level) (*server.Server, func(), error) {
 	db := datastore.NewMockDB(dsName)
 	datastoreDatastore, err := datastore.NewDatastore(dsName, db)
 	if err != nil {
