@@ -15,7 +15,7 @@ func (ah *AppHandler) AddMovie() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op errs.Op = "handler/AppHandler.AddMovie"
 
-		// Declare rqst as an instance of moviectl.AddMovieRequest
+		// Declare rqst as an instance of moviectl.MovieRequest
 		rqst := new(moviectl.MovieRequest)
 		// Decode JSON HTTP request body into a Decoder type
 		// and unmarshal that into rqst
