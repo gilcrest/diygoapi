@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	github.com/gilcrest/alice v1.0.0
+	github.com/golang/groupcache v0.0.0-20191227052852-215e87163ea7 // indirect
 	github.com/google/uuid v1.1.1
 	github.com/google/wire v0.4.0
 	github.com/gorilla/mux v1.7.3
