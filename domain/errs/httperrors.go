@@ -178,8 +178,6 @@ func RE(args ...interface{}) error {
 		panic("call to errors.RE with no arguments")
 	}
 
-	fullErr := new(Error)
-
 	e := &HTTPErr{}
 	for _, arg := range args {
 		switch arg := arg.(type) {
@@ -194,12 +192,26 @@ func RE(args ...interface{}) error {
 		case Parameter:
 			e.Param = arg
 		case *Error:
-			// capture original error for logging before stripping
-			fullErr = arg
+			// Make a copy
+			copy := *arg
 
+			// fullErr is the full error message that is to be logged
+			// before removing the error stack details through the
+			// StripStack function
+			fullErr := &copy
+			// log the full embedded error before removing the
+			// error stack
+			log.Error().Err(fullErr).
+				Int("HTTPStatusCode", e.HTTPStatusCode).
+				Str("Kind", fullErr.Kind.String()).
+				Str("Parameter", string(fullErr.Param)).
+				Str("Code", string(fullErr.Code)).
+				Msg("Response Error (RE)")
 			// For API response errors, don't show full recursion details,
 			// just the error message
-			e.Err = StripStack(arg)
+			fullErr.Err = StripStack(fullErr)
+			fullErr.StripError = true
+			e.Err = fullErr
 		case error:
 			e.Err = arg
 		default:
@@ -209,7 +221,40 @@ func RE(args ...interface{}) error {
 		}
 	}
 
-	log.Error().Err(fullErr).Msg("Error Response")
+	prev, ok := e.Err.(*Error)
+	if !ok {
+		return e
+	}
+
+	// The previous error was also one of ours. Suppress duplications
+	// so the message won't contain the same kind, file name or user name
+	// twice.
+	if prev.Kind == e.Kind {
+		prev.Kind = Other
+	}
+	// If this error has Kind unset or Other, pull up the inner one.
+	if e.Kind == Other {
+		e.Kind = prev.Kind
+		prev.Kind = Other
+	}
+
+	if prev.Code == e.Code {
+		prev.Code = ""
+	}
+	// If this error has Code == "", pull up the inner one.
+	if e.Code == "" {
+		e.Code = prev.Code
+		prev.Code = ""
+	}
+
+	if prev.Param == e.Param {
+		prev.Param = ""
+	}
+	// If this error has Code == "", pull up the inner one.
+	if e.Param == "" {
+		e.Param = prev.Param
+		prev.Param = ""
+	}
 
 	return e
 }
@@ -228,6 +273,7 @@ func StripStack(e error) error {
 		// put substring back into error
 		return errors.New(substring)
 	}
-	// If it's not an Error type, don't strip anything
+
+	// If it's not an *Error type, don't strip anything
 	return e
 }
