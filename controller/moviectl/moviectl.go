@@ -235,15 +235,12 @@ func (ctl *MovieController) NewSingleMovieResponse(mr *MovieResponse) *SingleMov
 	return &SingleMovieResponse{StandardResponseFields: ctl.SRF, Data: mr}
 }
 
-// dateFormat is the expected date format for any date fields
-// in the request
-const dateFormat string = "Jan 02 2006"
-
 // NewMovie is an initializer for the Movie struct
 func newMovie(am *MovieRequest) (*movie.Movie, error) {
-	const op errs.Op = "controller/moviectl/NewMovie"
+	const op errs.Op = "controller/moviectl/newMovie"
 
-	t, err := time.Parse(dateFormat, am.Released)
+	// Parse Release Date according to RFC3339
+	t, err := time.Parse(time.RFC3339, am.Released)
 	if err != nil {
 		return nil, errs.E(op,
 			errs.Validation,
