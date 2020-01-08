@@ -37,7 +37,7 @@ func (ah *AppHandler) AddMovie() http.HandlerFunc {
 		// Receive a response or error in return
 		resp, err := mc.Add(ctx, rqst)
 		if err != nil {
-			err = errs.RE(http.StatusBadRequest, errs.InvalidRequest, err)
+			err = errs.RE(http.StatusBadRequest, err)
 			errs.HTTPError(w, err)
 			return
 		}
