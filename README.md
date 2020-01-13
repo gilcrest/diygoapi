@@ -4,7 +4,7 @@ A RESTful API template (built with Go) - work in progress...
 
 11/7/2019 - **I have just completed a major refactor and will completely document it. The below notes are not up to date. My goal is to finish re-documenting this app by 11/20/2019**
 
-The goal of this repo/API is to make an example/template of a relational database-backed REST HTTP API that has characteristics needed to ensure success in a high volume environment. I'm gearing this towards beginners, as I struggled with a lot of this over the past couple of years and would like to help others getting started. I have [another repo](https://github.com/gilcrest/go-api-expanded) which is really an extension of this one, but has more components (like request/response logging via the [httplog module](https://github.com/gilcrest/httplog)). I'm working on the documentation for that, but wanted to have this repo for simplicity sake.
+The goal of this project is to make an example/template of a relational database-backed REST HTTP API that has characteristics needed to ensure success in a high volume environment. I'm gearing this towards beginners, as I struggled with a lot of this over the past couple of years and would like to help others getting started.
 
 ## Thanks / Attribution
 
@@ -19,7 +19,131 @@ I should say that most of the ideas I'm presenting here are not my own - I learn
 
 ## API Walkthrough
 
-The following is an in-depth walkthrough of this repo as well as the module dependencies that are called within. This walkthrough has a stupid amount of detail. This is a demo API, so the "business" intent of it is to support basic CRUD (**C**reate, **R**ead, **U**pdate, **D**elete) operations for a movie database (as of this writing, it's only Create, but the goal is to have examples for everything).
+The following is an in-depth walkthrough of this project. This walkthrough has a stupid amount of detail. This is a demo API, so the "business" intent of it is to support basic CRUD (**C**reate, **R**ead, **U**pdate, **D**elete) operations for a movie database.
+
+## Installation
+
+Tl;DR - just show me how to install and run the code.
+
+```bash
+git clone https://github.com/gilcrest/go-api-basic.git
+```
+
+There is a mock implementation which you can run without setting up or having to connect to a database. To validate your installation and run the mock installation, do the following:
+
+1. Build the code from the root directory with `go build -o server`. This sends the output of `go build` to a file called `server` in the same directory.
+2. Execute the file using `./server -env=local -datastore=mock`
+
+You should see something similar to the following:
+
+```shell
+gilcrest-mb:go-api-basic gilcrest$ ./server -env=local -datastore=mock
+{"time":"2020-01-01T19:00:52-08:00","message":"Logging Level set to error"}
+{"time":1577934052,"message":"Running, connected to the Local environment, datastore is set to Mock"}
+```
+
+You can then execute all four operations (create, read, update, delete) using the following cURL commands.
+
+### cURL Commands to Call API
+
+For Create, use the POST HTTP verb at `/api/v1/movies`:
+
+```shell
+curl --location --request POST 'http://127.0.0.1:8080/api/v1/movies' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "title": "Repo Man",
+    "year": 1984,
+    "rated": "R",
+    "release_date": "Mar 02 1984",
+    "run_time": 92,
+    "director": "Alex Cox",
+    "writer": "Alex Cox"
+}
+'
+```
+
+For **Read (All Records)**, use the GET HTTP verb at `/api/v1/movies`:
+
+```shell
+curl --location --request GET 'http://127.0.0.1:8080/api/v1/movies' \
+--data-raw ''
+```
+
+For **Read (Single Record)**, use the GET HTTP verb and the movie "external ID" as the unique identifier. I try to never expose primary keys, so I use something like an external id. When calling a mock service, this can be anything and it will be echoed in the response e.g. `/api/v1/movies/:extl_id`
+
+```shell
+curl --location --request GET 'http://127.0.0.1:8080/api/v1/movies/SKuGy0k6VAojqes40Na' \
+--data-raw ''
+```
+
+For **Update**, use the PUT HTTP verb at `/api/v1/movies/:extl_id`
+
+```shell
+curl --location --request PUT 'http://127.0.0.1:8080/api/v1/movies/SKuGy0k6VAojqes40Nga' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "title": "Repo Them/They",
+    "year": 1984,
+    "rated": "R",
+    "release_date": "Mar 02 1984",
+    "run_time": 92,
+    "director": "Alex Cox",
+    "writer": "Alex Cox"
+}
+'
+```
+
+For **Delete**, use the DELETE HTTP verb at `/api/v1/movies/:extl_id`
+
+For a non-mocked, persisted implementation using PostgreSQL, you need to setup the database. PostgreSQL needs to be installed locally or one can connect to [Cloud SQL for PostgreSQL](https://cloud.google.com/sql/docs/postgres/) using the `Google Cloud SQL Proxy` or `Cloud Run` (or any other place you can run PostgreSQL, but I'm only providing instructions for these three). Add the appropriate environment variables for the database of your choice, examples are below. In all cases, the database will need to be setup and the [demo.ddl](https://github.com/gilcrest/go-api-basic/blob/master/demo.ddl) script found at the root of this project must be executed successfully. You can change the db and schema name, but you'll need to change those in the code as well when doing so. The script creates a simple table and function for inserts.
+
+To connect to a local installation of PostgreSQL, set the following environment variables.
+
+```bash
+#Local Postgres DB Name
+export PG_APP_DBNAME="fakeDBName"
+#Local Postgres DB Username
+export PG_APP_USERNAME="fakeDBUsername"
+#Local Postgres DB Password
+export PG_APP_PASSWORD="fakeDBPassword"
+#Local Postgres DB Host
+export PG_APP_HOST="localhost"
+#Local Postgres DB Port
+export PG_APP_PORT="5432"
+```
+
+Build the code from the root directory with `go build -o server`. This sends the output of `go build` to a file called server in the same directory.
+
+You can then execute the file with `./server -env=local -datastore=local
+
+```bash
+#GCP Postgres Cloud Proxy DB Name
+export PG_GCP_CP_DBNAME="fakeDBName"
+#GCP Postgres Cloud Proxy DB Username
+export PG_GCP_CP_USERNAME="postgres"
+#GCP Postgres Cloud Proxy DB Password
+export PG_GCP_CP_PASSWORD="fakeDBPassword"
+#GCP Postgres Cloud Proxy DB Host
+export PG_GCP_CP_HOST="localhost"
+#GCP Postgres Cloud Proxy DB Port
+export PG_GCP_CP_PORT="3307"
+```
+
+```bash
+# GCP Postgres DB Host - for GCP Cloud SQL, use given "instance
+# connection name" (which is a concatenation of
+# project-id:region:db-instance-id, something like "go-api-basic:us-east1:go-api-basic)
+export PG_GCP_HOST="/cloudsql/fake-instance-connection-name"
+#GCP Postgres DB Port
+export PG_GCP_PORT="5432"
+#GCP Postgres DB Name
+export PG_GCP_DBNAME="fakeDBName"
+#GCP Postgres DB Username
+export PG_GCP_USERNAME="postgres"
+#GCP Postgres DB Password
+export PG_GCP_PASSWORD="fakeDBPassword"
+```
 
 ### Errors
 
