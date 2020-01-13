@@ -1,21 +1,10 @@
 # go-API-basic
 
-A RESTful API template (built with Go) - work in progress...
+A RESTful API template (built with Go)
 
-11/7/2019 - **I have just completed a major refactor and will completely document it. The below notes are not up to date. My goal is to finish re-documenting this app by 11/20/2019**
+1/13/2020 - **I have just completed a major refactor and will completely document it. The below notes are not up to date. My goal is to finish re-documenting this app by 1/17/2020**
 
 The goal of this project is to make an example/template of a relational database-backed REST HTTP API that has characteristics needed to ensure success in a high volume environment. I'm gearing this towards beginners, as I struggled with a lot of this over the past couple of years and would like to help others getting started.
-
-## Thanks / Attribution
-
-I should say that most of the ideas I'm presenting here are not my own - I learned them from reading a number of books and blogs from extremely talented individuals. Here is a list (in no particular order) of influences:
-
-- [Rob Pike](https://twitter.com/rob_pike?lang=en)
-- [Jaana B Dogan](https://twitter.com/rakyll?ref_src=twsrc%5Egoogle%7Ctwcamp%5Eserp%7Ctwgr%5Eauthor)
-- [Mat Ryer](https://medium.com/@matryer)
-- [Jon Calhoun](https://www.calhoun.io/about)
-- [Matt Silverlock](https://twitter.com/elithrar?lang=en)
-- [Alex Edwards](https://www.alexedwards.net/)
 
 ## API Walkthrough
 
@@ -31,8 +20,19 @@ git clone https://github.com/gilcrest/go-api-basic.git
 
 There is a mock implementation which you can run without setting up or having to connect to a database. To validate your installation and run the mock installation, do the following:
 
-1. Build the code from the root directory with `go build -o server`. This sends the output of `go build` to a file called `server` in the same directory.
-2. Execute the file using `./server -env=local -datastore=mock`
+Build the code from the root directory
+
+```shell
+go build -o server
+```
+
+> This sends the output of `go build` to a file called `server` in the same directory.
+
+Execute the file
+
+```shell
+./server -env=local -datastore=mock
+```
 
 You should see something similar to the following:
 
@@ -94,9 +94,13 @@ curl --location --request PUT 'http://127.0.0.1:8080/api/v1/movies/SKuGy0k6VAojq
 '
 ```
 
+### Database Setup
+
 For **Delete**, use the DELETE HTTP verb at `/api/v1/movies/:extl_id`
 
 For a non-mocked, persisted implementation using PostgreSQL, you need to setup the database. PostgreSQL needs to be installed locally or one can connect to [Cloud SQL for PostgreSQL](https://cloud.google.com/sql/docs/postgres/) using the [Google Cloud SQL Proxy](https://cloud.google.com/sql/docs/postgres/sql-proxy) or [Cloud Run](https://cloud.google.com/run/) - or any other place you can run PostgreSQL, but I'm only providing instructions for these three. Add the appropriate environment variables for the database of your choice, examples are below. In all cases, the database will need to be setup and the [demo.ddl](https://github.com/gilcrest/go-api-basic/blob/master/demo.ddl) script found at the root of this project must be executed successfully. You can change the db and schema name, but you'll need to change those in the code as well when doing so. The script creates a simple table and function for inserts.
+
+#### Database Connection Environment Variables
 
 To connect to a local installation of PostgreSQL, set the following environment variables.
 
@@ -113,9 +117,9 @@ export PG_APP_HOST="localhost"
 export PG_APP_PORT="5432"
 ```
 
-Build the code from the root directory with `go build -o server`. This sends the output of `go build` to a file called server in the same directory.
+Build the code from the root directory with `go build -o server`. This sends the output of `go build` to a file called `server` in the same directory.
 
-You can then execute the file with `./server -env=local -datastore=local
+You can then execute the file with `./server -env=local -datastore=local`
 
 ```bash
 #GCP Postgres Cloud Proxy DB Name
@@ -533,5 +537,16 @@ If we got this far, the db transaction has been created/committed - we can consi
             return
         }
 ```
+
+## Thanks / Attribution
+
+I should say that most of the ideas I'm presenting here are not my own - I learned them from reading a number of books and blogs from extremely talented individuals. Here is a list (in no particular order) of influences:
+
+- [Rob Pike](https://twitter.com/rob_pike?lang=en)
+- [Jaana B Dogan](https://twitter.com/rakyll?ref_src=twsrc%5Egoogle%7Ctwcamp%5Eserp%7Ctwgr%5Eauthor)
+- [Mat Ryer](https://medium.com/@matryer)
+- [Jon Calhoun](https://www.calhoun.io/about)
+- [Matt Silverlock](https://twitter.com/elithrar?lang=en)
+- [Alex Edwards](https://www.alexedwards.net/)
 
 Questions/Concerns? Want more detail? Feel free to [open an issue](https://github.com/gilcrest/go-api-basic/issues) and label it appropriately. Thanks!
