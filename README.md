@@ -22,7 +22,7 @@ There is a mock implementation which you can run without setting up or having to
 
 Build the code from the root directory
 
-```zsh
+```bash
 go build -o server
 ```
 
@@ -30,13 +30,13 @@ go build -o server
 
 Execute the file
 
-```zsh
+```bash
 ./server -env=local -datastore=mock
 ```
 
 You should see something similar to the following:
 
-```zsh
+```bash
 gilcrest-mb:go-api-basic gilcrest$ ./server -env=local -datastore=mock
 {"time":"2020-01-01T19:00:52-08:00","message":"Logging Level set to error"}
 {"time":1577934052,"message":"Running, connected to the Local environment, datastore is set to Mock"}
@@ -48,7 +48,7 @@ You can then execute all four operations (create, read, update, delete) using th
 
 For Create, use the POST HTTP verb at `/api/v1/movies`:
 
-```zsh
+```bash
 curl --location --request POST 'http://127.0.0.1:8080/api/v1/movies' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -65,21 +65,21 @@ curl --location --request POST 'http://127.0.0.1:8080/api/v1/movies' \
 
 For **Read (All Records)**, use the GET HTTP verb at `/api/v1/movies`:
 
-```zsh
+```bash
 curl --location --request GET 'http://127.0.0.1:8080/api/v1/movies' \
 --data-raw ''
 ```
 
 For **Read (Single Record)**, use the GET HTTP verb and the movie "external ID" as the unique identifier. I try to never expose primary keys, so I use something like an external id. When calling a mock service, this can be anything and it will be echoed in the response e.g. `/api/v1/movies/:extl_id`
 
-```zsh
+```bash
 curl --location --request GET 'http://127.0.0.1:8080/api/v1/movies/SKuGy0k6VAojqes40Na' \
 --data-raw ''
 ```
 
 For **Update**, use the PUT HTTP verb at `/api/v1/movies/:extl_id`
 
-```zsh
+```bash
 curl --location --request PUT 'http://127.0.0.1:8080/api/v1/movies/SKuGy0k6VAojqes40Nga' \
 --header 'Content-Type: application/json' \
 --data-raw '{
