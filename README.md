@@ -102,6 +102,8 @@ For a non-mocked, persisted implementation using PostgreSQL, you need to setup t
 
 #### Database Connection Environment Variables
 
+##### Local PostgreSQL
+
 To connect to a local installation of PostgreSQL, set the following environment variables.
 
 ```bash
@@ -117,9 +119,7 @@ export PG_APP_HOST="localhost"
 export PG_APP_PORT="5432"
 ```
 
-Build the code from the root directory with `go build -o server`. This sends the output of `go build` to a file called `server` in the same directory.
-
-You can then execute the file with `./server -env=local -datastore=local`
+##### Google Cloud SQL Proxy
 
 ```bash
 #GCP Postgres Cloud Proxy DB Name
@@ -134,6 +134,8 @@ export PG_GCP_CP_HOST="localhost"
 export PG_GCP_CP_PORT="3307"
 ```
 
+##### Google Cloud Run
+
 ```bash
 # GCP Postgres DB Host - for GCP Cloud SQL, use given "instance
 # connection name" (which is a concatenation of
@@ -147,6 +149,28 @@ export PG_GCP_DBNAME="fakeDBName"
 export PG_GCP_USERNAME="postgres"
 #GCP Postgres DB Password
 export PG_GCP_PASSWORD="fakeDBPassword"
+```
+
+### Build and Run
+
+After completing database and environment variable setup, you need to use different build and run commands depending on the environment/datastore. The `-env` flag in the commands below is largely just informational and does not impact the code in any way - the idea is that you can have local, qa, staging, production or whatever values you want and you may want your code to behave in certain ways, but for now it's just symbolic. The `-datastore` flag is the real driver of what is being used for persistence (or as above for mocked data).
+
+#### Local Build
+
+Build the code from the root directory:
+
+```bash
+go build -o server
+```
+
+> This sends the output of `go build` to a file called `server` in the same directory.
+
+#### Run Local Build
+
+Execute the file from the build step:
+
+```bash
+./server -env=local -datastore=local
 ```
 
 ### Errors
