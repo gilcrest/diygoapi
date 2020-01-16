@@ -46,7 +46,7 @@ You can then execute all four operations (create, read, update, delete) using th
 
 ### cURL Commands to Call API
 
-For Create, use the POST HTTP verb at `/api/v1/movies`:
+**Create** - use the POST HTTP verb at `/api/v1/movies`:
 
 ```bash
 curl --location --request POST 'http://127.0.0.1:8080/api/v1/movies' \
@@ -63,21 +63,21 @@ curl --location --request POST 'http://127.0.0.1:8080/api/v1/movies' \
 '
 ```
 
-For **Read (All Records)**, use the GET HTTP verb at `/api/v1/movies`:
+**Read (All Records)** - use the GET HTTP verb at `/api/v1/movies`:
 
 ```bash
 curl --location --request GET 'http://127.0.0.1:8080/api/v1/movies' \
 --data-raw ''
 ```
 
-For **Read (Single Record)**, use the GET HTTP verb and the movie "external ID" as the unique identifier. I try to never expose primary keys, so I use something like an external id. When calling a mock service, this can be anything and it will be echoed in the response e.g. `/api/v1/movies/:extl_id`
+**Read (Single Record)** - use the GET HTTP verb and the movie "external ID" as the unique identifier. I try to never expose primary keys, so I use something like an external id. When calling a mock service, this can be anything and it will be echoed in the response e.g. `/api/v1/movies/:extl_id`
 
 ```bash
 curl --location --request GET 'http://127.0.0.1:8080/api/v1/movies/SKuGy0k6VAojqes40Na' \
 --data-raw ''
 ```
 
-For **Update**, use the PUT HTTP verb at `/api/v1/movies/:extl_id`
+**Update** - use the PUT HTTP verb at `/api/v1/movies/:extl_id`
 
 ```bash
 curl --location --request PUT 'http://127.0.0.1:8080/api/v1/movies/SKuGy0k6VAojqes40Nga' \
@@ -94,17 +94,17 @@ curl --location --request PUT 'http://127.0.0.1:8080/api/v1/movies/SKuGy0k6VAojq
 '
 ```
 
+**Delete** - use the DELETE HTTP verb at `/api/v1/movies/:extl_id`
+
 ### Database Setup
 
-For **Delete**, use the DELETE HTTP verb at `/api/v1/movies/:extl_id`
+For a non-mocked, persisted implementation using PostgreSQL, you need to setup the database. PostgreSQL needs to be installed locally or one can connect to [Cloud SQL for PostgreSQL](https://cloud.google.com/sql/docs/postgres/) using the [Google Cloud SQL Proxy](https://cloud.google.com/sql/docs/postgres/sql-proxy) or [Cloud Run](https://cloud.google.com/run/) - or any other place you can run PostgreSQL, but instructions are provided only for these three as part of this repo. In all cases, the database will need to be setup and the [demo.ddl](https://github.com/gilcrest/go-api-basic/blob/master/demo.ddl) script found at the root of this project must be executed successfully. You can change the db and schema name, but you'll need to change those in the code as well when doing so. The script creates a simple table and function for inserts.
 
-For a non-mocked, persisted implementation using PostgreSQL, you need to setup the database. PostgreSQL needs to be installed locally or one can connect to [Cloud SQL for PostgreSQL](https://cloud.google.com/sql/docs/postgres/) using the [Google Cloud SQL Proxy](https://cloud.google.com/sql/docs/postgres/sql-proxy) or [Cloud Run](https://cloud.google.com/run/) - or any other place you can run PostgreSQL, but I'm only providing instructions for these three. Add the appropriate environment variables for the database of your choice, examples are below. In all cases, the database will need to be setup and the [demo.ddl](https://github.com/gilcrest/go-api-basic/blob/master/demo.ddl) script found at the root of this project must be executed successfully. You can change the db and schema name, but you'll need to change those in the code as well when doing so. The script creates a simple table and function for inserts.
+In addition, environment variables need to be setup for the database of your choice, examples are below (you can setup all three options and choose at build/run time based on a flag).
 
 #### Database Connection Environment Variables
 
 ##### Local PostgreSQL
-
-To connect to a local installation of PostgreSQL, set the following environment variables.
 
 ```bash
 #Local Postgres DB Name
