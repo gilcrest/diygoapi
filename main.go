@@ -137,6 +137,8 @@ func newLogger(lvl zerolog.Level) zerolog.Logger {
 	// start a new logger with Stdout as the target
 	lgr := zerolog.New(os.Stdout).With().Timestamp().Logger()
 
+	lgr.Log().Msgf("Logging Level set to %s", lvl)
+
 	return lgr
 }
 
@@ -163,8 +165,6 @@ func newLogLevel(flags *cliFlags) zerolog.Level {
 	default:
 		lvl = zerolog.ErrorLevel
 	}
-
-	log.Log().Msgf("Logging Level set to %s", lvl)
 
 	return lvl
 }

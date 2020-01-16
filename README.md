@@ -38,7 +38,7 @@ You should see something similar to the following:
 
 ```bash
 gilcrest-mb:go-api-basic gilcrest$ ./server -env=local -datastore=mock
-{"time":"2020-01-01T19:00:52-08:00","message":"Logging Level set to error"}
+{"time":1577934052,"message":"Logging Level set to error"}
 {"time":1577934052,"message":"Running, connected to the Local environment, datastore is set to Mock"}
 ```
 
@@ -139,8 +139,9 @@ export PG_GCP_CP_PORT="3307"
 ```bash
 # GCP Postgres DB Host - for GCP Cloud SQL, use given "instance
 # connection name" (which is a concatenation of
-# project-id:region:db-instance-id, something like "go-api-basic:us-east1:go-api-basic)
-export PG_GCP_HOST="/cloudsql/fake-instance-connection-name"
+# project-id:region:db-instance-id, something like
+# "go-api-basic-project:us-east1:go-api-basic-db)
+export PG_GCP_HOST="/cloudsql/go-api-basic-project:us-east1:go-api-basic-db"
 #GCP Postgres DB Port
 export PG_GCP_PORT="5432"
 #GCP Postgres DB Name
@@ -155,7 +156,7 @@ export PG_GCP_PASSWORD="fakeDBPassword"
 
 After completing database and environment variable setup, you need to use different build and run commands depending on the environment/datastore. The `-env` flag in the commands below is largely just informational and does not impact the code in any way - the idea is that you can have local, qa, staging, production or whatever values you want and you may want your code to behave in certain ways, but for now it's just symbolic. The `-datastore` flag is the real driver of what is being used for persistence (or as above for mocked data).
 
-#### Local Build
+#### Local PostgreSQL Datastore Build and Run
 
 Build the code from the root directory:
 
@@ -165,12 +166,64 @@ go build -o server
 
 > This sends the output of `go build` to a file called `server` in the same directory.
 
-#### Run Local Build
-
 Execute the file from the build step:
 
 ```bash
 ./server -env=local -datastore=local
+```
+
+You should see output that looks like the following:
+
+```bash
+ ./server -env=local -datastore=local
+{"time":1579191386,"message":"Logging Level set to error"}
+{"time":1579191386,"message":"Running, connected to the Local environment, datastore is set to Local"}
+```
+
+#### Google Cloud SQL for PostgreSQL Proxy Build and Run
+
+To run your code locally against the Google Cloud SQL Proxy, there are several dependencies.
+
+1. Setup a project on [Google Cloud](https://cloud.google.com/)
+1. Setup the `gcloud` command-line tools locally [link](https://cloud.google.com/sdk/gcloud/)
+1. Setup a `PostgreSQL Cloud SQL Database` in that project [link](https://cloud.google.com/sql/docs/postgres/)
+1. Setup Google Cloud SQL Proxy [link](https://cloud.google.com/sql/docs/postgres/sql-proxy)
+
+Assuming those dependencies are in place and your database is running, you can start your Cloud SQL Proxy by navigating to the directory you installed the `cloud_sql_proxy` tool and using the following:
+
+```bash
+./cloud_sql_proxy -instances=go-api-basic-project:us-east1:go-api-basic-db=tcp:3307
+```
+
+This tells the `cloud_sql_proxy` tool to connect to the instance above and listen locally on port 3307. You should see something like the following:
+
+```bash
+$ ./cloud_sql_proxy -instances=go-api-basic-project:us-east1:go-api-basic-db=tcp:3307
+2020/01/16 10:59:26 current FDs rlimit set to 10240, wanted limit is 8500. Nothing to do here.
+2020/01/16 10:59:28 Listening on 127.0.0.1:3307 for go-api-basic-project:us-east1:go-api-basic-db
+2020/01/16 10:59:28 Ready for new connections
+```
+
+If you haven't already done so, build the code from the project's root directory:
+
+```bash
+go build -o server
+```
+
+> This sends the output of `go build` to a file called `server` in the same directory.
+
+Execute the file from the build step:
+
+```bash
+./server -env=local -datastore=gcpcp
+```
+
+You should see output that looks like the following:
+
+```bash
+$ ./server -env=local -datastore=gcpcp
+{"time":1579191760,"message":"Logging Level set to error"}
+{"time":1579191760,"message":"Running, connected to the Local environment, datastore is set to Google Cloud SQL through the Google Cloud Proxy"}
 ```
 
 ### Errors
