@@ -75,6 +75,19 @@ func main() {
 		default:
 			log.Fatal().Msgf("unknown datastore name = %s", dsName)
 		}
+	case envName == app.QA:
+		switch dsName {
+		case datastore.LocalDatastore:
+			srv, cleanup, err = setupApp(ctx, envName, dsName, loglvl)
+		case datastore.GCPCPDatastore:
+			srv, cleanup, err = setupApp(ctx, envName, dsName, loglvl)
+		case datastore.GCPDatastore:
+			srv, cleanup, err = setupApp(ctx, envName, dsName, loglvl)
+		case datastore.MockDatastore:
+			srv, cleanup, err = setupAppwMock(ctx, envName, dsName, loglvl)
+		default:
+			log.Fatal().Msgf("unknown datastore name = %s", dsName)
+		}
 	default:
 		log.Fatal().Msgf("unknown environment name = %s", envName)
 	}
