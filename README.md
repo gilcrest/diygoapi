@@ -156,7 +156,7 @@ export PG_GCP_PASSWORD="fakeDBPassword"
 
 After completing database and environment variable setup, you need to use different build and run commands depending on the environment/datastore. The `-env` flag in the commands below is largely just informational and does not impact the code in any way - the idea is that you can have local, qa, staging, production or whatever values you want and you may want your code to behave in certain ways, but for now it's just symbolic. The `-datastore` flag is the real driver of what is being used for persistence (or as above for mocked data).
 
-#### Local PostgreSQL Datastore Build and Run
+#### Local PostgreSQL Datastore - Build and Run
 
 Build the code from the root directory:
 
@@ -180,7 +180,9 @@ You should see output that looks like the following:
 {"time":1579191386,"message":"Running, connected to the Local environment, datastore is set to Local"}
 ```
 
-#### Google Cloud SQL for PostgreSQL Proxy Build and Run
+You can then run the same cURL commands as above and validate the changes in your local database.
+
+#### Google Cloud SQL for PostgreSQL Proxy - Build and Run
 
 To run your code locally against the Google Cloud SQL Proxy, there are several dependencies.
 
@@ -225,6 +227,41 @@ $ ./server -env=local -datastore=gcpcp
 {"time":1579191760,"message":"Logging Level set to error"}
 {"time":1579191760,"message":"Running, connected to the Local environment, datastore is set to Google Cloud SQL through the Google Cloud Proxy"}
 ```
+
+You can then run the same cURL commands as above and validate the changes in your Google Cloud SQL PostgreSQL database.
+
+#### Google Cloud Run - Build and Run
+
+In order to run this project on `Google Cloud Run`, there are several dependencies:
+
+1. Setup a project on [Google Cloud](https://cloud.google.com/)
+1. Setup the `gcloud` command-line tools locally [link](https://cloud.google.com/sdk/gcloud/)
+1. Setup a `PostgreSQL Cloud SQL Database` in that project [link](https://cloud.google.com/sql/docs/postgres/)
+1. You should also research Cloud Run to understand what it is [link](https://cloud.google.com/run/)
+
+In order to deploy this code as a container, it needs to be built to a container registry. I am using the [Google Container Registry](https://cloud.google.com/container-registry/docs/) aka GCR to store my built container images. You can use the `gcloud` command line tool to build to this registry using the following:
+
+```bash
+gcloud builds submit --tag gcr.io/go-api-basic/demo
+```
+
+You should see a lot of output as part of this, however, the end result should say SUCCESS and point to the image you just uploaded.
+
+In order to deploy the container to Cloud Run, you need to have the Cloud Run environment variables from above setup with your configurations an run the following command:
+
+```bash
+gcloud run deploy movies --image gcr.io/go-api-basic/demo --platform managed \
+--add-cloudsql-instances go-api-basic-project:us-east1:go-api-basic-db \
+--set-env-vars \
+INSTANCE-CONNECTION-NAME=go-api-basic-project:us-east1:go-api-basic-db,\
+PG_GCP_DBNAME=${PG_GCP_DBNAME},\
+PG_GCP_USERNAME=${PG_GCP_USERNAME},\
+PG_GCP_PASSWORD=${PG_GCP_PASSWORD},\
+PG_GCP_HOST=${PG_GCP_HOST},\
+PG_GCP_PORT=${PG_GCP_PORT}
+```
+
+This command takes the container we just put to the Google Container Registry and deploys it to Cloud Run. It also registers which database to use with the `--add-cloudsql-instances` flag. After deploying, you should see something like the following:
 
 ### Errors
 
