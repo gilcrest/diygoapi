@@ -2,8 +2,6 @@
 
 A RESTful API template (built with Go)
 
-1/13/2020 - **I have just completed a major refactor and will completely document it. The below notes are not up to date. My goal is to finish re-documenting this app by 1/17/2020**
-
 The goal of this project is to make an example/template of a relational database-backed REST HTTP API that has characteristics needed to ensure success in a high volume environment. I'm gearing this towards beginners, as I struggled with a lot of this over the past couple of years and would like to help others getting started.
 
 ## API Walkthrough
@@ -262,6 +260,36 @@ PG_GCP_PORT=${PG_GCP_PORT}
 ```
 
 This command takes the container we just put to the Google Container Registry and deploys it to Cloud Run. It also registers which database to use with the `--add-cloudsql-instances` flag. After deploying, you should see something like the following:
+
+```bash
+Deploying container to Cloud Run service [movies] in project [go-api-basic-project] region [us-east1]
+✓ Deploying... Done.
+  ✓ Creating Revision...
+  ✓ Routing traffic...
+Done.
+Service [movies] revision [movies-00001-abc] has been deployed and is serving 100 percent of traffic at https://movies-2fake5enya-ue.a.run.app
+```
+
+You can then execute all the same cURL commands as above, you just need to change the base URL to the one given after the deployment. As an example, the POST cURL becomes:
+
+```bash
+curl --location --request POST 'https://movies-2fake5enya-ue.a.run.app/api/v1/movies' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "title": "Repo Man",
+    "year": 1984,
+    "rated": "R",
+    "release_date": "Mar 02 1984",
+    "run_time": 92,
+    "director": "Alex Cox",
+    "writer": "Alex Cox"
+}
+'
+```
+
+That's it - Google Cloud Run is really cool - we now have a service running with a proper SSL cert and everything!
+
+## Project Walkthrough
 
 ### Errors
 
