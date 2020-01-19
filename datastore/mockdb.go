@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/gilcrest/go-api-basic/domain/errs"
+	"github.com/gilcrest/errs"
 )
 
 // NewMockDB returns nil

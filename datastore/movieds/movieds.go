@@ -6,7 +6,7 @@ import (
 
 	"github.com/gilcrest/go-api-basic/app"
 	"github.com/gilcrest/go-api-basic/datastore"
-	"github.com/gilcrest/go-api-basic/domain/errs"
+	"github.com/gilcrest/errs"
 	"github.com/gilcrest/go-api-basic/domain/movie"
 	"github.com/google/uuid"
 )

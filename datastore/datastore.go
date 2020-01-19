@@ -8,7 +8,7 @@ import (
 
 	"errors"
 
-	"github.com/gilcrest/go-api-basic/domain/errs"
+	"github.com/gilcrest/errs"
 
 	_ "github.com/lib/pq" // pq driver calls for blank identifier
 )

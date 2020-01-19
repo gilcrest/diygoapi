@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/gilcrest/go-api-basic/domain/errs"
+	"github.com/gilcrest/errs"
 )
 
 // NewDB returns an open database handle of 0 or more underlying PostgreSQL connections

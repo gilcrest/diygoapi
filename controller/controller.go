@@ -3,7 +3,7 @@ package controller
 import (
 	"net/http"
 
-	"github.com/gilcrest/go-api-basic/domain/errs"
+	"github.com/gilcrest/errs"
 	"github.com/rs/xid"
 )
 

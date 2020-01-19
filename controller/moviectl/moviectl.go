@@ -8,7 +8,7 @@ import (
 	"github.com/gilcrest/go-api-basic/app"
 	"github.com/gilcrest/go-api-basic/controller"
 	"github.com/gilcrest/go-api-basic/datastore/movieds"
-	"github.com/gilcrest/go-api-basic/domain/errs"
+	"github.com/gilcrest/errs"
 	"github.com/gilcrest/go-api-basic/domain/movie"
 )
 

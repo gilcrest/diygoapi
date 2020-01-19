@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/gilcrest/go-api-basic/domain/errs"
+	"github.com/gilcrest/errs"
 	"github.com/gilcrest/go-api-basic/domain/random"
 	"github.com/google/uuid"
 )

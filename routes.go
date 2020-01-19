@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/gilcrest/alice"
+	"github.com/justinas/alice"
 	"github.com/gilcrest/go-api-basic/handler"
 	"github.com/gorilla/mux"
 )
