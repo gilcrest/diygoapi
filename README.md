@@ -293,18 +293,18 @@ That's it - Google Cloud Run is really cool - we now have a service running with
 
 ### Errors
 
-Before even getting into the full walkthrough, I wanted to review the [errors module](https://github.com/gilcrest/errors) and the approach taken for error handling. The `errors module` is basically a carve out of the error handling used in the [upspin library](https://github.com/upspin/upspin/tree/master/errors) with some tweaks and additions I made for my own needs. Rob Pike has a [fantastic post](https://commandcenter.blogspot.com/2017/12/error-handling-in-upspin.html) about errors and the Upspin implementation. I've taken that and added my own twist.
+Before even getting into the full walkthrough, I wanted to review the [errs module](https://github.com/gilcrest/errs) and the approach taken for error handling. The `errs module` is basically a carve out of the error handling used in the [upspin library](https://github.com/upspin/upspin/tree/master/errors) with some tweaks and additions I made for my own needs. Rob Pike has a [fantastic post](https://commandcenter.blogspot.com/2017/12/error-handling-in-upspin.html) about errors and the Upspin implementation. I've taken that and added my own twist.
 
-My general idea for error handling throughout this API and dependent modules is to always raise an error using the `errors.E` function as seen in this simple error handle below. `errors.E` is neat - you can pass in any one of a number of approved types and the function helps form the error. In all error cases, I pass the `errors.Op` as the `errors.E` function helps build a pseudo stack trace for the error as it goes up through the code. Here's a snippet showing a typical, simple example of using the errors.E function.
+My general idea for error handling throughout this API and dependent modules is to always raise an error using the `errs.E` function as seen in this simple error handle below. `errs.E` is neat - you can pass in any one of a number of approved types and the function helps form the error. In all error cases, I pass the `errs.Op` as the `errs.E` function helps build a pseudo stack trace for the error as it goes up through the code. Here's a snippet showing a typical, simple example of using the errs.E function.
 
 ```go
 func NewServer(name env.Name, lvl zerolog.Level) (*Server, error) {
-    const op errors.Op = "server/NewServer"
+    const op errs.Op = "server/NewServer"
 
     // call constructor for Env struct from env module
     env, err := env.NewEnv(name, lvl)
     if err != nil {
-        return nil, errors.E(op, err)
+        return nil, errs.E(op, err)
     }
 ```
 
@@ -312,16 +312,16 @@ The following snippet shows a more robust validation example. In it, you'll noti
 
 ```go
 func (m *Movie) validate() error {
-    const op errors.Op = "movie/Movie.validate"
+    const op errs.Op = "movie/Movie.validate"
 
     switch {
     case m.Title == "":
-        return errors.E(op, errors.Validation, errors.Parameter("Title"), errors.MissingField("Title"))
+        return errs.E(op, errs.Validation, errs.Parameter("Title"), errs.MissingField("Title"))
     case m.Year < 1878:
-        return errors.E(op, errors.Validation, errors.Parameter("Year"), "The first film was in 1878, Year must be >= 1878")
+        return errs.E(op, errs.Validation, errs.Parameter("Year"), "The first film was in 1878, Year must be >= 1878")
 ```
 
-In the above snippet, the errors.MissingField function used to validate missing input on fields comes from [this Mat Ryer post](https://medium.com/@matryer/patterns-for-decoding-and-validating-input-in-go-data-apis-152291ac7372) and is pretty handy.
+In the above snippet, the errs.MissingField function used to validate missing input on fields comes from [this Mat Ryer post](https://medium.com/@matryer/patterns-for-decoding-and-validating-input-in-go-data-apis-152291ac7372) and is pretty handy.
 
 ```go
 // MissingField is an error type that can be used when
@@ -333,7 +333,7 @@ func (e MissingField) Error() string {
 }
 ```
 
-As stated before, as errors go up the stack from whatever depth of code they're in, Upspin captures the operation and adds that to the error string as a pseudo stack trace that is super helpful for debugging. However, I don't want this type of internal stack information exposed to end users in the response - I only want the error message. As such, just prior to shipping the response, I log the error (to capture the stack info) and call a custom function I built called `errors.RE` (**R**esponse **E**rror). This function effectively strips the stack information and just sends the original error message along with whatever http status code you select as well as whatever errors.Kind, Code or Parameter you choose to set. The `RE` function returns an error of type `errors.HTTPErr`.  An example of error handling at the highest level (from the POST handler) is below:
+As stated before, as errors go up the stack from whatever depth of code they're in, Upspin captures the operation and adds that to the error string as a pseudo stack trace that is super helpful for debugging. However, I don't want this type of internal stack information exposed to end users in the response - I only want the error message. As such, just prior to shipping the response, I log the error (to capture the stack info) and call a custom function I built called `errs.RE` (**R**esponse **E**rror). This function effectively strips the stack information and just sends the original error message along with whatever http status code you select as well as whatever errs.Kind, Code or Parameter you choose to set. The `RE` function returns an error of type `errs.HTTPErr`.  An example of error handling at the highest level (from the POST handler) is below:
 
 ```go
 // Call the create method of the Movie object to validate and insert the data
@@ -341,22 +341,22 @@ err = movie.Create(ctx, s.Logger, tx)
 if err != nil {
     // log error
     s.Logger.Error().Err(err).Msg("")
-    // Type assertion is used - all errors should be an *errors.Error type
+    // Type assertion is used - all errors should be an *errs.Error type
     // Use Kind, Param, Code and Error from lower level errors to populate RE (Response Error)
-    if e, ok := err.(*errors.Error); ok {
-        err := errors.RE(http.StatusBadRequest, e.Kind, e.Param, e.Code, err)
-        errors.HTTPError(w, err)
+    if e, ok := err.(*errs.Error); ok {
+        err := errs.RE(http.StatusBadRequest, e.Kind, e.Param, e.Code, err)
+        errs.HTTPError(w, err)
         return
     }
 
     // if falls through type assertion, then serve an unanticipated error
-    err := errors.RE(http.StatusInternalServerError, errors.Unanticipated)
-    errors.HTTPError(w, err)
+    err := errs.RE(http.StatusInternalServerError, errs.Unanticipated)
+    errs.HTTPError(w, err)
     return
 }
 ```
 
-The final statement above before returning the errors is a call to the `errors.HTTPError` function. This function determines if an error is of type `errors.HTTPErr` and if so, forms the error json - the response body will look something like this:
+The final statement above before returning the errors is a call to the `errs.HTTPError` function. This function determines if an error is of type `errs.HTTPErr` and if so, forms the error json - the response body will look something like this:
 
 ```json
 {
@@ -456,12 +456,12 @@ Within the `server.NewServer` constructor function, I'm calling the `NewEnv` fun
 // NewServer is a constructor for the Server struct
 // Sets up the struct and registers routes
 func NewServer(name env.Name, lvl zerolog.Level) (*Server, error) {
-    const op errors.Op = "server/NewServer"
+    const op errs.Op = "server/NewServer"
 
     // call constructor for Env struct from env module
     env, err := env.NewEnv(name, lvl)
     if err != nil {
-        return nil, errors.E(op, err)
+        return nil, errs.E(op, err)
     }
 ```
 
@@ -478,7 +478,7 @@ Finally, I call the `server.routes` method and return the server.
     // routes registers handlers to the Server router
     err = server.routes()
     if err != nil {
-        return nil, errors.E(op, err)
+        return nil, errs.E(op, err)
     }
 
     return server, nil
@@ -490,12 +490,12 @@ Inside the `server.routes` method, first I pull out the app database from the se
 ```go
 // routes registers handlers to the router
 func (s *Server) routes() error {
-    const op errors.Op = "server/Server.routes"
+    const op errs.Op = "server/Server.routes"
 
     // Get App Database for token authentication
     appdb, err := s.DS.DB(datastore.AppDB)
     if err != nil {
-        return errors.E(op, err)
+        return errs.E(op, err)
     }
 ```
 
@@ -513,7 +513,7 @@ Next, the URL path and handlers are register to the router embedded in the serve
 
 The `Methods("POST").` means this route will only take POST request, and for REST this means we're looking at our Create method of the (CRUD) we talked about above. Other methods (Read(GET), Update(PUT), and Delete(DELETE)) will be documented later. The `Headers("Content-Type", "application/json")` means that this route requires that this request header be present.
 
-To go through the `v1/movie` Handle registration item by item - [my own fork](https://github.com/gilcrest/alice) as a module of [Justinas Stankevičius' alice library](https://github.com/justinas/alice) is being used to make middleware chaining easier. Hopefully the original alice library will enable modules and I'll go back, but until then I'll keep my own fork as it has properly setup modules files.
+To go through the `v1/movie` Handle registration item by item - [Justinas Stankevičius' alice library](https://github.com/justinas/alice) is being used to make middleware chaining easier.
 
 Next, the first middleware in the chain above `s.handleStdResponseHeader` simply adds standard response headers. As of now, it's just the `Content-Type:application/json` header, but it's an easy place to other headers one may deem standard.
 
@@ -568,8 +568,8 @@ The request is Decoded into an instance of the request struct.
         err := json.NewDecoder(req.Body).Decode(&rqst)
         defer req.Body.Close()
         if err != nil {
-            err = errors.RE(http.StatusBadRequest, errors.InvalidRequest, err)
-            errors.HTTPError(w, err)
+            err = errs.RE(http.StatusBadRequest, errs.InvalidRequest, err)
+            errs.HTTPError(w, err)
             return
         }
 ```
@@ -604,12 +604,12 @@ As part of the mapping, quick input validations around date formatting are done 
         movie.Rated = rqst.Rated
         t, err := time.Parse(dateFormat, rqst.Released)
         if err != nil {
-            err = errors.RE(http.StatusBadRequest,
-                errors.Validation,
-                errors.Code("invalid_date_format"),
-                errors.Parameter("ReleaseDate"),
+            err = errs.RE(http.StatusBadRequest,
+                errs.Validation,
+                errs.Code("invalid_date_format"),
+                errs.Parameter("ReleaseDate"),
                 err)
-            errors.HTTPError(w, err)
+            errs.HTTPError(w, err)
             return
         }
         movie.Released = t
@@ -627,8 +627,8 @@ The context is pulled from the incoming request and a database transaction is st
         // get a new DB Tx from the PostgreSQL datastore within the server struct
         tx, err := s.DS.BeginTx(ctx, nil, datastore.AppDB)
         if err != nil {
-            err = errors.RE(http.StatusInternalServerError, errors.Database)
-            errors.HTTPError(w, err)
+            err = errs.RE(http.StatusInternalServerError, errs.Database)
+            errs.HTTPError(w, err)
             return
         }
 ```
@@ -641,17 +641,17 @@ The `Create` method of the `movie.Movie` struct is called using the context and 
         if err != nil {
             // log error
             s.Logger.Error().Err(err).Msg("")
-            // Type assertion is used - all errors should be an *errors.Error type
+            // Type assertion is used - all errors should be an *errs.Error type
             // Use Kind, Param, Code and Error from lower level errors to populate RE (Response Error)
-            if e, ok := err.(*errors.Error); ok {
-                err := errors.RE(http.StatusBadRequest, e.Kind, e.Param, e.Code, err)
-                errors.HTTPError(w, err)
+            if e, ok := err.(*errs.Error); ok {
+                err := errs.RE(http.StatusBadRequest, e.Kind, e.Param, e.Code, err)
+                errs.HTTPError(w, err)
                 return
             }
 
             // if falls through type assertion, then serve an unanticipated error
-            err := errors.RE(http.StatusInternalServerError, errors.Unanticipated)
-            errors.HTTPError(w, err)
+            err := errs.RE(http.StatusInternalServerError, errs.Unanticipated)
+            errs.HTTPError(w, err)
             return
         }
 ```
@@ -674,8 +674,8 @@ If we got this far, the db transaction has been created/committed - we can consi
         // Encode response struct to JSON for the response body
         json.NewEncoder(w).Encode(*resp)
         if err != nil {
-            err = errors.RE(http.StatusInternalServerError, errors.Internal)
-            errors.HTTPError(w, err)
+            err = errs.RE(http.StatusInternalServerError, errs.Internal)
+            errs.HTTPError(w, err)
             return
         }
 ```
