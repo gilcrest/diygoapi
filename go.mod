@@ -3,7 +3,7 @@ module github.com/gilcrest/go-api-basic
 go 1.13
 
 require (
-	github.com/gilcrest/errs v0.1.0
+	github.com/gilcrest/errs v0.2.0
 	github.com/golang/groupcache v0.0.0-20191227052852-215e87163ea7 // indirect
 	github.com/google/uuid v1.1.1
 	github.com/google/wire v0.4.0
