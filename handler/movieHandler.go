@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/gilcrest/go-api-basic/controller/moviectl"
 	"github.com/gilcrest/errs"
+	"github.com/gilcrest/go-api-basic/controller/moviectl"
 	"github.com/gorilla/mux"
 )
 
@@ -43,7 +43,7 @@ func (ah *AppHandler) AddMovie() http.HandlerFunc {
 		}
 
 		// Encode response struct to JSON for the response body
-		json.NewEncoder(w).Encode(*resp)
+		err = json.NewEncoder(w).Encode(*resp)
 		if err != nil {
 			err = errs.RE(http.StatusInternalServerError, errs.Internal)
 			errs.HTTPError(w, err)
