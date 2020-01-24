@@ -1,14 +1,14 @@
-package moviectl
+package movieController
 
 import (
 	"context"
 	"net/http"
 	"time"
 
+	"github.com/gilcrest/errs"
 	"github.com/gilcrest/go-api-basic/app"
 	"github.com/gilcrest/go-api-basic/controller"
-	"github.com/gilcrest/go-api-basic/datastore/movieds"
-	"github.com/gilcrest/errs"
+	"github.com/gilcrest/go-api-basic/datastore/movieDatastore"
 	"github.com/gilcrest/go-api-basic/domain/movie"
 )
 
@@ -100,14 +100,14 @@ func NewMovieController(app *app.Application, srf controller.StandardResponseFie
 
 // Add adds a movie to the catalog.
 func (ctl *MovieController) Add(ctx context.Context, r *MovieRequest) (*MovieResponse, error) {
-	const op errs.Op = "controller/moviectl/MovieController.Add"
+	const op errs.Op = "controller/movieController/MovieController.Add"
 
 	err := ctl.App.DS.BeginTx(ctx)
 	if err != nil {
 		return nil, errs.E(op, err)
 	}
 
-	mds, err := movieds.NewMovieDS(ctl.App)
+	mds, err := movieDatastore.NewMovieDS(ctl.App)
 	if err != nil {
 		return nil, errs.E(op, err)
 	}
@@ -138,14 +138,14 @@ func (ctl *MovieController) Add(ctx context.Context, r *MovieRequest) (*MovieRes
 
 // Update updates the movie given the id sent in
 func (ctl *MovieController) Update(ctx context.Context, id string, r *MovieRequest) (*MovieResponse, error) {
-	const op errs.Op = "controller/moviectl/MovieController.Update"
+	const op errs.Op = "controller/movieController/MovieController.Update"
 
 	err := ctl.App.DS.BeginTx(ctx)
 	if err != nil {
 		return nil, errs.E(op, err)
 	}
 
-	mds, err := movieds.NewMovieDS(ctl.App)
+	mds, err := movieDatastore.NewMovieDS(ctl.App)
 	if err != nil {
 		return nil, errs.E(op, err)
 	}
@@ -176,9 +176,9 @@ func (ctl *MovieController) Update(ctx context.Context, id string, r *MovieReque
 
 // FindByID finds a movie given its' unique ID
 func (ctl *MovieController) FindByID(ctx context.Context, id string) (*SingleMovieResponse, error) {
-	const op errs.Op = "controller/moviectl/MovieController.FindByID"
+	const op errs.Op = "controller/movieController/MovieController.FindByID"
 
-	mds, err := movieds.NewMovieDS(ctl.App)
+	mds, err := movieDatastore.NewMovieDS(ctl.App)
 	if err != nil {
 		return nil, errs.E(op, err)
 	}
@@ -197,9 +197,9 @@ func (ctl *MovieController) FindByID(ctx context.Context, id string) (*SingleMov
 
 // FindAll finds the entire set of Movies
 func (ctl *MovieController) FindAll(ctx context.Context, r *http.Request) (*ListMovieResponse, error) {
-	const op errs.Op = "controller/moviectl/MovieController.FindAll"
+	const op errs.Op = "controller/movieController/MovieController.FindAll"
 
-	mds, err := movieds.NewMovieDS(ctl.App)
+	mds, err := movieDatastore.NewMovieDS(ctl.App)
 	if err != nil {
 		return nil, errs.E(op, err)
 	}
@@ -216,7 +216,7 @@ func (ctl *MovieController) FindAll(ctx context.Context, r *http.Request) (*List
 
 // NewListMovieResponse is an initializer for ListMovieResponse
 func (ctl *MovieController) NewListMovieResponse(ms []*movie.Movie, r *http.Request) *ListMovieResponse {
-	const op errs.Op = "controller/moviectl/MovieController.NewListMovieResponse"
+	const op errs.Op = "controller/movieController/MovieController.NewListMovieResponse"
 
 	var s []*MovieResponse
 
@@ -230,14 +230,14 @@ func (ctl *MovieController) NewListMovieResponse(ms []*movie.Movie, r *http.Requ
 
 // NewSingleMovieResponse is an initializer for SingleMovieResponse
 func (ctl *MovieController) NewSingleMovieResponse(mr *MovieResponse) *SingleMovieResponse {
-	const op errs.Op = "controller/moviectl/MovieController.NewSingleMovieResponse"
+	const op errs.Op = "controller/movieController/MovieController.NewSingleMovieResponse"
 
 	return &SingleMovieResponse{StandardResponseFields: ctl.SRF, Data: mr}
 }
 
 // NewMovie is an initializer for the Movie struct
 func newMovie(am *MovieRequest) (*movie.Movie, error) {
-	const op errs.Op = "controller/moviectl/newMovie"
+	const op errs.Op = "controller/movieController/newMovie"
 
 	// Parse Release Date according to RFC3339
 	t, err := time.Parse(time.RFC3339, am.Released)
@@ -262,14 +262,14 @@ func newMovie(am *MovieRequest) (*movie.Movie, error) {
 
 // Delete removes the movie given the id sent in
 func (ctl *MovieController) Delete(ctx context.Context, id string) (*DeleteMovieResponse, error) {
-	const op errs.Op = "controller/moviectl/MovieController.Update"
+	const op errs.Op = "controller/movieController/MovieController.Update"
 
 	err := ctl.App.DS.BeginTx(ctx)
 	if err != nil {
 		return nil, errs.E(op, err)
 	}
 
-	mds, err := movieds.NewMovieDS(ctl.App)
+	mds, err := movieDatastore.NewMovieDS(ctl.App)
 	if err != nil {
 		return nil, errs.E(op, err)
 	}

@@ -1,12 +1,12 @@
-package movieds
+package movieDatastore
 
 import (
 	"context"
 	"database/sql"
 
+	"github.com/gilcrest/errs"
 	"github.com/gilcrest/go-api-basic/app"
 	"github.com/gilcrest/go-api-basic/datastore"
-	"github.com/gilcrest/errs"
 	"github.com/gilcrest/go-api-basic/domain/movie"
 	"github.com/google/uuid"
 )
@@ -23,7 +23,7 @@ type MovieDS interface {
 // NewMovieDS sets up either a concrete MovieDB or a MockMovieDB
 // depending on the underlying struct of the Datastore passed in
 func NewMovieDS(app *app.Application) (MovieDS, error) {
-	const op errs.Op = "movieds/NewMovieDS"
+	const op errs.Op = "movieDatastore/NewMovieDS"
 
 	// Use a type switch to determine if the app datastore is a Mock
 	// Datastore, if so, then return MockMovieDB, otherwise use
@@ -112,7 +112,7 @@ func (mdb *MovieDB) Create(ctx context.Context, m *movie.Movie) error {
 // Update updates a record in the database using the external ID of
 // the Movie
 func (mdb *MovieDB) Update(ctx context.Context, m *movie.Movie) error {
-	const op errs.Op = "movieds/MockMovieDB.Update"
+	const op errs.Op = "movieDatastore/MockMovieDB.Update"
 
 	// Prepare the sql statement using bind variables
 	stmt, err := mdb.Tx.PrepareContext(ctx, `
@@ -187,7 +187,7 @@ func (mdb *MovieDB) Update(ctx context.Context, m *movie.Movie) error {
 
 // FindByID returns a Movie struct to populate the response
 func (mdb *MovieDB) FindByID(ctx context.Context, extlID string) (*movie.Movie, error) {
-	const op errs.Op = "movieds/MovieDB.FindByID"
+	const op errs.Op = "movieDatastore/MovieDB.FindByID"
 
 	// Prepare the sql statement using bind variables
 	row := mdb.DB.QueryRowContext(ctx,
@@ -230,7 +230,7 @@ func (mdb *MovieDB) FindByID(ctx context.Context, extlID string) (*movie.Movie, 
 
 // FindAll returns a slice of Movie structs to populate the response
 func (mdb *MovieDB) FindAll(ctx context.Context) ([]*movie.Movie, error) {
-	const op errs.Op = "movieds/MovieDB.FindAll"
+	const op errs.Op = "movieDatastore/MovieDB.FindAll"
 
 	// use QueryContext to get back sql.Rows
 	rows, err := mdb.DB.QueryContext(ctx,

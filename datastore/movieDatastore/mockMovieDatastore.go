@@ -1,4 +1,4 @@
-package movieds
+package movieDatastore
 
 import (
 	"context"
@@ -17,21 +17,21 @@ type MockMovieDB struct {
 
 // Create is a mock for creating a record
 func (mdb MockMovieDB) Create(ctx context.Context, m *movie.Movie) error {
-	const op errs.Op = "movieds/MockMovieDB.Store"
+	const op errs.Op = "movieDatastore/MockMovieDB.Store"
 
 	return nil
 }
 
 // Update is a mock for updating a record
 func (mdb MockMovieDB) Update(ctx context.Context, m *movie.Movie) error {
-	const op errs.Op = "movieds/MockMovieDB.Update"
+	const op errs.Op = "movieDatastore/MockMovieDB.Update"
 
 	return nil
 }
 
 // FindByID returns a Movie struct to populate the response
 func (mdb MockMovieDB) FindByID(ctx context.Context, extlID string) (*movie.Movie, error) {
-	const op errs.Op = "movieds/MockMovieDB.FindByID"
+	const op errs.Op = "movieDatastore/MockMovieDB.FindByID"
 
 	m1 := new(movie.Movie)
 	m1.ExtlID = extlID
@@ -49,7 +49,7 @@ func (mdb MockMovieDB) FindByID(ctx context.Context, extlID string) (*movie.Movi
 
 // FindAll returns a slice of Movie structs to populate the response
 func (mdb MockMovieDB) FindAll(ctx context.Context) ([]*movie.Movie, error) {
-	const op errs.Op = "movieds/MockMovieDB.FindAll"
+	const op errs.Op = "movieDatastore/MockMovieDB.FindAll"
 
 	m1 := new(movie.Movie)
 	eid1, err := random.CryptoString(15)

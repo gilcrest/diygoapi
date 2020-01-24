@@ -26,7 +26,7 @@ func NewRequestID(id xid.ID) RequestID {
 
 // NewStandardResponseFields is an initializer for the StandardResponseFields struct
 func NewStandardResponseFields(id RequestID, r *http.Request) StandardResponseFields {
-	const op errs.Op = "controller/moviectl/NewStandardResponse"
+	const op errs.Op = "controller/NewStandardResponse"
 
 	var sr StandardResponseFields
 	sr.ID = id
