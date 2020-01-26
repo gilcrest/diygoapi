@@ -9,7 +9,7 @@ import (
 )
 
 // NewDB returns an open database handle of 0 or more underlying PostgreSQL connections
-func NewDB(n DSName) (*sql.DB, func(), error) {
+func NewDB(n Name) (*sql.DB, func(), error) {
 	const op errs.Op = "datastore/NewDB"
 
 	dbEnvMap, err := dbEnv(n)

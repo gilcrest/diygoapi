@@ -8,19 +8,22 @@ import (
 // Application is the main server struct for Guestbook. It contains the state of
 // the most recently read message of the day.
 type Application struct {
+	// Environment Name
 	EnvName EnvName
-	// PostgreSQL database
-	DS datastore.Datastore
+	// Datastorer is an interface type meant to be the
+	// persistence mechanism. It can be a
+	// SQL database (PostgreSQL) or a mock database
+	Datastorer datastore.Datastorer
 	// Logger
 	Logger zerolog.Logger
 }
 
 // NewApplication creates a new application struct
-func NewApplication(en EnvName, ds datastore.Datastore, log zerolog.Logger) *Application {
+func NewApplication(en EnvName, ds datastore.Datastorer, log zerolog.Logger) *Application {
 	return &Application{
-		EnvName: en,
-		DS:      ds,
-		Logger:  log,
+		EnvName:    en,
+		Datastorer: ds,
+		Logger:     log,
 	}
 }
 

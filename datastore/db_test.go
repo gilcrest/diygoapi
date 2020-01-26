@@ -6,14 +6,13 @@ import (
 
 func Test_NewLocalDB(t *testing.T) {
 	type args struct {
-		n DSName
+		n Name
 	}
 	tests := []struct {
 		name string
 		args args
 	}{
 		{"App DB", args{LocalDatastore}},
-		// {"Log DB", args{LogDatastore}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -77,7 +77,7 @@ func (ah *AppHandler) FindByID() http.HandlerFunc {
 		}
 
 		// Encode response struct to JSON for the response body
-		json.NewEncoder(w).Encode(resp)
+		err = json.NewEncoder(w).Encode(resp)
 		if err != nil {
 			err = errs.RE(http.StatusInternalServerError, op, errs.Internal)
 			errs.HTTPError(w, err)
@@ -108,7 +108,7 @@ func (ah *AppHandler) FindAll() http.HandlerFunc {
 		}
 
 		// Encode response struct to JSON for the response body
-		json.NewEncoder(w).Encode(resp)
+		err = json.NewEncoder(w).Encode(resp)
 		if err != nil {
 			err = errs.RE(http.StatusInternalServerError, op, errs.Internal)
 			errs.HTTPError(w, err)
@@ -154,7 +154,7 @@ func (ah *AppHandler) Update() http.HandlerFunc {
 		}
 
 		// Encode response struct to JSON for the response body
-		json.NewEncoder(w).Encode(resp)
+		err = json.NewEncoder(w).Encode(resp)
 		if err != nil {
 			err = errs.RE(http.StatusInternalServerError, op, errs.Internal)
 			errs.HTTPError(w, err)
@@ -188,7 +188,7 @@ func (ah *AppHandler) Delete() http.HandlerFunc {
 		}
 
 		// Encode response struct to JSON for the response body
-		json.NewEncoder(w).Encode(resp)
+		err = json.NewEncoder(w).Encode(resp)
 		if err != nil {
 			err = errs.RE(http.StatusInternalServerError, op, errs.Internal)
 			errs.HTTPError(w, err)

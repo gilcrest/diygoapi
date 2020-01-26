@@ -31,7 +31,7 @@ var applicationSet = wire.NewSet(
 	wire.Bind(new(http.Handler), new(*mux.Router)),
 	handler.NewAppHandler,
 	newLogger,
-	datastore.NewDatastore,
+	datastore.NewDatastorer,
 )
 
 // goCloudServerSet
@@ -76,7 +76,7 @@ func newRequestLogger(l zerolog.Logger) *requestLogger {
 
 // setupApp is a Wire injector function that sets up the
 // application using a PostgreSQL implementation
-func setupApp(ctx context.Context, envName app.EnvName, dsName datastore.DSName, loglvl zerolog.Level) (*server.Server, func(), error) {
+func setupApp(ctx context.Context, envName app.EnvName, dsName datastore.Name, loglvl zerolog.Level) (*server.Server, func(), error) {
 	// This will be filled in by Wire with providers from the provider sets in
 	// wire.Build.
 	wire.Build(
@@ -89,22 +89,22 @@ func setupApp(ctx context.Context, envName app.EnvName, dsName datastore.DSName,
 
 // setupAppwMock is a Wire injector function that sets up the
 // application using a mock db implementation
-func setupAppwMock(ctx context.Context, envName app.EnvName, dsName datastore.DSName, loglvl zerolog.Level) (*server.Server, func(), error) {
+func setupAppwMock(ctx context.Context, envName app.EnvName, dsName datastore.Name, loglvl zerolog.Level) (*server.Server, func(), error) {
 	// This will be filled in by Wire with providers from the provider sets in
 	// wire.Build.
 	wire.Build(
 		wire.InterfaceValue(new(trace.Exporter), trace.Exporter(nil)),
 		goCloudServerSet,
 		applicationSet,
-		datastore.NewMockDB)
+		datastore.NewMockDatastore)
 	return nil, nil, nil
 }
 
 // appHealthChecks returns a health check for the database. This will signal
 // to Kubernetes or other orchestrators that the server should not receive
 // traffic until the server is able to connect to its database.
-func appHealthChecks(n datastore.DSName, db *sql.DB) ([]health.Checker, func()) {
-	if n != datastore.MockDatastore {
+func appHealthChecks(n datastore.Name, db *sql.DB) ([]health.Checker, func()) {
+	if n != datastore.MockedDatastore {
 		dbCheck := sqlhealth.New(db)
 		list := []health.Checker{dbCheck}
 		return list, func() {

@@ -102,12 +102,12 @@ func NewMovieController(app *app.Application, srf controller.StandardResponseFie
 func (ctl *MovieController) Add(ctx context.Context, r *MovieRequest) (*MovieResponse, error) {
 	const op errs.Op = "controller/movieController/MovieController.Add"
 
-	err := ctl.App.DS.BeginTx(ctx)
+	err := ctl.App.Datastorer.BeginTx(ctx)
 	if err != nil {
 		return nil, errs.E(op, err)
 	}
 
-	mds, err := movieDatastore.NewMovieDS(ctl.App)
+	mds, err := movieDatastore.NewMovieDatastorer(ctl.App)
 	if err != nil {
 		return nil, errs.E(op, err)
 	}
@@ -124,12 +124,12 @@ func (ctl *MovieController) Add(ctx context.Context, r *MovieRequest) (*MovieRes
 
 	err = mds.Create(ctx, m)
 	if err != nil {
-		return nil, errs.E(op, errs.Database, ctl.App.DS.RollbackTx(err))
+		return nil, errs.E(op, errs.Database, ctl.App.Datastorer.RollbackTx(err))
 	}
 
 	resp := ctl.newMovieResponse(m)
 
-	if err := ctl.App.DS.CommitTx(); err != nil {
+	if err := ctl.App.Datastorer.CommitTx(); err != nil {
 		return nil, errs.E(op, errs.Database, err)
 	}
 
@@ -140,12 +140,12 @@ func (ctl *MovieController) Add(ctx context.Context, r *MovieRequest) (*MovieRes
 func (ctl *MovieController) Update(ctx context.Context, id string, r *MovieRequest) (*MovieResponse, error) {
 	const op errs.Op = "controller/movieController/MovieController.Update"
 
-	err := ctl.App.DS.BeginTx(ctx)
+	err := ctl.App.Datastorer.BeginTx(ctx)
 	if err != nil {
 		return nil, errs.E(op, err)
 	}
 
-	mds, err := movieDatastore.NewMovieDS(ctl.App)
+	mds, err := movieDatastore.NewMovieDatastorer(ctl.App)
 	if err != nil {
 		return nil, errs.E(op, err)
 	}
@@ -162,12 +162,12 @@ func (ctl *MovieController) Update(ctx context.Context, id string, r *MovieReque
 
 	err = mds.Update(ctx, m)
 	if err != nil {
-		return nil, errs.E(op, errs.Database, ctl.App.DS.RollbackTx(err))
+		return nil, errs.E(op, errs.Database, ctl.App.Datastorer.RollbackTx(err))
 	}
 
 	resp := ctl.newMovieResponse(m)
 
-	if err := ctl.App.DS.CommitTx(); err != nil {
+	if err := ctl.App.Datastorer.CommitTx(); err != nil {
 		return nil, errs.E(op, errs.Database, err)
 	}
 
@@ -178,7 +178,7 @@ func (ctl *MovieController) Update(ctx context.Context, id string, r *MovieReque
 func (ctl *MovieController) FindByID(ctx context.Context, id string) (*SingleMovieResponse, error) {
 	const op errs.Op = "controller/movieController/MovieController.FindByID"
 
-	mds, err := movieDatastore.NewMovieDS(ctl.App)
+	mds, err := movieDatastore.NewMovieDatastorer(ctl.App)
 	if err != nil {
 		return nil, errs.E(op, err)
 	}
@@ -199,7 +199,7 @@ func (ctl *MovieController) FindByID(ctx context.Context, id string) (*SingleMov
 func (ctl *MovieController) FindAll(ctx context.Context, r *http.Request) (*ListMovieResponse, error) {
 	const op errs.Op = "controller/movieController/MovieController.FindAll"
 
-	mds, err := movieDatastore.NewMovieDS(ctl.App)
+	mds, err := movieDatastore.NewMovieDatastorer(ctl.App)
 	if err != nil {
 		return nil, errs.E(op, err)
 	}
@@ -264,29 +264,29 @@ func newMovie(am *MovieRequest) (*movie.Movie, error) {
 func (ctl *MovieController) Delete(ctx context.Context, id string) (*DeleteMovieResponse, error) {
 	const op errs.Op = "controller/movieController/MovieController.Update"
 
-	err := ctl.App.DS.BeginTx(ctx)
+	err := ctl.App.Datastorer.BeginTx(ctx)
 	if err != nil {
 		return nil, errs.E(op, err)
 	}
 
-	mds, err := movieDatastore.NewMovieDS(ctl.App)
+	mds, err := movieDatastore.NewMovieDatastorer(ctl.App)
 	if err != nil {
 		return nil, errs.E(op, err)
 	}
 
 	m, err := mds.FindByID(ctx, id)
 	if err != nil {
-		return nil, errs.E(op, errs.Database, ctl.App.DS.RollbackTx(err))
+		return nil, errs.E(op, errs.Database, ctl.App.Datastorer.RollbackTx(err))
 	}
 
 	err = mds.Delete(ctx, m)
 	if err != nil {
-		return nil, errs.E(op, errs.Database, ctl.App.DS.RollbackTx(err))
+		return nil, errs.E(op, errs.Database, ctl.App.Datastorer.RollbackTx(err))
 	}
 
 	resp := newDeleteMovieResponse(m, ctl.SRF)
 
-	if err := ctl.App.DS.CommitTx(); err != nil {
+	if err := ctl.App.Datastorer.CommitTx(); err != nil {
 		return nil, errs.E(op, errs.Database, err)
 	}
 

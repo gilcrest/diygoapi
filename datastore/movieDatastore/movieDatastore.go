@@ -12,7 +12,7 @@ import (
 )
 
 // MovieDS is the interface for the persistence layer for a movie
-type MovieDS interface {
+type MovieDatastorer interface {
 	Create(context.Context, *movie.Movie) error
 	FindByID(context.Context, string) (*movie.Movie, error)
 	FindAll(context.Context) ([]*movie.Movie, error)
@@ -22,29 +22,29 @@ type MovieDS interface {
 
 // NewMovieDS sets up either a concrete MovieDB or a MockMovieDB
 // depending on the underlying struct of the Datastore passed in
-func NewMovieDS(app *app.Application) (MovieDS, error) {
-	const op errs.Op = "movieDatastore/NewMovieDS"
+func NewMovieDatastorer(app *app.Application) (MovieDatastorer, error) {
+	const op errs.Op = "movieDatastore/NewMovieDatastorer"
 
 	// Use a type switch to determine if the app datastore is a Mock
 	// Datastore, if so, then return MockMovieDB, otherwise use
 	// composition to add the Datastore to the MovieDB struct
-	switch ds := app.DS.(type) {
-	case *datastore.MockDS:
+	switch ds := app.Datastorer.(type) {
+	case *datastore.MockDatastore:
 		return &MockMovieDB{}, nil
-	case *datastore.DS:
-		return &MovieDB{DS: ds}, nil
+	case *datastore.Datastore:
+		return &MovieDatastore{Datastore: ds}, nil
 	default:
-		return nil, errs.E(op, "Unknown type for datastore.Datastore")
+		return nil, errs.E(op, "Unknown type for datastore.Datastorer")
 	}
 }
 
 // MovieDB is the database implementation for CRUD operations for a movie
-type MovieDB struct {
-	*datastore.DS
+type MovieDatastore struct {
+	*datastore.Datastore
 }
 
 // Create inserts a record in the user table using a stored function
-func (mdb *MovieDB) Create(ctx context.Context, m *movie.Movie) error {
+func (mdb *MovieDatastore) Create(ctx context.Context, m *movie.Movie) error {
 	const op errs.Op = "movie/Movie.createDB"
 
 	// Prepare the sql statement using bind variables
@@ -111,7 +111,7 @@ func (mdb *MovieDB) Create(ctx context.Context, m *movie.Movie) error {
 
 // Update updates a record in the database using the external ID of
 // the Movie
-func (mdb *MovieDB) Update(ctx context.Context, m *movie.Movie) error {
+func (mdb *MovieDatastore) Update(ctx context.Context, m *movie.Movie) error {
 	const op errs.Op = "movieDatastore/MockMovieDB.Update"
 
 	// Prepare the sql statement using bind variables
@@ -186,7 +186,7 @@ func (mdb *MovieDB) Update(ctx context.Context, m *movie.Movie) error {
 }
 
 // FindByID returns a Movie struct to populate the response
-func (mdb *MovieDB) FindByID(ctx context.Context, extlID string) (*movie.Movie, error) {
+func (mdb *MovieDatastore) FindByID(ctx context.Context, extlID string) (*movie.Movie, error) {
 	const op errs.Op = "movieDatastore/MovieDB.FindByID"
 
 	// Prepare the sql statement using bind variables
@@ -229,7 +229,7 @@ func (mdb *MovieDB) FindByID(ctx context.Context, extlID string) (*movie.Movie, 
 }
 
 // FindAll returns a slice of Movie structs to populate the response
-func (mdb *MovieDB) FindAll(ctx context.Context) ([]*movie.Movie, error) {
+func (mdb *MovieDatastore) FindAll(ctx context.Context) ([]*movie.Movie, error) {
 	const op errs.Op = "movieDatastore/MovieDB.FindAll"
 
 	// use QueryContext to get back sql.Rows
@@ -304,7 +304,7 @@ func (mdb *MovieDB) FindAll(ctx context.Context) ([]*movie.Movie, error) {
 }
 
 // Delete removes the Movie record from the table
-func (mdb *MovieDB) Delete(ctx context.Context, m *movie.Movie) error {
+func (mdb *MovieDatastore) Delete(ctx context.Context, m *movie.Movie) error {
 	const op errs.Op = "movie/MovieDB.Delete"
 
 	result, execErr := mdb.Tx.ExecContext(ctx,

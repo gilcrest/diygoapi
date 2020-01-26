@@ -26,18 +26,18 @@ import (
 
 // Injectors from inject_main.go:
 
-func setupApp(ctx context.Context, envName app.EnvName, dsName datastore.DSName, loglvl zerolog.Level) (*server.Server, func(), error) {
+func setupApp(ctx context.Context, envName app.EnvName, dsName datastore.Name, loglvl zerolog.Level) (*server.Server, func(), error) {
 	db, cleanup, err := datastore.NewDB(dsName)
 	if err != nil {
 		return nil, nil, err
 	}
-	datastoreDatastore, err := datastore.NewDatastore(dsName, db)
+	datastorer, err := datastore.NewDatastorer(dsName, db)
 	if err != nil {
 		cleanup()
 		return nil, nil, err
 	}
 	logger := newLogger(loglvl)
-	application := app.NewApplication(envName, datastoreDatastore, logger)
+	application := app.NewApplication(envName, datastorer, logger)
 	appHandler := handler.NewAppHandler(application)
 	router := newRouter(appHandler)
 	mainRequestLogger := newRequestLogger(logger)
@@ -63,14 +63,14 @@ var (
 	_wireExporterValue = trace.Exporter(nil)
 )
 
-func setupAppwMock(ctx context.Context, envName app.EnvName, dsName datastore.DSName, loglvl zerolog.Level) (*server.Server, func(), error) {
-	db := datastore.NewMockDB(dsName)
-	datastoreDatastore, err := datastore.NewDatastore(dsName, db)
+func setupAppwMock(ctx context.Context, envName app.EnvName, dsName datastore.Name, loglvl zerolog.Level) (*server.Server, func(), error) {
+	db := datastore.NewMockDatastore(dsName)
+	datastorer, err := datastore.NewDatastorer(dsName, db)
 	if err != nil {
 		return nil, nil, err
 	}
 	logger := newLogger(loglvl)
-	application := app.NewApplication(envName, datastoreDatastore, logger)
+	application := app.NewApplication(envName, datastorer, logger)
 	appHandler := handler.NewAppHandler(application)
 	router := newRouter(appHandler)
 	mainRequestLogger := newRequestLogger(logger)
@@ -100,7 +100,7 @@ var (
 // applicationSet is the Wire provider set for the Guestbook application that
 // does not depend on the underlying platform.
 var applicationSet = wire.NewSet(app.NewApplication, appHealthChecks,
-	newRouter, wire.Bind(new(http.Handler), new(*mux.Router)), handler.NewAppHandler, newLogger, datastore.NewDatastore,
+	newRouter, wire.Bind(new(http.Handler), new(*mux.Router)), handler.NewAppHandler, newLogger, datastore.NewDatastorer,
 )
 
 // goCloudServerSet
@@ -138,8 +138,8 @@ func newRequestLogger(l zerolog.Logger) *requestLogger {
 // appHealthChecks returns a health check for the database. This will signal
 // to Kubernetes or other orchestrators that the server should not receive
 // traffic until the server is able to connect to its database.
-func appHealthChecks(n datastore.DSName, db *sql.DB) ([]health.Checker, func()) {
-	if n != datastore.MockDatastore {
+func appHealthChecks(n datastore.Name, db *sql.DB) ([]health.Checker, func()) {
+	if n != datastore.MockedDatastore {
 		dbCheck := sqlhealth.New(db)
 		list := []health.Checker{dbCheck}
 		return list, func() {

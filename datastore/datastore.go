@@ -6,26 +6,24 @@ import (
 	"fmt"
 	"os"
 
-	"errors"
-
 	"github.com/gilcrest/errs"
 
 	_ "github.com/lib/pq" // pq driver calls for blank identifier
 )
 
-// Datastore is an interface for working with the Database
-type Datastore interface {
+// Datastorer is an interface for working with the Database
+type Datastorer interface {
 	BeginTx(context.Context) error
 	RollbackTx(error) error
 	CommitTx() error
 }
 
 // DSName defines the name for the Datastore
-type DSName int
+type Name int
 
 const (
 	// LocalDatastore represents the local PostgreSQL db
-	LocalDatastore DSName = iota
+	LocalDatastore Name = iota
 	// GCPCPDatastore represents a local connection to a GCP Cloud
 	// SQL db through the Google Cloud Proxy
 	GCPCPDatastore
@@ -33,10 +31,10 @@ const (
 	// Cloud SQL db
 	GCPDatastore
 	// MockDatastore represents a Mocked Database
-	MockDatastore
+	MockedDatastore
 )
 
-func (n DSName) String() string {
+func (n Name) String() string {
 	switch n {
 	case LocalDatastore:
 		return "Local"
@@ -44,27 +42,31 @@ func (n DSName) String() string {
 		return "Google Cloud SQL through the Google Cloud Proxy"
 	case GCPDatastore:
 		return "Google Cloud SQL"
-	case MockDatastore:
+	case MockedDatastore:
 		return "Mock"
 	}
 	return "unknown_datastore_name"
 }
 
-// NewDatastore provides either a DS struct, which has a concrete
-// implementation of a database or a MockDS struct which is a mocked
-// DB implementation
-func NewDatastore(n DSName, db *sql.DB) (Datastore, error) {
-	const op errs.Op = "datastore/NewDatastore"
+// NewDatastorer provides a Datastorer interface as a response
+// parameter. Either a Datastore struct, which has a concrete
+// implementation of a database OR a MockDatastore struct, which
+// is a mocked DB implementation is returned.
+func NewDatastorer(n Name, db *sql.DB) (Datastorer, error) {
+	const op errs.Op = "datastore/NewDatastorer"
 
 	switch n {
-	case MockDatastore:
-		return &MockDS{}, nil
+	case MockedDatastore:
+		return &MockDatastore{}, nil
 	default:
-		return &DS{DB: db}, nil
+		if db == nil {
+			return nil, errs.E(op, "sql.DB cannot be nil unless using MockDatastore")
+		}
+		return &Datastore{DB: db}, nil
 	}
 }
 
-func dbEnv(n DSName) (map[string]string, error) {
+func dbEnv(n Name) (map[string]string, error) {
 	const op errs.Op = "datastore/dbEnv"
 
 	// Constants for the local PostgreSQL Database connection
@@ -182,16 +184,16 @@ func dbEnv(n DSName) (map[string]string, error) {
 	return dbEnvMap, nil
 }
 
-// DS is a concrete implementation for a database
-type DS struct {
+// Datastore is a concrete implementation for a database
+type Datastore struct {
 	DB *sql.DB
 	Tx *sql.Tx
 }
 
 // BeginTx is a wrapper for sql.DB.BeginTx in order to expose from
 // the Datastore interface
-func (db *DS) BeginTx(ctx context.Context) error {
-	const op errs.Op = "datastore/DS.BeginTx"
+func (db *Datastore) BeginTx(ctx context.Context) error {
+	const op errs.Op = "datastore/Datastore.BeginTx"
 
 	tx, err := db.DB.BeginTx(ctx, nil)
 	if err != nil {
@@ -205,31 +207,22 @@ func (db *DS) BeginTx(ctx context.Context) error {
 
 // RollbackTx is a wrapper for sql.Tx.Rollback in order to expose from
 // the Datastore interface. Proper error handling is also considered.
-func (db *DS) RollbackTx(err error) error {
-	const op errs.Op = "datastore/DS.RollbackTx"
+func (db *Datastore) RollbackTx(err error) error {
+	const op errs.Op = "datastore/Datastore.RollbackTx"
 
 	// Attempt to rollback the transaction
 	if rollbackErr := db.Tx.Rollback(); rollbackErr != nil {
 		return errs.E(op, errs.Database, err)
 	}
 
-	// If rollback was successful, error passed in as parameter
-	// should be an errs.Error type. If so, surface error Kind,
-	// Code and Param to keep in tact
-	var e *errs.Error
-	if errors.As(err, &e) {
-		return errs.E(e.Kind, e.Code, e.Param, err)
-	}
-
-	// Should not actually fall to here, but including as
-	// good practice
+	// If rollback was successful, send back original error
 	return errs.E(op, errs.Database, err)
 }
 
 // CommitTx is a wrapper for sql.Tx.Commit in order to expose from
 // the Datastore interface. Proper error handling is also considered.
-func (db *DS) CommitTx() error {
-	const op errs.Op = "datastore/DS.CommitTx"
+func (db *Datastore) CommitTx() error {
+	const op errs.Op = "datastore/Datastore.CommitTx"
 
 	if err := db.Tx.Commit(); err != nil {
 		return errs.E(op, errs.Database, err)
