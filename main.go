@@ -97,7 +97,7 @@ func main() {
 	defer cleanup()
 
 	// Listen and serve HTTP
-	log.Log().Msgf("Running, connected to the %s environment, datastore is set to %s", envName, dsName)
+	log.Log().Msgf("Running, connected to the %s environment, Datastore is set to %s", envName, dsName)
 	log.Fatal().Err(srv.ListenAndServe(*addr))
 }
 
