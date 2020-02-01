@@ -35,7 +35,7 @@ Execute the file
 You should see something similar to the following:
 
 ```bash
-gilcrest-mb:go-api-basic gilcrest$ ./server -env=local -datastore=mock
+$ ./server -env=local -datastore=mock
 {"time":1577934052,"message":"Logging Level set to error"}
 {"time":1577934052,"message":"Running, connected to the Local environment, datastore is set to Mock"}
 ```
@@ -295,7 +295,7 @@ That's it - Google Cloud Run is really cool - we now have a service running with
 
 Before even getting into the full walkthrough, I wanted to review the [errs module](https://github.com/gilcrest/errs) and the approach taken for error handling. The `errs module` is basically a carve out of the error handling used in the [upspin library](https://github.com/upspin/upspin/tree/master/errors) with some tweaks and additions I made for my own needs. Rob Pike has a [fantastic post](https://commandcenter.blogspot.com/2017/12/error-handling-in-upspin.html) about errors and the Upspin implementation. I've taken that and added my own twist.
 
-The general idea for error handling throughout this example API is to always raise an error using the `errs.E` function as seen in this simple error handle below. `errs.E` is neat - you can pass in any one of a number of approved types and the function helps form the error. In all error cases, pass `errs.Op` as the `errs.E` function helps build a pseudo stack trace for the error as it goes up through the code. Here's a snippet showing a typical, simple example of using the errs.E function.
+The general idea for error handling throughout this example API is to always raise an error using the `errs.E` function as seen in this simple error handle below. `errs.E` is neat - you can pass in any one of a number of approved types and the function helps form the error. In all error cases, pass `errs.Op` (for the **Op**eration) as the `errs.E` function helps build a pseudo stack trace for the error as it goes up through the code. Here's a snippet showing a typical, simple example of using the errs.E function.
 
 ```go
 func NewServer(name env.Name, lvl zerolog.Level) (*Server, error) {
