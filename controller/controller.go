@@ -3,7 +3,6 @@ package controller
 import (
 	"net/http"
 
-	"github.com/gilcrest/errs"
 	"github.com/rs/xid"
 )
 
@@ -26,8 +25,6 @@ func NewRequestID(id xid.ID) RequestID {
 
 // NewStandardResponseFields is an initializer for the StandardResponseFields struct
 func NewStandardResponseFields(id RequestID, r *http.Request) StandardResponseFields {
-	const op errs.Op = "controller/NewStandardResponse"
-
 	var sr StandardResponseFields
 	sr.ID = id
 	sr.Path = r.URL.EscapedPath()
