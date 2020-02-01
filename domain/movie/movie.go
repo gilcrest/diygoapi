@@ -26,7 +26,7 @@ type Movie struct {
 
 // Validate does basic input validation and ensures the struct is
 // properly constructed
-func (m *Movie) validate() error {
+func (m *Movie) Validate() error {
 	const op errs.Op = "domain/Movie.validate"
 
 	switch {
@@ -56,39 +56,19 @@ func (m *Movie) Add(ctx context.Context) error {
 	m.ID = uuid.New()
 	id, err := random.CryptoString(15)
 	if err != nil {
-		return errs.E(errs.Validation, errs.Internal, err)
+		return errs.E(op, errs.Validation, errs.Internal, err)
 	}
 	m.ExtlID = id
-
-	// Validate input data
-	err = m.validate()
-	if err != nil {
-		if e, ok := err.(*errs.Error); ok {
-			return errs.E(errs.Validation, e.Param, err)
-		}
-		// should not get here, but just in case
-		return errs.E(errs.Validation, err)
-	}
 
 	return nil
 }
 
 // Update performs business validations prior to writing to the db
 func (m *Movie) Update(ctx context.Context, id string) error {
-	const op errs.Op = "movie/Movie.Add"
+	const op errs.Op = "movie/Movie.Update"
 
 	m.ExtlID = id
 	m.UpdateTimestamp = time.Now().UTC()
-
-	// Validate input data
-	err := m.validate()
-	if err != nil {
-		if e, ok := err.(*errs.Error); ok {
-			return errs.E(errs.Validation, e.Param, err)
-		}
-		// should not get here, but just in case
-		return errs.E(errs.Validation, err)
-	}
 
 	return nil
 }
