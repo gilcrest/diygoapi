@@ -37,7 +37,7 @@ func (ah *AppHandler) AddMovie() http.HandlerFunc {
 		// Receive a response or error in return
 		resp, err := mc.Add(ctx, rqst)
 		if err != nil {
-			err = errs.RE(http.StatusBadRequest, op, err)
+			err = errs.RE(http.StatusBadRequest, errs.E(op, err))
 			errs.HTTPError(w, err)
 			return
 		}
@@ -45,7 +45,7 @@ func (ah *AppHandler) AddMovie() http.HandlerFunc {
 		// Encode response struct to JSON for the response body
 		err = json.NewEncoder(w).Encode(*resp)
 		if err != nil {
-			err = errs.RE(http.StatusInternalServerError, op, errs.Internal)
+			err = errs.RE(http.StatusInternalServerError, errs.E(op, errs.Internal))
 			errs.HTTPError(w, err)
 			return
 		}
@@ -71,7 +71,7 @@ func (ah *AppHandler) FindByID() http.HandlerFunc {
 		// Receive a response or error in return
 		resp, err := mc.FindByID(ctx, id)
 		if err != nil {
-			err = errs.RE(http.StatusBadRequest, op, errs.InvalidRequest, err)
+			err = errs.RE(http.StatusBadRequest, errs.InvalidRequest, errs.E(op, err))
 			errs.HTTPError(w, err)
 			return
 		}
@@ -79,7 +79,7 @@ func (ah *AppHandler) FindByID() http.HandlerFunc {
 		// Encode response struct to JSON for the response body
 		err = json.NewEncoder(w).Encode(resp)
 		if err != nil {
-			err = errs.RE(http.StatusInternalServerError, op, errs.Internal)
+			err = errs.RE(http.StatusInternalServerError, errs.E(op, errs.Internal))
 			errs.HTTPError(w, err)
 			return
 		}
@@ -100,9 +100,9 @@ func (ah *AppHandler) FindAll() http.HandlerFunc {
 
 		// Send the request context and request struct to the controller
 		// Receive a response or error in return
-		resp, err := mc.FindAll(ctx, r)
+		resp, err := mc.FindAll(ctx)
 		if err != nil {
-			err = errs.RE(http.StatusBadRequest, op, errs.InvalidRequest, err)
+			err = errs.RE(http.StatusBadRequest, errs.InvalidRequest, errs.E(op, err))
 			errs.HTTPError(w, err)
 			return
 		}
@@ -110,7 +110,7 @@ func (ah *AppHandler) FindAll() http.HandlerFunc {
 		// Encode response struct to JSON for the response body
 		err = json.NewEncoder(w).Encode(resp)
 		if err != nil {
-			err = errs.RE(http.StatusInternalServerError, op, errs.Internal)
+			err = errs.RE(http.StatusInternalServerError, errs.E(op, errs.Internal))
 			errs.HTTPError(w, err)
 			return
 		}
@@ -133,7 +133,7 @@ func (ah *AppHandler) Update() http.HandlerFunc {
 		err := json.NewDecoder(r.Body).Decode(&rqst)
 		defer r.Body.Close()
 		if err != nil {
-			err = errs.RE(http.StatusBadRequest, op, errs.InvalidRequest, errs.E(op, err))
+			err = errs.RE(http.StatusBadRequest, errs.InvalidRequest, errs.E(op, err))
 			errs.HTTPError(w, err)
 			return
 		}
@@ -148,7 +148,7 @@ func (ah *AppHandler) Update() http.HandlerFunc {
 		// Receive a response or error in return
 		resp, err := mc.Update(ctx, id, rqst)
 		if err != nil {
-			err = errs.RE(http.StatusBadRequest, op, errs.InvalidRequest, err)
+			err = errs.RE(http.StatusBadRequest, errs.InvalidRequest, errs.E(op, err))
 			errs.HTTPError(w, err)
 			return
 		}
@@ -156,7 +156,7 @@ func (ah *AppHandler) Update() http.HandlerFunc {
 		// Encode response struct to JSON for the response body
 		err = json.NewEncoder(w).Encode(resp)
 		if err != nil {
-			err = errs.RE(http.StatusInternalServerError, op, errs.Internal)
+			err = errs.RE(http.StatusInternalServerError, errs.E(op, errs.Internal))
 			errs.HTTPError(w, err)
 			return
 		}
@@ -182,7 +182,7 @@ func (ah *AppHandler) Delete() http.HandlerFunc {
 		// Receive a response or error in return
 		resp, err := mc.Delete(ctx, id)
 		if err != nil {
-			err = errs.RE(http.StatusBadRequest, op, errs.InvalidRequest, err)
+			err = errs.RE(http.StatusBadRequest, errs.InvalidRequest, errs.E(op, err))
 			errs.HTTPError(w, err)
 			return
 		}
@@ -190,7 +190,7 @@ func (ah *AppHandler) Delete() http.HandlerFunc {
 		// Encode response struct to JSON for the response body
 		err = json.NewEncoder(w).Encode(resp)
 		if err != nil {
-			err = errs.RE(http.StatusInternalServerError, op, errs.Internal)
+			err = errs.RE(http.StatusInternalServerError, errs.E(op, errs.Internal))
 			errs.HTTPError(w, err)
 			return
 		}
