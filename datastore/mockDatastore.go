@@ -8,7 +8,7 @@ import (
 )
 
 // NewMockDatastore returns a nil sql.DB
-func NewMockDatastore(n Name) *sql.DB {
+func NewMockDatastore(_ Name) *sql.DB {
 	return nil
 }
 
@@ -18,7 +18,7 @@ type MockDatastore struct {
 
 // BeginTx is a wrapper for sql.DB.BeginTx in order to expose from
 // the Datastore interface
-func (db *MockDatastore) BeginTx(ctx context.Context) error {
+func (db *MockDatastore) BeginTx(_ context.Context) error {
 	return nil
 }
 

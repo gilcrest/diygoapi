@@ -30,7 +30,7 @@ const (
 	// GCPDatastore represents a true GCP connection to a GCP
 	// Cloud SQL db
 	GCPDatastore
-	// MockDatastore represents a Mocked Database
+	// MockedDatastore represents a Mocked Database
 	MockedDatastore
 )
 
