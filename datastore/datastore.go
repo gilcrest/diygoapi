@@ -48,24 +48,6 @@ func (n Name) String() string {
 	return "unknown_datastore_name"
 }
 
-// NewDatastorer provides a Datastorer interface as a response
-// parameter. Either a Datastore struct, which has a concrete
-// implementation of a database OR a MockDatastore struct, which
-// is a mocked DB implementation is returned.
-func NewDatastorer(n Name, db *sql.DB) (Datastorer, error) {
-	const op errs.Op = "datastore/NewDatastorer"
-
-	switch n {
-	case MockedDatastore:
-		return &MockDatastore{}, nil
-	default:
-		if db == nil {
-			return nil, errs.E(op, "sql.DB cannot be nil unless using MockDatastore")
-		}
-		return &Datastore{DB: db}, nil
-	}
-}
-
 func dbEnv(n Name) (map[string]string, error) {
 	const op errs.Op = "datastore/dbEnv"
 
@@ -182,6 +164,10 @@ func dbEnv(n Name) (map[string]string, error) {
 		"port":     port}
 
 	return dbEnvMap, nil
+}
+
+func NewDatastore(db *sql.DB) *Datastore {
+	return &Datastore{DB: db}
 }
 
 // Datastore is a concrete implementation for a database

@@ -7,9 +7,8 @@ import (
 	"github.com/gilcrest/errs"
 )
 
-// NewMockDatastore returns a nil sql.DB
-func NewMockDatastore(_ Name) *sql.DB {
-	return nil
+func NewMockDatastore() *MockDatastore {
+	return &MockDatastore{}
 }
 
 // MockDatastore is a mock implementation for a database

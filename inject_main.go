@@ -26,19 +26,16 @@ import (
 // does not depend on the underlying platform.
 var applicationSet = wire.NewSet(
 	app.NewApplication,
-	appHealthChecks,
 	newRouter,
 	wire.Bind(new(http.Handler), new(*mux.Router)),
 	handler.NewAppHandler,
 	newLogger,
-	datastore.NewDatastorer,
 )
 
 // goCloudServerSet
 var goCloudServerSet = wire.NewSet(
 	trace.AlwaysSample,
 	server.New,
-	wire.Struct(new(server.Options), "RequestLogger", "HealthChecks", "TraceExporter", "DefaultSamplingPolicy", "Driver"),
 	server.NewDefaultDriver,
 	wire.Bind(new(driver.Server), new(*server.DefaultDriver)),
 	wire.Bind(new(requestlog.Logger), new(*requestLogger)),
@@ -83,7 +80,11 @@ func setupApp(ctx context.Context, envName app.EnvName, dsName datastore.Name, l
 		wire.InterfaceValue(new(trace.Exporter), trace.Exporter(nil)),
 		goCloudServerSet,
 		applicationSet,
-		datastore.NewDB)
+		appHealthChecks,
+		wire.Struct(new(server.Options), "RequestLogger", "HealthChecks", "TraceExporter", "DefaultSamplingPolicy", "Driver"),
+		datastore.NewDB,
+		wire.Bind(new(datastore.Datastorer), new(*datastore.Datastore)),
+		datastore.NewDatastore)
 	return nil, nil, nil
 }
 
@@ -96,6 +97,8 @@ func setupAppwMock(ctx context.Context, envName app.EnvName, dsName datastore.Na
 		wire.InterfaceValue(new(trace.Exporter), trace.Exporter(nil)),
 		goCloudServerSet,
 		applicationSet,
+		wire.Struct(new(server.Options), "RequestLogger", "TraceExporter", "DefaultSamplingPolicy", "Driver"),
+		wire.Bind(new(datastore.Datastorer), new(*datastore.MockDatastore)),
 		datastore.NewMockDatastore)
 	return nil, nil, nil
 }

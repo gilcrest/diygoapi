@@ -31,13 +31,9 @@ func setupApp(ctx context.Context, envName app.EnvName, dsName datastore.Name, l
 	if err != nil {
 		return nil, nil, err
 	}
-	datastorer, err := datastore.NewDatastorer(dsName, db)
-	if err != nil {
-		cleanup()
-		return nil, nil, err
-	}
+	datastoreDatastore := datastore.NewDatastore(db)
 	logger := newLogger(loglvl)
-	application := app.NewApplication(envName, datastorer, logger)
+	application := app.NewApplication(envName, datastoreDatastore, logger)
 	appHandler := handler.NewAppHandler(application)
 	router := newRouter(appHandler)
 	mainRequestLogger := newRequestLogger(logger)
@@ -64,30 +60,23 @@ var (
 )
 
 func setupAppwMock(ctx context.Context, envName app.EnvName, dsName datastore.Name, loglvl zerolog.Level) (*server.Server, func(), error) {
-	db := datastore.NewMockDatastore(dsName)
-	datastorer, err := datastore.NewDatastorer(dsName, db)
-	if err != nil {
-		return nil, nil, err
-	}
+	mockDatastore := datastore.NewMockDatastore()
 	logger := newLogger(loglvl)
-	application := app.NewApplication(envName, datastorer, logger)
+	application := app.NewApplication(envName, mockDatastore, logger)
 	appHandler := handler.NewAppHandler(application)
 	router := newRouter(appHandler)
 	mainRequestLogger := newRequestLogger(logger)
-	v, cleanup := appHealthChecks(dsName, db)
 	exporter := _wireTraceExporterValue
 	sampler := trace.AlwaysSample()
 	defaultDriver := server.NewDefaultDriver()
 	options := &server.Options{
 		RequestLogger:         mainRequestLogger,
-		HealthChecks:          v,
 		TraceExporter:         exporter,
 		DefaultSamplingPolicy: sampler,
 		Driver:                defaultDriver,
 	}
 	serverServer := server.New(router, options)
 	return serverServer, func() {
-		cleanup()
 	}, nil
 }
 
@@ -99,12 +88,10 @@ var (
 
 // applicationSet is the Wire provider set for the Guestbook application that
 // does not depend on the underlying platform.
-var applicationSet = wire.NewSet(app.NewApplication, appHealthChecks,
-	newRouter, wire.Bind(new(http.Handler), new(*mux.Router)), handler.NewAppHandler, newLogger, datastore.NewDatastorer,
-)
+var applicationSet = wire.NewSet(app.NewApplication, newRouter, wire.Bind(new(http.Handler), new(*mux.Router)), handler.NewAppHandler, newLogger)
 
 // goCloudServerSet
-var goCloudServerSet = wire.NewSet(trace.AlwaysSample, server.New, wire.Struct(new(server.Options), "RequestLogger", "HealthChecks", "TraceExporter", "DefaultSamplingPolicy", "Driver"), server.NewDefaultDriver, wire.Bind(new(driver.Server), new(*server.DefaultDriver)), wire.Bind(new(requestlog.Logger), new(*requestLogger)), newRequestLogger)
+var goCloudServerSet = wire.NewSet(trace.AlwaysSample, server.New, server.NewDefaultDriver, wire.Bind(new(driver.Server), new(*server.DefaultDriver)), wire.Bind(new(requestlog.Logger), new(*requestLogger)), newRequestLogger)
 
 type requestLogger struct {
 	log zerolog.Logger
