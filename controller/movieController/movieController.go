@@ -2,7 +2,6 @@ package movieController
 
 import (
 	"context"
-	"net/http"
 	"time"
 
 	"github.com/gilcrest/errs"
@@ -78,7 +77,7 @@ func newDeleteMovieResponse(m *movie.Movie, srf controller.StandardResponseField
 }
 
 // newMovieResponse is an initializer for MovieResponse
-func (ctl *MovieController) newMovieResponse(m *movie.Movie) *MovieResponse {
+func newMovieResponse(m *movie.Movie) *MovieResponse {
 	return &MovieResponse{
 		ExtlID:          m.ExtlID,
 		Title:           m.Title,
@@ -99,7 +98,7 @@ func NewMovieController(app *app.Application, srf controller.StandardResponseFie
 }
 
 // Add adds a movie to the catalog.
-func (ctl *MovieController) Add(ctx context.Context, r *MovieRequest) (*MovieResponse, error) {
+func (ctl *MovieController) Add(ctx context.Context, r *MovieRequest) (*SingleMovieResponse, error) {
 	const op errs.Op = "controller/movieController/MovieController.Add"
 
 	err := ctl.App.Datastorer.BeginTx(ctx)
@@ -117,6 +116,11 @@ func (ctl *MovieController) Add(ctx context.Context, r *MovieRequest) (*MovieRes
 		return nil, errs.E(op, err)
 	}
 
+	err = m.Validate()
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
 	err = m.Add(ctx)
 	if err != nil {
 		return nil, errs.E(err)
@@ -127,17 +131,19 @@ func (ctl *MovieController) Add(ctx context.Context, r *MovieRequest) (*MovieRes
 		return nil, errs.E(op, errs.Database, ctl.App.Datastorer.RollbackTx(err))
 	}
 
-	resp := ctl.newMovieResponse(m)
-
 	if err := ctl.App.Datastorer.CommitTx(); err != nil {
 		return nil, errs.E(op, errs.Database, err)
 	}
 
-	return resp, nil
+	mr := newMovieResponse(m)
+
+	smr := ctl.NewSingleMovieResponse(mr)
+
+	return smr, nil
 }
 
 // Update updates the movie given the id sent in
-func (ctl *MovieController) Update(ctx context.Context, id string, r *MovieRequest) (*MovieResponse, error) {
+func (ctl *MovieController) Update(ctx context.Context, id string, r *MovieRequest) (*SingleMovieResponse, error) {
 	const op errs.Op = "controller/movieController/MovieController.Update"
 
 	err := ctl.App.Datastorer.BeginTx(ctx)
@@ -165,13 +171,15 @@ func (ctl *MovieController) Update(ctx context.Context, id string, r *MovieReque
 		return nil, errs.E(op, errs.Database, ctl.App.Datastorer.RollbackTx(err))
 	}
 
-	resp := ctl.newMovieResponse(m)
-
 	if err := ctl.App.Datastorer.CommitTx(); err != nil {
 		return nil, errs.E(op, errs.Database, err)
 	}
 
-	return resp, nil
+	mr := newMovieResponse(m)
+
+	smr := ctl.NewSingleMovieResponse(mr)
+
+	return smr, nil
 }
 
 // FindByID finds a movie given its' unique ID
@@ -188,7 +196,7 @@ func (ctl *MovieController) FindByID(ctx context.Context, id string) (*SingleMov
 		return nil, errs.E(op, errs.Database, err)
 	}
 
-	mr := ctl.newMovieResponse(m)
+	mr := newMovieResponse(m)
 
 	response := ctl.NewSingleMovieResponse(mr)
 
@@ -196,7 +204,7 @@ func (ctl *MovieController) FindByID(ctx context.Context, id string) (*SingleMov
 }
 
 // FindAll finds the entire set of Movies
-func (ctl *MovieController) FindAll(ctx context.Context, r *http.Request) (*ListMovieResponse, error) {
+func (ctl *MovieController) FindAll(ctx context.Context) (*ListMovieResponse, error) {
 	const op errs.Op = "controller/movieController/MovieController.FindAll"
 
 	mds, err := movieDatastore.NewMovieDatastorer(ctl.App)
@@ -209,19 +217,18 @@ func (ctl *MovieController) FindAll(ctx context.Context, r *http.Request) (*List
 		return nil, errs.E(op, errs.Database, err)
 	}
 
-	response := ctl.NewListMovieResponse(ms, r)
+	response := ctl.NewListMovieResponse(ms)
 
 	return response, nil
 }
 
 // NewListMovieResponse is an initializer for ListMovieResponse
-func (ctl *MovieController) NewListMovieResponse(ms []*movie.Movie, r *http.Request) *ListMovieResponse {
-	const op errs.Op = "controller/movieController/MovieController.NewListMovieResponse"
+func (ctl *MovieController) NewListMovieResponse(ms []*movie.Movie) *ListMovieResponse {
 
 	var s []*MovieResponse
 
 	for _, m := range ms {
-		mr := ctl.newMovieResponse(m)
+		mr := newMovieResponse(m)
 		s = append(s, mr)
 	}
 
@@ -230,8 +237,6 @@ func (ctl *MovieController) NewListMovieResponse(ms []*movie.Movie, r *http.Requ
 
 // NewSingleMovieResponse is an initializer for SingleMovieResponse
 func (ctl *MovieController) NewSingleMovieResponse(mr *MovieResponse) *SingleMovieResponse {
-	const op errs.Op = "controller/movieController/MovieController.NewSingleMovieResponse"
-
 	return &SingleMovieResponse{StandardResponseFields: ctl.SRF, Data: mr}
 }
 
