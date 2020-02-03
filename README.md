@@ -10,7 +10,7 @@ The following is an in-depth walkthrough of this project. This walkthrough has a
 
 ## Installation
 
-Tl;DR - just show me how to install and run the code.
+TL;DR - just show me how to install and run the code.
 
 ```bash
 git clone https://github.com/gilcrest/go-api-basic.git
