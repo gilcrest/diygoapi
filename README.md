@@ -368,6 +368,8 @@ The final statement above before returning the errors is a call to the `errs.HTT
 }
 ```
 
+## EVERYTHING BELOW HERE IS OUTDATED AND NEEDS TO BE UPDATED - I'M WORKING ON IT ASAP (2/4/2020)
+
 ### Main API Module
 
 The [Main API/server layer module](https://github.com/gilcrest/go-api-basic) is the starting point and as such has the main package/function within the cmd directory. In it, I'm checking for both log level and environment command line flags and running them through 2 simple functions (`logLevel` and `envName`) to get the correct string value given the flag input. I'm using [zerolog](https://github.com/rs/zerolog) throughout my modules as the logger.
