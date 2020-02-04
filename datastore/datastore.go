@@ -13,9 +13,10 @@ import (
 
 // Datastorer is an interface for working with the Database
 type Datastorer interface {
-	BeginTx(context.Context) error
-	RollbackTx(error) error
-	CommitTx() error
+	DB() *sql.DB
+	BeginTx(context.Context) (*sql.Tx, error)
+	RollbackTx(*sql.Tx, error) error
+	CommitTx(*sql.Tx) error
 }
 
 // DSName defines the name for the Datastore
@@ -167,37 +168,46 @@ func dbEnv(n Name) (map[string]string, error) {
 }
 
 func NewDatastore(db *sql.DB) *Datastore {
-	return &Datastore{DB: db}
+	return &Datastore{db: db}
 }
 
 // Datastore is a concrete implementation for a database
 type Datastore struct {
-	DB *sql.DB
-	Tx *sql.Tx
+	db *sql.DB
+}
+
+func (ds *Datastore) DB() *sql.DB {
+	return ds.db
 }
 
 // BeginTx is a wrapper for sql.DB.BeginTx in order to expose from
 // the Datastore interface
-func (db *Datastore) BeginTx(ctx context.Context) error {
+func (ds *Datastore) BeginTx(ctx context.Context) (*sql.Tx, error) {
 	const op errs.Op = "datastore/Datastore.BeginTx"
 
-	tx, err := db.DB.BeginTx(ctx, nil)
-	if err != nil {
-		return errs.E(op, errs.Database, err)
+	if ds.db == nil {
+		return nil, errs.E(op, errs.Database, "DB cannot be nil")
 	}
 
-	db.Tx = tx
+	tx, err := ds.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, errs.E(op, errs.Database, err)
+	}
 
-	return nil
+	return tx, nil
 }
 
 // RollbackTx is a wrapper for sql.Tx.Rollback in order to expose from
 // the Datastore interface. Proper error handling is also considered.
-func (db *Datastore) RollbackTx(err error) error {
+func (ds *Datastore) RollbackTx(tx *sql.Tx, err error) error {
 	const op errs.Op = "datastore/Datastore.RollbackTx"
 
+	if tx == nil {
+		return errs.E(op, errs.Database, "tx cannot be nil")
+	}
+
 	// Attempt to rollback the transaction
-	if rollbackErr := db.Tx.Rollback(); rollbackErr != nil {
+	if rollbackErr := tx.Rollback(); rollbackErr != nil {
 		return errs.E(op, errs.Database, err)
 	}
 
@@ -207,10 +217,10 @@ func (db *Datastore) RollbackTx(err error) error {
 
 // CommitTx is a wrapper for sql.Tx.Commit in order to expose from
 // the Datastore interface. Proper error handling is also considered.
-func (db *Datastore) CommitTx() error {
+func (ds *Datastore) CommitTx(tx *sql.Tx) error {
 	const op errs.Op = "datastore/Datastore.CommitTx"
 
-	if err := db.Tx.Commit(); err != nil {
+	if err := tx.Commit(); err != nil {
 		return errs.E(op, errs.Database, err)
 	}
 

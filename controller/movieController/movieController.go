@@ -30,7 +30,7 @@ type MovieRequest struct {
 
 // MovieResponse is the response struct for a single Movie
 type MovieResponse struct {
-	ExtlID          string `json:"extl_id"`
+	ExternalID      string `json:"external_id"`
 	Title           string `json:"title"`
 	Year            int    `json:"year"`
 	Rated           string `json:"rated"`
@@ -70,7 +70,7 @@ func newDeleteMovieResponse(m *movie.Movie, srf controller.StandardResponseField
 			ExtlID  string "json:\"extl_id\""
 			Deleted bool   "json:\"deleted\""
 		}{
-			ExtlID:  m.ExtlID,
+			ExtlID:  m.ExternalID,
 			Deleted: true,
 		},
 	}
@@ -79,7 +79,7 @@ func newDeleteMovieResponse(m *movie.Movie, srf controller.StandardResponseField
 // newMovieResponse is an initializer for MovieResponse
 func newMovieResponse(m *movie.Movie) *MovieResponse {
 	return &MovieResponse{
-		ExtlID:          m.ExtlID,
+		ExternalID:      m.ExternalID,
 		Title:           m.Title,
 		Year:            m.Year,
 		Rated:           m.Rated,
@@ -101,104 +101,178 @@ func NewMovieController(app *app.Application, srf controller.StandardResponseFie
 func (ctl *MovieController) Add(ctx context.Context, r *MovieRequest) (*SingleMovieResponse, error) {
 	const op errs.Op = "controller/movieController/MovieController.Add"
 
-	err := ctl.App.Datastorer.BeginTx(ctx)
-	if err != nil {
-		return nil, errs.E(op, err)
-	}
-
-	mds, err := movieDatastore.NewMovieDatastorer(ctl.App)
-	if err != nil {
-		return nil, errs.E(op, err)
-	}
-
+	// Convert request into a Movie struct
 	m, err := newMovie(r)
 	if err != nil {
 		return nil, errs.E(op, err)
 	}
 
+	// Validate the input given from the request
 	err = m.Validate()
 	if err != nil {
 		return nil, errs.E(op, err)
 	}
 
+	// Call the Add method to perform domain business logic
 	err = m.Add(ctx)
 	if err != nil {
 		return nil, errs.E(err)
 	}
 
-	err = mds.Create(ctx, m)
+	// Begin a DB Tx, if the underlying struct is a MockDatastore then
+	// the Tx will be nil
+	tx, err := ctl.App.Datastorer.BeginTx(ctx)
 	if err != nil {
-		return nil, errs.E(op, errs.Database, ctl.App.Datastorer.RollbackTx(err))
+		return nil, errs.E(op, err)
 	}
 
-	if err := ctl.App.Datastorer.CommitTx(); err != nil {
+	// NewTransactor gives back either a MockTx or a concrete
+	// Tx, depending upon whether the Tx from Datastorer is nil or not
+	t, err := movieDatastore.NewTransactor(tx)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	// Call the Create method of the Transactor to insert data to
+	// the database (unless mocked, of course). If an error occurs,
+	// rollback the transaction
+	err = t.Create(ctx, m)
+	if err != nil {
+		return nil, errs.E(op, ctl.App.Datastorer.RollbackTx(tx, err))
+	}
+
+	// Commit the Transaction
+	if err := ctl.App.Datastorer.CommitTx(tx); err != nil {
 		return nil, errs.E(op, errs.Database, err)
 	}
 
-	mr := newMovieResponse(m)
+	// Populate the response
+	response := ctl.NewSingleMovieResponse(newMovieResponse(m))
 
-	smr := ctl.NewSingleMovieResponse(mr)
-
-	return smr, nil
+	return response, nil
 }
 
 // Update updates the movie given the id sent in
 func (ctl *MovieController) Update(ctx context.Context, id string, r *MovieRequest) (*SingleMovieResponse, error) {
 	const op errs.Op = "controller/movieController/MovieController.Update"
 
-	err := ctl.App.Datastorer.BeginTx(ctx)
-	if err != nil {
-		return nil, errs.E(op, err)
-	}
-
-	mds, err := movieDatastore.NewMovieDatastorer(ctl.App)
-	if err != nil {
-		return nil, errs.E(op, err)
-	}
-
+	// Convert request into a Movie struct
 	m, err := newMovie(r)
 	if err != nil {
 		return nil, errs.E(op, err)
 	}
 
+	// Validate the input given from the request
+	err = m.Validate()
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	// Perform domain Update "business logic"
 	err = m.Update(ctx, id)
 	if err != nil {
 		return nil, errs.E(err)
 	}
 
-	err = mds.Update(ctx, m)
+	// Begin a DB Tx, if the underlying struct is a MockDatastore then
+	// the Tx will be nil
+	tx, err := ctl.App.Datastorer.BeginTx(ctx)
 	if err != nil {
-		return nil, errs.E(op, errs.Database, ctl.App.Datastorer.RollbackTx(err))
+		return nil, errs.E(op, err)
 	}
 
-	if err := ctl.App.Datastorer.CommitTx(); err != nil {
+	// NewTransactor gives back either a MockTx or a concrete
+	// Tx, depending upon whether the Tx from Datastorer is nil or not
+	t, err := movieDatastore.NewTransactor(tx)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	// Call the Update method of the Transactor to update data on
+	// the database (unless mocked, of course). If an error occurs,
+	// rollback the transaction
+	err = t.Update(ctx, m)
+	if err != nil {
+		return nil, errs.E(op, ctl.App.Datastorer.RollbackTx(tx, err))
+	}
+
+	// Commit the Transaction
+	if err := ctl.App.Datastorer.CommitTx(tx); err != nil {
 		return nil, errs.E(op, errs.Database, err)
 	}
 
-	mr := newMovieResponse(m)
+	// Populate the response
+	response := ctl.NewSingleMovieResponse(newMovieResponse(m))
 
-	smr := ctl.NewSingleMovieResponse(mr)
+	return response, nil
+}
 
-	return smr, nil
+// Delete removes the movie given the id sent in
+func (ctl *MovieController) Delete(ctx context.Context, id string) (*DeleteMovieResponse, error) {
+	const op errs.Op = "controller/movieController/MovieController.Update"
+
+	// NewSelector returns either a concrete DB or a MockDB,
+	// depending on whether the Datastorer sql.DB is nil or not
+	s, err := movieDatastore.NewSelector(ctl.App.Datastorer.DB())
+	if err != nil {
+		return nil, errs.E(op, errs.Database, err)
+	}
+
+	// Find the Movie by ID using the selector.FindByID method
+	m, err := s.FindByID(ctx, id)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	tx, err := ctl.App.Datastorer.BeginTx(ctx)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	// NewTransactor gives back either a MockTx or a concrete
+	// Tx, depending upon whether the Tx from Datastorer is nil or not
+	t, err := movieDatastore.NewTransactor(tx)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	// Delete method of Transactor physically deletes the record
+	// from the DB, unless mocked
+	err = t.Delete(ctx, m)
+	if err != nil {
+		return nil, errs.E(op, ctl.App.Datastorer.RollbackTx(tx, err))
+	}
+
+	// Commit the Transaction
+	if err := ctl.App.Datastorer.CommitTx(tx); err != nil {
+		return nil, errs.E(op, errs.Database, err)
+	}
+
+	// Populate the response
+	response := newDeleteMovieResponse(m, ctl.SRF)
+
+	return response, nil
 }
 
 // FindByID finds a movie given its' unique ID
 func (ctl *MovieController) FindByID(ctx context.Context, id string) (*SingleMovieResponse, error) {
 	const op errs.Op = "controller/movieController/MovieController.FindByID"
 
-	mds, err := movieDatastore.NewMovieDatastorer(ctl.App)
-	if err != nil {
-		return nil, errs.E(op, err)
-	}
-
-	m, err := mds.FindByID(ctx, id)
+	// NewSelector returns either a concrete DB or a MockDB,
+	// depending on whether the Datastorer sql.DB is nil or not
+	s, err := movieDatastore.NewSelector(ctl.App.Datastorer.DB())
 	if err != nil {
 		return nil, errs.E(op, errs.Database, err)
 	}
 
-	mr := newMovieResponse(m)
+	// Find the Movie by ID using the selector.FindByID method
+	m, err := s.FindByID(ctx, id)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
 
-	response := ctl.NewSingleMovieResponse(mr)
+	// Populate the response
+	response := ctl.NewSingleMovieResponse(newMovieResponse(m))
 
 	return response, nil
 }
@@ -207,17 +281,21 @@ func (ctl *MovieController) FindByID(ctx context.Context, id string) (*SingleMov
 func (ctl *MovieController) FindAll(ctx context.Context) (*ListMovieResponse, error) {
 	const op errs.Op = "controller/movieController/MovieController.FindAll"
 
-	mds, err := movieDatastore.NewMovieDatastorer(ctl.App)
-	if err != nil {
-		return nil, errs.E(op, err)
-	}
-
-	ms, err := mds.FindAll(ctx)
+	// NewSelector returns either a concrete DB or a MockDB,
+	// depending on whether the Datastorer sql.DB is nil or not
+	s, err := movieDatastore.NewSelector(ctl.App.Datastorer.DB())
 	if err != nil {
 		return nil, errs.E(op, errs.Database, err)
 	}
 
-	response := ctl.NewListMovieResponse(ms)
+	// Find the list of all Movies using the selector.FindAll method
+	movies, err := s.FindAll(ctx)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	// Populate the response
+	response := ctl.NewListMovieResponse(movies)
 
 	return response, nil
 }
@@ -263,37 +341,4 @@ func newMovie(am *MovieRequest) (*movie.Movie, error) {
 		Director: am.Director,
 		Writer:   am.Writer,
 	}, nil
-}
-
-// Delete removes the movie given the id sent in
-func (ctl *MovieController) Delete(ctx context.Context, id string) (*DeleteMovieResponse, error) {
-	const op errs.Op = "controller/movieController/MovieController.Update"
-
-	err := ctl.App.Datastorer.BeginTx(ctx)
-	if err != nil {
-		return nil, errs.E(op, err)
-	}
-
-	mds, err := movieDatastore.NewMovieDatastorer(ctl.App)
-	if err != nil {
-		return nil, errs.E(op, err)
-	}
-
-	m, err := mds.FindByID(ctx, id)
-	if err != nil {
-		return nil, errs.E(op, errs.Database, ctl.App.Datastorer.RollbackTx(err))
-	}
-
-	err = mds.Delete(ctx, m)
-	if err != nil {
-		return nil, errs.E(op, errs.Database, ctl.App.Datastorer.RollbackTx(err))
-	}
-
-	resp := newDeleteMovieResponse(m, ctl.SRF)
-
-	if err := ctl.App.Datastorer.CommitTx(); err != nil {
-		return nil, errs.E(op, errs.Database, err)
-	}
-
-	return resp, nil
 }

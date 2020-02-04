@@ -15,21 +15,25 @@ func NewMockDatastore() *MockDatastore {
 type MockDatastore struct {
 }
 
+func (mds *MockDatastore) DB() *sql.DB {
+	return nil
+}
+
 // BeginTx is a wrapper for sql.DB.BeginTx in order to expose from
 // the Datastore interface
-func (db *MockDatastore) BeginTx(_ context.Context) error {
-	return nil
+func (mds *MockDatastore) BeginTx(_ context.Context) (*sql.Tx, error) {
+	return nil, nil
 }
 
 // Tx exposes the Tx stored in the struct in order to be exposed from
 // the Datastore interface.
-func (db *MockDatastore) Tx() (*sql.Tx, error) {
+func (mds *MockDatastore) Tx() (*sql.Tx, error) {
 	return nil, nil
 }
 
 // RollbackTx is a wrapper for sql.Tx.Rollback in order to expose from
 // the Datastore interface. Proper error handling is also considered.
-func (db *MockDatastore) RollbackTx(err error) error {
+func (mds *MockDatastore) RollbackTx(_ *sql.Tx, err error) error {
 	const op errs.Op = "datastore/MockDS.RollbackTx"
 
 	return errs.E(op, errs.Database, err)
@@ -37,6 +41,6 @@ func (db *MockDatastore) RollbackTx(err error) error {
 
 // CommitTx is a wrapper for sql.Tx.Commit in order to expose from
 // the Datastore interface. Proper error handling is also considered.
-func (db *MockDatastore) CommitTx() error {
+func (mds *MockDatastore) CommitTx(_ *sql.Tx) error {
 	return nil
 }

@@ -5,50 +5,82 @@ import (
 	"database/sql"
 
 	"github.com/gilcrest/errs"
-	"github.com/gilcrest/go-api-basic/app"
-	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/gilcrest/go-api-basic/domain/movie"
 	"github.com/google/uuid"
 )
 
-// MovieDS is the interface for the persistence layer for a movie
-type MovieDatastorer interface {
-	Create(context.Context, *movie.Movie) error
+// NewTransactor sets up either a concrete Tx or a MockTx
+// depending on whether the tx parameter is nil or not
+func NewTransactor(tx *sql.Tx) (Transactor, error) {
+	const op errs.Op = "movieDatastore/NewMovieWriter"
+
+	var (
+		t   Transactor
+		err error
+	)
+	if tx != nil {
+		t, err = NewTx(tx)
+		if err != nil {
+			return nil, errs.E(op, err)
+		}
+	} else {
+		t = NewMockTx()
+	}
+	return t, nil
+}
+
+// MovieWriter performs DML actions against the DB
+type Transactor interface {
+	Create(ctx context.Context, m *movie.Movie) error
+	Update(ctx context.Context, m *movie.Movie) error
+	Delete(ctx context.Context, m *movie.Movie) error
+}
+
+// NewSelector sets up either a concrete DB or a MockDB
+// depending on whether the db parameter is nil or not
+func NewSelector(db *sql.DB) (Selector, error) {
+	const op errs.Op = "movieDatastore/NewMovieReader"
+
+	var (
+		s   Selector
+		err error
+	)
+	if db != nil {
+		s, err = NewDB(db)
+		if err != nil {
+			return nil, errs.E(op, err)
+		}
+	} else {
+		s = NewMockDB()
+	}
+	return s, nil
+}
+
+// MovieReader reads records from the db
+type Selector interface {
 	FindByID(context.Context, string) (*movie.Movie, error)
 	FindAll(context.Context) ([]*movie.Movie, error)
-	Update(context.Context, *movie.Movie) error
-	Delete(context.Context, *movie.Movie) error
 }
 
-// NewMovieDS sets up either a concrete MovieDB or a MockMovieDB
-// depending on the underlying struct of the Datastore passed in
-func NewMovieDatastorer(app *app.Application) (MovieDatastorer, error) {
-	const op errs.Op = "movieDatastore/NewMovieDatastorer"
-
-	// Use a type switch to determine if the app datastore is a Mock
-	// Datastore, if so, then return MockMovieDB, otherwise use
-	// composition to add the Datastore to the MovieDB struct
-	switch ds := app.Datastorer.(type) {
-	case *datastore.MockDatastore:
-		return &MockMovieDB{}, nil
-	case *datastore.Datastore:
-		return &MovieDatastore{Datastore: ds}, nil
-	default:
-		return nil, errs.E(op, "Unknown type for datastore.Datastorer")
+func NewTx(tx *sql.Tx) (*Tx, error) {
+	const op errs.Op = "movieDatastore/NewMovieTx"
+	if tx == nil {
+		return nil, errs.E(op, errs.MissingField("tx"))
 	}
+	return &Tx{Tx: tx}, nil
 }
 
-// MovieDB is the database implementation for CRUD operations for a movie
-type MovieDatastore struct {
-	*datastore.Datastore
+// MovieTx is the database implementation for DML operations for a movie
+type Tx struct {
+	*sql.Tx
 }
 
 // Create inserts a record in the user table using a stored function
-func (mdb *MovieDatastore) Create(ctx context.Context, m *movie.Movie) error {
+func (t *Tx) Create(ctx context.Context, m *movie.Movie) error {
 	const op errs.Op = "movie/Movie.createDB"
 
 	// Prepare the sql statement using bind variables
-	stmt, err := mdb.Tx.PrepareContext(ctx, `
+	stmt, err := t.Tx.PrepareContext(ctx, `
 	select o_create_timestamp,
 		   o_update_timestamp
 	  from demo.create_movie (
@@ -76,17 +108,17 @@ func (mdb *MovieDatastore) Create(ctx context.Context, m *movie.Movie) error {
 	// Execute stored function that returns the create_date timestamp,
 	// hence the use of QueryContext instead of Exec
 	rows, err := stmt.QueryContext(ctx,
-		m.ID,       //$1
-		m.ExtlID,   //$2
-		m.Title,    //$3
-		m.Year,     //$4
-		m.Rated,    //$5
-		m.Released, //$6
-		m.RunTime,  //$7
-		m.Director, //$8
-		m.Writer,   //$9
-		fakeUserID, //$10
-		fakeUserID) //$11
+		m.ID,         //$1
+		m.ExternalID, //$2
+		m.Title,      //$3
+		m.Year,       //$4
+		m.Rated,      //$5
+		m.Released,   //$6
+		m.RunTime,    //$7
+		m.Director,   //$8
+		m.Writer,     //$9
+		fakeUserID,   //$10
+		fakeUserID)   //$11
 
 	if err != nil {
 		return errs.E(op, err)
@@ -111,11 +143,11 @@ func (mdb *MovieDatastore) Create(ctx context.Context, m *movie.Movie) error {
 
 // Update updates a record in the database using the external ID of
 // the Movie
-func (mdb *MovieDatastore) Update(ctx context.Context, m *movie.Movie) error {
+func (t *Tx) Update(ctx context.Context, m *movie.Movie) error {
 	const op errs.Op = "movieDatastore/MockMovieDB.Update"
 
 	// Prepare the sql statement using bind variables
-	stmt, err := mdb.Tx.PrepareContext(ctx, `
+	stmt, err := t.Tx.PrepareContext(ctx, `
 	update demo.movie
 	   set title = $1,
 		   year = $2,
@@ -150,7 +182,7 @@ func (mdb *MovieDatastore) Update(ctx context.Context, m *movie.Movie) error {
 		m.Writer,          //$7
 		fakeUserID,        //$8
 		m.UpdateTimestamp, //$9
-		m.ExtlID)          //$10
+		m.ExternalID)      //$10
 
 	if err != nil {
 		return errs.E(op, err)
@@ -185,12 +217,52 @@ func (mdb *MovieDatastore) Update(ctx context.Context, m *movie.Movie) error {
 	return nil
 }
 
+// Delete removes the Movie record from the table
+func (t *Tx) Delete(ctx context.Context, m *movie.Movie) error {
+	const op errs.Op = "movie/MovieDB.Delete"
+
+	result, execErr := t.Tx.ExecContext(ctx,
+		`DELETE from demo.movie
+		  WHERE movie_id = $1`, m.ID)
+
+	if execErr != nil {
+		return errs.E(op, errs.Database, execErr)
+	}
+
+	// Only 1 row should be deleted, check the result count to
+	// ensure this is correct
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return errs.E(op, errs.Database, err)
+	}
+	if rowsAffected == 0 {
+		return errs.E(op, errs.Database, "No Rows Deleted")
+	} else if rowsAffected > 1 {
+		return errs.E(op, errs.Database, "Too Many Rows Deleted")
+	}
+
+	return nil
+}
+
+func NewDB(db *sql.DB) (*DB, error) {
+	const op errs.Op = "movieDatastore/NewMovieDB"
+	if db == nil {
+		return nil, errs.E(op, errs.MissingField("db"))
+	}
+	return &DB{DB: db}, nil
+}
+
+// MovieTx is the database implementation for DML operations for a movie
+type DB struct {
+	*sql.DB
+}
+
 // FindByID returns a Movie struct to populate the response
-func (mdb *MovieDatastore) FindByID(ctx context.Context, extlID string) (*movie.Movie, error) {
+func (d *DB) FindByID(ctx context.Context, extlID string) (*movie.Movie, error) {
 	const op errs.Op = "movieDatastore/MovieDB.FindByID"
 
 	// Prepare the sql statement using bind variables
-	row := mdb.DB.QueryRowContext(ctx,
+	row := d.DB.QueryRowContext(ctx,
 		`select movie_id,
 				extl_id,
 				title,
@@ -208,7 +280,7 @@ func (mdb *MovieDatastore) FindByID(ctx context.Context, extlID string) (*movie.
 	m := new(movie.Movie)
 	err := row.Scan(
 		&m.ID,
-		&m.ExtlID,
+		&m.ExternalID,
 		&m.Title,
 		&m.Year,
 		&m.Rated,
@@ -229,11 +301,11 @@ func (mdb *MovieDatastore) FindByID(ctx context.Context, extlID string) (*movie.
 }
 
 // FindAll returns a slice of Movie structs to populate the response
-func (mdb *MovieDatastore) FindAll(ctx context.Context) ([]*movie.Movie, error) {
+func (d *DB) FindAll(ctx context.Context) ([]*movie.Movie, error) {
 	const op errs.Op = "movieDatastore/MovieDB.FindAll"
 
 	// use QueryContext to get back sql.Rows
-	rows, err := mdb.DB.QueryContext(ctx,
+	rows, err := d.DB.QueryContext(ctx,
 		`select movie_id,
 				extl_id,
 				title,
@@ -261,7 +333,7 @@ func (mdb *MovieDatastore) FindAll(ctx context.Context) ([]*movie.Movie, error) 
 		m := new(movie.Movie)
 		err = rows.Scan(
 			&m.ID,
-			&m.ExtlID,
+			&m.ExternalID,
 			&m.Title,
 			&m.Year,
 			&m.Rated,
@@ -301,31 +373,4 @@ func (mdb *MovieDatastore) FindAll(ctx context.Context) ([]*movie.Movie, error) 
 
 	// return the slice
 	return s, nil
-}
-
-// Delete removes the Movie record from the table
-func (mdb *MovieDatastore) Delete(ctx context.Context, m *movie.Movie) error {
-	const op errs.Op = "movie/MovieDB.Delete"
-
-	result, execErr := mdb.Tx.ExecContext(ctx,
-		`DELETE from demo.movie
-		  WHERE movie_id = $1`, m.ID)
-
-	if execErr != nil {
-		return errs.E(op, errs.Database, execErr)
-	}
-
-	// Only 1 row should be deleted, check the result count to
-	// ensure this is correct
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return errs.E(op, errs.Database, err)
-	}
-	if rowsAffected == 0 {
-		return errs.E(op, errs.Database, "No Rows Deleted")
-	} else if rowsAffected > 1 {
-		return errs.E(op, errs.Database, "Too Many Rows Deleted")
-	}
-
-	return nil
 }
