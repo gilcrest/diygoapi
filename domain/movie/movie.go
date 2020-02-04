@@ -12,7 +12,7 @@ import (
 // Movie holds details of a movie
 type Movie struct {
 	ID              uuid.UUID
-	ExtlID          string
+	ExternalID      string
 	Title           string
 	Year            int
 	Rated           string
@@ -58,7 +58,7 @@ func (m *Movie) Add(ctx context.Context) error {
 	if err != nil {
 		return errs.E(op, errs.Validation, errs.Internal, err)
 	}
-	m.ExtlID = id
+	m.ExternalID = id
 
 	return nil
 }
@@ -67,7 +67,7 @@ func (m *Movie) Add(ctx context.Context) error {
 func (m *Movie) Update(ctx context.Context, id string) error {
 	const op errs.Op = "movie/Movie.Update"
 
-	m.ExtlID = id
+	m.ExternalID = id
 	m.UpdateTimestamp = time.Now().UTC()
 
 	return nil
