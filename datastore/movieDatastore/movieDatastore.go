@@ -29,7 +29,7 @@ func NewTransactor(tx *sql.Tx) (Transactor, error) {
 	return t, nil
 }
 
-// MovieWriter performs DML actions against the DB
+// Transactor performs DML actions against the DB
 type Transactor interface {
 	Create(ctx context.Context, m *movie.Movie) error
 	Update(ctx context.Context, m *movie.Movie) error
@@ -56,7 +56,7 @@ func NewSelector(db *sql.DB) (Selector, error) {
 	return s, nil
 }
 
-// MovieReader reads records from the db
+// Selector reads records from the db
 type Selector interface {
 	FindByID(context.Context, string) (*movie.Movie, error)
 	FindAll(context.Context) ([]*movie.Movie, error)
