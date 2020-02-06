@@ -4,7 +4,7 @@
 # Unignore all with extensions
 !*.*
 
-# Unignore all dirs
+# Unignore all directories
 !*/
 
 # Unignore Dockerfile
@@ -34,11 +34,8 @@ tasks.json
 # Project-local glide cache, RE: https://github.com/Masterminds/glide/issues/736
 .glide/
 
-# IntelliJ Gogland directory and files
+# IntelliJ Goland directory and files
 .idea/
 
 # Docker env files
 *.env
-
-# Docker AWS build script
-dockerAWSBuild.sh
