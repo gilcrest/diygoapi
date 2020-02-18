@@ -1,9 +1,10 @@
 package main
 
 import (
-	"github.com/justinas/alice"
 	"github.com/gilcrest/go-api-basic/handler"
 	"github.com/gorilla/mux"
+	"github.com/justinas/alice"
+	"net/http"
 )
 
 func newRouter(hdl *handler.AppHandler) *mux.Router {
@@ -23,9 +24,11 @@ func newRouter(hdl *handler.AppHandler) *mux.Router {
 		alice.New(
 			hdl.AddStandardResponseHeaders,
 			hdl.AddRequestID).
-			ThenFunc(hdl.AddMovie())).
+			Then(http.HandlerFunc(hdl.AddMovie))).
 		Methods("POST").
 		Headers("Content-Type", "application/json")
+
+	//chain := alice.New(th.Throttle, timeoutHandler, nosurf.NewPure).Then(myHandler)
 
 	// Match only GET requests having an ID at /api/v1/movies/{id}
 	// with the Content-Type header = application/json
@@ -33,7 +36,7 @@ func newRouter(hdl *handler.AppHandler) *mux.Router {
 		alice.New(
 			hdl.AddStandardResponseHeaders,
 			hdl.AddRequestID).
-			ThenFunc(hdl.FindByID())).
+			Then(http.HandlerFunc(hdl.FindByID))).
 		Methods("GET")
 
 	// Match only GET requests /api/v1/movies
@@ -42,7 +45,7 @@ func newRouter(hdl *handler.AppHandler) *mux.Router {
 		alice.New(
 			hdl.AddStandardResponseHeaders,
 			hdl.AddRequestID).
-			ThenFunc(hdl.FindAll())).
+			Then(http.HandlerFunc(hdl.FindAll))).
 		Methods("GET")
 
 	// Match only PUT requests having an ID at /api/v1/movies/{id}
@@ -51,7 +54,7 @@ func newRouter(hdl *handler.AppHandler) *mux.Router {
 		alice.New(
 			hdl.AddStandardResponseHeaders,
 			hdl.AddRequestID).
-			ThenFunc(hdl.Update())).
+			Then(http.HandlerFunc(hdl.Update))).
 		Methods("PUT").
 		Headers("Content-Type", "application/json")
 
@@ -60,7 +63,7 @@ func newRouter(hdl *handler.AppHandler) *mux.Router {
 		alice.New(
 			hdl.AddStandardResponseHeaders,
 			hdl.AddRequestID).
-			ThenFunc(hdl.Delete())).
+			Then(http.HandlerFunc(hdl.Delete))).
 		Methods("DELETE")
 
 	return rtr
