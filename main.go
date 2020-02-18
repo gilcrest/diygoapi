@@ -20,6 +20,7 @@ type cliFlags struct {
 }
 
 func main() {
+	// Initialize cliFlags and return a pointer to it
 	cf := new(cliFlags)
 
 	// loglvl flag allows for setting logging level, e.g. to run the server
@@ -40,8 +41,10 @@ func main() {
 	// will be returned. If not set, defaults to false (not in "mock mode")
 	flag.StringVar(&cf.datastore, "datastore", "local", "sets the app datastore")
 
+	// listen flag is used for the http.ListenAndServe addr field
 	addr := flag.String("listen", ":8080", "port to listen for HTTP on")
 
+	// Parse the command line flags from above
 	flag.Parse()
 
 	// determine logging level
@@ -53,52 +56,61 @@ func main() {
 	// get Datastore name
 	dsName := newDSName(cf)
 
-	// initialize local variables
-	var (
-		srv     *server.Server
-		cleanup func()
-		err     error
-	)
-
+	// initialize a non-nil, empty context
 	ctx := context.Background()
-	switch {
-	case envName == app.Local:
-		switch dsName {
-		case datastore.LocalDatastore:
-			srv, cleanup, err = setupApp(ctx, envName, dsName, loglvl)
-		case datastore.GCPCPDatastore:
-			srv, cleanup, err = setupApp(ctx, envName, dsName, loglvl)
-		case datastore.GCPDatastore:
-			srv, cleanup, err = setupApp(ctx, envName, dsName, loglvl)
-		case datastore.MockedDatastore:
-			srv, cleanup, err = setupAppwMock(ctx, envName, dsName, loglvl)
-		default:
-			log.Fatal().Msgf("unknown datastore name = %s", dsName)
-		}
-	case envName == app.QA:
-		switch dsName {
-		case datastore.LocalDatastore:
-			srv, cleanup, err = setupApp(ctx, envName, dsName, loglvl)
-		case datastore.GCPCPDatastore:
-			srv, cleanup, err = setupApp(ctx, envName, dsName, loglvl)
-		case datastore.GCPDatastore:
-			srv, cleanup, err = setupApp(ctx, envName, dsName, loglvl)
-		case datastore.MockedDatastore:
-			srv, cleanup, err = setupAppwMock(ctx, envName, dsName, loglvl)
-		default:
-			log.Fatal().Msgf("unknown datastore name = %s", dsName)
-		}
-	default:
-		log.Fatal().Msgf("unknown environment name = %s", envName)
-	}
+
+	// newServer function returns a pointer to a gocloud server
+	// a cleanup function and an error
+	srv, cleanup, err := newServer(ctx, envName, dsName, loglvl)
 	if err != nil {
-		log.Fatal().Err(err).Msg("Error returned from main switch")
+		log.Fatal().Err(err).Msg("Error returned from newServer")
 	}
 	defer cleanup()
 
 	// Listen and serve HTTP
 	log.Log().Msgf("Running, connected to the %s environment, Datastore is set to %s", envName, dsName)
 	log.Fatal().Err(srv.ListenAndServe(*addr))
+}
+
+func newServer(ctx context.Context, envName app.EnvName, dsName datastore.Name, loglvl zerolog.Level) (*server.Server, func(), error) {
+	// initialize local variables
+	var (
+		srv     *server.Server
+		cleanup func()
+		err     error
+	)
+	// The switch below is meant to show how you may want to setup a
+	// different datastore for different environments. For instance,
+	// I've decided that QA is where I'll deploy the app to GCP's
+	// "Cloud Run", so I don't consider any local connections there
+	// and the opposite for Local, I don't allow for GCPDatastore
+	// there - only connections I could actually connect to locally.
+	// The MockedDatastore is available in all environments
+	switch {
+	case envName == app.Local:
+		switch dsName {
+		case datastore.LocalDatastore: // Connect to the Local Datastore
+			srv, cleanup, err = setupApp(ctx, envName, dsName, loglvl)
+		case datastore.GCPCPDatastore: // Connect to the GCP Cloud Proxy Datastore
+			srv, cleanup, err = setupApp(ctx, envName, dsName, loglvl)
+		case datastore.MockedDatastore: // Connect to the Mocked Datastore
+			srv, cleanup, err = setupAppwMock(ctx, envName, dsName, loglvl)
+		default:
+			log.Fatal().Msgf("unknown datastore name (%s) for the %s environment", dsName)
+		}
+	case envName == app.QA:
+		switch dsName {
+		case datastore.GCPDatastore:
+			srv, cleanup, err = setupApp(ctx, envName, dsName, loglvl)
+		case datastore.MockedDatastore:
+			srv, cleanup, err = setupAppwMock(ctx, envName, dsName, loglvl)
+		default:
+			log.Fatal().Msgf("unknown datastore name (%s) for the %s environment", dsName)
+		}
+	default:
+		log.Fatal().Msgf("unknown environment name = %s", envName)
+	}
+	return srv, cleanup, err
 }
 
 // newEnvName sets up the environment name (e.g. Production, Staging, QA, etc.)
@@ -124,6 +136,8 @@ func newEnvName(flags *cliFlags) app.EnvName {
 	return name
 }
 
+// newDatastoreName determines the datastore.Name based on
+// flags passed in
 func newDSName(flags *cliFlags) datastore.Name {
 
 	switch flags.datastore {
