@@ -14,6 +14,13 @@ import (
 func (ah *AppHandler) AddMovie(w http.ResponseWriter, r *http.Request) {
 	const op errs.Op = "handler/AppHandler.AddMovie"
 
+	// If the request body is nil, json.NewDecoder will panic
+	// avoid that by checking for nil in advance
+	if r.Body == nil {
+		err := errs.RE(http.StatusBadRequest, errs.InvalidRequest, errs.E(op, "Request Body cannot be empty"))
+		errs.HTTPError(w, err)
+		return
+	}
 	// Declare rqst as an instance of movieController.MovieRequest
 	rqst := new(movieController.MovieRequest)
 	// Decode JSON HTTP request body into a Decoder type
@@ -115,6 +122,14 @@ func (ah *AppHandler) FindAll(w http.ResponseWriter, r *http.Request) {
 // and updates the given movie
 func (ah *AppHandler) Update(w http.ResponseWriter, r *http.Request) {
 	const op errs.Op = "handler/AppHandler.Update"
+
+	// If the request body is nil, json.NewDecoder will panic
+	// avoid that by checking for nil in advance
+	if r.Body == nil {
+		err := errs.RE(http.StatusBadRequest, errs.InvalidRequest, errs.E(op, "Request Body cannot be empty"))
+		errs.HTTPError(w, err)
+		return
+	}
 
 	vars := mux.Vars(r)
 	id := vars["id"]
