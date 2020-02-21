@@ -29,7 +29,7 @@ var applicationSet = wire.NewSet(
 	newRouter,
 	wire.Bind(new(http.Handler), new(*mux.Router)),
 	handler.NewAppHandler,
-	newLogger,
+	app.NewLogger,
 )
 
 // goCloudServerSet

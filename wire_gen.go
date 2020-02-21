@@ -32,7 +32,7 @@ func setupApp(ctx context.Context, envName app.EnvName, dsName datastore.Name, l
 		return nil, nil, err
 	}
 	datastoreDatastore := datastore.NewDatastore(db)
-	logger := newLogger(loglvl)
+	logger := app.NewLogger(loglvl)
 	application := app.NewApplication(envName, datastoreDatastore, logger)
 	appHandler := handler.NewAppHandler(application)
 	router := newRouter(appHandler)
@@ -61,7 +61,7 @@ var (
 
 func setupAppwMock(ctx context.Context, envName app.EnvName, dsName datastore.Name, loglvl zerolog.Level) (*server.Server, func(), error) {
 	mockDatastore := datastore.NewMockDatastore()
-	logger := newLogger(loglvl)
+	logger := app.NewLogger(loglvl)
 	application := app.NewApplication(envName, mockDatastore, logger)
 	appHandler := handler.NewAppHandler(application)
 	router := newRouter(appHandler)
@@ -88,7 +88,7 @@ var (
 
 // applicationSet is the Wire provider set for the Guestbook application that
 // does not depend on the underlying platform.
-var applicationSet = wire.NewSet(app.NewApplication, newRouter, wire.Bind(new(http.Handler), new(*mux.Router)), handler.NewAppHandler, newLogger)
+var applicationSet = wire.NewSet(app.NewApplication, newRouter, wire.Bind(new(http.Handler), new(*mux.Router)), handler.NewAppHandler, app.NewLogger)
 
 // goCloudServerSet
 var goCloudServerSet = wire.NewSet(trace.AlwaysSample, server.New, server.NewDefaultDriver, wire.Bind(new(driver.Server), new(*server.DefaultDriver)), wire.Bind(new(requestlog.Logger), new(*requestLogger)), newRequestLogger)

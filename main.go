@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"os"
-
 	"github.com/gilcrest/go-api-basic/app"
 	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/rs/zerolog"
@@ -153,20 +151,6 @@ func newDSName(flags *cliFlags) datastore.Name {
 		return datastore.MockedDatastore
 	}
 
-}
-
-// NewLogger sets up the zerolog.Logger
-func newLogger(lvl zerolog.Level) zerolog.Logger {
-	// empty string for TimeFieldFormat will write logs with UNIX time
-	zerolog.TimeFieldFormat = ""
-	// set logging level based on input
-	zerolog.SetGlobalLevel(lvl)
-	// start a new logger with Stdout as the target
-	lgr := zerolog.New(os.Stdout).With().Timestamp().Logger()
-
-	lgr.Log().Msgf("Logging Level set to %s", lvl)
-
-	return lgr
 }
 
 // newLogLevel sets up the logging level (e.g. Debug, Info, Error, etc.)
