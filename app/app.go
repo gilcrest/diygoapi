@@ -3,10 +3,10 @@ package app
 import (
 	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/rs/zerolog"
+	"os"
 )
 
-// Application is the main server struct for Guestbook. It contains the state of
-// the most recently read message of the day.
+// Application contains the app configurations and Datastore
 type Application struct {
 	// Environment Name
 	EnvName EnvName
@@ -52,4 +52,18 @@ func (n EnvName) String() string {
 		return "Local"
 	}
 	return "unknown_name"
+}
+
+// NewLogger sets up the zerolog.Logger
+func NewLogger(lvl zerolog.Level) zerolog.Logger {
+	// empty string for TimeFieldFormat will write logs with UNIX time
+	zerolog.TimeFieldFormat = ""
+	// set logging level based on input
+	zerolog.SetGlobalLevel(lvl)
+	// start a new logger with Stdout as the target
+	lgr := zerolog.New(os.Stdout).With().Timestamp().Logger()
+
+	lgr.Log().Msgf("Logging Level set to %s", lvl)
+
+	return lgr
 }
