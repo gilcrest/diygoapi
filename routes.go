@@ -23,7 +23,7 @@ func newRouter(hdl *handler.AppHandler) *mux.Router {
 	rtr.Handle("/v1/movies",
 		alice.New(
 			hdl.AddStandardResponseHeaders,
-			hdl.AddRequestID).
+			hdl.SetStandardResponseFields).
 			Then(http.HandlerFunc(hdl.AddMovie))).
 		Methods("POST").
 		Headers("Content-Type", "application/json")
@@ -35,7 +35,7 @@ func newRouter(hdl *handler.AppHandler) *mux.Router {
 	rtr.Handle("/v1/movies/{id}",
 		alice.New(
 			hdl.AddStandardResponseHeaders,
-			hdl.AddRequestID).
+			hdl.SetStandardResponseFields).
 			Then(http.HandlerFunc(hdl.FindByID))).
 		Methods("GET")
 
@@ -44,7 +44,7 @@ func newRouter(hdl *handler.AppHandler) *mux.Router {
 	rtr.Handle("/v1/movies",
 		alice.New(
 			hdl.AddStandardResponseHeaders,
-			hdl.AddRequestID).
+			hdl.SetStandardResponseFields).
 			Then(http.HandlerFunc(hdl.FindAll))).
 		Methods("GET")
 
@@ -53,7 +53,7 @@ func newRouter(hdl *handler.AppHandler) *mux.Router {
 	rtr.Handle("/v1/movies/{id}",
 		alice.New(
 			hdl.AddStandardResponseHeaders,
-			hdl.AddRequestID).
+			hdl.SetStandardResponseFields).
 			Then(http.HandlerFunc(hdl.Update))).
 		Methods("PUT").
 		Headers("Content-Type", "application/json")
@@ -62,7 +62,7 @@ func newRouter(hdl *handler.AppHandler) *mux.Router {
 	rtr.Handle("/v1/movies/{id}",
 		alice.New(
 			hdl.AddStandardResponseHeaders,
-			hdl.AddRequestID).
+			hdl.SetStandardResponseFields).
 			Then(http.HandlerFunc(hdl.Delete))).
 		Methods("DELETE")
 
