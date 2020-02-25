@@ -26,7 +26,8 @@ type MockMovie struct {
 func (m *MockMovie) Add(ctx context.Context) error {
 	const op errs.Op = "movie/MockMovie.Add"
 
-	m.ExternalID = "8675309"
+	m.ID = uuid.MustParse("b7f34380-386d-4142-b9a0-3834d6e2288e")
+	m.ExternalID = "mlPb1YimScrEsmJJa3Xd"
 
 	return nil
 }
@@ -35,8 +36,7 @@ func (m *MockMovie) Add(ctx context.Context) error {
 func (m *MockMovie) Update(ctx context.Context, id string) error {
 	const op errs.Op = "movie/MockMovie.Update"
 
-	//m.ID = "1234567"
-	m.ExternalID = "8675309"
+	m.UpdateTimestamp = time.Date(2020, time.February, 25, 0, 0, 0, 0, time.UTC)
 
 	return nil
 }

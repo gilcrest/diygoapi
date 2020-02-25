@@ -62,7 +62,7 @@ func TestAppHandler_AddMovie(t *testing.T) {
 
 	resf := responseFields{
 		Status:       http.StatusOK,
-		ResponseBody: `{"path":"/api/v1/movies","trace_id":"bpa182jipt3b2b78879g","data":{"external_id":"8675309","title":"Repo Man","year":1984,"rated":"R","release_date":"1984-03-02T00:00:00Z","run_time":92,"director":"Alex Cox","writer":"Alex Cox","create_timestamp":"0001-01-01T00:00:00Z","update_timestamp":"0001-01-01T00:00:00Z"}}`,
+		ResponseBody: `{"data":{"external_id":"mlPb1YimScrEsmJJa3Xd","title":"Repo Man","year":1984,"rated":"R","release_date":"1984-03-02T00:00:00Z","run_time":92,"director":"Alex Cox","writer":"Alex Cox","create_timestamp":"2020-02-25T00:00:00Z","update_timestamp":"2020-02-25T00:00:00Z"}}`,
 	}
 
 	tests := []struct {
@@ -85,7 +85,7 @@ func TestAppHandler_AddMovie(t *testing.T) {
 			rr := httptest.NewRecorder()
 
 			a := app.NewMockedApplication(app.Local, datastore.NewMockDatastore(), app.NewLogger(zerolog.DebugLevel))
-			appHandler := NewMockAppHandler(a, req)
+			appHandler := NewAppHandler(a)
 			handler := http.HandlerFunc(appHandler.AddMovie)
 
 			// Gorilla handlers satisfy http.Handler, so we can call their ServeHTTP method

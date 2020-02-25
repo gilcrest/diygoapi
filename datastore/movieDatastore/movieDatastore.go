@@ -77,7 +77,7 @@ type Tx struct {
 
 // Create inserts a record in the user table using a stored function
 func (t *Tx) Create(ctx context.Context, ma movie.Adder) error {
-	const op errs.Op = "movie/Movie.createDB"
+	const op errs.Op = "movieDatastore/Tx.Create"
 
 	m, ok := ma.(*movie.Movie)
 	if !ok {
@@ -149,7 +149,7 @@ func (t *Tx) Create(ctx context.Context, ma movie.Adder) error {
 // Update updates a record in the database using the external ID of
 // the Movie
 func (t *Tx) Update(ctx context.Context, mu movie.Updater) error {
-	const op errs.Op = "movieDatastore/MockMovieDB.Update"
+	const op errs.Op = "movieDatastore/Tx.Update"
 
 	m, ok := mu.(*movie.Movie)
 	if !ok {
@@ -229,7 +229,7 @@ func (t *Tx) Update(ctx context.Context, mu movie.Updater) error {
 
 // Delete removes the Movie record from the table
 func (t *Tx) Delete(ctx context.Context, m *movie.Movie) error {
-	const op errs.Op = "movie/MovieDB.Delete"
+	const op errs.Op = "movieDatastore/Tx.Delete"
 
 	result, execErr := t.Tx.ExecContext(ctx,
 		`DELETE from demo.movie
@@ -269,7 +269,7 @@ type DB struct {
 
 // FindByID returns a Movie struct to populate the response
 func (d *DB) FindByID(ctx context.Context, extlID string) (*movie.Movie, error) {
-	const op errs.Op = "movieDatastore/MovieDB.FindByID"
+	const op errs.Op = "movieDatastore/DB.FindByID"
 
 	// Prepare the sql statement using bind variables
 	row := d.DB.QueryRowContext(ctx,
@@ -312,7 +312,7 @@ func (d *DB) FindByID(ctx context.Context, extlID string) (*movie.Movie, error) 
 
 // FindAll returns a slice of Movie structs to populate the response
 func (d *DB) FindAll(ctx context.Context) ([]*movie.Movie, error) {
-	const op errs.Op = "movieDatastore/MovieDB.FindAll"
+	const op errs.Op = "movieDatastore/DB.FindAll"
 
 	// use QueryContext to get back sql.Rows
 	rows, err := d.DB.QueryContext(ctx,

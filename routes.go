@@ -28,8 +28,6 @@ func newRouter(hdl *handler.AppHandler) *mux.Router {
 		Methods("POST").
 		Headers("Content-Type", "application/json")
 
-	//chain := alice.New(th.Throttle, timeoutHandler, nosurf.NewPure).Then(myHandler)
-
 	// Match only GET requests having an ID at /api/v1/movies/{id}
 	// with the Content-Type header = application/json
 	rtr.Handle("/v1/movies/{id}",

@@ -2,11 +2,11 @@ package movieDatastore
 
 import (
 	"context"
+	"github.com/google/uuid"
 	"time"
 
 	"github.com/gilcrest/errs"
 	"github.com/gilcrest/go-api-basic/domain/movie"
-	"github.com/gilcrest/go-api-basic/domain/random"
 	"github.com/rs/zerolog"
 )
 
@@ -20,12 +20,40 @@ type MockTx struct {
 }
 
 // Create is a mock for creating a record
-func (t MockTx) Create(ctx context.Context, m movie.Adder) error {
+func (t MockTx) Create(ctx context.Context, ma movie.Adder) error {
+	const op errs.Op = "movieDatastore/MockTx.Create"
+
+	m, ok := ma.(*movie.MockMovie)
+	if !ok {
+		return errs.E(op, "Invalid type sent as movie.Adder")
+	}
+
+	// I would not recommend actually getting timestamps from the
+	// database on create, but I put in an example of doing it anyway
+	// Because of that, I have to set the timestamps in this mock
+	// as if they were being set by the DB procedure that is being
+	// called
+	m.CreateTimestamp = time.Date(2020, time.February, 25, 0, 0, 0, 0, time.UTC)
+	m.UpdateTimestamp = time.Date(2020, time.February, 25, 0, 0, 0, 0, time.UTC)
+
 	return nil
 }
 
 // Update is a mock for updating a record
-func (t MockTx) Update(ctx context.Context, m movie.Updater) error {
+func (t MockTx) Update(ctx context.Context, mu movie.Updater) error {
+	const op errs.Op = "movieDatastore/MockTx.Update"
+
+	m, ok := mu.(*movie.MockMovie)
+	if !ok {
+		return errs.E(op, "Invalid type sent as movie.Adder")
+	}
+
+	// Updates are a little different - on the non-mock, I am
+	// actually getting back data as part of the update of the
+	// original record that is helpful, so I am recreating that
+	m.ID = uuid.MustParse("b7f34380-386d-4142-b9a0-3834d6e2288e")
+	m.CreateTimestamp = time.Date(2020, time.February, 25, 0, 0, 0, 0, time.UTC)
+
 	return nil
 }
 
@@ -52,7 +80,8 @@ func (d MockDB) FindByID(ctx context.Context, extlID string) (*movie.Movie, erro
 	m1.RunTime = 109
 	m1.Director = "John Carpenter"
 	m1.Writer = "Bill Lancaster"
-	m1.CreateTimestamp = time.Now()
+	m1.CreateTimestamp = time.Date(2020, time.February, 25, 0, 0, 0, 0, time.UTC)
+	m1.UpdateTimestamp = time.Date(2020, time.February, 25, 0, 0, 0, 0, time.UTC)
 
 	return m1, nil
 }
@@ -62,11 +91,8 @@ func (d MockDB) FindAll(ctx context.Context) ([]*movie.Movie, error) {
 	const op errs.Op = "movieDatastore/MockMovieDB.FindAll"
 
 	m1 := new(movie.Movie)
-	eid1, err := random.CryptoString(15)
-	if err != nil {
-		return nil, errs.E(op, errs.Internal, err)
-	}
-	m1.ExternalID = eid1
+	m1.ID = uuid.MustParse("4e58fa6a-5c4e-4e39-b6df-341087d1074b")
+	m1.ExternalID = "Z8MnDR5iw70Z-Q9OIUgH"
 	m1.Title = "The Thing"
 	m1.Year = 1982
 	m1.Rated = "R"
@@ -74,14 +100,12 @@ func (d MockDB) FindAll(ctx context.Context) ([]*movie.Movie, error) {
 	m1.RunTime = 109
 	m1.Director = "John Carpenter"
 	m1.Writer = "Bill Lancaster"
-	m1.CreateTimestamp = time.Now()
+	m1.CreateTimestamp = time.Date(2020, time.February, 25, 0, 0, 0, 0, time.UTC)
+	m1.UpdateTimestamp = time.Date(2020, time.February, 25, 0, 0, 0, 0, time.UTC)
 
 	m2 := new(movie.Movie)
-	eid2, err := random.CryptoString(15)
-	if err != nil {
-		return nil, errs.E(op, errs.Internal, err)
-	}
-	m2.ExternalID = eid2
+	m2.ID = uuid.MustParse("b7f34380-386d-4142-b9a0-3834d6e2288e")
+	m2.ExternalID = "QxKhsURZ08sBP68MufYu"
 	m2.Title = "Repo Man"
 	m2.Year = 1984
 	m2.Rated = "R"
@@ -89,7 +113,8 @@ func (d MockDB) FindAll(ctx context.Context) ([]*movie.Movie, error) {
 	m2.RunTime = 109
 	m2.Director = "Alex Cox"
 	m2.Writer = "Alex Cox"
-	m2.CreateTimestamp = time.Now()
+	m2.CreateTimestamp = time.Date(2020, time.February, 25, 0, 0, 0, 0, time.UTC)
+	m2.UpdateTimestamp = time.Date(2020, time.February, 25, 0, 0, 0, 0, time.UTC)
 
 	s := []*movie.Movie{m1, m2}
 
