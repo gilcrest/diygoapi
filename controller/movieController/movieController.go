@@ -2,6 +2,7 @@ package movieController
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/gilcrest/errs"
@@ -17,8 +18,8 @@ type MovieController struct {
 	SRF controller.StandardResponseFields
 }
 
-// MovieRequest is the request struct
-type MovieRequest struct {
+// RequestBody is the request struct
+type RequestData struct {
 	Title    string `json:"title"`
 	Year     int    `json:"year"`
 	Rated    string `json:"rated"`
@@ -28,8 +29,8 @@ type MovieRequest struct {
 	Writer   string `json:"writer"`
 }
 
-// MovieResponse is the response struct for a single Movie
-type MovieResponse struct {
+// ResponseData is the response struct for a single Movie
+type ResponseData struct {
 	ExternalID      string `json:"external_id"`
 	Title           string `json:"title"`
 	Year            int    `json:"year"`
@@ -45,13 +46,13 @@ type MovieResponse struct {
 // ListMovieResponse is the response struct for multiple Movies
 type ListMovieResponse struct {
 	controller.StandardResponseFields
-	Data []*MovieResponse `json:"data"`
+	Data []*ResponseData `json:"data"`
 }
 
 // SingleMovieResponse is the response struct for multiple Movies
 type SingleMovieResponse struct {
 	controller.StandardResponseFields
-	Data *MovieResponse `json:"data"`
+	Data *ResponseData `json:"data"`
 }
 
 // DeleteMovieResponse is the response struct for deleted Movies
@@ -77,18 +78,38 @@ func newDeleteMovieResponse(m *movie.Movie, srf controller.StandardResponseField
 }
 
 // newMovieResponse is an initializer for MovieResponse
-func newMovieResponse(m *movie.Movie) *MovieResponse {
-	return &MovieResponse{
-		ExternalID:      m.ExternalID,
-		Title:           m.Title,
-		Year:            m.Year,
-		Rated:           m.Rated,
-		Released:        m.Released.Format(time.RFC3339),
-		RunTime:         m.RunTime,
-		Director:        m.Director,
-		Writer:          m.Writer,
-		CreateTimestamp: m.CreateTimestamp.Format(time.RFC3339),
-		UpdateTimestamp: m.UpdateTimestamp.Format(time.RFC3339),
+func newMovieResponse(i interface{}) (*ResponseData, error) {
+	const op errs.Op = "controller/movieController/newMovieResponse"
+
+	switch m := i.(type) {
+	case *movie.Movie:
+		return &ResponseData{
+			ExternalID:      m.ExternalID,
+			Title:           m.Title,
+			Year:            m.Year,
+			Rated:           m.Rated,
+			Released:        m.Released.Format(time.RFC3339),
+			RunTime:         m.RunTime,
+			Director:        m.Director,
+			Writer:          m.Writer,
+			CreateTimestamp: m.CreateTimestamp.Format(time.RFC3339),
+			UpdateTimestamp: m.UpdateTimestamp.Format(time.RFC3339),
+		}, nil
+	case *movie.MockMovie:
+		return &ResponseData{
+			ExternalID:      m.ExternalID,
+			Title:           m.Title,
+			Year:            m.Year,
+			Rated:           m.Rated,
+			Released:        m.Released.Format(time.RFC3339),
+			RunTime:         m.RunTime,
+			Director:        m.Director,
+			Writer:          m.Writer,
+			CreateTimestamp: m.CreateTimestamp.Format(time.RFC3339),
+			UpdateTimestamp: m.UpdateTimestamp.Format(time.RFC3339),
+		}, nil
+	default:
+		return nil, errs.E(op, fmt.Errorf("unknown type %T", m))
 	}
 }
 
@@ -98,17 +119,11 @@ func NewMovieController(app *app.Application, srf controller.StandardResponseFie
 }
 
 // Add adds a movie to the catalog.
-func (ctl *MovieController) Add(ctx context.Context, r *MovieRequest) (*SingleMovieResponse, error) {
+func (ctl *MovieController) Add(ctx context.Context, r *RequestData) (*SingleMovieResponse, error) {
 	const op errs.Op = "controller/movieController/MovieController.Add"
 
 	// Convert request into a Movie struct
-	m, err := newMovie(r)
-	if err != nil {
-		return nil, errs.E(op, err)
-	}
-
-	// Validate the input given from the request
-	err = m.Validate()
+	m, err := ctl.newAdder(r)
 	if err != nil {
 		return nil, errs.E(op, err)
 	}
@@ -146,24 +161,23 @@ func (ctl *MovieController) Add(ctx context.Context, r *MovieRequest) (*SingleMo
 		return nil, errs.E(op, errs.Database, err)
 	}
 
+	rd, err := newMovieResponse(m)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
 	// Populate the response
-	response := ctl.NewSingleMovieResponse(newMovieResponse(m))
+	response := ctl.NewSingleMovieResponse(rd)
 
 	return response, nil
 }
 
 // Update updates the movie given the id sent in
-func (ctl *MovieController) Update(ctx context.Context, id string, r *MovieRequest) (*SingleMovieResponse, error) {
+func (ctl *MovieController) Update(ctx context.Context, id string, r *RequestData) (*SingleMovieResponse, error) {
 	const op errs.Op = "controller/movieController/MovieController.Update"
 
 	// Convert request into a Movie struct
-	m, err := newMovie(r)
-	if err != nil {
-		return nil, errs.E(op, err)
-	}
-
-	// Validate the input given from the request
-	err = m.Validate()
+	m, err := ctl.newUpdater(r)
 	if err != nil {
 		return nil, errs.E(op, err)
 	}
@@ -201,8 +215,13 @@ func (ctl *MovieController) Update(ctx context.Context, id string, r *MovieReque
 		return nil, errs.E(op, errs.Database, err)
 	}
 
+	rd, err := newMovieResponse(m)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
 	// Populate the response
-	response := ctl.NewSingleMovieResponse(newMovieResponse(m))
+	response := ctl.NewSingleMovieResponse(rd)
 
 	return response, nil
 }
@@ -271,8 +290,13 @@ func (ctl *MovieController) FindByID(ctx context.Context, id string) (*SingleMov
 		return nil, errs.E(op, err)
 	}
 
+	rd, err := newMovieResponse(m)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
 	// Populate the response
-	response := ctl.NewSingleMovieResponse(newMovieResponse(m))
+	response := ctl.NewSingleMovieResponse(rd)
 
 	return response, nil
 }
@@ -295,31 +319,38 @@ func (ctl *MovieController) FindAll(ctx context.Context) (*ListMovieResponse, er
 	}
 
 	// Populate the response
-	response := ctl.NewListMovieResponse(movies)
+	response, err := ctl.NewListMovieResponse(movies)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
 
 	return response, nil
 }
 
 // NewListMovieResponse is an initializer for ListMovieResponse
-func (ctl *MovieController) NewListMovieResponse(ms []*movie.Movie) *ListMovieResponse {
+func (ctl *MovieController) NewListMovieResponse(ms []*movie.Movie) (*ListMovieResponse, error) {
+	const op errs.Op = "controller/movieController/MovieController.NewListMovieResponse"
 
-	var s []*MovieResponse
+	var s []*ResponseData
 
 	for _, m := range ms {
-		mr := newMovieResponse(m)
+		mr, err := newMovieResponse(m)
+		if err != nil {
+			return nil, errs.E(op, err)
+		}
 		s = append(s, mr)
 	}
 
-	return &ListMovieResponse{StandardResponseFields: ctl.SRF, Data: s}
+	return &ListMovieResponse{StandardResponseFields: ctl.SRF, Data: s}, nil
 }
 
 // NewSingleMovieResponse is an initializer for SingleMovieResponse
-func (ctl *MovieController) NewSingleMovieResponse(mr *MovieResponse) *SingleMovieResponse {
+func (ctl *MovieController) NewSingleMovieResponse(mr *ResponseData) *SingleMovieResponse {
 	return &SingleMovieResponse{StandardResponseFields: ctl.SRF, Data: mr}
 }
 
 // NewMovie is an initializer for the Movie struct
-func newMovie(am *MovieRequest) (*movie.Movie, error) {
+func (ctl *MovieController) newAdder(am *RequestData) (movie.Adder, error) {
 	const op errs.Op = "controller/movieController/newMovie"
 
 	// Parse Release Date according to RFC3339
@@ -330,6 +361,55 @@ func newMovie(am *MovieRequest) (*movie.Movie, error) {
 			errs.Code("invalid_date_format"),
 			errs.Parameter("ReleaseDate"),
 			err)
+	}
+
+	if ctl.App.Mock {
+		return &movie.MockMovie{
+			Title:    am.Title,
+			Year:     am.Year,
+			Rated:    am.Rated,
+			Released: t,
+			RunTime:  am.RunTime,
+			Director: am.Director,
+			Writer:   am.Writer,
+		}, nil
+	}
+
+	return &movie.Movie{
+		Title:    am.Title,
+		Year:     am.Year,
+		Rated:    am.Rated,
+		Released: t,
+		RunTime:  am.RunTime,
+		Director: am.Director,
+		Writer:   am.Writer,
+	}, nil
+}
+
+// NewMovie is an initializer for the Movie struct
+func (ctl *MovieController) newUpdater(am *RequestData) (movie.Updater, error) {
+	const op errs.Op = "controller/movieController/newMovie"
+
+	// Parse Release Date according to RFC3339
+	t, err := time.Parse(time.RFC3339, am.Released)
+	if err != nil {
+		return nil, errs.E(op,
+			errs.Validation,
+			errs.Code("invalid_date_format"),
+			errs.Parameter("ReleaseDate"),
+			err)
+	}
+
+	if ctl.App.Mock {
+		return &movie.MockMovie{
+			Title:    am.Title,
+			Year:     am.Year,
+			Rated:    am.Rated,
+			Released: t,
+			RunTime:  am.RunTime,
+			Director: am.Director,
+			Writer:   am.Writer,
+		}, nil
 	}
 
 	return &movie.Movie{
