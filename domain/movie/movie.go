@@ -9,6 +9,15 @@ import (
 	"github.com/google/uuid"
 )
 
+// Adder interface is for actions that Add a new movie to the
+type Adder interface {
+	Add(ctx context.Context) error
+}
+
+type Updater interface {
+	Update(ctx context.Context, id string) error
+}
+
 // Movie holds details of a movie
 type Movie struct {
 	ID              uuid.UUID
@@ -26,7 +35,7 @@ type Movie struct {
 
 // Validate does basic input validation and ensures the struct is
 // properly constructed
-func (m *Movie) Validate() error {
+func (m *Movie) validate() error {
 	const op errs.Op = "domain/Movie.validate"
 
 	switch {
@@ -53,6 +62,11 @@ func (m *Movie) Validate() error {
 func (m *Movie) Add(ctx context.Context) error {
 	const op errs.Op = "movie/Movie.Add"
 
+	err := m.validate()
+	if err != nil {
+		return errs.E(op, err)
+	}
+
 	m.ID = uuid.New()
 	id, err := random.CryptoString(15)
 	if err != nil {
@@ -67,7 +81,11 @@ func (m *Movie) Add(ctx context.Context) error {
 func (m *Movie) Update(ctx context.Context, id string) error {
 	const op errs.Op = "movie/Movie.Update"
 
-	m.ExternalID = id
+	err := m.validate()
+	if err != nil {
+		return errs.E(op, err)
+	}
+
 	m.UpdateTimestamp = time.Now().UTC()
 
 	return nil
