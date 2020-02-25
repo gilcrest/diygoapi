@@ -21,11 +21,14 @@ func (ah *AppHandler) AddMovie(w http.ResponseWriter, r *http.Request) {
 		errs.HTTPError(w, err)
 		return
 	}
-	// Declare rqst as an instance of movieController.MovieRequest
-	rqst := new(movieController.MovieRequest)
+
+	// Declare requestData as an instance of movieController.RequestData
+	requestData := new(movieController.RequestData)
+
 	// Decode JSON HTTP request body into a Decoder type
-	// and unmarshal that into rqst
-	err := json.NewDecoder(r.Body).Decode(&rqst)
+	// and unmarshal that into the MovieRequest struct in the
+	// AddMovieHandler
+	err := json.NewDecoder(r.Body).Decode(&requestData)
 	defer r.Body.Close()
 	if err != nil {
 		err = errs.RE(http.StatusBadRequest, errs.InvalidRequest, errs.E(op, err))
@@ -41,7 +44,7 @@ func (ah *AppHandler) AddMovie(w http.ResponseWriter, r *http.Request) {
 
 	// Send the request context and request struct to the controller
 	// Receive a response or error in return
-	resp, err := mc.Add(ctx, rqst)
+	response, err := mc.Add(ctx, requestData)
 	if err != nil {
 		err = errs.RE(http.StatusBadRequest, errs.E(op, err))
 		errs.HTTPError(w, err)
@@ -49,7 +52,7 @@ func (ah *AppHandler) AddMovie(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Encode response struct to JSON for the response body
-	err = json.NewEncoder(w).Encode(*resp)
+	err = json.NewEncoder(w).Encode(*response)
 	if err != nil {
 		err = errs.RE(http.StatusInternalServerError, errs.E(op, errs.Internal))
 		errs.HTTPError(w, err)
@@ -134,11 +137,12 @@ func (ah *AppHandler) Update(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	// Declare rqst as an instance of movieController.AddMovieRequest
-	rqst := new(movieController.MovieRequest)
+	// Declare requestData as an instance of movieController.RequestData
+	requestData := new(movieController.RequestData)
+
 	// Decode JSON HTTP request body into a Decoder type
-	// and unmarshal that into rqst
-	err := json.NewDecoder(r.Body).Decode(&rqst)
+	// and unmarshal that into requestData
+	err := json.NewDecoder(r.Body).Decode(&requestData)
 	defer r.Body.Close()
 	if err != nil {
 		err = errs.RE(http.StatusBadRequest, errs.InvalidRequest, errs.E(op, err))
@@ -154,7 +158,7 @@ func (ah *AppHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	// Send the request context and request struct to the controller
 	// Receive a response or error in return
-	resp, err := mc.Update(ctx, id, rqst)
+	resp, err := mc.Update(ctx, id, requestData)
 	if err != nil {
 		err = errs.RE(http.StatusBadRequest, errs.InvalidRequest, errs.E(op, err))
 		errs.HTTPError(w, err)
