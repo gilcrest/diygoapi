@@ -62,7 +62,7 @@ var (
 func setupAppwMock(ctx context.Context, envName app.EnvName, dsName datastore.Name, loglvl zerolog.Level) (*server.Server, func(), error) {
 	mockDatastore := datastore.NewMockDatastore()
 	logger := app.NewLogger(loglvl)
-	application := app.NewApplication(envName, mockDatastore, logger)
+	application := app.NewMockedApplication(envName, mockDatastore, logger)
 	appHandler := handler.NewAppHandler(application)
 	router := newRouter(appHandler)
 	mainRequestLogger := newRequestLogger(logger)
@@ -86,9 +86,11 @@ var (
 
 // inject_main.go:
 
-// applicationSet is the Wire provider set for the Guestbook application that
-// does not depend on the underlying platform.
+// applicationSet is the Wire provider set for the application
 var applicationSet = wire.NewSet(app.NewApplication, newRouter, wire.Bind(new(http.Handler), new(*mux.Router)), handler.NewAppHandler, app.NewLogger)
+
+// mockApplicationSet is the Wire provider set for the mocked application
+var mockApplicationSet = wire.NewSet(app.NewMockedApplication, newRouter, wire.Bind(new(http.Handler), new(*mux.Router)), handler.NewAppHandler, app.NewLogger)
 
 // goCloudServerSet
 var goCloudServerSet = wire.NewSet(trace.AlwaysSample, server.New, server.NewDefaultDriver, wire.Bind(new(driver.Server), new(*server.DefaultDriver)), wire.Bind(new(requestlog.Logger), new(*requestLogger)), newRequestLogger)

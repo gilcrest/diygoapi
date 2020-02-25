@@ -22,10 +22,18 @@ import (
 	"gocloud.dev/server/requestlog"
 )
 
-// applicationSet is the Wire provider set for the Guestbook application that
-// does not depend on the underlying platform.
+// applicationSet is the Wire provider set for the application
 var applicationSet = wire.NewSet(
 	app.NewApplication,
+	newRouter,
+	wire.Bind(new(http.Handler), new(*mux.Router)),
+	handler.NewAppHandler,
+	app.NewLogger,
+)
+
+// mockApplicationSet is the Wire provider set for the mocked application
+var mockApplicationSet = wire.NewSet(
+	app.NewMockedApplication,
 	newRouter,
 	wire.Bind(new(http.Handler), new(*mux.Router)),
 	handler.NewAppHandler,
@@ -96,7 +104,7 @@ func setupAppwMock(ctx context.Context, envName app.EnvName, dsName datastore.Na
 	wire.Build(
 		wire.InterfaceValue(new(trace.Exporter), trace.Exporter(nil)),
 		goCloudServerSet,
-		applicationSet,
+		mockApplicationSet,
 		wire.Struct(new(server.Options), "RequestLogger", "TraceExporter", "DefaultSamplingPolicy", "Driver"),
 		wire.Bind(new(datastore.Datastorer), new(*datastore.MockDatastore)),
 		datastore.NewMockDatastore)
