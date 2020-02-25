@@ -94,7 +94,7 @@ func newServer(ctx context.Context, envName app.EnvName, dsName datastore.Name, 
 		case datastore.MockedDatastore: // Connect to the Mocked Datastore
 			srv, cleanup, err = setupAppwMock(ctx, envName, dsName, loglvl)
 		default:
-			log.Fatal().Msgf("unknown datastore name (%s) for the %s environment", dsName)
+			log.Fatal().Msgf("unknown datastore name (%s) for the %s environment", dsName, envName)
 		}
 	case envName == app.QA:
 		switch dsName {
@@ -103,7 +103,7 @@ func newServer(ctx context.Context, envName app.EnvName, dsName datastore.Name, 
 		case datastore.MockedDatastore:
 			srv, cleanup, err = setupAppwMock(ctx, envName, dsName, loglvl)
 		default:
-			log.Fatal().Msgf("unknown datastore name (%s) for the %s environment", dsName)
+			log.Fatal().Msgf("unknown datastore name (%s) for the %s environment", dsName, envName)
 		}
 	default:
 		log.Fatal().Msgf("unknown environment name = %s", envName)
