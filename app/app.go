@@ -10,6 +10,10 @@ import (
 type Application struct {
 	// Environment Name
 	EnvName EnvName
+	// Mock denotes whether or not the app is being "mocked" and
+	// stubbed responses are being returned for various components
+	// within
+	Mock bool
 	// Datastorer is an interface type meant to be the
 	// persistence mechanism. It can be a
 	// SQL database (PostgreSQL) or a mock database
@@ -18,10 +22,21 @@ type Application struct {
 	Logger zerolog.Logger
 }
 
-// NewApplication creates a new application struct
+// NewApplication initializes an Application struct with Mock set to false
 func NewApplication(en EnvName, ds datastore.Datastorer, log zerolog.Logger) *Application {
 	return &Application{
 		EnvName:    en,
+		Mock:       false,
+		Datastorer: ds,
+		Logger:     log,
+	}
+}
+
+// NewMockedApplication initializes an Application struct with Mock set to false
+func NewMockedApplication(en EnvName, ds datastore.Datastorer, log zerolog.Logger) *Application {
+	return &Application{
+		EnvName:    en,
+		Mock:       true,
 		Datastorer: ds,
 		Logger:     log,
 	}
