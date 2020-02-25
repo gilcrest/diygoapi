@@ -20,12 +20,12 @@ type MockTx struct {
 }
 
 // Create is a mock for creating a record
-func (t MockTx) Create(ctx context.Context, m *movie.Movie) error {
+func (t MockTx) Create(ctx context.Context, m movie.Adder) error {
 	return nil
 }
 
 // Update is a mock for updating a record
-func (t MockTx) Update(ctx context.Context, m *movie.Movie) error {
+func (t MockTx) Update(ctx context.Context, m movie.Updater) error {
 	return nil
 }
 

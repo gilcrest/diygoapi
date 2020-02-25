@@ -31,8 +31,8 @@ func NewTransactor(tx *sql.Tx) (Transactor, error) {
 
 // Transactor performs DML actions against the DB
 type Transactor interface {
-	Create(ctx context.Context, m *movie.Movie) error
-	Update(ctx context.Context, m *movie.Movie) error
+	Create(ctx context.Context, m movie.Adder) error
+	Update(ctx context.Context, m movie.Updater) error
 	Delete(ctx context.Context, m *movie.Movie) error
 }
 
@@ -76,8 +76,13 @@ type Tx struct {
 }
 
 // Create inserts a record in the user table using a stored function
-func (t *Tx) Create(ctx context.Context, m *movie.Movie) error {
+func (t *Tx) Create(ctx context.Context, ma movie.Adder) error {
 	const op errs.Op = "movie/Movie.createDB"
+
+	m, ok := ma.(*movie.Movie)
+	if !ok {
+		return errs.E(op, "Invalid type sent as movie.Adder")
+	}
 
 	// Prepare the sql statement using bind variables
 	stmt, err := t.Tx.PrepareContext(ctx, `
@@ -143,8 +148,13 @@ func (t *Tx) Create(ctx context.Context, m *movie.Movie) error {
 
 // Update updates a record in the database using the external ID of
 // the Movie
-func (t *Tx) Update(ctx context.Context, m *movie.Movie) error {
+func (t *Tx) Update(ctx context.Context, mu movie.Updater) error {
 	const op errs.Op = "movieDatastore/MockMovieDB.Update"
+
+	m, ok := mu.(*movie.Movie)
+	if !ok {
+		return errs.E(op, "Invalid type sent as movie.Adder")
+	}
 
 	// Prepare the sql statement using bind variables
 	stmt, err := t.Tx.PrepareContext(ctx, `
