@@ -15,8 +15,8 @@ type TraceID struct {
 // StandardResponseFields is meant to be included in all response bodies
 // and includes "standard" response fields
 type StandardResponseFields struct {
-	Path    string  `json:"path,omitempty"`
-	TraceID TraceID `json:"trace_id,omitempty"`
+	Path    string `json:"path,omitempty"`
+	TraceID string `json:"trace_id,omitempty"`
 }
 
 // NewTraceID is an initializer for TraceID
@@ -37,7 +37,7 @@ func NewMockTraceID() TraceID {
 // NewStandardResponseFields is an initializer for the StandardResponseFields struct
 func NewStandardResponseFields(id TraceID, r *http.Request) StandardResponseFields {
 	var sr StandardResponseFields
-	sr.TraceID = id
+	sr.TraceID = id.String()
 	sr.Path = r.URL.EscapedPath()
 
 	return sr
