@@ -25,21 +25,18 @@ func (ah *AppHandler) AddStandardResponseHeaders(h http.Handler) http.Handler {
 		})
 }
 
-// AddRequestID middleware is used to add a unique request ID to each request
-func (ah *AppHandler) AddRequestID(h http.Handler) http.Handler {
+// SetStandardResponseFields middleware is used to set the fields
+// that are part of every response
+func (ah *AppHandler) SetStandardResponseFields(h http.Handler) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			// get byte Array representation of guid from xid package (12 bytes)
 			id := xid.New()
 
-			// Set the Request ID as xid.ID to
-			// controller.RequestID using the constructor
-			requestID := controller.NewRequestID(id)
-
-			// Send the RequestID and http.Request to the
-			// StandardResponseFields constructor to receive the
-			// StandardResponseFields
-			ah.StandardResponseFields = controller.NewStandardResponseFields(requestID, r)
+			// Send a new TraceID and the http.Request to the
+			// StandardResponseFields constructor to set the
+			// StandardResponseFields of the AppHandler
+			ah.StandardResponseFields = controller.NewStandardResponseFields(controller.NewTraceID(id), r)
 
 			h.ServeHTTP(w, r) // call original
 		})
@@ -48,4 +45,16 @@ func (ah *AppHandler) AddRequestID(h http.Handler) http.Handler {
 // NewAppHandler initializes the AppHandler
 func NewAppHandler(app *app.Application) *AppHandler {
 	return &AppHandler{App: app}
+}
+
+// NewMockAppHandler initializes the AppHandler
+func NewMockAppHandler(app *app.Application, r *http.Request) *AppHandler {
+
+	appHandler := &AppHandler{App: app}
+	// Send a mocked TraceID and the http.Request to the
+	// StandardResponseFields constructor to set the
+	// StandardResponseFields of the AppHandler
+	appHandler.StandardResponseFields = controller.NewStandardResponseFields(controller.NewMockTraceID(), r)
+
+	return appHandler
 }
