@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/gilcrest/errs"
+
 	"github.com/gilcrest/go-api-basic/app"
 	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/rs/zerolog"
@@ -26,10 +27,11 @@ func TestAppHandler_AddMovie(t *testing.T) {
 		ResponseBody string
 	}
 
+	var emptyBody []byte
 	nilBodyRequest := requestFields{
 		HTTPMethod:  "POST",
 		URL:         "/api/v1/movies",
-		RequestBody: nil,
+		RequestBody: bytes.NewBuffer(emptyBody),
 	}
 
 	er := errs.ErrResponse{Error: errs.ServiceError{
@@ -70,7 +72,7 @@ func TestAppHandler_AddMovie(t *testing.T) {
 		requestFields requestFields
 		want          responseFields
 	}{
-		{"nil body", nilBodyRequest, nilBodyResponse},
+		{"empty body", nilBodyRequest, nilBodyResponse},
 		{"post", reqf, resf},
 	}
 	for _, tt := range tests {

@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"github.com/gilcrest/errs"
+	"io"
 	"net/http"
 
 	"github.com/gilcrest/go-api-basic/app"
@@ -50,4 +52,26 @@ func (ah *AppHandler) SetStandardResponseFields(h http.Handler) http.Handler {
 // NewAppHandler initializes the AppHandler
 func NewAppHandler(app *app.Application) *AppHandler {
 	return &AppHandler{App: app}
+}
+
+func DecoderErr(err error) error {
+	const op errs.Op = "handler/DecoderErr"
+
+	switch {
+	case err == io.EOF:
+		// If the request body is nil, json.NewDecoder will panic
+		// avoid that by checking body for nil in advance
+		err := errs.RE(http.StatusBadRequest, errs.InvalidRequest, errs.E(op, "Request Body cannot be empty"))
+		return err
+	case err == io.ErrUnexpectedEOF:
+		// If the request body is nil, json.NewDecoder will panic
+		// avoid that by checking body for nil in advance
+		err := errs.RE(http.StatusBadRequest, errs.InvalidRequest, errs.E(op, "Malformed JSON"))
+		return err
+	case err != nil:
+		// all other errors
+		err = errs.RE(http.StatusBadRequest, errs.E(op, errs.InvalidRequest, err))
+		return err
+	}
+	return nil
 }
