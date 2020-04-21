@@ -27,12 +27,12 @@ import (
 // Injectors from inject_main.go:
 
 func setupApp(ctx context.Context, envName app.EnvName, dsName datastore.Name, loglvl zerolog.Level) (*server.Server, func(), error) {
-	db, cleanup, err := datastore.NewDB(dsName)
+	logger := app.NewLogger(loglvl)
+	db, cleanup, err := datastore.NewDB(dsName, logger)
 	if err != nil {
 		return nil, nil, err
 	}
 	datastoreDatastore := datastore.NewDatastore(db)
-	logger := app.NewLogger(loglvl)
 	application := app.NewApplication(envName, datastoreDatastore, logger)
 	appHandler := handler.NewAppHandler(application)
 	router := newRouter(appHandler)

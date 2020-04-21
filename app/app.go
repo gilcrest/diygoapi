@@ -1,9 +1,10 @@
 package app
 
 import (
+	"os"
+
 	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/rs/zerolog"
-	"os"
 )
 
 // Application contains the app configurations and Datastore
