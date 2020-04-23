@@ -96,11 +96,11 @@ var mockApplicationSet = wire.NewSet(app.NewMockedApplication, newRouter, wire.B
 var goCloudServerSet = wire.NewSet(trace.AlwaysSample, server.New, server.NewDefaultDriver, wire.Bind(new(driver.Server), new(*server.DefaultDriver)), wire.Bind(new(requestlog.Logger), new(*requestLogger)), newRequestLogger)
 
 type requestLogger struct {
-	log zerolog.Logger
+	logger zerolog.Logger
 }
 
 func (rl requestLogger) Log(e *requestlog.Entry) {
-	rl.log.Log().
+	rl.logger.Info().
 		Str("received_time", e.ReceivedTime.Format(time.RFC1123)).
 		Str("request_method", e.RequestMethod).
 		Str("request_url", e.RequestURL).
@@ -121,7 +121,7 @@ func (rl requestLogger) Log(e *requestlog.Entry) {
 }
 
 func newRequestLogger(l zerolog.Logger) *requestLogger {
-	return &requestLogger{log: l}
+	return &requestLogger{logger: l}
 }
 
 // appHealthChecks returns a health check for the database. This will signal
