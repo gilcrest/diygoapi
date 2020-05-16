@@ -54,24 +54,23 @@ func NewAppHandler(app *app.Application) *AppHandler {
 	return &AppHandler{App: app}
 }
 
+// When an error is returned by json.NewDecoder(r.Body).Decode(&data)
+// this function will determine the appropriate error response
 func DecoderErr(err error) error {
 	const op errs.Op = "handler/DecoderErr"
 
 	switch {
+	// If the request body is empty (io.EOF)
+	// return an error
 	case err == io.EOF:
-		// If the request body is nil, json.NewDecoder will panic
-		// avoid that by checking body for nil in advance
-		err := errs.RE(http.StatusBadRequest, errs.InvalidRequest, errs.E(op, "Request Body cannot be empty"))
-		return err
+		return errs.E(op, errs.InvalidRequest, "Request Body cannot be empty")
+	// If the request body has malformed JSON (io.ErrUnexpectedEOF)
+	// return an error
 	case err == io.ErrUnexpectedEOF:
-		// If the request body is nil, json.NewDecoder will panic
-		// avoid that by checking body for nil in advance
-		err := errs.RE(http.StatusBadRequest, errs.InvalidRequest, errs.E(op, "Malformed JSON"))
-		return err
+		return errs.E(op, errs.InvalidRequest, "Malformed JSON")
+	// return all other errors
 	case err != nil:
-		// all other errors
-		err = errs.RE(http.StatusBadRequest, errs.E(op, errs.InvalidRequest, err))
-		return err
+		return errs.E(op, err)
 	}
 	return nil
 }
