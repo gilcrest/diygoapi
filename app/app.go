@@ -24,22 +24,22 @@ type Application struct {
 }
 
 // NewApplication initializes an Application struct with Mock set to false
-func NewApplication(en EnvName, ds datastore.Datastorer, log zerolog.Logger) *Application {
+func NewApplication(envName EnvName, datastorer datastore.Datastorer, logger zerolog.Logger) *Application {
 	return &Application{
-		EnvName:    en,
+		EnvName:    envName,
 		Mock:       false,
-		Datastorer: ds,
-		Logger:     log,
+		Datastorer: datastorer,
+		Logger:     logger,
 	}
 }
 
-// NewMockedApplication initializes an Application struct with Mock set to false
-func NewMockedApplication(en EnvName, ds datastore.Datastorer, log zerolog.Logger) *Application {
+// NewMockedApplication initializes an Application struct with Mock set to true
+func NewMockedApplication(envName EnvName, datastorer datastore.Datastorer, logger zerolog.Logger) *Application {
 	return &Application{
-		EnvName:    en,
+		EnvName:    envName,
 		Mock:       true,
-		Datastorer: ds,
-		Logger:     log,
+		Datastorer: datastorer,
+		Logger:     logger,
 	}
 }
 
@@ -72,14 +72,51 @@ func (n EnvName) String() string {
 
 // NewLogger sets up the zerolog.Logger
 func NewLogger(lvl zerolog.Level) zerolog.Logger {
+
 	// empty string for TimeFieldFormat will write logs with UNIX time
 	zerolog.TimeFieldFormat = ""
+
 	// set logging level based on input
 	zerolog.SetGlobalLevel(lvl)
+
 	// start a new logger with Stdout as the target
 	lgr := zerolog.New(os.Stdout).With().Timestamp().Logger()
 
-	lgr.Log().Msgf("Logging Level set to %s", lvl)
+	// Add Severity Hook. Zerolog by default outputs structured logs
+	// with "level":"error" as its leveling. Google Cloud as an
+	// example expects "severity","ERROR" for its leveling. This
+	// hook will add severity to each message
+	lgr = lgr.Hook(GCPSeverityHook{})
+
+	lgr.Info().Msgf("logging level set to %s", lvl)
 
 	return lgr
+}
+
+// The GCPSeverityHook struct satisfies the zerolog.Hook interface
+// as it has the Run method defined with the appropriate parameters
+type GCPSeverityHook struct{}
+
+func (h GCPSeverityHook) Run(e *zerolog.Event, level zerolog.Level, msg string) {
+
+	const lvlKey string = "severity"
+
+	switch level {
+	case zerolog.PanicLevel:
+		e.Str(lvlKey, "EMERGENCY")
+	case zerolog.FatalLevel:
+		e.Str(lvlKey, "EMERGENCY")
+	case zerolog.ErrorLevel:
+		e.Str(lvlKey, "ERROR")
+	case zerolog.WarnLevel:
+		e.Str(lvlKey, "WARNING")
+	case zerolog.InfoLevel:
+		e.Str(lvlKey, "INFO")
+	case zerolog.DebugLevel:
+		e.Str(lvlKey, "DEBUG")
+	case zerolog.TraceLevel:
+		e.Str(lvlKey, "DEBUG")
+	default:
+		e.Str(lvlKey, "DEFAULT")
+	}
 }
