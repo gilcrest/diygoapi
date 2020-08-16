@@ -57,7 +57,7 @@ func NewDB(n Name, logger zerolog.Logger) (*sql.DB, func(), error) {
 
 // validateDB pings the database and logs the current user and database
 func validateDB(db *sql.DB, log zerolog.Logger) error {
-	const op errs.Op = "datastore/Validate"
+	const op errs.Op = "datastore/validateDB"
 
 	err := db.Ping()
 	if err != nil {
