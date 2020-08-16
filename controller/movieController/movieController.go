@@ -185,7 +185,7 @@ func (ctl *MovieController) Update(ctx context.Context, externalID string, r *Re
 	}
 
 	// Convert request into a Movie struct
-	m, err := ctl.newMovie(r, u)
+	m, err := ctl.newMovie4Update(r, externalID, u)
 	if err != nil {
 		return nil, errs.E(op, err)
 	}
@@ -366,7 +366,7 @@ func (ctl *MovieController) NewSingleMovieResponse(mr *ResponseData) *SingleMovi
 	return &SingleMovieResponse{StandardResponseFields: ctl.SRF, Data: mr}
 }
 
-// NewMovie is an initializer for the Movie struct
+// newMovie is an initializer for the Movie struct
 func (ctl *MovieController) newMovie(rd *RequestData, u *user.User) (*movie.Movie, error) {
 	const op errs.Op = "controller/movieController/newMovie"
 
@@ -389,6 +389,34 @@ func (ctl *MovieController) newMovie(rd *RequestData, u *user.User) (*movie.Movi
 		Director:       rd.Director,
 		Writer:         rd.Writer,
 		CreateUsername: u.Email,
+		UpdateUsername: u.Email,
+	}, nil
+}
+
+// newMovie4Update is an initializer for the Movie struct for the
+// update operation
+func (ctl *MovieController) newMovie4Update(rd *RequestData, externalID string, u *user.User) (*movie.Movie, error) {
+	const op errs.Op = "controller/movieController/newMovie4Update"
+
+	// Parse Release Date according to RFC3339
+	t, err := time.Parse(time.RFC3339, rd.Released)
+	if err != nil {
+		return nil, errs.E(op,
+			errs.Validation,
+			errs.Code("invalid_date_format"),
+			errs.Parameter("ReleaseDate"),
+			err)
+	}
+
+	return &movie.Movie{
+		ExternalID:     externalID,
+		Title:          rd.Title,
+		Year:           rd.Year,
+		Rated:          rd.Rated,
+		Released:       t,
+		RunTime:        rd.RunTime,
+		Director:       rd.Director,
+		Writer:         rd.Writer,
 		UpdateUsername: u.Email,
 	}, nil
 }
