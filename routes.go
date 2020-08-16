@@ -30,6 +30,25 @@ func newRouter(hdl *handler.AppHandler) *mux.Router {
 		Methods("POST").
 		Headers("Content-Type", "application/json")
 
+	// Match only PUT requests having an ID at /api/v1/movies/{id}
+	// with the Content-Type header = application/json
+	rtr.Handle("/v1/movies/{id}",
+		alice.New(
+			hdl.SetAccessToken2Context,
+			hdl.AddStandardResponseHeaders,
+			hdl.SetStandardResponseFields).
+			Then(http.HandlerFunc(hdl.UpdateMovie))).
+		Methods("PUT").
+		Headers("Content-Type", "application/json")
+
+	//// Match only DELETE requests having an ID at /api/v1/movies/{id}
+	//rtr.Handle("/v1/movies/{id}",
+	//	alice.New(
+	//		hdl.AddStandardResponseHeaders,
+	//		hdl.SetStandardResponseFields).
+	//		Then(http.HandlerFunc(hdl.Delete))).
+	//	Methods("DELETE")
+
 	//// Match only GET requests having an ID at /api/v1/movies/{id}
 	//// with the Content-Type header = application/json
 	//rtr.Handle("/v1/movies/{id}",
@@ -48,23 +67,6 @@ func newRouter(hdl *handler.AppHandler) *mux.Router {
 	//		Then(http.HandlerFunc(hdl.FindAll))).
 	//	Methods("GET")
 	//
-	//// Match only PUT requests having an ID at /api/v1/movies/{id}
-	//// with the Content-Type header = application/json
-	//rtr.Handle("/v1/movies/{id}",
-	//	alice.New(
-	//		hdl.AddStandardResponseHeaders,
-	//		hdl.SetStandardResponseFields).
-	//		Then(http.HandlerFunc(hdl.Update))).
-	//	Methods("PUT").
-	//	Headers("Content-Type", "application/json")
-	//
-	//// Match only DELETE requests having an ID at /api/v1/movies/{id}
-	//rtr.Handle("/v1/movies/{id}",
-	//	alice.New(
-	//		hdl.AddStandardResponseHeaders,
-	//		hdl.SetStandardResponseFields).
-	//		Then(http.HandlerFunc(hdl.Delete))).
-	//	Methods("DELETE")
 
 	return rtr
 }
