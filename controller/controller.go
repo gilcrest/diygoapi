@@ -25,7 +25,7 @@ func NewTraceID(id xid.ID) TraceID {
 }
 
 // NewMockTraceID is an initializer for TraceID which returns a
-// static "mocked"
+// static "mocked" TraceID
 func NewMockTraceID() TraceID {
 	x, err := xid.FromString("bpa182jipt3b2b78879g")
 	if err != nil {
