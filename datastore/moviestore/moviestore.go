@@ -1,4 +1,4 @@
-package movieDatastore
+package moviestore
 
 import (
 	"context"
@@ -9,51 +9,11 @@ import (
 	"github.com/google/uuid"
 )
 
-// NewTransactor sets up either a concrete Tx or a MockTx
-// depending on whether the tx parameter is nil or not
-func NewTransactor(tx *sql.Tx) (Transactor, error) {
-	const op errs.Op = "movieDatastore/NewMovieWriter"
-
-	var (
-		t   Transactor
-		err error
-	)
-	if tx != nil {
-		t, err = NewTx(tx)
-		if err != nil {
-			return nil, errs.E(op, err)
-		}
-	} else {
-		t = NewMockTx()
-	}
-	return t, nil
-}
-
 // Transactor performs DML actions against the DB
 type Transactor interface {
-	Create(ctx context.Context, m movie.Adder) error
-	Update(ctx context.Context, m movie.Updater) error
+	Create(ctx context.Context, m *movie.Movie) error
+	Update(ctx context.Context, m *movie.Movie) error
 	Delete(ctx context.Context, m *movie.Movie) error
-}
-
-// NewSelector sets up either a concrete DB or a MockDB
-// depending on whether the db parameter is nil or not
-func NewSelector(db *sql.DB) (Selector, error) {
-	const op errs.Op = "movieDatastore/NewMovieReader"
-
-	var (
-		s   Selector
-		err error
-	)
-	if db != nil {
-		s, err = NewDB(db)
-		if err != nil {
-			return nil, errs.E(op, err)
-		}
-	} else {
-		s = NewMockDB()
-	}
-	return s, nil
 }
 
 // Selector reads records from the db
@@ -63,7 +23,7 @@ type Selector interface {
 }
 
 func NewTx(tx *sql.Tx) (*Tx, error) {
-	const op errs.Op = "movieDatastore/NewMovieTx"
+	const op errs.Op = "moviestore/NewMovieTx"
 	if tx == nil {
 		return nil, errs.E(op, errs.MissingField("tx"))
 	}
@@ -76,13 +36,8 @@ type Tx struct {
 }
 
 // Create inserts a record in the user table using a stored function
-func (t *Tx) Create(ctx context.Context, ma movie.Adder) error {
-	const op errs.Op = "movieDatastore/Tx.Create"
-
-	m, ok := ma.(*movie.Movie)
-	if !ok {
-		return errs.E(op, "Invalid type sent as movie.Adder")
-	}
+func (t *Tx) Create(ctx context.Context, m *movie.Movie) error {
+	const op errs.Op = "moviestore/Tx.Create"
 
 	// Prepare the sql statement using bind variables
 	stmt, err := t.Tx.PrepareContext(ctx, `
@@ -99,31 +54,31 @@ func (t *Tx) Create(ctx context.Context, ma movie.Adder) error {
 		p_director => $8,
 		p_writer => $9,
 		p_create_client_id => $10,
-		p_create_user_id => $11)`)
+		p_create_username => $11)`)
 
 	if err != nil {
 		return errs.E(op, err)
 	}
 	defer stmt.Close()
 
-	// At some point, I will add a whole user flow, but for now
-	// faking a user uuid....
-	fakeUserID := uuid.New()
+	// At some point, I will add a whole client flow, but for now
+	// faking a client uuid....
+	fakeClientID := uuid.New()
 
 	// Execute stored function that returns the create_date timestamp,
 	// hence the use of QueryContext instead of Exec
 	rows, err := stmt.QueryContext(ctx,
-		m.ID,         //$1
-		m.ExternalID, //$2
-		m.Title,      //$3
-		m.Year,       //$4
-		m.Rated,      //$5
-		m.Released,   //$6
-		m.RunTime,    //$7
-		m.Director,   //$8
-		m.Writer,     //$9
-		fakeUserID,   //$10
-		fakeUserID)   //$11
+		m.ID,             //$1
+		m.ExternalID,     //$2
+		m.Title,          //$3
+		m.Year,           //$4
+		m.Rated,          //$5
+		m.Released,       //$6
+		m.RunTime,        //$7
+		m.Director,       //$8
+		m.Writer,         //$9
+		fakeClientID,     //$10
+		m.CreateUsername) //$11
 
 	if err != nil {
 		return errs.E(op, err)
@@ -148,13 +103,8 @@ func (t *Tx) Create(ctx context.Context, ma movie.Adder) error {
 
 // Update updates a record in the database using the external ID of
 // the Movie
-func (t *Tx) Update(ctx context.Context, mu movie.Updater) error {
-	const op errs.Op = "movieDatastore/Tx.Update"
-
-	m, ok := mu.(*movie.Movie)
-	if !ok {
-		return errs.E(op, "Invalid type sent as movie.Adder")
-	}
+func (t *Tx) Update(ctx context.Context, m *movie.Movie) error {
+	const op errs.Op = "moviestore/Tx.Update"
 
 	// Prepare the sql statement using bind variables
 	stmt, err := t.Tx.PrepareContext(ctx, `
@@ -229,7 +179,7 @@ func (t *Tx) Update(ctx context.Context, mu movie.Updater) error {
 
 // Delete removes the Movie record from the table
 func (t *Tx) Delete(ctx context.Context, m *movie.Movie) error {
-	const op errs.Op = "movieDatastore/Tx.Delete"
+	const op errs.Op = "moviestore/Tx.Delete"
 
 	result, execErr := t.Tx.ExecContext(ctx,
 		`DELETE from demo.movie
@@ -255,7 +205,7 @@ func (t *Tx) Delete(ctx context.Context, m *movie.Movie) error {
 }
 
 func NewDB(db *sql.DB) (*DB, error) {
-	const op errs.Op = "movieDatastore/NewMovieDB"
+	const op errs.Op = "moviestore/NewMovieDB"
 	if db == nil {
 		return nil, errs.E(op, errs.MissingField("db"))
 	}
@@ -269,7 +219,7 @@ type DB struct {
 
 // FindByID returns a Movie struct to populate the response
 func (d *DB) FindByID(ctx context.Context, extlID string) (*movie.Movie, error) {
-	const op errs.Op = "movieDatastore/DB.FindByID"
+	const op errs.Op = "moviestore/DB.FindByID"
 
 	// Prepare the sql statement using bind variables
 	row := d.DB.QueryRowContext(ctx,
@@ -312,7 +262,7 @@ func (d *DB) FindByID(ctx context.Context, extlID string) (*movie.Movie, error) 
 
 // FindAll returns a slice of Movie structs to populate the response
 func (d *DB) FindAll(ctx context.Context) ([]*movie.Movie, error) {
-	const op errs.Op = "movieDatastore/DB.FindAll"
+	const op errs.Op = "moviestore/DB.FindAll"
 
 	// use QueryContext to get back sql.Rows
 	rows, err := d.DB.QueryContext(ctx,
