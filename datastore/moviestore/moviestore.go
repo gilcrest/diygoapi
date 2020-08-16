@@ -179,7 +179,7 @@ func (t *Tx) Delete(ctx context.Context, m *movie.Movie) error {
 
 	result, execErr := t.Tx.ExecContext(ctx,
 		`DELETE from demo.movie
-		  WHERE movie_id = $1`, m.ID)
+		        WHERE movie_id = $1`, m.ID)
 
 	if execErr != nil {
 		return errs.E(op, errs.Database, execErr)
