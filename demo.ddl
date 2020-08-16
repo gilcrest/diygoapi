@@ -1,29 +1,32 @@
-create database go_api_basic;
+-- Execute this first, then switch connection to newly created
+-- go_api_basic database and run remainder of script
+create database go_api_basic
+    with owner postgres;
 
 create schema demo;
 
 create table demo.movie
 (
-	movie_id uuid not null
+	movie_id         uuid not null
 		constraint movie_pk
 			primary key,
-	extl_id varchar(250) not null,
-	title varchar(1000) not null,
-	year integer not null,
-	rated varchar(10),
-	released date,
-	run_time integer,
-	director varchar(1000),
-	writer varchar(1000),
-	create_client_id uuid not null,
-	create_user_id uuid not null,
-	create_timestamp timestamp not null,
-	update_client_id uuid not null,
-	update_user_id uuid not null,
-	update_timestamp timestamp not null
+	extl_id          varchar(250) not null,
+	title            varchar(1000) not null,
+	year             integer not null,
+	rated            varchar(10),
+	released         date,
+	run_time         integer,
+	director         varchar(1000),
+	writer           varchar(1000),
+-- 	create_client_id uuid not null,
+    create_username  varchar,
+    create_timestamp timestamp with time zone,
+-- 	update_client_id uuid not null,
+    update_username  varchar,
+    update_timestamp timestamp with time zone
 );
 
-create function demo.create_movie(p_id uuid, p_extl_id character varying, p_title character varying, p_year integer, p_rated character varying, p_released date, p_run_time integer, p_director character varying, p_writer character varying, p_create_client_id uuid, p_create_user_id uuid) returns TABLE(o_create_timestamp timestamp without time zone, o_update_timestamp timestamp without time zone)
+create function demo.create_movie(p_id uuid, p_extl_id character varying, p_title character varying, p_year integer, p_rated character varying, p_released date, p_run_time integer, p_director character varying, p_writer character varying, p_create_client_id uuid, p_create_username character varying) returns TABLE(o_create_timestamp timestamp without time zone, o_update_timestamp timestamp without time zone)
 	language plpgsql
 as $$
 DECLARE
@@ -43,11 +46,11 @@ BEGIN
                           run_time,
                           director,
                           writer,
-                          create_client_id,
-                          create_user_id,
+--                           create_client_id,
+                          create_username,
                           create_timestamp,
-                          update_client_id,
-                          update_user_id,
+--                           update_client_id,
+                          update_username,
                           update_timestamp)
   VALUES (p_id,
           p_extl_id,
@@ -58,11 +61,11 @@ BEGIN
           p_run_time,
           p_director,
           p_writer,
-          p_create_client_id,
-          p_create_user_id,
+--           p_create_client_id,
+          p_create_username,
           v_dml_timestamp,
-          p_create_client_id,
-          p_create_user_id,
+--           p_create_client_id,
+          p_create_username,
           v_dml_timestamp)
       RETURNING create_timestamp, update_timestamp
         into v_create_timestamp, v_update_timestamp;
