@@ -9,15 +9,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// Adder interface is for actions that Add a new movie to the
-type Adder interface {
-	Add(ctx context.Context) error
-}
-
-type Updater interface {
-	Update(ctx context.Context, id string) error
-}
-
 // Movie holds details of a movie
 type Movie struct {
 	ID              uuid.UUID
@@ -29,7 +20,9 @@ type Movie struct {
 	RunTime         int
 	Director        string
 	Writer          string
+	CreateUsername  string
 	CreateTimestamp time.Time
+	UpdateUsername  string
 	UpdateTimestamp time.Time
 }
 

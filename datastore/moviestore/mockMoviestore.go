@@ -1,9 +1,10 @@
-package movieDatastore
+package moviestore
 
 import (
 	"context"
-	"github.com/google/uuid"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/gilcrest/errs"
 	"github.com/gilcrest/go-api-basic/domain/movie"
@@ -20,13 +21,8 @@ type MockTx struct {
 }
 
 // Create is a mock for creating a record
-func (t MockTx) Create(ctx context.Context, ma movie.Adder) error {
+func (t MockTx) Create(ctx context.Context, m *movie.Movie) error {
 	const op errs.Op = "movieDatastore/MockTx.Create"
-
-	m, ok := ma.(*movie.MockMovie)
-	if !ok {
-		return errs.E(op, "Invalid type sent as movie.Adder")
-	}
 
 	// I would not recommend actually getting timestamps from the
 	// database on create, but I put in an example of doing it anyway
@@ -40,13 +36,8 @@ func (t MockTx) Create(ctx context.Context, ma movie.Adder) error {
 }
 
 // Update is a mock for updating a record
-func (t MockTx) Update(ctx context.Context, mu movie.Updater) error {
+func (t MockTx) Update(ctx context.Context, m *movie.Movie) error {
 	const op errs.Op = "movieDatastore/MockTx.Update"
-
-	m, ok := mu.(*movie.MockMovie)
-	if !ok {
-		return errs.E(op, "Invalid type sent as movie.Adder")
-	}
 
 	// Updates are a little different - on the non-mock, I am
 	// actually getting back data as part of the update of the
