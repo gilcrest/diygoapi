@@ -116,19 +116,15 @@ func (t *Tx) Update(ctx context.Context, m *movie.Movie) error {
 		   run_time = $5,
 		   director = $6,
 		   writer = $7,
-		   update_user_id = $8,
+		   update_username = $8,
 		   update_timestamp = $9
 	 where extl_id = $10
- returning movie_id, create_timestamp`)
+ returning movie_id, create_username, create_timestamp`)
 
 	if err != nil {
 		return errs.E(op, err)
 	}
 	defer stmt.Close()
-
-	// At some point, I will add a whole user flow, but for now
-	// faking a user uuid....
-	fakeUserID := uuid.New()
 
 	// Execute stored function that returns the create_date timestamp,
 	// hence the use of QueryContext instead of Exec
@@ -140,7 +136,7 @@ func (t *Tx) Update(ctx context.Context, m *movie.Movie) error {
 		m.RunTime,         //$5
 		m.Director,        //$6
 		m.Writer,          //$7
-		fakeUserID,        //$8
+		m.UpdateUsername,  //$8
 		m.UpdateTimestamp, //$9
 		m.ExternalID)      //$10
 
@@ -151,7 +147,7 @@ func (t *Tx) Update(ctx context.Context, m *movie.Movie) error {
 
 	// Iterate through the returned record(s)
 	for rows.Next() {
-		if err := rows.Scan(&m.ID, &m.CreateTimestamp); err != nil {
+		if err := rows.Scan(&m.ID, &m.CreateUsername, &m.CreateTimestamp); err != nil {
 			return errs.E(op, err)
 		}
 	}
@@ -168,8 +164,8 @@ func (t *Tx) Update(ctx context.Context, m *movie.Movie) error {
 	// in exposing primary keys), so this is a way of returning data
 	// from an update statement and checking whether or not the
 	// update was actually successful. Typically you would use
-	// db.Exec and check RowsAffected (like I do in delete), but I
-	// wanted to show an alternative which can be useful here
+	// db.Exec and check RowsAffected (like I do in delete below),
+	// but I wanted to show an alternative which can be useful here
 	if m.ID == uuid.Nil {
 		return errs.E(op, errs.Database, "Invalid ID - no records updated")
 	}
@@ -232,7 +228,9 @@ func (d *DB) FindByID(ctx context.Context, extlID string) (*movie.Movie, error) 
 				run_time,
 				director,
 				writer,
+				create_username,
 				create_timestamp,
+				update_username,
 				update_timestamp
 		   from demo.movie m
 		  where extl_id = $1`, extlID)
@@ -248,7 +246,9 @@ func (d *DB) FindByID(ctx context.Context, extlID string) (*movie.Movie, error) 
 		&m.RunTime,
 		&m.Director,
 		&m.Writer,
+		&m.CreateUsername,
 		&m.CreateTimestamp,
+		&m.UpdateUsername,
 		&m.UpdateTimestamp)
 
 	if err == sql.ErrNoRows {
@@ -267,17 +267,19 @@ func (d *DB) FindAll(ctx context.Context) ([]*movie.Movie, error) {
 	// use QueryContext to get back sql.Rows
 	rows, err := d.DB.QueryContext(ctx,
 		`select movie_id,
-				extl_id,
-				title,
-				year,
-				rated,
-				released,
-				run_time,
-				director,
-				writer,
-				create_timestamp,
-				update_timestamp
-		   from demo.movie m`)
+					  extl_id,
+					  title,
+					  year,
+					  rated,
+					  released,
+					  run_time,
+					  director,
+					  writer,
+					  create_username,
+					  create_timestamp,
+					  update_username,
+					  update_timestamp
+				 from demo.movie m`)
 	if err != nil {
 		return nil, errs.E(op, errs.Database, err)
 	}
@@ -301,7 +303,9 @@ func (d *DB) FindAll(ctx context.Context) ([]*movie.Movie, error) {
 			&m.RunTime,
 			&m.Director,
 			&m.Writer,
+			&m.CreateUsername,
 			&m.CreateTimestamp,
+			&m.UpdateUsername,
 			&m.UpdateTimestamp)
 
 		if err != nil {
