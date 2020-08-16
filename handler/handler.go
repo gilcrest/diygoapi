@@ -1,9 +1,10 @@
 package handler
 
 import (
-	"github.com/gilcrest/errs"
 	"io"
 	"net/http"
+
+	"github.com/gilcrest/errs"
 
 	"github.com/gilcrest/go-api-basic/app"
 	"github.com/gilcrest/go-api-basic/controller"
@@ -18,7 +19,8 @@ type AppHandler struct {
 }
 
 // AddStandardResponseHeaders middleware is used to add any
-// standard HTTP response headers
+// standard HTTP response headers. All of the responses for this app
+// have a JSON based response body
 func (ah *AppHandler) AddStandardResponseHeaders(h http.Handler) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
