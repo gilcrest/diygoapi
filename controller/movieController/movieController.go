@@ -174,60 +174,75 @@ func (ctl *MovieController) AddMovie(ctx context.Context, r *RequestData, token 
 	return response, nil
 }
 
-//// Update updates the movie given the id sent in
-//func (ctl *MovieController) Update(ctx context.Context, id string, r *RequestData) (*SingleMovieResponse, error) {
-//	const op errs.Op = "controller/movieController/MovieController.Update"
-//
-//	// Convert request into a Movie struct
-//	m, err := ctl.newUpdater(r)
-//	if err != nil {
-//		return nil, errs.E(op, err)
-//	}
-//
-//	// Perform domain Update "business logic"
-//	err = m.Update(ctx, id)
-//	if err != nil {
-//		return nil, errs.E(err)
-//	}
-//
-//	// Begin a DB Tx, if the underlying struct is a MockDatastore then
-//	// the Tx will be nil
-//	tx, err := ctl.App.Datastorer.BeginTx(ctx)
-//	if err != nil {
-//		return nil, errs.E(op, err)
-//	}
-//
-//	// NewTransactor gives back either a MockTx or a concrete
-//	// Tx, depending upon whether the Tx from Datastorer is nil or not
-//	t, err := movieDatastore.NewTransactor(tx)
-//	if err != nil {
-//		return nil, errs.E(op, err)
-//	}
-//
-//	// Call the Update method of the Transactor to update data on
-//	// the database (unless mocked, of course). If an error occurs,
-//	// rollback the transaction
-//	err = t.Update(ctx, m)
-//	if err != nil {
-//		return nil, errs.E(op, ctl.App.Datastorer.RollbackTx(tx, err))
-//	}
-//
-//	// Commit the Transaction
-//	if err := ctl.App.Datastorer.CommitTx(tx); err != nil {
-//		return nil, errs.E(op, errs.Database, err)
-//	}
-//
-//	rd, err := newMovieResponse(m)
-//	if err != nil {
-//		return nil, errs.E(op, err)
-//	}
-//
-//	// Populate the response
-//	response := ctl.NewSingleMovieResponse(rd)
-//
-//	return response, nil
-//}
-//
+// Update updates the movie given the external id sent in
+func (ctl *MovieController) Update(ctx context.Context, externalID string, r *RequestData, token string) (*SingleMovieResponse, error) {
+	const op errs.Op = "controller/movieController/MovieController.Update"
+
+	// authorize and get user from token
+	u, err := authcontroller.AuthorizeAccessToken(ctx, token)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	// Convert request into a Movie struct
+	m, err := ctl.newMovie(r, u)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	// Perform domain Update "business logic"
+	err = m.Update(ctx, externalID)
+	if err != nil {
+		return nil, errs.E(err)
+	}
+
+	// Begin a DB Tx, if the underlying struct is a MockDatastore then
+	// the Tx will be nil
+	tx, err := ctl.App.Datastorer.BeginTx(ctx)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	// declare variable as the Transactor interface
+	var movieTransactor moviestore.Transactor
+
+	// If app is in Mock mode, use MockTx to satisfy the interface,
+	// otherwise use a true sql.Tx for moviestore.Tx
+	if ctl.App.Mock {
+		t := moviestore.NewMockTx()
+		movieTransactor = t
+	} else {
+		t, err := moviestore.NewTx(tx)
+		if err != nil {
+			return nil, errs.E(op, err)
+		}
+		movieTransactor = t
+	}
+
+	// Call the Update method of the Transactor to update data on
+	// the database (unless mocked, of course). If an error occurs,
+	// rollback the transaction
+	err = movieTransactor.Update(ctx, m)
+	if err != nil {
+		return nil, errs.E(op, ctl.App.Datastorer.RollbackTx(tx, err))
+	}
+
+	// Commit the Transaction
+	if err := ctl.App.Datastorer.CommitTx(tx); err != nil {
+		return nil, errs.E(op, errs.Database, err)
+	}
+
+	rd, err := newMovieResponse(m)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	// Populate the response
+	response := ctl.NewSingleMovieResponse(rd)
+
+	return response, nil
+}
+
 //// Delete removes the movie given the id sent in
 //func (ctl *MovieController) Delete(ctx context.Context, id string) (*DeleteMovieResponse, error) {
 //	const op errs.Op = "controller/movieController/MovieController.Update"
