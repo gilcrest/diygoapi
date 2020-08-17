@@ -315,76 +315,118 @@ func (ctl *MovieController) Delete(ctx context.Context, id string, token string)
 	return response, nil
 }
 
-//// FindByID finds a movie given its' unique ID
-//func (ctl *MovieController) FindByID(ctx context.Context, id string) (*SingleMovieResponse, error) {
-//	const op errs.Op = "controller/movieController/MovieController.FindByID"
-//
-//	// NewSelector returns either a concrete DB or a MockDB,
-//	// depending on whether the Datastorer sql.DB is nil or not
-//	s, err := moviestore.NewSelector(ctl.App.Datastorer.DB())
-//	if err != nil {
-//		return nil, errs.E(op, errs.Database, err)
-//	}
-//
-//	// Find the Movie by ID using the selector.FindByID method
-//	m, err := s.FindByID(ctx, id)
-//	if err != nil {
-//		return nil, errs.E(op, err)
-//	}
-//
-//	rd, err := newMovieResponse(m)
-//	if err != nil {
-//		return nil, errs.E(op, err)
-//	}
-//
-//	// Populate the response
-//	response := ctl.NewSingleMovieResponse(rd)
-//
-//	return response, nil
-//}
-//
-//// FindAll finds the entire set of Movies
-//func (ctl *MovieController) FindAll(ctx context.Context) (*ListMovieResponse, error) {
-//	const op errs.Op = "controller/movieController/MovieController.FindAll"
-//
-//	// NewSelector returns either a concrete DB or a MockDB,
-//	// depending on whether the Datastorer sql.DB is nil or not
-//	s, err := moviestore.NewSelector(ctl.App.Datastorer.DB())
-//	if err != nil {
-//		return nil, errs.E(op, errs.Database, err)
-//	}
-//
-//	// Find the list of all Movies using the selector.FindAll method
-//	movies, err := s.FindAll(ctx)
-//	if err != nil {
-//		return nil, errs.E(op, err)
-//	}
-//
-//	// Populate the response
-//	response, err := ctl.NewListMovieResponse(movies)
-//	if err != nil {
-//		return nil, errs.E(op, err)
-//	}
-//
-//	return response, nil
-//}
-//
-//// NewListMovieResponse is an initializer for ListMovieResponse
-//func (ctl *MovieController) NewListMovieResponse(ms []*movie.Movie) (*ListMovieResponse, error) {
-//	const op errs.Op = "controller/movieController/MovieController.NewListMovieResponse"
-//
-//	var s []*ResponseData
-//
-//	for _, m := range ms {
-//		mr, err := newMovieResponse(m)
-//		if err != nil {
-//			return nil, errs.E(op, err)
-//		}
-//		s = append(s, mr)
-//	}
-//
-//	return &ListMovieResponse{StandardResponseFields: ctl.SRF, Data: s}, nil
-//}
+// FindByID finds a movie given its' unique ID
+func (ctl *MovieController) FindByID(ctx context.Context, id string, token string) (*SingleMovieResponse, error) {
+	const op errs.Op = "controller/movieController/MovieController.FindByID"
+
+	// authorize and get user from token
+	u, err := authcontroller.AuthorizeAccessToken(ctx, token)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	// TODO something to properly authorize FindByID
+	ctl.App.Logger.Info().
+		Str("email", u.Email).
+		Str("first name", u.FirstName).
+		Str("last name", u.LastName).
+		Str("full name", u.FullName).
+		Msgf("Delete authorized for %s", u.Email)
+
+	// declare variable as the Transactor interface
+	var movieSelector moviestore.Selector
+
+	// If app is in Mock mode, use MockDB to satisfy the interface,
+	// otherwise use a true sql.DB for moviestore.DB
+	if ctl.App.Mock {
+		movieSelector = moviestore.NewMockDB()
+	} else {
+		movieSelector, err = moviestore.NewDB(ctl.App.Datastorer.DB())
+		if err != nil {
+			return nil, errs.E(op, err)
+		}
+	}
+
+	// Find the Movie by ID using the selector.FindByID method
+	m, err := movieSelector.FindByID(ctx, id)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	rd, err := newMovieResponse(m)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	// Populate the response
+	response := ctl.NewSingleMovieResponse(rd)
+
+	return response, nil
+}
+
+// FindAll finds the entire set of Movies
+func (ctl *MovieController) FindAll(ctx context.Context, token string) (*ListMovieResponse, error) {
+	const op errs.Op = "controller/movieController/MovieController.FindAll"
+
+	// authorize and get user from token
+	u, err := authcontroller.AuthorizeAccessToken(ctx, token)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	// TODO something to properly authorize FindByID
+	ctl.App.Logger.Info().
+		Str("email", u.Email).
+		Str("first name", u.FirstName).
+		Str("last name", u.LastName).
+		Str("full name", u.FullName).
+		Msgf("Delete authorized for %s", u.Email)
+
+	// declare variable as the Transactor interface
+	var movieSelector moviestore.Selector
+
+	// If app is in Mock mode, use MockDB to satisfy the interface,
+	// otherwise use a true sql.DB for moviestore.DB
+	if ctl.App.Mock {
+		movieSelector = moviestore.NewMockDB()
+	} else {
+		movieSelector, err = moviestore.NewDB(ctl.App.Datastorer.DB())
+		if err != nil {
+			return nil, errs.E(op, err)
+		}
+	}
+
+	// Find the list of all Movies using the selector.FindAll method
+	movies, err := movieSelector.FindAll(ctx)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	// Populate the response
+	response, err := ctl.NewListMovieResponse(movies)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	return response, nil
+}
+
+// NewListMovieResponse is an initializer for ListMovieResponse
+func (ctl *MovieController) NewListMovieResponse(ms []*movie.Movie) (*ListMovieResponse, error) {
+	const op errs.Op = "controller/movieController/MovieController.NewListMovieResponse"
+
+	var s []*ResponseData
+
+	for _, m := range ms {
+		mr, err := newMovieResponse(m)
+		if err != nil {
+			return nil, errs.E(op, err)
+		}
+		s = append(s, mr)
+	}
+
+	return &ListMovieResponse{StandardResponseFields: ctl.SRF, Data: s}, nil
+}
 
 // NewSingleMovieResponse is an initializer for SingleMovieResponse
 func (ctl *MovieController) NewSingleMovieResponse(mr *ResponseData) *SingleMovieResponse {
