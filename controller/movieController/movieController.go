@@ -140,14 +140,12 @@ func (ctl *MovieController) AddMovie(ctx context.Context, r *RequestData, token 
 	// If app is in Mock mode, use MockTx to satisfy the interface,
 	// otherwise use a true sql.Tx
 	if ctl.App.Mock {
-		t := moviestore.NewMockTx()
-		movieTransactor = t
+		movieTransactor = moviestore.NewMockTx()
 	} else {
-		t, err := moviestore.NewTx(tx)
+		movieTransactor, err = moviestore.NewTx(tx)
 		if err != nil {
 			return nil, errs.E(op, err)
 		}
-		movieTransactor = t
 	}
 
 	// Call the Create method of the Transactor to insert data to
@@ -209,14 +207,12 @@ func (ctl *MovieController) Update(ctx context.Context, externalID string, r *Re
 	// If app is in Mock mode, use MockTx to satisfy the interface,
 	// otherwise use a true sql.Tx for moviestore.Tx
 	if ctl.App.Mock {
-		t := moviestore.NewMockTx()
-		movieTransactor = t
+		movieTransactor = moviestore.NewMockTx()
 	} else {
-		t, err := moviestore.NewTx(tx)
+		movieTransactor, err = moviestore.NewTx(tx)
 		if err != nil {
 			return nil, errs.E(op, err)
 		}
-		movieTransactor = t
 	}
 
 	// Call the Update method of the Transactor to update data on
@@ -243,53 +239,82 @@ func (ctl *MovieController) Update(ctx context.Context, externalID string, r *Re
 	return response, nil
 }
 
-//// Delete removes the movie given the id sent in
-//func (ctl *MovieController) Delete(ctx context.Context, id string) (*DeleteMovieResponse, error) {
-//	const op errs.Op = "controller/movieController/MovieController.Update"
-//
-//	// NewSelector returns either a concrete DB or a MockDB,
-//	// depending on whether the Datastorer sql.DB is nil or not
-//	s, err := moviestore.NewSelector(ctl.App.Datastorer.DB())
-//	if err != nil {
-//		return nil, errs.E(op, errs.Database, err)
-//	}
-//
-//	// Find the Movie by ID using the selector.FindByID method
-//	m, err := s.FindByID(ctx, id)
-//	if err != nil {
-//		return nil, errs.E(op, err)
-//	}
-//
-//	tx, err := ctl.App.Datastorer.BeginTx(ctx)
-//	if err != nil {
-//		return nil, errs.E(op, err)
-//	}
-//
-//	// NewTransactor gives back either a MockTx or a concrete
-//	// Tx, depending upon whether the Tx from Datastorer is nil or not
-//	t, err := movieDatastore.NewTransactor(tx)
-//	if err != nil {
-//		return nil, errs.E(op, err)
-//	}
-//
-//	// Delete method of Transactor physically deletes the record
-//	// from the DB, unless mocked
-//	err = t.Delete(ctx, m)
-//	if err != nil {
-//		return nil, errs.E(op, ctl.App.Datastorer.RollbackTx(tx, err))
-//	}
-//
-//	// Commit the Transaction
-//	if err := ctl.App.Datastorer.CommitTx(tx); err != nil {
-//		return nil, errs.E(op, errs.Database, err)
-//	}
-//
-//	// Populate the response
-//	response := newDeleteMovieResponse(m, ctl.SRF)
-//
-//	return response, nil
-//}
-//
+// Delete removes the movie given the id sent in
+func (ctl *MovieController) Delete(ctx context.Context, id string, token string) (*DeleteMovieResponse, error) {
+	const op errs.Op = "controller/movieController/MovieController.Delete"
+
+	// authorize and get user from token
+	u, err := authcontroller.AuthorizeAccessToken(ctx, token)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	// TODO something to properly authorize Delete
+	ctl.App.Logger.Info().
+		Str("email", u.Email).
+		Str("first name", u.FirstName).
+		Str("last name", u.LastName).
+		Str("full name", u.FullName).
+		Msgf("Delete authorized for %s", u.Email)
+
+	// declare variable as the Transactor interface
+	var movieSelector moviestore.Selector
+
+	// If app is in Mock mode, use MockDB to satisfy the interface,
+	// otherwise use a true sql.DB for moviestore.DB
+	if ctl.App.Mock {
+		movieSelector = moviestore.NewMockDB()
+	} else {
+		movieSelector, err = moviestore.NewDB(ctl.App.Datastorer.DB())
+		if err != nil {
+			return nil, errs.E(op, err)
+		}
+	}
+
+	// Find the Movie by ID using the selector.FindByID method
+	m, err := movieSelector.FindByID(ctx, id)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	// start a new database transaction
+	tx, err := ctl.App.Datastorer.BeginTx(ctx)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	// declare variable as the Transactor interface
+	var movieTransactor moviestore.Transactor
+
+	// If app is in Mock mode, use MockTx to satisfy the interface,
+	// otherwise use a true sql.Tx for moviestore.Tx
+	if ctl.App.Mock {
+		movieTransactor = moviestore.NewMockTx()
+	} else {
+		movieTransactor, err = moviestore.NewTx(tx)
+		if err != nil {
+			return nil, errs.E(op, err)
+		}
+	}
+
+	// Delete method of Transactor physically deletes the record
+	// from the DB, unless mocked
+	err = movieTransactor.Delete(ctx, m)
+	if err != nil {
+		return nil, errs.E(op, ctl.App.Datastorer.RollbackTx(tx, err))
+	}
+
+	// Commit the Transaction
+	if err := ctl.App.Datastorer.CommitTx(tx); err != nil {
+		return nil, errs.E(op, errs.Database, err)
+	}
+
+	// Populate the response
+	response := newDeleteMovieResponse(m, ctl.SRF)
+
+	return response, nil
+}
+
 //// FindByID finds a movie given its' unique ID
 //func (ctl *MovieController) FindByID(ctx context.Context, id string) (*SingleMovieResponse, error) {
 //	const op errs.Op = "controller/movieController/MovieController.FindByID"
