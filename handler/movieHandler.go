@@ -123,6 +123,50 @@ func (ah *AppHandler) UpdateMovie(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Delete handles DELETE requests for the /movies/{id} endpoint
+// and updates the given movie
+func (ah *AppHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	const op errs.Op = "handler/AppHandler.Delete"
+
+	logger := ah.App.Logger
+	logger.Debug().Msgf("START %s", op)
+	defer logger.Debug().Msgf("END %s", op)
+
+	// retrieve the context from the http.Request
+	ctx := r.Context()
+
+	// retrieve the user from the request Context
+	token, err := accessToken(ctx)
+	if err != nil {
+		errs.HTTPErrorResponse(w, logger, errs.E(op, err))
+		return
+	}
+
+	// gorilla mux Vars function returns the route variables for the
+	// current request, if any. id is the external id given for the
+	// movie
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	// Initialize the MovieController
+	mc := movieController.NewMovieController(ah.App, ah.StandardResponseFields)
+
+	// Send the request context and request struct to the controller
+	// Receive a response or error in return
+	resp, err := mc.Delete(ctx, id, token)
+	if err != nil {
+		errs.HTTPErrorResponse(w, logger, errs.E(op, err))
+		return
+	}
+
+	// Encode response struct to JSON for the response body
+	err = json.NewEncoder(w).Encode(resp)
+	if err != nil {
+		errs.HTTPErrorResponse(w, logger, errs.E(op, errs.Internal, err))
+		return
+	}
+}
+
 //// FindByID handles GET requests for the /movies/{id} endpoint
 //// and finds a movie by it's ID
 //func (ah *AppHandler) FindByID(w http.ResponseWriter, r *http.Request) {
@@ -184,35 +228,3 @@ func (ah *AppHandler) UpdateMovie(w http.ResponseWriter, r *http.Request) {
 //	}
 //}
 //
-
-//// Delete handles DELETE requests for the /movies/{id} endpoint
-//// and updates the given movie
-//func (ah *AppHandler) Delete(w http.ResponseWriter, r *http.Request) {
-//	const op errs.Op = "handler/AppHandler.Delete"
-//
-//	vars := mux.Vars(r)
-//	id := vars["id"]
-//
-//	// retrieve the context from the http.Request
-//	ctx := r.Context()
-//
-//	// Initialize the MovieController
-//	mc := movieController.NewMovieController(ah.App, ah.StandardResponseFields)
-//
-//	// Send the request context and request struct to the controller
-//	// Receive a response or error in return
-//	resp, err := mc.Delete(ctx, id)
-//	if err != nil {
-//		err = errs.RE(http.StatusBadRequest, errs.InvalidRequest, errs.E(op, err))
-//		errs.HTTPError(w, err)
-//		return
-//	}
-//
-//	// Encode response struct to JSON for the response body
-//	err = json.NewEncoder(w).Encode(resp)
-//	if err != nil {
-//		err = errs.RE(http.StatusInternalServerError, errs.E(op, errs.Internal))
-//		errs.HTTPError(w, err)
-//		return
-//	}
-//}
