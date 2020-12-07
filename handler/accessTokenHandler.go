@@ -5,35 +5,39 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gilcrest/errs"
+	"github.com/rs/zerolog/hlog"
+
+	"github.com/pkg/errors"
+
+	"github.com/gilcrest/go-api-basic/domain/errs"
 )
 
 type contextKey string
 
 const contextKeyAccessToken = contextKey("access-token")
 
-// accessToken gets the access token from the context.
-func accessToken(ctx context.Context) (string, error) {
-	const op errs.Op = "handler/accessToken"
+// accessToken gets the access token from the request
+func accessToken(r *http.Request) (string, error) {
+
+	// retrieve the context from the http.Request
+	ctx := r.Context()
 
 	tokenStr, ok := ctx.Value(contextKeyAccessToken).(string)
 	if !ok {
-		return "", errs.E(op, errs.Unauthenticated, "Access Token not set properly to context")
+		return "", errs.E(errs.Unauthenticated, errors.New("Access Token not set properly to context"))
 	}
 	if tokenStr == "" {
-		return "", errs.E(op, errs.Unauthenticated, "Access Token empty in context")
+		return "", errs.E(errs.Unauthenticated, errors.New("Access Token empty in context"))
 	}
 	return tokenStr, nil
 }
 
-// SetAccessToken2Context middleware is used to set the Google access
+// AccessTokenHandler middleware is used to set the Google access
 // token to the context
-func (ah *AppHandler) SetAccessToken2Context(h http.Handler) http.Handler {
+func (ah *AppHandler) AccessTokenHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
-			const op errs.Op = "handler/AppHandler.SetAccessToken2Context"
-
-			logger := ah.App.Logger
+			logger := *hlog.FromRequest(r)
 
 			var token string
 
@@ -61,7 +65,7 @@ func (ah *AppHandler) SetAccessToken2Context(h http.Handler) http.Handler {
 				// and a 403 Forbidden response should be used afterwards, when the user is
 				// authenticated but isn’t authorized to perform the requested operation on
 				// the given resource."
-				errs.HTTPErrorResponse(w, logger, errs.E(op, errs.Unauthenticated, "Unauthenticated - empty Bearer token"))
+				errs.HTTPErrorResponse(w, logger, errs.E(errs.Unauthenticated, errors.New("Unauthenticated - empty Bearer token")))
 				return
 			}
 
