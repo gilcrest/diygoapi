@@ -11,10 +11,6 @@ import (
 type Application struct {
 	// Environment Name
 	EnvName EnvName
-	// Mock denotes whether or not the app is being "mocked" and
-	// stubbed responses are being returned for various components
-	// within
-	Mock bool
 	// Datastorer is an interface type meant to be the
 	// persistence mechanism. It can be a
 	// SQL database (PostgreSQL) or a mock database
@@ -27,17 +23,6 @@ type Application struct {
 func NewApplication(envName EnvName, datastorer datastore.Datastorer, logger zerolog.Logger) *Application {
 	return &Application{
 		EnvName:    envName,
-		Mock:       false,
-		Datastorer: datastorer,
-		Logger:     logger,
-	}
-}
-
-// NewMockedApplication initializes an Application struct with Mock set to true
-func NewMockedApplication(envName EnvName, datastorer datastore.Datastorer, logger zerolog.Logger) *Application {
-	return &Application{
-		EnvName:    envName,
-		Mock:       true,
 		Datastorer: datastorer,
 		Logger:     logger,
 	}
@@ -97,6 +82,9 @@ func NewLogger(lvl zerolog.Level) zerolog.Logger {
 // as it has the Run method defined with the appropriate parameters
 type GCPSeverityHook struct{}
 
+// Run method satisfies zerolog.Hook interface and adds a severity
+// level to all logs, given zerolog.Level passed in. Zerolog levels
+// are mapped to log levels recognized by GCP
 func (h GCPSeverityHook) Run(e *zerolog.Event, level zerolog.Level, msg string) {
 
 	const lvlKey string = "severity"
