@@ -1,11 +1,14 @@
 package app
 
 import (
-	"github.com/gilcrest/go-api-basic/datastore"
-	"github.com/rs/zerolog"
+	"bytes"
+	"encoding/json"
 	"os"
 	"reflect"
 	"testing"
+
+	"github.com/gilcrest/go-api-basic/datastore"
+	"github.com/rs/zerolog"
 )
 
 func TestEnvName_String(t *testing.T) {
@@ -46,7 +49,6 @@ func TestNewApplication(t *testing.T) {
 			log: zerolog.Logger{},
 		}, &Application{
 			EnvName:    Local,
-			Mock:       false,
 			Datastorer: nil,
 			Logger:     zerolog.Logger{},
 		}},
@@ -71,6 +73,7 @@ func TestNewLogger(t *testing.T) {
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	// start a new logger with Stdout as the target
 	lgr := zerolog.New(os.Stdout).With().Timestamp().Logger()
+	lgr = lgr.Hook(GCPSeverityHook{})
 
 	tests := []struct {
 		name string
@@ -88,32 +91,50 @@ func TestNewLogger(t *testing.T) {
 	}
 }
 
-func TestNewMockedApplication(t *testing.T) {
+func TestGCPSeverityHook_Run(t *testing.T) {
+	// empty string for TimeFieldFormat will write logs with UNIX time
+	zerolog.TimeFieldFormat = ""
+	var b bytes.Buffer
+	lgr := zerolog.New(&b).With().Timestamp().Logger().Hook(GCPSeverityHook{})
+
 	type args struct {
-		en  EnvName
-		ds  datastore.Datastorer
-		log zerolog.Logger
+		f     func()
+		level zerolog.Level
+		msg   string
+		sev   string
 	}
 	tests := []struct {
 		name string
 		args args
-		want *Application
 	}{
-		{"New Mocked Application", args{
-			en:  Local,
-			ds:  nil,
-			log: zerolog.Logger{},
-		}, &Application{
-			EnvName:    Local,
-			Mock:       true,
-			Datastorer: nil,
-			Logger:     zerolog.Logger{},
-		}},
+		{zerolog.PanicLevel.String(), args{func() { lgr.Panic().Msg("") }, zerolog.PanicLevel, "", "EMERGENCY"}},
+		//{zerolog.FatalLevel.String(), args{func() { lgr.Fatal().Msg("") }, zerolog.FatalLevel, "", "EMERGENCY"}},
+		{zerolog.ErrorLevel.String(), args{func() { lgr.Error().Msg("") }, zerolog.ErrorLevel, "", "ERROR"}},
+		{zerolog.WarnLevel.String(), args{func() { lgr.Warn().Msg("") }, zerolog.WarnLevel, "", "WARNING"}},
+		{zerolog.InfoLevel.String(), args{func() { lgr.Info().Msg("") }, zerolog.InfoLevel, "", "INFO"}},
+		{zerolog.DebugLevel.String(), args{func() { lgr.Debug().Msg("") }, zerolog.DebugLevel, "", "DEBUG"}},
+		{zerolog.TraceLevel.String(), args{func() { lgr.Trace().Msg("") }, zerolog.TraceLevel, "", "DEBUG"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewMockedApplication(tt.args.en, tt.args.ds, tt.args.log); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewMockedApplication() = %v, want %v", got, tt.want)
+			if tt.name == zerolog.PanicLevel.String() {
+				defer func() {
+					if r := recover(); r == nil {
+						t.Errorf("Code should have panicked")
+					}
+				}()
+			}
+			b.Reset()
+			tt.args.f()
+			var dat map[string]interface{}
+			if err := json.Unmarshal(b.Bytes(), &dat); err != nil {
+				t.Fatalf("json Unmarshal error: %v", err)
+			}
+			got := dat["severity"].(string)
+			want := tt.args.sev
+
+			if got != want {
+				t.Errorf("event.Msg() = %q, want %q", got, want)
 			}
 		})
 	}
