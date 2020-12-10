@@ -31,15 +31,6 @@ var applicationSet = wire.NewSet(
 	app.NewLogger,
 )
 
-// mockApplicationSet is the Wire provider set for the mocked application
-var mockApplicationSet = wire.NewSet(
-	app.NewMockedApplication,
-	newRouter,
-	wire.Bind(new(http.Handler), new(*mux.Router)),
-	handler.NewAppHandler,
-	app.NewLogger,
-)
-
 // goCloudServerSet
 var goCloudServerSet = wire.NewSet(
 	trace.AlwaysSample,
@@ -90,24 +81,10 @@ func setupApp(ctx context.Context, envName app.EnvName, dsName datastore.Name, l
 		applicationSet,
 		appHealthChecks,
 		wire.Struct(new(server.Options), "RequestLogger", "HealthChecks", "TraceExporter", "DefaultSamplingPolicy", "Driver"),
+		datastore.NewPGDatasourceName,
 		datastore.NewDB,
 		wire.Bind(new(datastore.Datastorer), new(*datastore.Datastore)),
 		datastore.NewDatastore)
-	return nil, nil, nil
-}
-
-// setupAppwMock is a Wire injector function that sets up the
-// application using a mock db implementation
-func setupAppwMock(ctx context.Context, envName app.EnvName, dsName datastore.Name, loglvl zerolog.Level) (*server.Server, func(), error) {
-	// This will be filled in by Wire with providers from the provider sets in
-	// wire.Build.
-	wire.Build(
-		wire.InterfaceValue(new(trace.Exporter), trace.Exporter(nil)),
-		goCloudServerSet,
-		mockApplicationSet,
-		wire.Struct(new(server.Options), "RequestLogger", "TraceExporter", "DefaultSamplingPolicy", "Driver"),
-		wire.Bind(new(datastore.Datastorer), new(*datastore.MockDatastore)),
-		datastore.NewMockDatastore)
 	return nil, nil, nil
 }
 
@@ -115,24 +92,9 @@ func setupAppwMock(ctx context.Context, envName app.EnvName, dsName datastore.Na
 // to Kubernetes or other orchestrators that the server should not receive
 // traffic until the server is able to connect to its database.
 func appHealthChecks(n datastore.Name, db *sql.DB) ([]health.Checker, func()) {
-	if n != datastore.MockedDatastore {
-		dbCheck := sqlhealth.New(db)
-		list := []health.Checker{dbCheck}
-		return list, func() {
-			dbCheck.Stop()
-		}
+	dbCheck := sqlhealth.New(db)
+	list := []health.Checker{dbCheck}
+	return list, func() {
+		dbCheck.Stop()
 	}
-	mockCheck := new(mockChecker)
-	list := []health.Checker{mockCheck}
-	return list, func() {}
-}
-
-// mockChecker mocks the health of a SQL database.
-type mockChecker struct {
-	healthy bool
-}
-
-// mockChecker returns a nil error, signifying the mock db is up
-func (c *mockChecker) CheckHealth() error {
-	return nil
 }

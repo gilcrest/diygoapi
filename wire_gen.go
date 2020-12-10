@@ -27,8 +27,12 @@ import (
 // Injectors from inject_main.go:
 
 func setupApp(ctx context.Context, envName app.EnvName, dsName datastore.Name, loglvl zerolog.Level) (*server.Server, func(), error) {
+	pgDatasourceName, err := datastore.NewPGDatasourceName(dsName)
+	if err != nil {
+		return nil, nil, err
+	}
 	logger := app.NewLogger(loglvl)
-	db, cleanup, err := datastore.NewDB(dsName, logger)
+	db, cleanup, err := datastore.NewDB(pgDatasourceName, logger)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -59,38 +63,10 @@ var (
 	_wireExporterValue = trace.Exporter(nil)
 )
 
-func setupAppwMock(ctx context.Context, envName app.EnvName, dsName datastore.Name, loglvl zerolog.Level) (*server.Server, func(), error) {
-	mockDatastore := datastore.NewMockDatastore()
-	logger := app.NewLogger(loglvl)
-	application := app.NewMockedApplication(envName, mockDatastore, logger)
-	appHandler := handler.NewAppHandler(application)
-	router := newRouter(appHandler)
-	mainRequestLogger := newRequestLogger(logger)
-	exporter := _wireTraceExporterValue
-	sampler := trace.AlwaysSample()
-	defaultDriver := server.NewDefaultDriver()
-	options := &server.Options{
-		RequestLogger:         mainRequestLogger,
-		TraceExporter:         exporter,
-		DefaultSamplingPolicy: sampler,
-		Driver:                defaultDriver,
-	}
-	serverServer := server.New(router, options)
-	return serverServer, func() {
-	}, nil
-}
-
-var (
-	_wireTraceExporterValue = trace.Exporter(nil)
-)
-
 // inject_main.go:
 
 // applicationSet is the Wire provider set for the application
 var applicationSet = wire.NewSet(app.NewApplication, newRouter, wire.Bind(new(http.Handler), new(*mux.Router)), handler.NewAppHandler, app.NewLogger)
-
-// mockApplicationSet is the Wire provider set for the mocked application
-var mockApplicationSet = wire.NewSet(app.NewMockedApplication, newRouter, wire.Bind(new(http.Handler), new(*mux.Router)), handler.NewAppHandler, app.NewLogger)
 
 // goCloudServerSet
 var goCloudServerSet = wire.NewSet(trace.AlwaysSample, server.New, server.NewDefaultDriver, wire.Bind(new(driver.Server), new(*server.DefaultDriver)), wire.Bind(new(requestlog.Logger), new(*requestLogger)), newRequestLogger)
@@ -128,24 +104,9 @@ func newRequestLogger(l zerolog.Logger) *requestLogger {
 // to Kubernetes or other orchestrators that the server should not receive
 // traffic until the server is able to connect to its database.
 func appHealthChecks(n datastore.Name, db *sql.DB) ([]health.Checker, func()) {
-	if n != datastore.MockedDatastore {
-		dbCheck := sqlhealth.New(db)
-		list := []health.Checker{dbCheck}
-		return list, func() {
-			dbCheck.Stop()
-		}
+	dbCheck := sqlhealth.New(db)
+	list := []health.Checker{dbCheck}
+	return list, func() {
+		dbCheck.Stop()
 	}
-	mockCheck := new(mockChecker)
-	list := []health.Checker{mockCheck}
-	return list, func() {}
-}
-
-// mockChecker mocks the health of a SQL database.
-type mockChecker struct {
-	healthy bool
-}
-
-// mockChecker returns a nil error, signifying the mock db is up
-func (c *mockChecker) CheckHealth() error {
-	return nil
 }
