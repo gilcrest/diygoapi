@@ -3,6 +3,8 @@ package random
 import (
 	"crypto/rand"
 	"encoding/base64"
+
+	"github.com/gilcrest/go-api-basic/domain/errs"
 )
 
 // GenerateRandomBytes returns securely generated random bytes.
@@ -14,7 +16,7 @@ func GenerateRandomBytes(n int) ([]byte, error) {
 	_, err := rand.Read(b)
 	// Note that err == nil only if we read len(b) bytes.
 	if err != nil {
-		return nil, err
+		return nil, errs.E(errs.Internal, err)
 	}
 
 	return b, nil
@@ -29,5 +31,8 @@ func GenerateRandomBytes(n int) ([]byte, error) {
 // cryptographically secure.
 func CryptoString(n int) (string, error) {
 	b, err := GenerateRandomBytes(n)
+	if err != nil {
+		return "", err
+	}
 	return base64.URLEncoding.EncodeToString(b), err
 }
