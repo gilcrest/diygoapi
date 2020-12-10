@@ -8,6 +8,8 @@ The goal of this project is to make an example/template of a relational database
 
 The following is an in-depth walkthrough of this project. This walkthrough has a stupid amount of detail. This is a demo API, so the "business" intent of it is to support basic CRUD (**C**reate, **R**ead, **U**pdate, **D**elete) operations for a movie database.
 
+## WARNING!!! - 12/10/2020 - I am in the midst of refactoring a lot of this.. I'm trying to simplify a bit and have made major changes to error handling and general flow. Everything below needs to be updated. I'm working on it! I have time right now and hope to have this all rebuilt and documented before Christmas. My goal after that will be to add a LOT of tests...
+
 ## Installation
 
 TL;DR - just show me how to install and run the code.
