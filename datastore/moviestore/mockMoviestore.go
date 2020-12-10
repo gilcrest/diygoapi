@@ -29,8 +29,8 @@ func (t MockTx) Create(ctx context.Context, m *movie.Movie) error {
 	// Because of that, I have to set the timestamps in this mock
 	// as if they were being set by the DB procedure that is being
 	// called
-	m.CreateTimestamp = time.Date(2020, time.February, 25, 0, 0, 0, 0, time.UTC)
-	m.UpdateTimestamp = time.Date(2020, time.February, 25, 0, 0, 0, 0, time.UTC)
+	m.CreateTime = time.Date(2020, time.February, 25, 0, 0, 0, 0, time.UTC)
+	m.UpdateTime = time.Date(2020, time.February, 25, 0, 0, 0, 0, time.UTC)
 
 	return nil
 }
@@ -43,7 +43,7 @@ func (t MockTx) Update(ctx context.Context, m *movie.Movie) error {
 	// actually getting back data as part of the update of the
 	// original record that is helpful, so I am recreating that
 	m.ID = uuid.MustParse("b7f34380-386d-4142-b9a0-3834d6e2288e")
-	m.CreateTimestamp = time.Date(2020, time.February, 25, 0, 0, 0, 0, time.UTC)
+	m.CreateTime = time.Date(2020, time.February, 25, 0, 0, 0, 0, time.UTC)
 
 	return nil
 }
@@ -65,14 +65,13 @@ func (d MockDB) FindByID(ctx context.Context, extlID string) (*movie.Movie, erro
 	m1 := new(movie.Movie)
 	m1.ExternalID = extlID
 	m1.Title = "The Thing"
-	m1.Year = 1982
 	m1.Rated = "R"
 	m1.Released = time.Date(1982, time.June, 25, 0, 0, 0, 0, time.UTC)
 	m1.RunTime = 109
 	m1.Director = "John Carpenter"
 	m1.Writer = "Bill Lancaster"
-	m1.CreateTimestamp = time.Date(2020, time.February, 25, 0, 0, 0, 0, time.UTC)
-	m1.UpdateTimestamp = time.Date(2020, time.February, 25, 0, 0, 0, 0, time.UTC)
+	m1.CreateTime = time.Date(2020, time.February, 25, 0, 0, 0, 0, time.UTC)
+	m1.UpdateTime = time.Date(2020, time.February, 25, 0, 0, 0, 0, time.UTC)
 
 	return m1, nil
 }
@@ -85,27 +84,25 @@ func (d MockDB) FindAll(ctx context.Context) ([]*movie.Movie, error) {
 	m1.ID = uuid.MustParse("4e58fa6a-5c4e-4e39-b6df-341087d1074b")
 	m1.ExternalID = "Z8MnDR5iw70Z-Q9OIUgH"
 	m1.Title = "The Thing"
-	m1.Year = 1982
 	m1.Rated = "R"
 	m1.Released = time.Date(1982, time.June, 25, 0, 0, 0, 0, time.UTC)
 	m1.RunTime = 109
 	m1.Director = "John Carpenter"
 	m1.Writer = "Bill Lancaster"
-	m1.CreateTimestamp = time.Date(2020, time.February, 25, 0, 0, 0, 0, time.UTC)
-	m1.UpdateTimestamp = time.Date(2020, time.February, 25, 0, 0, 0, 0, time.UTC)
+	m1.CreateTime = time.Date(2020, time.February, 25, 0, 0, 0, 0, time.UTC)
+	m1.UpdateTime = time.Date(2020, time.February, 25, 0, 0, 0, 0, time.UTC)
 
 	m2 := new(movie.Movie)
 	m2.ID = uuid.MustParse("b7f34380-386d-4142-b9a0-3834d6e2288e")
 	m2.ExternalID = "QxKhsURZ08sBP68MufYu"
 	m2.Title = "Repo Man"
-	m2.Year = 1984
 	m2.Rated = "R"
 	m2.Released = time.Date(1984, time.March, 2, 0, 0, 0, 0, time.UTC)
 	m2.RunTime = 109
 	m2.Director = "Alex Cox"
 	m2.Writer = "Alex Cox"
-	m2.CreateTimestamp = time.Date(2020, time.February, 25, 0, 0, 0, 0, time.UTC)
-	m2.UpdateTimestamp = time.Date(2020, time.February, 25, 0, 0, 0, 0, time.UTC)
+	m2.CreateTime = time.Date(2020, time.February, 25, 0, 0, 0, 0, time.UTC)
+	m2.UpdateTime = time.Date(2020, time.February, 25, 0, 0, 0, 0, time.UTC)
 
 	s := []*movie.Movie{m1, m2}
 

@@ -22,6 +22,7 @@ type Selector interface {
 	FindAll(context.Context) ([]*movie.Movie, error)
 }
 
+// NewTx is an initializer for Tx
 func NewTx(tx *sql.Tx) (*Tx, error) {
 	const op errs.Op = "moviestore/NewMovieTx"
 	if tx == nil {
@@ -30,7 +31,7 @@ func NewTx(tx *sql.Tx) (*Tx, error) {
 	return &Tx{Tx: tx}, nil
 }
 
-// MovieTx is the database implementation for DML operations for a movie
+// Tx is the database implementation for DML operations for a movie
 type Tx struct {
 	*sql.Tx
 }
@@ -47,14 +48,13 @@ func (t *Tx) Create(ctx context.Context, m *movie.Movie) error {
 		p_id => $1,
 		p_extl_id => $2,
 		p_title => $3,
-		p_year => $4,
-		p_rated => $5,
-		p_released => $6,
-		p_run_time => $7,
-		p_director => $8,
-		p_writer => $9,
-		p_create_client_id => $10,
-		p_create_username => $11)`)
+		p_rated => $4,
+		p_released => $5,
+		p_run_time => $6,
+		p_director => $7,
+		p_writer => $8,
+		p_create_client_id => $9,
+		p_create_username => $10)`)
 
 	if err != nil {
 		return errs.E(op, err)
@@ -68,17 +68,16 @@ func (t *Tx) Create(ctx context.Context, m *movie.Movie) error {
 	// Execute stored function that returns the create_date timestamp,
 	// hence the use of QueryContext instead of Exec
 	rows, err := stmt.QueryContext(ctx,
-		m.ID,             //$1
-		m.ExternalID,     //$2
-		m.Title,          //$3
-		m.Year,           //$4
-		m.Rated,          //$5
-		m.Released,       //$6
-		m.RunTime,        //$7
-		m.Director,       //$8
-		m.Writer,         //$9
-		fakeClientID,     //$10
-		m.CreateUsername) //$11
+		m.ID,               //$1
+		m.ExternalID,       //$2
+		m.Title,            //$3
+		m.Rated,            //$4
+		m.Released,         //$5
+		m.RunTime,          //$6
+		m.Director,         //$7
+		m.Writer,           //$8
+		fakeClientID,       //$9
+		m.CreateUser.Email) //$10
 
 	if err != nil {
 		return errs.E(op, err)
@@ -87,7 +86,7 @@ func (t *Tx) Create(ctx context.Context, m *movie.Movie) error {
 
 	// Iterate through the returned record(s)
 	for rows.Next() {
-		if err := rows.Scan(&m.CreateTimestamp, &m.UpdateTimestamp); err != nil {
+		if err := rows.Scan(&m.CreateTime, &m.UpdateTime); err != nil {
 			return errs.E(op, err)
 		}
 	}
@@ -110,15 +109,14 @@ func (t *Tx) Update(ctx context.Context, m *movie.Movie) error {
 	stmt, err := t.Tx.PrepareContext(ctx, `
 	update demo.movie
 	   set title = $1,
-		   year = $2,
-		   rated = $3,
-		   released = $4,
-		   run_time = $5,
-		   director = $6,
-		   writer = $7,
-		   update_username = $8,
-		   update_timestamp = $9
-	 where extl_id = $10
+		   rated = $2,
+		   released = $3,
+		   run_time = $4,
+		   director = $5,
+		   writer = $6,
+		   update_username = $7,
+		   update_timestamp = $8
+	 where extl_id = $9
  returning movie_id, create_username, create_timestamp`)
 
 	if err != nil {
@@ -129,16 +127,15 @@ func (t *Tx) Update(ctx context.Context, m *movie.Movie) error {
 	// Execute stored function that returns the create_date timestamp,
 	// hence the use of QueryContext instead of Exec
 	rows, err := stmt.QueryContext(ctx,
-		m.Title,           //$1
-		m.Year,            //$2
-		m.Rated,           //$3
-		m.Released,        //$4
-		m.RunTime,         //$5
-		m.Director,        //$6
-		m.Writer,          //$7
-		m.UpdateUsername,  //$8
-		m.UpdateTimestamp, //$9
-		m.ExternalID)      //$10
+		m.Title,            //$1
+		m.Rated,            //$2
+		m.Released,         //$3
+		m.RunTime,          //$4
+		m.Director,         //$5
+		m.Writer,           //$6
+		m.UpdateUser.Email, //$7
+		m.UpdateTime,       //$8
+		m.ExternalID)       //$9
 
 	if err != nil {
 		return errs.E(op, err)
@@ -147,7 +144,7 @@ func (t *Tx) Update(ctx context.Context, m *movie.Movie) error {
 
 	// Iterate through the returned record(s)
 	for rows.Next() {
-		if err := rows.Scan(&m.ID, &m.CreateUsername, &m.CreateTimestamp); err != nil {
+		if err := rows.Scan(&m.ID, &m.CreateUser.Email, &m.CreateTime); err != nil {
 			return errs.E(op, err)
 		}
 	}
@@ -200,6 +197,7 @@ func (t *Tx) Delete(ctx context.Context, m *movie.Movie) error {
 	return nil
 }
 
+// NewDB is an initializer for DB
 func NewDB(db *sql.DB) (*DB, error) {
 	const op errs.Op = "moviestore/NewMovieDB"
 	if db == nil {
@@ -208,7 +206,7 @@ func NewDB(db *sql.DB) (*DB, error) {
 	return &DB{DB: db}, nil
 }
 
-// MovieTx is the database implementation for DML operations for a movie
+// DB is the database implementation for READ operations for a movie
 type DB struct {
 	*sql.DB
 }
@@ -222,7 +220,6 @@ func (d *DB) FindByID(ctx context.Context, extlID string) (*movie.Movie, error) 
 		`select movie_id,
 				extl_id,
 				title,
-				year,
 				rated,
 				released,
 				run_time,
@@ -240,16 +237,15 @@ func (d *DB) FindByID(ctx context.Context, extlID string) (*movie.Movie, error) 
 		&m.ID,
 		&m.ExternalID,
 		&m.Title,
-		&m.Year,
 		&m.Rated,
 		&m.Released,
 		&m.RunTime,
 		&m.Director,
 		&m.Writer,
-		&m.CreateUsername,
-		&m.CreateTimestamp,
-		&m.UpdateUsername,
-		&m.UpdateTimestamp)
+		&m.CreateUser.Email,
+		&m.CreateTime,
+		&m.UpdateUser.Email,
+		&m.UpdateTime)
 
 	if err == sql.ErrNoRows {
 		return nil, errs.E(op, errs.NotExist, "No record found for given ID")
@@ -269,7 +265,6 @@ func (d *DB) FindAll(ctx context.Context) ([]*movie.Movie, error) {
 		`select movie_id,
 					  extl_id,
 					  title,
-					  year,
 					  rated,
 					  released,
 					  run_time,
@@ -297,16 +292,15 @@ func (d *DB) FindAll(ctx context.Context) ([]*movie.Movie, error) {
 			&m.ID,
 			&m.ExternalID,
 			&m.Title,
-			&m.Year,
 			&m.Rated,
 			&m.Released,
 			&m.RunTime,
 			&m.Director,
 			&m.Writer,
-			&m.CreateUsername,
-			&m.CreateTimestamp,
-			&m.UpdateUsername,
-			&m.UpdateTimestamp)
+			&m.CreateUser.Email,
+			&m.CreateTime,
+			&m.UpdateUser.Email,
+			&m.UpdateTime)
 
 		if err != nil {
 			return nil, errs.E(op, errs.Database, err)
