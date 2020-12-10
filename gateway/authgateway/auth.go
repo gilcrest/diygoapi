@@ -3,22 +3,23 @@ package authgateway
 import (
 	"context"
 
+	"github.com/gilcrest/go-api-basic/domain/user"
+
 	"golang.org/x/oauth2"
 	googleoauth "google.golang.org/api/oauth2/v2"
 	"google.golang.org/api/option"
 
-	"github.com/gilcrest/errs"
+	"github.com/gilcrest/go-api-basic/domain/errs"
 )
 
 // UserInfo makes an outbound https call to Google using their
 // Oauth2 v2 api and returns a Userinfo struct which has most
 // profile data elements you typically need
 func UserInfo(ctx context.Context, token *oauth2.Token) (*googleoauth.Userinfo, error) {
-	const op errs.Op = "gateway/authgateway/UserInfo"
 
 	oauthService, err := googleoauth.NewService(ctx, option.WithTokenSource(oauth2.StaticTokenSource(token)))
 	if err != nil {
-		return nil, errs.E(op, err)
+		return nil, errs.E(err)
 	}
 
 	userInfo, err := oauthService.Userinfo.Get().Do()
@@ -29,8 +30,23 @@ func UserInfo(ctx context.Context, token *oauth2.Token) (*googleoauth.Userinfo, 
 		// requested operation on the given resource."
 		// In this case, we are getting a bad response from Google service, assume
 		// they are not able to authenticate properly
-		return nil, errs.E(op, errs.Unauthenticated, err)
+		return nil, errs.E(errs.Unauthenticated, err)
 	}
 
 	return userInfo, nil
+}
+
+// NewUser initializes the user.User struct given a Userinfo struct
+// from Google
+func NewUser(userinfo *googleoauth.Userinfo) *user.User {
+	return &user.User{
+		Email:     userinfo.Email,
+		LastName:  userinfo.FamilyName,
+		FirstName: userinfo.GivenName,
+		FullName:  userinfo.Name,
+		//Gender:       userinfo.Gender,
+		HostedDomain: userinfo.Hd,
+		PictureURL:   userinfo.Picture,
+		ProfileLink:  userinfo.Link,
+	}
 }
