@@ -35,14 +35,14 @@ func newRouter(hdl *handler.AppHandler) *mux.Router {
 		Methods("POST").
 		Headers("Content-Type", "application/json")
 
-	//// Match only PUT requests having an ID at /api/v1/movies/{id}
-	//// with the Content-Type header = application/json
-	//rtr.Handle("/v1/movies/{id}",
-	//	c.Append(hdl.AccessTokenHandler).
-	//		Then(http.HandlerFunc(hdl.UpdateMovie))).
-	//	Methods("PUT").
-	//	Headers("Content-Type", "application/json")
-	//
+	// Match only PUT requests having an ID at /api/v1/movies/{id}
+	// with the Content-Type header = application/json
+	rtr.Handle("/v1/movies/{id}",
+		c.Append(hdl.AccessTokenHandler).
+			Then(http.HandlerFunc(hdl.UpdateMovie))).
+		Methods("PUT").
+		Headers("Content-Type", "application/json")
+
 	//// Match only DELETE requests having an ID at /api/v1/movies/{id}
 	//rtr.Handle("/v1/movies/{id}",
 	//	c.Append(hdl.AccessTokenHandler).

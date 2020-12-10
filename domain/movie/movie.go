@@ -32,9 +32,9 @@ func NewMovie(id uuid.UUID, extlID string, u *user.User) (*Movie, error) {
 	return &Movie{
 		ID:         id,
 		ExternalID: extlID,
-		CreateUser: u,
+		CreateUser: *u,
 		CreateTime: now,
-		UpdateUser: u,
+		UpdateUser: *u,
 		UpdateTime: now,
 	}, nil
 }
@@ -49,10 +49,15 @@ type Movie struct {
 	RunTime    int
 	Director   string
 	Writer     string
-	CreateUser *user.User
+	CreateUser user.User
 	CreateTime time.Time
-	UpdateUser *user.User
+	UpdateUser user.User
 	UpdateTime time.Time
+}
+
+func (m *Movie) SetExternalID(id string) *Movie {
+	m.ExternalID = id
+	return m
 }
 
 func (m *Movie) SetTitle(t string) *Movie {
@@ -65,9 +70,16 @@ func (m *Movie) SetRated(r string) *Movie {
 	return m
 }
 
-func (m *Movie) SetReleased(t time.Time) *Movie {
+func (m *Movie) SetReleased(r string) (*Movie, error) {
+	t, err := time.Parse(time.RFC3339, r)
+	if err != nil {
+		return nil, errs.E(errs.Validation,
+			errs.Code("invalid_date_format"),
+			errs.Parameter("ReleaseDate"),
+			err)
+	}
 	m.Released = t
-	return m
+	return m, nil
 }
 
 func (m *Movie) SetRunTime(rt int) *Movie {
@@ -82,6 +94,16 @@ func (m *Movie) SetDirector(d string) *Movie {
 
 func (m *Movie) SetWriter(w string) *Movie {
 	m.Writer = w
+	return m
+}
+
+func (m *Movie) SetUpdateUser(u *user.User) *Movie {
+	m.UpdateUser = *u
+	return m
+}
+
+func (m *Movie) SetUpdateTime() *Movie {
+	m.UpdateTime = time.Now()
 	return m
 }
 
@@ -101,13 +123,6 @@ func (m *Movie) IsValid() error {
 	case m.Writer == "":
 		return errs.E(errs.Validation, errs.Parameter("Writer"), errs.MissingField("Writer"))
 	}
-
-	return nil
-}
-
-// Update performs business validations prior to writing to the db
-func (m *Movie) Update(ctx context.Context, id string) error {
-	m.UpdateTime = time.Now().UTC()
 
 	return nil
 }

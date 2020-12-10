@@ -48,71 +48,6 @@ type MovieController struct {
 //	}
 //}
 
-//// Update updates the movie given the external id sent in
-//func (ctl *MovieController) Update(ctx context.Context, externalID string, r *RequestData, token string) (*SingleMovieResponse, error) {
-//	// authorize and get user from token
-//	u, err := authcontroller.AuthorizeAccessToken(ctx, ctl.App, token)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	// Convert request into a Movie struct
-//	m, err := ctl.newMovie4Update(r, externalID, u)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	// Perform domain Update "business logic"
-//	err = m.Update(ctx, externalID)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	// Begin a DB Tx, if the underlying struct is a MockDatastore then
-//	// the Tx will be nil
-//	tx, err := ctl.App.Datastorer.BeginTx(ctx)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	// declare variable as the Transactor interface
-//	var movieTransactor moviestore.Transactor
-//
-//	// If app is in Mock mode, use MockTx to satisfy the interface,
-//	// otherwise use a true sql.Tx for moviestore.Tx
-//	if ctl.App.Mock {
-//		movieTransactor = moviestore.NewMockTx()
-//	} else {
-//		movieTransactor, err = moviestore.NewTx(tx)
-//		if err != nil {
-//			return nil, err
-//		}
-//	}
-//
-//	// Call the Update method of the Transactor to update data on
-//	// the database (unless mocked, of course). If an error occurs,
-//	// rollback the transaction
-//	err = movieTransactor.Update(ctx, m)
-//	if err != nil {
-//		return nil, ctl.App.Datastorer.RollbackTx(tx, err)
-//	}
-//
-//	// Commit the Transaction
-//	if err := ctl.App.Datastorer.CommitTx(tx); err != nil {
-//		return nil, err
-//	}
-//
-//	rd, err := newMovieResponse(m)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	// Populate the response
-//	response := ctl.NewSingleMovieResponse(rd)
-//
-//	return response, nil
-//}
-//
 //// Delete removes the movie given the id sent in
 //func (ctl *MovieController) Delete(ctx context.Context, id string, token string) (*DeleteMovieResponse, error) {
 //	// authorize and get user from token
@@ -300,27 +235,3 @@ type MovieController struct {
 //}
 //
 //
-//// newMovie4Update is an initializer for the Movie struct for the
-//// update operation
-//func (ctl *MovieController) newMovie4Update(rd *RequestData, externalID string, u *user.User) (*movie.Movie, error) {
-//	// Parse Release Date according to RFC3339
-//	t, err := time.Parse(time.RFC3339, rd.Released)
-//	if err != nil {
-//		return nil, errs.E(errs.Validation,
-//			errs.Code("invalid_date_format"),
-//			errs.Parameter("ReleaseDate"),
-//			err)
-//	}
-//
-//	return &movie.Movie{
-//		ExternalID:     externalID,
-//		Title:          rd.Title,
-//		Year:           rd.Year,
-//		Rated:          rd.Rated,
-//		Released:       t,
-//		RunTime:        rd.RunTime,
-//		Director:       rd.Director,
-//		Writer:         rd.Writer,
-//		UpdateUsername: u.Email,
-//	}, nil
-//}

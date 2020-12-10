@@ -72,7 +72,7 @@ func (a Auth) Authorize(ctx context.Context, sub *user.User, obj string, act str
 		}
 	}
 
-	switch obj == movies && act == http.MethodPost {
+	switch obj == movies && act == http.MethodPost || act == http.MethodPut {
 	case true:
 		switch sub.Email {
 		case "gilcrest@gmail.com":

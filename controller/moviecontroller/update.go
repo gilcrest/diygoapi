@@ -5,24 +5,24 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gilcrest/go-api-basic/domain/random"
-	"github.com/google/uuid"
+	"github.com/gilcrest/go-api-basic/domain/movie"
+	"github.com/gilcrest/go-api-basic/domain/user"
 
-	"github.com/gilcrest/go-api-basic/gateway/authgateway"
+	"github.com/gorilla/mux"
 
-	"github.com/gilcrest/go-api-basic/controller"
-	"github.com/gilcrest/go-api-basic/datastore/moviestore"
 	"github.com/gilcrest/go-api-basic/domain/auth"
 	"github.com/gilcrest/go-api-basic/domain/errs"
-	"github.com/gilcrest/go-api-basic/domain/movie"
-
+	"github.com/gilcrest/go-api-basic/gateway/authgateway"
 	"golang.org/x/oauth2"
 	googleoauth2 "google.golang.org/api/oauth2/v2"
 	"google.golang.org/api/option"
+
+	"github.com/gilcrest/go-api-basic/controller"
+	"github.com/gilcrest/go-api-basic/datastore/moviestore"
 )
 
-// createMovieRequestBody is the request struct for Create
-type createMovieRequestBody struct {
+// updateMovieRequestBody is the request struct for Update
+type updateMovieRequestBody struct {
 	Title    string `json:"title"`
 	Rated    string `json:"rated"`
 	Released string `json:"release_date"`
@@ -31,24 +31,9 @@ type createMovieRequestBody struct {
 	Writer   string `json:"writer"`
 }
 
-// CreateMovieResponse is the response struct for a Movie
-type CreateMovieResponse struct {
-	ExternalID      string `json:"external_id"`
-	Title           string `json:"title"`
-	Rated           string `json:"rated"`
-	Released        string `json:"release_date"`
-	RunTime         int    `json:"run_time"`
-	Director        string `json:"director"`
-	Writer          string `json:"writer"`
-	CreateUsername  string `json:"create_username"`
-	CreateTimestamp string `json:"create_timestamp"`
-	UpdateUsername  string `json:"update_username"`
-	UpdateTimestamp string `json:"update_timestamp"`
-}
-
 // newCreateMovieResponseBody is an initializer for createMovieResponseBody
-func newCreateMovieResponse(m *movie.Movie) *CreateMovieResponse {
-	return &CreateMovieResponse{
+func newUpdateMovieResponse(m *movie.Movie) *UpdateMovieResponse {
+	return &UpdateMovieResponse{
 		ExternalID:      m.ExternalID,
 		Title:           m.Title,
 		Rated:           m.Rated,
@@ -63,8 +48,46 @@ func newCreateMovieResponse(m *movie.Movie) *CreateMovieResponse {
 	}
 }
 
-// CreateMovie adds a movie to the datastore
-func (ctl *MovieController) CreateMovie(r *http.Request) (*controller.StandardResponse, error) {
+// UpdateMovieResponse is the response struct for a Movie
+type UpdateMovieResponse struct {
+	ExternalID      string `json:"external_id"`
+	Title           string `json:"title"`
+	Rated           string `json:"rated"`
+	Released        string `json:"release_date"`
+	RunTime         int    `json:"run_time"`
+	Director        string `json:"director"`
+	Writer          string `json:"writer"`
+	CreateUsername  string `json:"create_username"`
+	CreateTimestamp string `json:"create_timestamp"`
+	UpdateUsername  string `json:"update_username"`
+	UpdateTimestamp string `json:"update_timestamp"`
+}
+
+// newMovie4Update is an initializer for the Movie struct for the
+// update operation
+func newMovie4Update(rb *updateMovieRequestBody, externalID string, u *user.User) (*movie.Movie, error) {
+	var (
+		m   = &movie.Movie{}
+		err error
+	)
+	m.SetExternalID(externalID)
+	m.SetTitle(rb.Title)
+	m.SetRated(rb.Rated)
+	m, err = m.SetReleased(rb.Released)
+	if err != nil {
+		return nil, err
+	}
+	m.SetRunTime(rb.RunTime)
+	m.SetDirector(rb.Director)
+	m.SetWriter(rb.Writer)
+	m.SetUpdateUser(u)
+	m.SetUpdateTime()
+
+	return m, nil
+}
+
+// Update updates the movie given the external id sent in
+func (ctl *MovieController) Update(r *http.Request) (*controller.StandardResponse, error) {
 	ctx := r.Context()
 
 	accessToken, err := auth.FromRequest(r)
@@ -96,12 +119,17 @@ func (ctl *MovieController) CreateMovie(r *http.Request) (*controller.StandardRe
 		return nil, err
 	}
 
-	// Declare requestBody as an instance of createMovieRequestBody
-	rb := new(createMovieRequestBody)
+	// gorilla mux Vars function returns the route variables for the
+	// current request, if any. id is the external id given for the
+	// movie
+	vars := mux.Vars(r)
+	extlid := vars["id"]
+
+	// Declare rb as an instance of updateMovieRequestBody
+	rb := new(updateMovieRequestBody)
 
 	// Decode JSON HTTP request body into a Decoder type
-	// and unmarshal that into the MovieRequest struct in the
-	// AddMovieHandler
+	// and unmarshal that into requestData
 	err = json.NewDecoder(r.Body).Decode(&rb)
 	defer r.Body.Close()
 	// Call DecoderErr to determine if body is nil, json is malformed
@@ -111,26 +139,11 @@ func (ctl *MovieController) CreateMovie(r *http.Request) (*controller.StandardRe
 		return nil, err
 	}
 
-	extlID, err := random.CryptoString(15)
+	// Convert request into a Movie struct
+	m, err := newMovie4Update(rb, extlid, u)
 	if err != nil {
 		return nil, err
 	}
-
-	// Call the Add method to perform domain business logic
-	m, err := movie.NewMovie(uuid.New(), extlID, u)
-	if err != nil {
-		return nil, err
-	}
-
-	m.SetTitle(rb.Title)
-	m.SetRated(rb.Rated)
-	m, err = m.SetReleased(rb.Released)
-	if err != nil {
-		return nil, err
-	}
-	m.SetRunTime(rb.RunTime)
-	m.SetDirector(rb.Director)
-	m.SetWriter(rb.Writer)
 
 	// Begin a DB Tx, if the underlying struct is a MockDatastore then
 	// the Tx will be nil
@@ -146,10 +159,10 @@ func (ctl *MovieController) CreateMovie(r *http.Request) (*controller.StandardRe
 		return nil, err
 	}
 
-	// Call the Create method of the Transactor to insert data to
+	// Call the Update method of the Transactor to update data on
 	// the database (unless mocked, of course). If an error occurs,
 	// rollback the transaction
-	err = movieTransactor.Create(ctx, m)
+	err = movieTransactor.Update(ctx, m)
 	if err != nil {
 		return nil, ctl.App.Datastorer.RollbackTx(tx, err)
 	}
@@ -160,7 +173,7 @@ func (ctl *MovieController) CreateMovie(r *http.Request) (*controller.StandardRe
 	}
 
 	// Populate the response
-	response, err := controller.NewStandardResponse(r, newCreateMovieResponse(m))
+	response, err := controller.NewStandardResponse(r, newUpdateMovieResponse(m))
 	if err != nil {
 		return nil, err
 	}
