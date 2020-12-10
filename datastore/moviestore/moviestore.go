@@ -4,7 +4,9 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/gilcrest/errs"
+	"github.com/pkg/errors"
+
+	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/movie"
 	"github.com/google/uuid"
 )
@@ -24,9 +26,8 @@ type Selector interface {
 
 // NewTx is an initializer for Tx
 func NewTx(tx *sql.Tx) (*Tx, error) {
-	const op errs.Op = "moviestore/NewMovieTx"
 	if tx == nil {
-		return nil, errs.E(op, errs.MissingField("tx"))
+		return nil, errs.E(errors.New(errs.MissingField("tx").Error()))
 	}
 	return &Tx{Tx: tx}, nil
 }
@@ -38,8 +39,6 @@ type Tx struct {
 
 // Create inserts a record in the user table using a stored function
 func (t *Tx) Create(ctx context.Context, m *movie.Movie) error {
-	const op errs.Op = "moviestore/Tx.Create"
-
 	// Prepare the sql statement using bind variables
 	stmt, err := t.Tx.PrepareContext(ctx, `
 	select o_create_timestamp,
@@ -57,7 +56,7 @@ func (t *Tx) Create(ctx context.Context, m *movie.Movie) error {
 		p_create_username => $10)`)
 
 	if err != nil {
-		return errs.E(op, err)
+		return errs.E(errs.Database, err)
 	}
 	defer stmt.Close()
 
@@ -80,21 +79,21 @@ func (t *Tx) Create(ctx context.Context, m *movie.Movie) error {
 		m.CreateUser.Email) //$10
 
 	if err != nil {
-		return errs.E(op, err)
+		return errs.E(errs.Database, err)
 	}
 	defer rows.Close()
 
 	// Iterate through the returned record(s)
 	for rows.Next() {
 		if err := rows.Scan(&m.CreateTime, &m.UpdateTime); err != nil {
-			return errs.E(op, err)
+			return errs.E(errs.Database, err)
 		}
 	}
 
 	// If any error was encountered while iterating through rows.Next above
 	// it will be returned here
 	if err := rows.Err(); err != nil {
-		return errs.E(op, err)
+		return errs.E(errs.Database, err)
 	}
 
 	return nil
@@ -103,8 +102,6 @@ func (t *Tx) Create(ctx context.Context, m *movie.Movie) error {
 // Update updates a record in the database using the external ID of
 // the Movie
 func (t *Tx) Update(ctx context.Context, m *movie.Movie) error {
-	const op errs.Op = "moviestore/Tx.Update"
-
 	// Prepare the sql statement using bind variables
 	stmt, err := t.Tx.PrepareContext(ctx, `
 	update demo.movie
@@ -120,7 +117,7 @@ func (t *Tx) Update(ctx context.Context, m *movie.Movie) error {
  returning movie_id, create_username, create_timestamp`)
 
 	if err != nil {
-		return errs.E(op, err)
+		return errs.E(errs.Database, err)
 	}
 	defer stmt.Close()
 
@@ -138,21 +135,21 @@ func (t *Tx) Update(ctx context.Context, m *movie.Movie) error {
 		m.ExternalID)       //$9
 
 	if err != nil {
-		return errs.E(op, err)
+		return errs.E(errs.Database, err)
 	}
 	defer rows.Close()
 
 	// Iterate through the returned record(s)
 	for rows.Next() {
 		if err := rows.Scan(&m.ID, &m.CreateUser.Email, &m.CreateTime); err != nil {
-			return errs.E(op, err)
+			return errs.E(errs.Database, err)
 		}
 	}
 
 	// If any error was encountered while iterating through rows.Next above
 	// it will be returned here
 	if err := rows.Err(); err != nil {
-		return errs.E(op, err)
+		return errs.E(errs.Database, err)
 	}
 
 	// If the table's primary key is not returned as part of the
@@ -164,7 +161,7 @@ func (t *Tx) Update(ctx context.Context, m *movie.Movie) error {
 	// db.Exec and check RowsAffected (like I do in delete below),
 	// but I wanted to show an alternative which can be useful here
 	if m.ID == uuid.Nil {
-		return errs.E(op, errs.Database, "Invalid ID - no records updated")
+		return errs.E(errs.Database, "Invalid ID - no records updated")
 	}
 
 	return nil
@@ -172,26 +169,24 @@ func (t *Tx) Update(ctx context.Context, m *movie.Movie) error {
 
 // Delete removes the Movie record from the table
 func (t *Tx) Delete(ctx context.Context, m *movie.Movie) error {
-	const op errs.Op = "moviestore/Tx.Delete"
-
 	result, execErr := t.Tx.ExecContext(ctx,
 		`DELETE from demo.movie
 		        WHERE movie_id = $1`, m.ID)
 
 	if execErr != nil {
-		return errs.E(op, errs.Database, execErr)
+		return errs.E(errs.Database, execErr)
 	}
 
 	// Only 1 row should be deleted, check the result count to
 	// ensure this is correct
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return errs.E(op, errs.Database, err)
+		return errs.E(errs.Database, err)
 	}
 	if rowsAffected == 0 {
-		return errs.E(op, errs.Database, "No Rows Deleted")
+		return errs.E(errs.Database, "No Rows Deleted")
 	} else if rowsAffected > 1 {
-		return errs.E(op, errs.Database, "Too Many Rows Deleted")
+		return errs.E(errs.Database, "Too Many Rows Deleted")
 	}
 
 	return nil
@@ -199,9 +194,8 @@ func (t *Tx) Delete(ctx context.Context, m *movie.Movie) error {
 
 // NewDB is an initializer for DB
 func NewDB(db *sql.DB) (*DB, error) {
-	const op errs.Op = "moviestore/NewMovieDB"
 	if db == nil {
-		return nil, errs.E(op, errs.MissingField("db"))
+		return nil, errs.E(errs.Database, errors.New(errs.MissingField("db").Error()))
 	}
 	return &DB{DB: db}, nil
 }
@@ -213,8 +207,6 @@ type DB struct {
 
 // FindByID returns a Movie struct to populate the response
 func (d *DB) FindByID(ctx context.Context, extlID string) (*movie.Movie, error) {
-	const op errs.Op = "moviestore/DB.FindByID"
-
 	// Prepare the sql statement using bind variables
 	row := d.DB.QueryRowContext(ctx,
 		`select movie_id,
@@ -248,9 +240,9 @@ func (d *DB) FindByID(ctx context.Context, extlID string) (*movie.Movie, error) 
 		&m.UpdateTime)
 
 	if err == sql.ErrNoRows {
-		return nil, errs.E(op, errs.NotExist, "No record found for given ID")
+		return nil, errs.E(errs.NotExist, "No record found for given ID")
 	} else if err != nil {
-		return nil, errs.E(op, err)
+		return nil, errs.E(errs.Database, err)
 	}
 
 	return m, nil
@@ -258,8 +250,6 @@ func (d *DB) FindByID(ctx context.Context, extlID string) (*movie.Movie, error) 
 
 // FindAll returns a slice of Movie structs to populate the response
 func (d *DB) FindAll(ctx context.Context) ([]*movie.Movie, error) {
-	const op errs.Op = "moviestore/DB.FindAll"
-
 	// use QueryContext to get back sql.Rows
 	rows, err := d.DB.QueryContext(ctx,
 		`select movie_id,
@@ -276,7 +266,7 @@ func (d *DB) FindAll(ctx context.Context) ([]*movie.Movie, error) {
 					  update_timestamp
 				 from demo.movie m`)
 	if err != nil {
-		return nil, errs.E(op, errs.Database, err)
+		return nil, errs.E(errs.Database, err)
 	}
 	defer rows.Close()
 	// declare a slice of pointers to movie.Movie
@@ -303,7 +293,7 @@ func (d *DB) FindAll(ctx context.Context) ([]*movie.Movie, error) {
 			&m.UpdateTime)
 
 		if err != nil {
-			return nil, errs.E(op, errs.Database, err)
+			return nil, errs.E(errs.Database, err)
 		}
 
 		s = append(s, m)
@@ -314,19 +304,19 @@ func (d *DB) FindAll(ctx context.Context) ([]*movie.Movie, error) {
 	// encounter an auto-commit error and be forced to rollback changes.
 	rerr := rows.Close()
 	if rerr != nil {
-		return nil, errs.E(op, errs.Database, err)
+		return nil, errs.E(errs.Database, err)
 	}
 
 	// Rows.Err will report the last error encountered by Rows.Scan.
 	err = rows.Err()
 	if err != nil {
-		return nil, errs.E(op, errs.Database, err)
+		return nil, errs.E(errs.Database, err)
 	}
 
 	// Determine if slice has not been populated. In this case, return
 	// an error as we should receive rows
 	if len(s) == 0 {
-		return nil, errs.E(op, errs.Validation, "No rows returned")
+		return nil, errs.E(errs.Validation, errors.New("No rows returned"))
 	}
 
 	// return the slice
