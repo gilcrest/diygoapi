@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+
 	"github.com/gilcrest/go-api-basic/app"
 	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/rs/zerolog"
@@ -67,7 +68,7 @@ func main() {
 
 	// Listen and serve HTTP
 	log.Log().Msgf("Running, connected to the %s environment, Datastore is set to %s", envName, dsName)
-	log.Fatal().Err(srv.ListenAndServe(*addr))
+	log.Fatal().Err(srv.ListenAndServe(*addr)).Msg("Fatal Server Error")
 }
 
 func newServer(ctx context.Context, envName app.EnvName, dsName datastore.Name, loglvl zerolog.Level) (*server.Server, func(), error) {
@@ -91,8 +92,6 @@ func newServer(ctx context.Context, envName app.EnvName, dsName datastore.Name, 
 			srv, cleanup, err = setupApp(ctx, envName, dsName, loglvl)
 		case datastore.GCPCPDatastore: // Connect to the GCP Cloud Proxy Datastore
 			srv, cleanup, err = setupApp(ctx, envName, dsName, loglvl)
-		case datastore.MockedDatastore: // Connect to the Mocked Datastore
-			srv, cleanup, err = setupAppwMock(ctx, envName, dsName, loglvl)
 		default:
 			log.Fatal().Msgf("unknown datastore name (%s) for the %s environment", dsName, envName)
 		}
@@ -100,8 +99,6 @@ func newServer(ctx context.Context, envName app.EnvName, dsName datastore.Name, 
 		switch dsName {
 		case datastore.GCPDatastore:
 			srv, cleanup, err = setupApp(ctx, envName, dsName, loglvl)
-		case datastore.MockedDatastore:
-			srv, cleanup, err = setupAppwMock(ctx, envName, dsName, loglvl)
 		default:
 			log.Fatal().Msgf("unknown datastore name (%s) for the %s environment", dsName, envName)
 		}
