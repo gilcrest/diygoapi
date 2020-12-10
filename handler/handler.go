@@ -1,27 +1,30 @@
 package handler
 
 import (
-	"io"
 	"net/http"
+	"time"
 
-	"github.com/gilcrest/errs"
+	"github.com/justinas/alice"
+	"github.com/rs/zerolog/hlog"
 
 	"github.com/gilcrest/go-api-basic/app"
-	"github.com/gilcrest/go-api-basic/controller"
-	"github.com/rs/xid"
 )
+
+// NewAppHandler initializes the AppHandler
+func NewAppHandler(app *app.Application) *AppHandler {
+	return &AppHandler{App: app}
+}
 
 // AppHandler is the struct that serves the application
 // and methods for handling all HTTP requests
 type AppHandler struct {
 	App *app.Application
-	controller.StandardResponseFields
 }
 
-// AddStandardResponseHeaders middleware is used to add any
+// ResponseHeaderHandler middleware is used to add any
 // standard HTTP response headers. All of the responses for this app
 // have a JSON based response body
-func (ah *AppHandler) AddStandardResponseHeaders(h http.Handler) http.Handler {
+func (ah *AppHandler) ResponseHeaderHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Add("Content-Type", "application/json")
@@ -29,50 +32,30 @@ func (ah *AppHandler) AddStandardResponseHeaders(h http.Handler) http.Handler {
 		})
 }
 
-// SetStandardResponseFields middleware is used to set the fields
-// that are part of every response
-func (ah *AppHandler) SetStandardResponseFields(h http.Handler) http.Handler {
-	return http.HandlerFunc(
-		func(w http.ResponseWriter, r *http.Request) {
-			// If the app is being mocked, then we want a static TraceID for the response
-			if ah.App.Mock {
-				ah.StandardResponseFields = controller.NewStandardResponseFields(controller.NewMockTraceID(), r)
-			} else {
-				// get byte Array representation of guid from xid package (12 bytes)
-				id := xid.New()
+// AddStandardHandlerChain returns an alice.Chain initialized with all the standard
+// handlers for logging, authentication and response headers and fields
+func (ah *AppHandler) AddStandardHandlerChain(c alice.Chain) alice.Chain {
 
-				// Send a new TraceID and the http.Request to the
-				// StandardResponseFields constructor to set the
-				// StandardResponseFields of the AppHandler
-				ah.StandardResponseFields = controller.NewStandardResponseFields(controller.NewTraceID(id), r)
-			}
+	// Install the logger handler with default output on the console
+	c = c.Append(hlog.NewHandler(ah.App.Logger))
 
-			h.ServeHTTP(w, r) // call original
-		})
-}
+	// Install some provided extra handler to set some request's context fields.
+	// Thanks to that handler, all our logs will come with some pre-populated fields.
+	c = c.Append(hlog.AccessHandler(func(r *http.Request, status, size int, duration time.Duration) {
+		hlog.FromRequest(r).Info().
+			Str("method", r.Method).
+			Stringer("url", r.URL).
+			Int("status", status).
+			Int("size", size).
+			Dur("duration", duration).
+			Msg("")
+	}))
+	c = c.Append(hlog.RemoteAddrHandler("ip"))
+	c = c.Append(hlog.UserAgentHandler("user_agent"))
+	c = c.Append(hlog.RefererHandler("referer"))
+	c = c.Append(hlog.RequestIDHandler("req_id", "Request-Id"))
+	c = c.Append(ah.ResponseHeaderHandler)
+	//c = c.Append(ah.StandardResponseFieldsHandler)
 
-// NewAppHandler initializes the AppHandler
-func NewAppHandler(app *app.Application) *AppHandler {
-	return &AppHandler{App: app}
-}
-
-// When an error is returned by json.NewDecoder(r.Body).Decode(&data)
-// this function will determine the appropriate error response
-func DecoderErr(err error) error {
-	const op errs.Op = "handler/DecoderErr"
-
-	switch {
-	// If the request body is empty (io.EOF)
-	// return an error
-	case err == io.EOF:
-		return errs.E(op, errs.InvalidRequest, "Request Body cannot be empty")
-	// If the request body has malformed JSON (io.ErrUnexpectedEOF)
-	// return an error
-	case err == io.ErrUnexpectedEOF:
-		return errs.E(op, errs.InvalidRequest, "Malformed JSON")
-	// return all other errors
-	case err != nil:
-		return errs.E(op, err)
-	}
-	return nil
+	return c
 }

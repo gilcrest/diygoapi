@@ -8,9 +8,17 @@ import (
 	"github.com/justinas/alice"
 )
 
+// newRouter sets up the mux.Router and registers routes to URL paths
 func newRouter(hdl *handler.AppHandler) *mux.Router {
-	// create a new mux (multiplex) router
+
+	// I should take this as a dependency, but need to do some work with wire
 	rtr := mux.NewRouter()
+
+	// I should take this as a dependency, but need to do some work with wire
+	c := alice.New()
+
+	// add Standard Handler chain and zerolog logger to Context
+	c = hdl.AddStandardHandlerChain(c)
 
 	// send Router through PathPrefix method to validate any standard
 	// subroutes you may want for your APIs. e.g. I always want to be
@@ -22,52 +30,41 @@ func newRouter(hdl *handler.AppHandler) *mux.Router {
 	// Match only POST requests at /api/v1/movies
 	// with Content-Type header = application/json
 	rtr.Handle("/v1/movies",
-		alice.New(
-			hdl.SetAccessToken2Context,
-			hdl.AddStandardResponseHeaders,
-			hdl.SetStandardResponseFields).
-			Then(http.HandlerFunc(hdl.AddMovie))).
+		c.Append(hdl.AccessTokenHandler).
+			Then(http.HandlerFunc(hdl.CreateMovie))).
 		Methods("POST").
 		Headers("Content-Type", "application/json")
 
-	// Match only PUT requests having an ID at /api/v1/movies/{id}
-	// with the Content-Type header = application/json
-	rtr.Handle("/v1/movies/{id}",
-		alice.New(
-			hdl.SetAccessToken2Context,
-			hdl.AddStandardResponseHeaders,
-			hdl.SetStandardResponseFields).
-			Then(http.HandlerFunc(hdl.UpdateMovie))).
-		Methods("PUT").
-		Headers("Content-Type", "application/json")
+	//// Match only PUT requests having an ID at /api/v1/movies/{id}
+	//// with the Content-Type header = application/json
+	//rtr.Handle("/v1/movies/{id}",
+	//	c.Append(hdl.AccessTokenHandler).
+	//		Then(http.HandlerFunc(hdl.UpdateMovie))).
+	//	Methods("PUT").
+	//	Headers("Content-Type", "application/json")
+	//
+	//// Match only DELETE requests having an ID at /api/v1/movies/{id}
+	//rtr.Handle("/v1/movies/{id}",
+	//	c.Append(hdl.AccessTokenHandler).
+	//		Then(http.HandlerFunc(hdl.DeleteMovie))).
+	//	Methods("DELETE")
+	//
+	//// Match only GET requests having an ID at /api/v1/movies/{id}
+	//rtr.Handle("/v1/movies/{id}",
+	//	c.Append(hdl.AccessTokenHandler).
+	//		Then(http.HandlerFunc(hdl.FindByID))).
+	//	Methods("GET")
+	//
+	//// Match only GET requests /api/v1/movies
+	//rtr.Handle("/v1/movies",
+	//	c.Append(hdl.AccessTokenHandler).
+	//		Then(http.HandlerFunc(hdl.FindAll))).
+	//	Methods("GET")
 
-	// Match only DELETE requests having an ID at /api/v1/movies/{id}
-	rtr.Handle("/v1/movies/{id}",
-		alice.New(
-			hdl.SetAccessToken2Context,
-			hdl.AddStandardResponseHeaders,
-			hdl.SetStandardResponseFields).
-			Then(http.HandlerFunc(hdl.DeleteMovie))).
-		Methods("DELETE")
-
-	// Match only GET requests having an ID at /api/v1/movies/{id}
-	// with the Content-Type header = application/json
-	rtr.Handle("/v1/movies/{id}",
-		alice.New(
-			hdl.SetAccessToken2Context,
-			hdl.AddStandardResponseHeaders,
-			hdl.SetStandardResponseFields).
-			Then(http.HandlerFunc(hdl.FindByID))).
-		Methods("GET")
-
-	// Match only GET requests /api/v1/movies
-	// with the Content-Type header = application/json
-	rtr.Handle("/v1/movies",
-		alice.New(
-			hdl.SetAccessToken2Context,
-			hdl.AddStandardResponseHeaders,
-			hdl.SetStandardResponseFields).
-			Then(http.HandlerFunc(hdl.FindAll))).
+	// Match only GET requests at /api/v1/ping
+	rtr.Handle("/v1/ping",
+		c.Append(hdl.AccessTokenHandler).
+			Then(http.HandlerFunc(hdl.Ping))).
 		Methods("GET")
 
 	return rtr
