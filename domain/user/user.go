@@ -27,3 +27,17 @@ type User struct {
 	// ProfileLink: URL of the profile page.
 	ProfileLink string `json:"profile_link,omitempty"`
 }
+
+// IsValid determines whether or not the User has proper
+// data to be considered valid
+func (u User) IsValid() bool {
+	switch {
+	case u.Email == "":
+		return false
+	case u.FirstName == "":
+		return false
+	case u.LastName == "":
+		return false
+	}
+	return true
+}
