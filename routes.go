@@ -55,11 +55,11 @@ func newRouter(hdl *handler.AppHandler) *mux.Router {
 			Then(http.HandlerFunc(hdl.FindByID))).
 		Methods("GET")
 
-	//// Match only GET requests /api/v1/movies
-	//rtr.Handle("/v1/movies",
-	//	c.Append(hdl.AccessTokenHandler).
-	//		Then(http.HandlerFunc(hdl.FindAll))).
-	//	Methods("GET")
+	// Match only GET requests /api/v1/movies
+	rtr.Handle("/v1/movies",
+		c.Append(hdl.AccessTokenHandler).
+			Then(http.HandlerFunc(hdl.FindAll))).
+		Methods("GET")
 
 	// Match only GET requests at /api/v1/ping
 	rtr.Handle("/v1/ping",

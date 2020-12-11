@@ -105,33 +105,26 @@ func (ah *AppHandler) FindByID(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-//// FindAll handles GET requests for the /movies endpoint
-//// and finds all movies
-//func (ah *AppHandler) FindAll(w http.ResponseWriter, r *http.Request) {
-//	logger := *hlog.FromRequest(r)
-//
-//	// retrieve the user from the request Context
-//	token, err := accessToken(r)
-//	if err != nil {
-//		errs.HTTPErrorResponse(w, logger, err)
-//		return
-//	}
-//
-//	// Initialize the MovieController
-//	mc := moviecontroller.NewMovieController(ah.App, ah.StandardResponseFields)
-//
-//	// Send the request context and request struct to the controller
-//	// Receive a response or error in return
-//	resp, err := mc.FindAll(r.Context(), token)
-//	if err != nil {
-//		errs.HTTPErrorResponse(w, logger, err)
-//		return
-//	}
-//
-//	// Encode response struct to JSON for the response body
-//	err = json.NewEncoder(w).Encode(resp)
-//	if err != nil {
-//		errs.HTTPErrorResponse(w, logger, errs.E(errs.Internal, err))
-//		return
-//	}
-//}
+// FindAll handles GET requests for the /movies endpoint
+// and finds all movies
+func (ah *AppHandler) FindAll(w http.ResponseWriter, r *http.Request) {
+	logger := *hlog.FromRequest(r)
+
+	// Initialize the MovieController
+	mc := moviecontroller.NewMovieController(ah.App)
+
+	// Send the request context and request struct to the controller
+	// Receive a response or error in return
+	resp, err := mc.FindAll(r)
+	if err != nil {
+		errs.HTTPErrorResponse(w, logger, err)
+		return
+	}
+
+	// Encode response struct to JSON for the response body
+	err = json.NewEncoder(w).Encode(resp)
+	if err != nil {
+		errs.HTTPErrorResponse(w, logger, errs.E(errs.Internal, err))
+		return
+	}
+}
