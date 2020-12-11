@@ -57,77 +57,54 @@ func (ah *AppHandler) UpdateMovie(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-//// DeleteMovie handles DELETE requests for the /movies/{id} endpoint
-//// and updates the given movie
-//func (ah *AppHandler) DeleteMovie(w http.ResponseWriter, r *http.Request) {
-//	logger := *hlog.FromRequest(r)
-//
-//	// retrieve the user from the request Context
-//	token, err := accessToken(r)
-//	if err != nil {
-//		errs.HTTPErrorResponse(w, logger, err)
-//		return
-//	}
-//
-//	// gorilla mux Vars function returns the route variables for the
-//	// current request, if any. id is the external id given for the
-//	// movie
-//	vars := mux.Vars(r)
-//	id := vars["id"]
-//
-//	// Initialize the MovieController
-//	mc := moviecontroller.NewMovieController(ah.App, ah.StandardResponseFields)
-//
-//	// Send the request context and request struct to the controller
-//	// Receive a response or error in return
-//	resp, err := mc.Delete(r.Context(), id, token)
-//	if err != nil {
-//		errs.HTTPErrorResponse(w, logger, err)
-//		return
-//	}
-//
-//	// Encode response struct to JSON for the response body
-//	err = json.NewEncoder(w).Encode(resp)
-//	if err != nil {
-//		errs.HTTPErrorResponse(w, logger, errs.E(errs.Internal, err))
-//		return
-//	}
-//}
-//
-//// FindByID handles GET requests for the /movies/{id} endpoint
-//// and finds a movie by it's ID
-//func (ah *AppHandler) FindByID(w http.ResponseWriter, r *http.Request) {
-//	logger := *hlog.FromRequest(r)
-//
-//	// retrieve the user from the request Context
-//	token, err := accessToken(r)
-//	if err != nil {
-//		errs.HTTPErrorResponse(w, logger, err)
-//		return
-//	}
-//
-//	vars := mux.Vars(r)
-//	id := vars["id"]
-//
-//	// Initialize the MovieController
-//	mc := moviecontroller.NewMovieController(ah.App, ah.StandardResponseFields)
-//
-//	// Send the request context and request struct to the controller
-//	// Receive a response or error in return
-//	resp, err := mc.FindByID(r.Context(), id, token)
-//	if err != nil {
-//		errs.HTTPErrorResponse(w, logger, err)
-//		return
-//	}
-//
-//	// Encode response struct to JSON for the response body
-//	err = json.NewEncoder(w).Encode(resp)
-//	if err != nil {
-//		errs.HTTPErrorResponse(w, logger, errs.E(errs.Internal, err))
-//		return
-//	}
-//}
-//
+// DeleteMovie handles DELETE requests for the /movies/{id} endpoint
+// and updates the given movie
+func (ah *AppHandler) DeleteMovie(w http.ResponseWriter, r *http.Request) {
+	logger := *hlog.FromRequest(r)
+
+	// Initialize the MovieController
+	mc := moviecontroller.NewMovieController(ah.App)
+
+	// Send the request struct to the controller
+	// Receive a response or error in return
+	resp, err := mc.Delete(r)
+	if err != nil {
+		errs.HTTPErrorResponse(w, logger, err)
+		return
+	}
+
+	// Encode response struct to JSON for the response body
+	err = json.NewEncoder(w).Encode(resp)
+	if err != nil {
+		errs.HTTPErrorResponse(w, logger, errs.E(errs.Internal, err))
+		return
+	}
+}
+
+// FindByID handles GET requests for the /movies/{id} endpoint
+// and finds a movie by it's ID
+func (ah *AppHandler) FindByID(w http.ResponseWriter, r *http.Request) {
+	logger := *hlog.FromRequest(r)
+
+	// Initialize the MovieController
+	mc := moviecontroller.NewMovieController(ah.App)
+
+	// Send the request context and request struct to the controller
+	// Receive a response or error in return
+	resp, err := mc.FindByID(r)
+	if err != nil {
+		errs.HTTPErrorResponse(w, logger, err)
+		return
+	}
+
+	// Encode response struct to JSON for the response body
+	err = json.NewEncoder(w).Encode(resp)
+	if err != nil {
+		errs.HTTPErrorResponse(w, logger, errs.E(errs.Internal, err))
+		return
+	}
+}
+
 //// FindAll handles GET requests for the /movies endpoint
 //// and finds all movies
 //func (ah *AppHandler) FindAll(w http.ResponseWriter, r *http.Request) {

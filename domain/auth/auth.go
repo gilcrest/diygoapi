@@ -54,7 +54,8 @@ type Auth struct{}
 
 // Authorize authorizes a subject (user) can perform a particular
 // action on an object. e.g. gilcrest can read (GET) the resource
-// at the /ping path
+// at the /ping path. This is obviously completely bogus right now,
+// eventually need to look into something like Casbin for ACL/RBAC
 func (a Auth) Authorize(ctx context.Context, sub *user.User, obj string, act string) error {
 	logger := *zerolog.Ctx(ctx)
 
@@ -72,7 +73,7 @@ func (a Auth) Authorize(ctx context.Context, sub *user.User, obj string, act str
 		}
 	}
 
-	switch obj == movies && act == http.MethodPost || act == http.MethodPut {
+	switch obj == movies && act == http.MethodPost || act == http.MethodPut || act == http.MethodDelete || act == http.MethodGet {
 	case true:
 		switch sub.Email {
 		case "gilcrest@gmail.com":

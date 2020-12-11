@@ -43,18 +43,18 @@ func newRouter(hdl *handler.AppHandler) *mux.Router {
 		Methods("PUT").
 		Headers("Content-Type", "application/json")
 
-	//// Match only DELETE requests having an ID at /api/v1/movies/{id}
-	//rtr.Handle("/v1/movies/{id}",
-	//	c.Append(hdl.AccessTokenHandler).
-	//		Then(http.HandlerFunc(hdl.DeleteMovie))).
-	//	Methods("DELETE")
-	//
-	//// Match only GET requests having an ID at /api/v1/movies/{id}
-	//rtr.Handle("/v1/movies/{id}",
-	//	c.Append(hdl.AccessTokenHandler).
-	//		Then(http.HandlerFunc(hdl.FindByID))).
-	//	Methods("GET")
-	//
+	// Match only DELETE requests having an ID at /api/v1/movies/{id}
+	rtr.Handle("/v1/movies/{id}",
+		c.Append(hdl.AccessTokenHandler).
+			Then(http.HandlerFunc(hdl.DeleteMovie))).
+		Methods("DELETE")
+
+	// Match only GET requests having an ID at /api/v1/movies/{id}
+	rtr.Handle("/v1/movies/{id}",
+		c.Append(hdl.AccessTokenHandler).
+			Then(http.HandlerFunc(hdl.FindByID))).
+		Methods("GET")
+
 	//// Match only GET requests /api/v1/movies
 	//rtr.Handle("/v1/movies",
 	//	c.Append(hdl.AccessTokenHandler).

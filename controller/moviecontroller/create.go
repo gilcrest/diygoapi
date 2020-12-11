@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gilcrest/go-api-basic/app"
+
 	"github.com/gilcrest/go-api-basic/domain/random"
 	"github.com/google/uuid"
 
@@ -20,6 +22,16 @@ import (
 	googleoauth2 "google.golang.org/api/oauth2/v2"
 	"google.golang.org/api/option"
 )
+
+// NewMovieController initializes MovieController
+func NewMovieController(app *app.Application) *MovieController {
+	return &MovieController{App: app}
+}
+
+// MovieController is used as the base controller for the Movie logic
+type MovieController struct {
+	App *app.Application
+}
 
 // createMovieRequestBody is the request struct for Create
 type createMovieRequestBody struct {
