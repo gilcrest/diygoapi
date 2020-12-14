@@ -26,8 +26,8 @@ import (
 
 // Injectors from inject_main.go:
 
-func setupApp(ctx context.Context, envName app.EnvName, dsName datastore.Name, loglvl zerolog.Level) (*server.Server, func(), error) {
-	pgDatasourceName, err := datastore.NewPGDatasourceName(dsName)
+func newServer(ctx context.Context, loglvl zerolog.Level) (*server.Server, func(), error) {
+	pgDatasourceName, err := datastore.NewPGDatasourceName()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -37,11 +37,11 @@ func setupApp(ctx context.Context, envName app.EnvName, dsName datastore.Name, l
 		return nil, nil, err
 	}
 	datastoreDatastore := datastore.NewDatastore(db)
-	application := app.NewApplication(envName, datastoreDatastore, logger)
+	application := app.NewApplication(datastoreDatastore, logger)
 	appHandler := handler.NewAppHandler(application)
 	router := newRouter(appHandler)
 	mainRequestLogger := newRequestLogger(logger)
-	v, cleanup2 := appHealthChecks(dsName, db)
+	v, cleanup2 := appHealthChecks(db)
 	exporter := _wireExporterValue
 	sampler := trace.AlwaysSample()
 	defaultDriver := server.NewDefaultDriver()
@@ -103,7 +103,7 @@ func newRequestLogger(l zerolog.Logger) *requestLogger {
 // appHealthChecks returns a health check for the database. This will signal
 // to Kubernetes or other orchestrators that the server should not receive
 // traffic until the server is able to connect to its database.
-func appHealthChecks(n datastore.Name, db *sql.DB) ([]health.Checker, func()) {
+func appHealthChecks(db *sql.DB) ([]health.Checker, func()) {
 	dbCheck := sqlhealth.New(db)
 	list := []health.Checker{dbCheck}
 	return list, func() {

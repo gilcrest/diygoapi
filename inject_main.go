@@ -70,9 +70,9 @@ func newRequestLogger(l zerolog.Logger) *requestLogger {
 	return &requestLogger{logger: l}
 }
 
-// setupApp is a Wire injector function that sets up the
+// newServer is a Wire injector function that sets up the
 // application using a PostgreSQL implementation
-func setupApp(ctx context.Context, envName app.EnvName, dsName datastore.Name, loglvl zerolog.Level) (*server.Server, func(), error) {
+func newServer(ctx context.Context, loglvl zerolog.Level) (*server.Server, func(), error) {
 	// This will be filled in by Wire with providers from the provider sets in
 	// wire.Build.
 	wire.Build(
@@ -91,7 +91,7 @@ func setupApp(ctx context.Context, envName app.EnvName, dsName datastore.Name, l
 // appHealthChecks returns a health check for the database. This will signal
 // to Kubernetes or other orchestrators that the server should not receive
 // traffic until the server is able to connect to its database.
-func appHealthChecks(n datastore.Name, db *sql.DB) ([]health.Checker, func()) {
+func appHealthChecks(db *sql.DB) ([]health.Checker, func()) {
 	dbCheck := sqlhealth.New(db)
 	list := []health.Checker{dbCheck}
 	return list, func() {

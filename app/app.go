@@ -9,8 +9,6 @@ import (
 
 // Application contains the app configurations and Datastore
 type Application struct {
-	// Environment Name
-	EnvName EnvName
 	// Datastorer is an interface type meant to be the
 	// persistence mechanism. It can be a
 	// SQL database (PostgreSQL) or a mock database
@@ -19,10 +17,9 @@ type Application struct {
 	Logger zerolog.Logger
 }
 
-// NewApplication initializes an Application struct with Mock set to false
-func NewApplication(envName EnvName, datastorer datastore.Datastorer, logger zerolog.Logger) *Application {
+// NewApplication initializes an Application struct
+func NewApplication(datastorer datastore.Datastorer, logger zerolog.Logger) *Application {
 	return &Application{
-		EnvName:    envName,
 		Datastorer: datastorer,
 		Logger:     logger,
 	}
