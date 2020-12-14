@@ -4,7 +4,7 @@
 # Use the official Golang image to create a build artifact.
 # This is based on Debian and sets the GOPATH to /go.
 # https://hub.docker.com/_/golang
-FROM golang:1.13 as builder
+FROM golang:latest as builder
 
 # Create and change to the app directory.
 WORKDIR /app
@@ -34,6 +34,10 @@ RUN apk add --no-cache ca-certificates
 
 # Copy the binary to the production image from the builder stage.
 COPY --from=builder /app/server /server
+
+# Get timezone zip from go library and add environment variable to point to it
+ADD https://github.com/golang/go/raw/master/lib/time/zoneinfo.zip /zoneinfo.zip
+ENV ZONEINFO /zoneinfo.zip
 
 # Run the web service on container startup.
 CMD ["/server", "-env=qa", "-datastore=gcp"]
