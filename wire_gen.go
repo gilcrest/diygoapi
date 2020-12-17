@@ -19,9 +19,7 @@ import (
 	"gocloud.dev/server/driver"
 	"gocloud.dev/server/health"
 	"gocloud.dev/server/health/sqlhealth"
-	"gocloud.dev/server/requestlog"
 	"net/http"
-	"time"
 )
 
 // Injectors from inject_main.go:
@@ -40,13 +38,11 @@ func newServer(ctx context.Context, loglvl zerolog.Level) (*server.Server, func(
 	application := app.NewApplication(datastoreDatastore, logger)
 	appHandler := handler.NewAppHandler(application)
 	router := newRouter(appHandler)
-	mainRequestLogger := newRequestLogger(logger)
 	v, cleanup2 := appHealthChecks(db)
 	exporter := _wireExporterValue
 	sampler := trace.AlwaysSample()
 	defaultDriver := server.NewDefaultDriver()
 	options := &server.Options{
-		RequestLogger:         mainRequestLogger,
 		HealthChecks:          v,
 		TraceExporter:         exporter,
 		DefaultSamplingPolicy: sampler,
@@ -69,36 +65,7 @@ var (
 var applicationSet = wire.NewSet(app.NewApplication, newRouter, wire.Bind(new(http.Handler), new(*mux.Router)), handler.NewAppHandler, app.NewLogger)
 
 // goCloudServerSet
-var goCloudServerSet = wire.NewSet(trace.AlwaysSample, server.New, server.NewDefaultDriver, wire.Bind(new(driver.Server), new(*server.DefaultDriver)), wire.Bind(new(requestlog.Logger), new(*requestLogger)), newRequestLogger)
-
-type requestLogger struct {
-	logger zerolog.Logger
-}
-
-func (rl requestLogger) Log(e *requestlog.Entry) {
-	rl.logger.Info().
-		Str("received_time", e.ReceivedTime.Format(time.RFC1123)).
-		Str("request_method", e.RequestMethod).
-		Str("request_url", e.RequestURL).
-		Int64("request_header_size", e.RequestHeaderSize).
-		Int64("request_body_size", e.RequestBodySize).
-		Str("user_agent", e.UserAgent).
-		Str("referer", e.Referer).
-		Str("protocol", e.Proto).
-		Str("remote_ip", e.RemoteIP).
-		Str("server_ip", e.ServerIP).
-		Int("status", e.Status).
-		Int64("response_header_size", e.ResponseHeaderSize).
-		Int64("response_body_size", e.ResponseBodySize).
-		Int64("latency in millis", e.Latency.Milliseconds()).
-		Str("trace_id", e.TraceID.String()).
-		Str("span_id", e.SpanID.String()).
-		Msg("request received")
-}
-
-func newRequestLogger(l zerolog.Logger) *requestLogger {
-	return &requestLogger{logger: l}
-}
+var goCloudServerSet = wire.NewSet(trace.AlwaysSample, server.New, server.NewDefaultDriver, wire.Bind(new(driver.Server), new(*server.DefaultDriver)))
 
 // appHealthChecks returns a health check for the database. This will signal
 // to Kubernetes or other orchestrators that the server should not receive
