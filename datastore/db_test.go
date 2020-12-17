@@ -9,8 +9,8 @@ import (
 
 func Test_NewLocalDB(t *testing.T) {
 	type args struct {
-		n Name
-		l zerolog.Logger
+		pgds PGDatasourceName
+		l    zerolog.Logger
 	}
 
 	// empty string for TimeFieldFormat will write logs with UNIX time
@@ -20,15 +20,20 @@ func Test_NewLocalDB(t *testing.T) {
 	// start a new logger with Stdout as the target
 	logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
 
+	ds, err := NewPGDatasourceName()
+	if err != nil {
+		t.Errorf("Error from NewPGDatasourceName = %v", err)
+	}
+
 	tests := []struct {
 		name string
 		args args
 	}{
-		{"App DB", args{LocalDatastore, logger}},
+		{"App DB", args{ds, logger}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			db, _, err := NewDB(tt.args.n, tt.args.l)
+			db, _, err := NewDB(tt.args.pgds, tt.args.l)
 			if err != nil {
 				t.Errorf("Error from newDB = %v", err)
 			}
