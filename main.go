@@ -25,7 +25,7 @@ func main() {
 	flag.StringVar(&cf.logLevel, "loglvl", "error", "sets log level (debug, info, warn, fatal, panic, disabled)")
 
 	// listen flag is used for the http.ListenAndServe addr field
-	addr := flag.String("listen", ":8080", "port to listen for HTTP on")
+	addr := flag.String("listen", ":8080", "TCP network address addr to listen on")
 
 	// Parse the command line flags from above
 	flag.Parse()
