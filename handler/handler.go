@@ -53,7 +53,7 @@ func (ah *AppHandler) AddStandardHandlerChain(c alice.Chain) alice.Chain {
 	c = c.Append(hlog.RemoteAddrHandler("ip"))
 	c = c.Append(hlog.UserAgentHandler("user_agent"))
 	c = c.Append(hlog.RefererHandler("referer"))
-	c = c.Append(hlog.RequestIDHandler("req_id", "Request-Id"))
+	c = c.Append(hlog.RequestIDHandler("request_id", "Request-Id"))
 	c = c.Append(ah.ResponseHeaderHandler)
 
 	return c

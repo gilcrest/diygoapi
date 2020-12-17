@@ -13,9 +13,9 @@ import (
 // StandardResponse is meant to be included in all response bodies
 // and includes "standard" response fields
 type StandardResponse struct {
-	Path    string      `json:"path,omitempty"`
-	TraceID string      `json:"trace_id,omitempty"`
-	Data    interface{} `json:"data"`
+	Path      string      `json:"path,omitempty"`
+	RequestID string      `json:"request_id,omitempty"`
+	Data      interface{} `json:"data"`
 }
 
 // NewStandardResponse is an initializer for the StandardResponse struct
@@ -27,7 +27,7 @@ func NewStandardResponse(r *http.Request, d interface{}) (*StandardResponse, err
 	if !ok {
 		return nil, errs.E(errors.New("trace ID not properly set to request context"))
 	}
-	sr.TraceID = id.String()
+	sr.RequestID = id.String()
 
 	sr.Data = d
 
