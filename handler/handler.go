@@ -39,7 +39,7 @@ func (ah *AppHandler) AddStandardHandlerChain(c alice.Chain) alice.Chain {
 	// Install the logger handler with default output on the console
 	c = c.Append(hlog.NewHandler(ah.App.Logger))
 
-	// Install some provided extra handler to set some request's context fields.
+	// Install extra handler to set request's context fields.
 	// Thanks to that handler, all our logs will come with some pre-populated fields.
 	c = c.Append(hlog.AccessHandler(func(r *http.Request, status, size int, duration time.Duration) {
 		hlog.FromRequest(r).Info().
@@ -55,7 +55,6 @@ func (ah *AppHandler) AddStandardHandlerChain(c alice.Chain) alice.Chain {
 	c = c.Append(hlog.RefererHandler("referer"))
 	c = c.Append(hlog.RequestIDHandler("req_id", "Request-Id"))
 	c = c.Append(ah.ResponseHeaderHandler)
-	//c = c.Append(ah.StandardResponseFieldsHandler)
 
 	return c
 }
