@@ -34,7 +34,6 @@ func TestEnvName_String(t *testing.T) {
 
 func TestNewApplication(t *testing.T) {
 	type args struct {
-		en  EnvName
 		ds  datastore.Datastorer
 		log zerolog.Logger
 	}
@@ -44,18 +43,16 @@ func TestNewApplication(t *testing.T) {
 		want *Application
 	}{
 		{"New Application", args{
-			en:  Local,
 			ds:  nil,
 			log: zerolog.Logger{},
 		}, &Application{
-			EnvName:    Local,
 			Datastorer: nil,
 			Logger:     zerolog.Logger{},
 		}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewApplication(tt.args.en, tt.args.ds, tt.args.log); !reflect.DeepEqual(got, tt.want) {
+			if got := NewApplication(tt.args.ds, tt.args.log); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("NewApplication() = %v, want %v", got, tt.want)
 			}
 		})
