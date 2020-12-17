@@ -19,7 +19,7 @@ func NewDB(pgds PGDatasourceName, logger zerolog.Logger) (*sql.DB, func(), error
 		return nil, nil, errs.E(err)
 	}
 
-	logger.Log().Msgf("sql database opened for %s on port %d", pgds.Host, pgds.Port)
+	logger.Info().Msgf("sql database opened for %s on port %d", pgds.Host, pgds.Port)
 
 	err = validateDB(db, logger)
 	if err != nil {
@@ -35,7 +35,7 @@ func validateDB(db *sql.DB, log zerolog.Logger) error {
 	if err != nil {
 		return errs.E(err)
 	}
-	log.Log().Msg("sql database Ping returned successfully")
+	log.Info().Msg("sql database Ping returned successfully")
 
 	var (
 		currentDatabase string
@@ -46,11 +46,11 @@ func validateDB(db *sql.DB, log zerolog.Logger) error {
 	row := db.QueryRow(sqlStatement)
 	switch err := row.Scan(&currentDatabase, &currentUser, &dbVersion); err {
 	case sql.ErrNoRows:
-		return errs.E(errors.New("No rows were returned!"))
+		return errs.E(errors.New("no rows were returned"))
 	case nil:
-		log.Log().Msgf("database version: %s", dbVersion)
-		log.Log().Msgf("current database user: %s", currentUser)
-		log.Log().Msgf("current database: %s", currentDatabase)
+		log.Info().Msgf("database version: %s", dbVersion)
+		log.Info().Msgf("current database user: %s", currentUser)
+		log.Info().Msgf("current database: %s", currentDatabase)
 	default:
 		return errs.E(err)
 	}
