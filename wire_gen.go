@@ -24,12 +24,11 @@ import (
 
 // Injectors from inject_main.go:
 
-func newServer(ctx context.Context, loglvl zerolog.Level) (*server.Server, func(), error) {
+func newServer(ctx context.Context, logger zerolog.Logger) (*server.Server, func(), error) {
 	pgDatasourceName, err := datastore.NewPGDatasourceName()
 	if err != nil {
 		return nil, nil, err
 	}
-	logger := app.NewLogger(loglvl)
 	db, cleanup, err := datastore.NewDB(pgDatasourceName, logger)
 	if err != nil {
 		return nil, nil, err
@@ -62,7 +61,7 @@ var (
 // inject_main.go:
 
 // applicationSet is the Wire provider set for the application
-var applicationSet = wire.NewSet(app.NewApplication, newRouter, wire.Bind(new(http.Handler), new(*mux.Router)), handler.NewAppHandler, app.NewLogger)
+var applicationSet = wire.NewSet(app.NewApplication, newRouter, wire.Bind(new(http.Handler), new(*mux.Router)), handler.NewAppHandler)
 
 // goCloudServerSet
 var goCloudServerSet = wire.NewSet(trace.AlwaysSample, server.New, server.NewDefaultDriver, wire.Bind(new(driver.Server), new(*server.DefaultDriver)))

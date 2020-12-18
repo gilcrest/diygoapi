@@ -26,7 +26,6 @@ var applicationSet = wire.NewSet(
 	newRouter,
 	wire.Bind(new(http.Handler), new(*mux.Router)),
 	handler.NewAppHandler,
-	app.NewLogger,
 )
 
 // goCloudServerSet
@@ -39,7 +38,7 @@ var goCloudServerSet = wire.NewSet(
 
 // newServer is a Wire injector function that sets up the
 // application using a PostgreSQL implementation
-func newServer(ctx context.Context, loglvl zerolog.Level) (*server.Server, func(), error) {
+func newServer(ctx context.Context, logger zerolog.Logger) (*server.Server, func(), error) {
 	// This will be filled in by Wire with providers from the provider sets in
 	// wire.Build.
 	wire.Build(
