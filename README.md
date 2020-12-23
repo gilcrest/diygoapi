@@ -89,6 +89,38 @@ $ ./server -loglvl=debug
 {"level":"info","time":1608170937,"severity":"INFO","message":"current database: go_api_basic"}
 ```
 
-## 12/17/2020 - README under construction
+### Ping (unauthenticated)
+
+The easiest api to interact with is the `ping` service. The idea of the service is a simple health check that returns a series of flags denoting health of the system (queue depths, database up boolean, etc.). For right now, the only thing it checks is if the database is up and pingable. I have left this service unauthenticated so there's at least one service that you can get to without having to have an authentication token, but in actuality, I would typically have every service behind a security token.
+
+Use cURL GET request to call `ping`:
+
+```bash
+curl -v --location --request GET 'http://127.0.0.1:8080/api/v1/ping'
+```
+
+The response looks like:
+
+```bash
+{
+    "path": "/api/v1/ping",
+    "request_id": "bvfklkdnf4q0afpuo30g",
+    "data": {
+        "db_up": true
+    }
+}
+```
+
+## Authentication and Authorization
+
+The remainder of requests require authentication. I have chosen to use [Google's Oauth2 solution](https://developers.google.com/identity/protocols/oauth2/web-server) for these APIs. In order to use Google's Oauth2, you need to setup a Client ID and Client Secret and obtain an access token. The instructions [here](https://developers.google.com/identity/protocols/oauth2) are great. I recommend the [Google Oauth2 Playground](https://developers.google.com/oauthplayground/) once you get setup to be able to easily get fresh access tokens.
+
+Once a user has authenticated through this flow, all calls to services (other than `ping`) require that the Google access token be sent as a `Bearer` token in the `Authorization` header.
+
+- If there is no token present, an HTTP 401 (Unauthorized) response will be sent and the response body will be empty.
+- If a token is properly sent, the Google API is used to validate the token. If the token is invalid, an HTTP 401 (Unauthorized) response will be sent and the response body will be empty.
+- If the token is valid, Google will respond with information about the user. The user's email will be used as their username as well as for authorization that it has been granted access to the API. If the user is not authorized to use the API, an HTTP 403 (Forbidden) response will be sent and the response body will be empty. The authorization is currently hard-coded to allow for one email. Add your email at `/domain/auth/auth.go` in the Authorize function for testing. This is definitely not a production-ready way to do authorization. I will eventually switch to some [ACL](https://en.wikipedia.org/wiki/Access-control_list) or [RBAC](https://en.wikipedia.org/wiki/Role-based_access_control) library when I have time to research those, but for now, this works.
+
+## 12/20/2020 - README under construction
 
 I am close to finished for this phase of code refactor and am currently rewriting this doc... I hope to publish the rewritten readme before Christmas.
