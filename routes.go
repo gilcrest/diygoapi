@@ -63,8 +63,7 @@ func newRouter(hdl *handler.AppHandler) *mux.Router {
 
 	// Match only GET requests at /api/v1/ping
 	rtr.Handle("/v1/ping",
-		c.Append(hdl.AccessTokenHandler).
-			Then(http.HandlerFunc(hdl.Ping))).
+		c.Then(http.HandlerFunc(hdl.Ping))).
 		Methods("GET")
 
 	return rtr
