@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/rs/zerolog"
 
@@ -60,20 +61,11 @@ func (a Auth) Authorize(ctx context.Context, sub *user.User, obj string, act str
 	logger := *zerolog.Ctx(ctx)
 
 	const (
-		ping   string = "/api/v1/ping"
 		movies string = "/api/v1/movies"
 	)
 
 	var authorized bool
-	switch obj == ping && act == http.MethodGet {
-	case true:
-		switch sub.Email {
-		case "gilcrest@gmail.com":
-			authorized = true
-		}
-	}
-
-	switch obj == movies && act == http.MethodPost || act == http.MethodPut || act == http.MethodDelete || act == http.MethodGet {
+	switch strings.HasPrefix(obj, movies) && (act == http.MethodPost || act == http.MethodPut || act == http.MethodDelete || act == http.MethodGet) {
 	case true:
 		switch sub.Email {
 		case "gilcrest@gmail.com":
@@ -125,4 +117,10 @@ func SetAccessToken2Context(ctx context.Context, token, tokenType string) contex
 	}
 
 	return context.WithValue(ctx, contextKeyAccessToken, at)
+}
+
+type AccessControlList struct {
+	Subject string
+	Object  string
+	Action  string
 }
