@@ -13,7 +13,9 @@ require (
 	github.com/rs/zerolog v1.20.0
 	go.opencensus.io v0.22.5
 	gocloud.dev v0.21.0
+	golang.org/x/net v0.0.0-20201216054612-986b41b23924 // indirect
 	golang.org/x/oauth2 v0.0.0-20201208152858-08078c50e5b5
-	golang.org/x/sys v0.0.0-20201211090839-8ad439b19e0f // indirect
+	golang.org/x/sys v0.0.0-20201221093633-bc327ba9c2f0 // indirect
 	google.golang.org/api v0.36.0
+	google.golang.org/genproto v0.0.0-20201214200347-8c77b98c765d // indirect
 )
