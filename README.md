@@ -121,6 +121,65 @@ Once a user has authenticated through this flow, all calls to services (other th
 - If a token is properly sent, the Google API is used to validate the token. If the token is invalid, an HTTP 401 (Unauthorized) response will be sent and the response body will be empty.
 - If the token is valid, Google will respond with information about the user. The user's email will be used as their username as well as for authorization that it has been granted access to the API. If the user is not authorized to use the API, an HTTP 403 (Forbidden) response will be sent and the response body will be empty. The authorization is currently hard-coded to allow for one email. Add your email at `/domain/auth/auth.go` in the Authorize function for testing. This is definitely not a production-ready way to do authorization. I will eventually switch to some [ACL](https://en.wikipedia.org/wiki/Access-control_list) or [RBAC](https://en.wikipedia.org/wiki/Role-based_access_control) library when I have time to research those, but for now, this works.
 
+So long as you've got a valid token and are properly setup in the authorization function, you can then execute all four operations (create, read, update, delete) using cURL.
+
+### cURL Commands to Call API
+
+**Create** - use the `POST` HTTP verb at `/api/v1/movies`:
+
+```bash
+curl -v --location --request POST 'http://127.0.0.1:8080/api/v1/movies' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer ya29.a0AfH6SMCLdKNT34kqZt3RhMAm4movdW4jbnb1qk8s1yOhTW6IT6r6TfddWtrYWDGrQcgSUhBiH4NOGviBE-ZBDVGb-zfDsfApOSe5tGhq_vx_v-pjKUo5g-vfALt9l5TkkXQpZ18lD47U5HhQcmM7SpRE4VwVOw4JNbFfWAYGWuCjj5KxHti9xQ' \
+--data-raw '{
+    "title": "Repo Man",
+    "rated": "R",
+    "release_date": "1984-03-02T00:00:00Z",
+    "run_time": 92,
+    "director": "Alex Cox",
+    "writer": "Courtney Cox"
+}'
+```
+
+**Read (All Records)** - use the GET HTTP verb at `/api/v1/movies`:
+
+```bash
+curl -v --location --request GET 'http://127.0.0.1:8080/api/v1/movies' \
+--header 'Authorization: Bearer ya29.a0AfH6SMCLdKNT34kqZt3RhMAm4movdW4jbnb1qk8s1yOhTW6IT6r6TfddWtrYWDGrQcgSUhBiH4NOGviBE-ZBDVGb-zfDsfApOSe5tGhq_vx_v-pjKUo5g-vfALt9l5TkkXQpZ18lD47U5HhQcmM7SpRE4VwVOw4JNbFfWAYGWuCjj5KxHti9xQ' \
+--data-raw ''
+```
+
+**Read (Single Record)** - use the GET HTTP verb at `/api/v1/movies/:extl_id` with the movie "external ID" from the create (POST) as the unique identifier in the URL. I try to never expose primary keys, so I use something like an external id as an alternative key.
+
+```bash
+curl -v --location --request GET 'http://127.0.0.1:8080/api/v1/movies/BDylwy3BnPazC4Casn5M' \
+--header 'Authorization: Bearer ya29.a0AfH6SMCLdKNT34kqZt3RhMAm4movdW4jbnb1qk8s1yOhTW6IT6r6TfddWtrYWDGrQcgSUhBiH4NOGviBE-ZBDVGb-zfDsfApOSe5tGhq_vx_v-pjKUo5g-vfALt9l5TkkXQpZ18lD47U5HhQcmM7SpRE4VwVOw4JNbFfWAYGWuCjj5KxHti9xQ' \
+--data-raw ''
+```
+
+**Update** - use the PUT HTTP verb at `/api/v1/movies/:extl_id` with the movie "external ID" from the create (POST) as the unique identifier in the URL.
+
+```bash
+curl --location --request PUT 'http://127.0.0.1:8080/api/v1/movies/BDylwy3BnPazC4Casn5M' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer ya29.a0AfH6SMCLdKNT34kqZt3RhMAm4movdW4jbnb1qk8s1yOhTW6IT6r6TfddWtrYWDGrQcgSUhBiH4NOGviBE-ZBDVGb-zfDsfApOSe5tGhq_vx_v-pjKUo5g-vfALt9l5TkkXQpZ18lD47U5HhQcmM7SpRE4VwVOw4JNbFfWAYGWuCjj5KxHti9xQ' \
+--data-raw '{
+    "title": "Repo Man",
+    "rated": "R",
+	"release_date": "1984-03-02T00:00:00Z",
+    "run_time": 92,
+    "director": "Alex Cox",
+    "writer": "Alex Cox"
+}'
+```
+
+**Delete** - use the DELETE HTTP verb at `/api/v1/movies/:extl_id` with the movie "external ID" from the create (POST) as the unique identifier in the URL.
+
+```bash
+curl --location --request DELETE 'http://127.0.0.1:8080/api/v1/movies/BDylwy3BnPazC4Casn5M' \
+--header 'Authorization: Bearer ya29.a0AfH6SMCLdKNT34kqZt3RhMAm4movdW4jbnb1qk8s1yOhTW6IT6r6TfddWtrYWDGrQcgSUhBiH4NOGviBE-ZBDVGb-zfDsfApOSe5tGhq_vx_v-pjKUo5g-vfALt9l5TkkXQpZ18lD47U5HhQcmM7SpRE4VwVOw4JNbFfWAYGWuCjj5KxHti9xQ'
+```
+
 ## 12/20/2020 - README under construction
 
 I am close to finished for this phase of code refactor and am currently rewriting this doc... I hope to publish the rewritten readme before Christmas.
