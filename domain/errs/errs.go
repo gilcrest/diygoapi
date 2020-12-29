@@ -25,8 +25,7 @@ type Error struct {
 	// Kind is the class of error, such as permission failure,
 	// or "Other" if its class is unknown or irrelevant.
 	Kind Kind
-	// Param is for when the error is parameter-specific and represents the parameter
-	// related to the error.
+	// Param represents the parameter related to the error.
 	Param Parameter
 	// Code is a human-readable, short representation of the error
 	Code Code
@@ -54,8 +53,7 @@ type UserName string
 // such as FUSE that must act differently depending on the error.
 type Kind uint8
 
-// Parameter is for parameter-specific errors and represents
-// the parameter related to the error.
+// Parameter represents the parameter related to the error.
 type Parameter string
 
 // Code is a human-readable, short representation of the error
@@ -162,7 +160,7 @@ func E(args ...interface{}) error {
 		case Kind:
 			e.Kind = arg
 		case *Error:
-			e.Err = errors.WithStack(arg)
+			e.Err = arg
 		case error:
 			// if the error implements stackTracer, then it is
 			// a pkg/errors error type and does not need to have
