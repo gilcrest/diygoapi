@@ -75,7 +75,7 @@ func (m *Movie) SetReleased(r string) (*Movie, error) {
 	if err != nil {
 		return nil, errs.E(errs.Validation,
 			errs.Code("invalid_date_format"),
-			errs.Parameter("ReleaseDate"),
+			errs.Parameter("release_date"),
 			err)
 	}
 	m.Released = t
@@ -111,17 +111,17 @@ func (m *Movie) SetUpdateTime() *Movie {
 func (m *Movie) IsValid() error {
 	switch {
 	case m.Title == "":
-		return errs.E(errs.Validation, errs.Parameter("Title"), errs.MissingField("Title"))
+		return errs.E(errs.Validation, errs.Parameter("title"), errs.MissingField("Title"))
 	case m.Rated == "":
-		return errs.E(errs.Validation, errs.Parameter("Rated"), errs.MissingField("Rated"))
+		return errs.E(errs.Validation, errs.Parameter("rated"), errs.MissingField("Rated"))
 	case m.Released.IsZero() == true:
-		return errs.E(errs.Validation, errs.Parameter("ReleaseDate"), "Released must have a value")
+		return errs.E(errs.Validation, errs.Parameter("release_date"), "Released must have a value")
 	case m.RunTime <= 0:
-		return errs.E(errs.Validation, errs.Parameter("RunTime"), "Run time must be greater than zero")
+		return errs.E(errs.Validation, errs.Parameter("run_time"), "Run time must be greater than zero")
 	case m.Director == "":
-		return errs.E(errs.Validation, errs.Parameter("Director"), errs.MissingField("Director"))
+		return errs.E(errs.Validation, errs.Parameter("director"), errs.MissingField("Director"))
 	case m.Writer == "":
-		return errs.E(errs.Validation, errs.Parameter("Writer"), errs.MissingField("Writer"))
+		return errs.E(errs.Validation, errs.Parameter("writer"), errs.MissingField("Writer"))
 	}
 
 	return nil
