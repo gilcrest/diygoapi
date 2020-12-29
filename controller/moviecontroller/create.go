@@ -144,6 +144,11 @@ func (ctl *MovieController) CreateMovie(r *http.Request) (*controller.StandardRe
 	m.SetDirector(rb.Director)
 	m.SetWriter(rb.Writer)
 
+	err = m.IsValid()
+	if err != nil {
+		return nil, err
+	}
+
 	// Begin a DB Tx, if the underlying struct is a MockDatastore then
 	// the Tx will be nil
 	tx, err := ctl.App.Datastorer.BeginTx(ctx)
