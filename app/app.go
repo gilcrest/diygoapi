@@ -3,6 +3,8 @@ package app
 import (
 	"os"
 
+	"github.com/rs/zerolog/pkgerrors"
+
 	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/rs/zerolog"
 )
@@ -60,6 +62,9 @@ func NewLogger(lvl zerolog.Level) zerolog.Logger {
 
 	// set logging level based on input
 	zerolog.SetGlobalLevel(lvl)
+
+	// set ErrorStackMarshaler to pkgerrors.MarshalStack for stacktraces
+	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 
 	// start a new logger with Stdout as the target
 	lgr := zerolog.New(os.Stdout).With().Timestamp().Logger()

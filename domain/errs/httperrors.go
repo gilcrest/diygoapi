@@ -60,40 +60,31 @@ func HTTPErrorResponse(w http.ResponseWriter, logger zerolog.Logger, err error) 
 				// and a 403 Forbidden response should be used afterwards, when the user is
 				// authenticated but isn’t authorized to perform the requested operation on
 				// the given resource."
-				logger.Error().
+				logger.Error().Stack().Err(e.Err).
 					Int("HTTP Error StatusCode", http.StatusUnauthorized).
-					Str("error stack trace", fmt.Sprintf("%+v", e.Err)).
-					Str("error message", e.Err.Error()).
 					Msg("Unauthenticated Request")
 				sendError(w, "", httpStatusCode)
 			} else if e.Kind == Unauthorized {
-				logger.Error().Int("HTTP Error StatusCode", http.StatusForbidden).Msg(e.Error())
+				logger.Error().Stack().Err(e.Err).
+					Int("HTTP Error StatusCode", http.StatusForbidden).
+					Msg("Unauthorized Request")
 				sendError(w, "", httpStatusCode)
 			} else {
-				// Make a copy
-				eCopy := *e
-
-				// fullErr is the full error that is to be logged
-				// before removing the error stack details through the
-				// StripStack function
-				fullErr := &eCopy
-				// log the full embedded error before removing the
-				// error stack
-				logger.Error().Err(fullErr).
+				// log the error with stacktrace
+				logger.Error().Stack().Err(e.Err).
 					Int("HTTPStatusCode", httpStatusCode).
-					Str("Kind", fullErr.Kind.String()).
-					Str("Parameter", string(fullErr.Param)).
-					Str("Code", string(fullErr.Code)).
+					Str("Kind", e.Kind.String()).
+					Str("Parameter", string(e.Param)).
+					Str("Code", string(e.Code)).
 					Msg("Response Error Sent")
 
-				// For API response errors, don't show full recursion details,
-				// just the error message (stripstack does this)
+				// setup ErrResponse
 				er := ErrResponse{
 					Error: ServiceError{
 						Kind:    e.Kind.String(),
 						Code:    string(e.Code),
 						Param:   string(e.Param),
-						Message: fullErr.Error(),
+						Message: e.Error(),
 					},
 				}
 
