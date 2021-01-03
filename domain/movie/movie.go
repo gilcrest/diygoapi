@@ -76,7 +76,7 @@ func (m *Movie) SetReleased(r string) (*Movie, error) {
 		return nil, errs.E(errs.Validation,
 			errs.Code("invalid_date_format"),
 			errs.Parameter("release_date"),
-			err)
+			errors.WithStack(err))
 	}
 	m.Released = t
 	return m, nil
@@ -103,7 +103,7 @@ func (m *Movie) SetUpdateUser(u *user.User) *Movie {
 }
 
 func (m *Movie) SetUpdateTime() *Movie {
-	m.UpdateTime = time.Now()
+	m.UpdateTime = time.Now().UTC()
 	return m
 }
 
@@ -111,7 +111,7 @@ func (m *Movie) SetUpdateTime() *Movie {
 func (m *Movie) IsValid() error {
 	switch {
 	case m.Title == "":
-		return errs.E(errs.Validation, errs.Parameter("title"), errs.MissingField("Title"))
+		return errs.E(errs.Validation, errs.Parameter("title"), errs.MissingField("title"))
 	case m.Rated == "":
 		return errs.E(errs.Validation, errs.Parameter("rated"), errs.MissingField("Rated"))
 	case m.Released.IsZero() == true:
