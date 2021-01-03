@@ -166,7 +166,7 @@ curl --location --request PUT 'http://127.0.0.1:8080/api/v1/movies/BDylwy3BnPazC
 --data-raw '{
     "title": "Repo Man",
     "rated": "R",
-	"release_date": "1984-03-02T00:00:00Z",
+    "release_date": "1984-03-02T00:00:00Z",
     "run_time": 92,
     "director": "Alex Cox",
     "writer": "Alex Cox"
@@ -180,6 +180,203 @@ curl --location --request DELETE 'http://127.0.0.1:8080/api/v1/movies/BDylwy3BnP
 --header 'Authorization: Bearer ya29.a0AfH6SMCLdKNT34kqZt3RhMAm4movdW4jbnb1qk8s1yOhTW6IT6r6TfddWtrYWDGrQcgSUhBiH4NOGviBE-ZBDVGb-zfDsfApOSe5tGhq_vx_v-pjKUo5g-vfALt9l5TkkXQpZ18lD47U5HhQcmM7SpRE4VwVOw4JNbFfWAYGWuCjj5KxHti9xQ'
 ```
 
-## 12/20/2020 - README under construction
+## Project Walkthrough
 
-I am close to finished for this phase of code refactor and am currently rewriting this doc... I hope to publish the rewritten readme before Christmas.
+### Errors
+
+Handling errors is really important in Go. Errors are first class citizens and there are many different approaches for handling them. Initially I started off basing my error handling almost entirely on a [blog post from Rob Pike](https://commandcenter.blogspot.com/2017/12/error-handling-in-upspin.html) and created a carve-out from his code to meet my needs. It served me well for a long time, but found over time I wanted a way to easily get a stacktrace of the error, which led me to Dave Cheney's [https://github.com/pkg/errors](https://github.com/pkg/errors) package. I now use a combination of the two.
+
+ Error handling throughout `go-api-basic` always creates an error using the `E` function from the `errs` package as seen below. `errs.E`, is derived from Rob Pike's package (but has been changed a lot). The `errs.E` function call is [variadic](https://en.wikipedia.org/wiki/Variadic) and can take several different types to form the custom `Error`struct.
+
+ ```go
+// Error is the type that implements the error interface.
+// It contains a number of fields, each of different type.
+// An Error value may leave some values unset.
+type Error struct {
+    // User is the username of the user attempting the operation.
+    User UserName
+    // Kind is the class of error, such as permission failure,
+    // or "Other" if its class is unknown or irrelevant.
+    Kind Kind
+    // Param represents the parameter related to the error.
+    Param Parameter
+    // Code is a human-readable, short representation of the error
+    Code Code
+    // The underlying error that triggered this one, if any.
+    Err error
+}
+```
+
+Here is a simple example of creating an `error`:
+
+```go
+err := errs.E("seems we have an error here")
+```
+
+ When a string is sent, an error will be created using the `errors.New` function from `github.com/pkg/errors` and added to the `Err` element of the struct, which allows a stacktrace to be generated later on if need be. In the above example, `User`, `Kind`, `Param` and `Code` would all remain unset.
+
+You can, of course, choose to set any of the custom error values that you like, for example:
+
+```go
+func (m *Movie) SetReleased(r string) (*Movie, error) {
+    t, err := time.Parse(time.RFC3339, r)
+    if err != nil {
+        return nil, errs.E(errs.Validation,
+            errs.Code("invalid_date_format"),
+            errs.Parameter("release_date"),
+            err)
+    }
+    m.Released = t
+    return m, nil
+}
+```
+
+Above, we used `errs.Validation` to set the `errs.Kind` as Validation. Valid error `Kind` are:
+
+```go
+// Kinds of errors.
+//
+// The values of the error kinds are common between both
+// clients and servers. Do not reorder this list or remove
+// any items since that will change their values.
+// New items must be added only to the end.
+const (
+    Other           Kind = iota // Unclassified error. This value is not printed in the error message.
+    Invalid                     // Invalid operation for this type of item.
+    Permission                  // Permission denied.
+    IO                          // External I/O error such as network failure.
+    Exist                       // Item already exists.
+    NotExist                    // Item does not exist.
+    Private                     // Information withheld.
+    Internal                    // Internal error or inconsistency.
+    BrokenLink                  // Link target does not exist.
+    Database                    // Error from database.
+    Validation                  // Input validation error.
+    Unanticipated               // Unanticipated error.
+    InvalidRequest              // Invalid Request
+    Unauthenticated             // User did not properly authenticate
+    Unauthorized                // User is not authorized for the resource
+)
+```
+
+`errs.Code` represents a short code to respond to the client with for error handling based on codes (if you choose to do this) and is any string you want to pass.
+
+`errs.Parameter` represents the parameter that is being validated or has problems, etc.
+
+In addition, instead of passing a string and creating a new error inside the `errs.E` function, I am just passing in the error received from the `time.Parse` function and inside `errs.E` the error is added to `Err` using `errors.WithStack` from the `github.com/pkg/errors` package so that the stacktrace can be obtained later if needed.
+
+There are a few helpers in the `errs` package as well, namely the `errs.MissingField` function which can be used when validating missing input on a field. This idea comes from [this Mat Ryer post](https://medium.com/@matryer/patterns-for-decoding-and-validating-input-in-go-data-apis-152291ac7372) and is pretty handy.
+
+Here is an example in practice:
+
+```go
+// IsValid performs validation of the struct
+func (m *Movie) IsValid() error {
+    switch {
+    case m.Title == "":
+        return errs.E(errs.Validation, errs.Parameter("title"), errs.MissingField("title"))
+```
+
+The error message for the above would read **title is required**
+
+There is also `errs.InputUnwanted` which is meant to be used when a field is populated with a value when it is not supposed to be.
+
+#### Error Flow
+
+Errors at their initial point of failure should always start with `errs.E`, but as they move up the call stack, `errs.E` does not need to be used. Errors should just be passed on up, like the following:
+
+```go
+func inner() error {
+    return errs.E("seems we have an error here")
+}
+
+func middle() error {
+    err := inner()
+    if err != nil {
+        return err
+    }
+    return nil
+}
+
+func outer() error {
+    err := middle()
+    if err != nil {
+        return err
+    }
+    return nil
+}
+
+```
+
+In the above example, the error is created in the `inner` function - `middle` and `outer` return the error as is typical in Go.
+
+At the top of the program flow for each service is the handler. I've structured my code so that handlers are relatively simple. We'll talk more about them later, but you'll notice in each handler, if any error occurs from any function/method calls, they are sent through the `errs.HTTPErrorResponse` function along with the `http.ResponseWriter` and a `zerolog.Logger`.
+
+For example:
+
+```go
+// Send the request to the controller
+// Receive a response or error in return
+response, err := mc.CreateMovie(r)
+if err != nil {
+    errs.HTTPErrorResponse(w, logger, err)
+    return
+}
+```
+
+`errs.HTTPErrorResponse` takes the custom `Error` created by `errs.E` and writes the HTTP response body as JSON as well as logs the error, including the error stacktrace. When the above error is returned to the client using the `errs.HTTPErrorResponse` function in the each of the handlers, the response body JSON looks like the following:
+
+```json
+{
+    "error": {
+        "kind": "input_validation_error",
+        "code": "invalid_date_format",
+        "param": "release_date",
+        "message": "parsing time \"1984a-03-02T00:00:00Z\" as \"2006-01-02T15:04:05Z07:00\": cannot parse \"a-03-02T00:00:00Z\" as \"-\""
+    }
+}
+```
+
+and the error log looks like (I cut off parts of the stack for brevity):
+
+```json
+{
+    "level": "error",
+    "ip": "127.0.0.1",
+    "user_agent": "PostmanRuntime/7.26.8",
+    "request_id": "bvol0mtnf4q269hl3ra0",
+    "stack": [{
+        "func": "E",
+        "line": "172",
+        "source": "errs.go"
+    }, {
+        "func": "(*Movie).SetReleased",
+        "line": "76",
+        "source": "movie.go"
+    }, {
+        "func": "(*MovieController).CreateMovie",
+        "line": "139",
+        "source": "create.go"
+    }, {
+    ...
+    }],
+    "error": "parsing time \"1984a-03-02T00:00:00Z\" as \"2006-01-02T15:04:05Z07:00\": cannot parse \"a-03-02T00:00:00Z\" as \"-\"",
+    "HTTPStatusCode": 400,
+    "Kind": "input_validation_error",
+    "Parameter": "release_date",
+    "Code": "invalid_date_format",
+    "time": 1609650267,
+    "severity": "ERROR",
+    "message": "Response Error Sent"
+}
+```
+
+> Note: `E` will often be at the top of the stack as it is where the `errors.New` or `errors.WithStack` functions are being called. If you prefer not to see this, you can call `errors.New` or `errors.WithStack` as part of the `errs.E` call, for example:
+
+```go
+err := errs.E(errors.New("seems we have an error here"))
+```
+
+## 1/3/2021 - README under construction
+
+I am close to finished for this phase of code refactor and am currently rewriting this doc. There has been a lot of changes, so it's almost a complete rewrite of the README as well...
