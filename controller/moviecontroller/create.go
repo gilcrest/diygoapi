@@ -149,8 +149,7 @@ func (ctl *MovieController) CreateMovie(r *http.Request) (*controller.StandardRe
 		return nil, err
 	}
 
-	// Begin a DB Tx, if the underlying struct is a MockDatastore then
-	// the Tx will be nil
+	// Begin a DB Tx
 	tx, err := ctl.App.Datastorer.BeginTx(ctx)
 	if err != nil {
 		return nil, err
@@ -158,6 +157,7 @@ func (ctl *MovieController) CreateMovie(r *http.Request) (*controller.StandardRe
 
 	// declare variable as the Transactor interface
 	var movieTransactor moviestore.Transactor
+	// moviestore.Tx implements the Transactor interface
 	movieTransactor, err = moviestore.NewTx(tx)
 	if err != nil {
 		return nil, err
