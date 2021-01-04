@@ -379,4 +379,4 @@ err := errs.E(errors.New("seems we have an error here"))
 
 ## 1/3/2021 - README under construction
 
-I am close to finished for this phase of code refactor and am currently rewriting this doc. There has been a lot of changes, so it's almost a complete rewrite of the README as well...
+I have taken out the remainder of the documentation for now until I complete my next goal of adding more tests to just about everything. I think adding tests will likely further shape the structure and program flow that I'm going to wait until I've completed that exercise to complete this README.
