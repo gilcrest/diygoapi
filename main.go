@@ -13,7 +13,6 @@ import (
 	"github.com/gilcrest/go-api-basic/domain/logger"
 
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 )
 
 // cliFlags are the command line flags parsed at startup
@@ -74,7 +73,7 @@ func main() {
 
 	dsn, err := newPGDatasourceName(cf)
 	if err != nil {
-		log.Fatal().Err(err).Msg("Error returned from newPGDatasourceName")
+		logger.Fatal().Err(err).Msg("Error returned from newPGDatasourceName")
 	}
 
 	// initialize a non-nil, empty context
@@ -84,12 +83,12 @@ func main() {
 	// cleanup function and an error
 	srv, cleanup, err := newServer(ctx, logger, dsn)
 	if err != nil {
-		log.Fatal().Err(err).Msg("Error returned from newServer")
+		logger.Fatal().Err(err).Msg("Error returned from newServer")
 	}
 	defer cleanup()
 
 	// Listen and serve HTTP
-	log.Fatal().Err(srv.ListenAndServe(fmt.Sprintf(":%d", cf.port))).Msg("Fatal Server Error")
+	logger.Fatal().Err(srv.ListenAndServe(fmt.Sprintf(":%d", cf.port))).Msg("Fatal Server Error")
 }
 
 // newLogLevel sets up the logging level (e.g. Debug, Info, Error, etc.)
