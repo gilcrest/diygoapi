@@ -10,8 +10,7 @@ import (
 
 	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/gilcrest/go-api-basic/domain/errs"
-
-	"github.com/gilcrest/go-api-basic/app"
+	"github.com/gilcrest/go-api-basic/domain/logger"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -58,11 +57,15 @@ func main() {
 	// Parse the command line flags from above
 	flag.Parse()
 
+	// setup logger with appropriate defaults
+	logger := logger.NewLogger()
+
 	// determine logging level
 	loglvl := newLogLevel(cf)
 
-	// setup logger with appropriate defaults
-	logger := app.NewLogger(loglvl)
+	// set logging level based on flag input
+	zerolog.SetGlobalLevel(loglvl)
+	logger.Info().Msgf("logging level set to %s", loglvl)
 
 	// validate port in acceptable range
 	if cf.port < 0 || cf.port > 65535 {

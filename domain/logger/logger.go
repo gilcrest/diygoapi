@@ -8,15 +8,13 @@ import (
 )
 
 // NewLogger sets up the zerolog.Logger
-func NewLogger(lvl zerolog.Level) zerolog.Logger {
+func NewLogger() zerolog.Logger {
 
-	// empty string for TimeFieldFormat will write logs with UNIX time
-	zerolog.TimeFieldFormat = ""
+	// write logs using Unix timestamps
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 
-	// set logging level based on input
-	zerolog.SetGlobalLevel(lvl)
-
-	// set ErrorStackMarshaler to pkgerrors.MarshalStack for stacktraces
+	// set ErrorStackMarshaler to pkgerrors.MarshalStack
+	// to enable error stack traces
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 
 	// start a new logger with Stdout as the target
@@ -27,8 +25,6 @@ func NewLogger(lvl zerolog.Level) zerolog.Logger {
 	// example expects "severity","ERROR" for its leveling. This
 	// hook will add severity to each message
 	lgr = lgr.Hook(GCPSeverityHook{})
-
-	lgr.Info().Msgf("logging level set to %s", lvl)
 
 	return lgr
 }
