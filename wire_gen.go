@@ -24,12 +24,8 @@ import (
 
 // Injectors from inject_main.go:
 
-func newServer(ctx context.Context, logger zerolog.Logger) (*server.Server, func(), error) {
-	pgDatasourceName, err := datastore.NewPGDatasourceName()
-	if err != nil {
-		return nil, nil, err
-	}
-	db, cleanup, err := datastore.NewDB(pgDatasourceName, logger)
+func newServer(ctx context.Context, logger zerolog.Logger, dsn datastore.PGDatasourceName) (*server.Server, func(), error) {
+	db, cleanup, err := datastore.NewDB(dsn, logger)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -38,7 +38,7 @@ var goCloudServerSet = wire.NewSet(
 
 // newServer is a Wire injector function that sets up the
 // application using a PostgreSQL implementation
-func newServer(ctx context.Context, logger zerolog.Logger) (*server.Server, func(), error) {
+func newServer(ctx context.Context, logger zerolog.Logger, dsn datastore.PGDatasourceName) (*server.Server, func(), error) {
 	// This will be filled in by Wire with providers from the provider sets in
 	// wire.Build.
 	wire.Build(
@@ -47,7 +47,6 @@ func newServer(ctx context.Context, logger zerolog.Logger) (*server.Server, func
 		applicationSet,
 		appHealthChecks,
 		wire.Struct(new(server.Options), "HealthChecks", "TraceExporter", "DefaultSamplingPolicy", "Driver"),
-		datastore.NewPGDatasourceName,
 		datastore.NewDB,
 		wire.Bind(new(datastore.Datastorer), new(*datastore.Datastore)),
 		datastore.NewDatastore)

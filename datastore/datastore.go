@@ -4,8 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"os"
-	"strconv"
 
 	"github.com/gilcrest/go-api-basic/domain/errs"
 
@@ -27,52 +25,14 @@ type Datastorer interface {
 
 // NewPGDatasourceName is an initializer for PGDatasourceName, which
 // is a struct that holds the PostgreSQL datasource name details.
-func NewPGDatasourceName() (PGDatasourceName, error) {
-	// Constants for the PostgreSQL Database connection
-	const (
-		pgDBHost     string = "PG_APP_HOST"
-		pgDBPort     string = "PG_APP_PORT"
-		pgDBName     string = "PG_APP_DBNAME"
-		pgDBUser     string = "PG_APP_USERNAME"
-		pgDBPassword string = "PG_APP_PASSWORD"
-	)
-
-	var ds PGDatasourceName
-
-	dbHost, ok := os.LookupEnv(pgDBHost)
-	if !ok {
-		return ds, errs.E(errors.New(fmt.Sprintf("No environment variable found for %s", pgDBHost)))
+func NewPGDatasourceName(host, dbname, user, password string, port int) PGDatasourceName {
+	return PGDatasourceName{
+		DBName:   dbname,
+		User:     user,
+		Password: password,
+		Host:     host,
+		Port:     port,
 	}
-	p, ok := os.LookupEnv(pgDBPort)
-	if !ok {
-		return ds, errs.E(errors.New(fmt.Sprintf("No environment variable found for %s", pgDBPort)))
-	}
-	dbPort, err := strconv.Atoi(p)
-	if err != nil {
-		return ds, errs.E(errors.New(fmt.Sprintf("Unable to convert db port %s to int", p)))
-	}
-	dbName, ok := os.LookupEnv(pgDBName)
-	if !ok {
-		return ds, errs.E(errors.New(fmt.Sprintf("No environment variable found for %s", pgDBName)))
-	}
-	dbUser, ok := os.LookupEnv(pgDBUser)
-	if !ok {
-		return ds, errs.E(errors.New(fmt.Sprintf("No environment variable found for %s", pgDBUser)))
-	}
-	dbPassword, ok := os.LookupEnv(pgDBPassword)
-	if !ok {
-		return ds, errs.E(errors.New(fmt.Sprintf("No environment variable found for %s", pgDBPassword)))
-	}
-
-	ds = PGDatasourceName{
-		DBName:   dbName,
-		User:     dbUser,
-		Password: dbPassword,
-		Host:     dbHost,
-		Port:     dbPort,
-	}
-
-	return ds, nil
 }
 
 // PGDatasourceName is a Postgres datasource name

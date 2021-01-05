@@ -7,7 +7,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-func Test_NewLocalDB(t *testing.T) {
+func Test_NewDB(t *testing.T) {
 	type args struct {
 		pgds PGDatasourceName
 		l    zerolog.Logger
@@ -20,16 +20,13 @@ func Test_NewLocalDB(t *testing.T) {
 	// start a new logger with Stdout as the target
 	logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
 
-	ds, err := NewPGDatasourceName()
-	if err != nil {
-		t.Errorf("Error from NewPGDatasourceName = %v", err)
-	}
+	dsn := NewPGDatasourceName("localhost", "go_api_basic", "postgres", "", 5432)
 
 	tests := []struct {
 		name string
 		args args
 	}{
-		{"App DB", args{ds, logger}},
+		{"App DB", args{dsn, logger}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

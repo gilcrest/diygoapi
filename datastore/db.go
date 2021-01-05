@@ -10,16 +10,16 @@ import (
 )
 
 // NewDB returns an open database handle of 0 or more underlying PostgreSQL connections
-func NewDB(pgds PGDatasourceName, logger zerolog.Logger) (*sql.DB, func(), error) {
+func NewDB(dsn PGDatasourceName, logger zerolog.Logger) (*sql.DB, func(), error) {
 
 	// Open the postgres database using the postgres driver (pq)
 	// func Open(driverName, dataSourceName string) (*DB, error)
-	db, err := sql.Open("postgres", pgds.String())
+	db, err := sql.Open("postgres", dsn.String())
 	if err != nil {
 		return nil, nil, errs.E(err)
 	}
 
-	logger.Info().Msgf("sql database opened for %s on port %d", pgds.Host, pgds.Port)
+	logger.Info().Msgf("sql database opened for %s on port %d", dsn.Host, dsn.Port)
 
 	err = validateDB(db, logger)
 	if err != nil {
