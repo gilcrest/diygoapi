@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/gilcrest/go-api-basic/domain/logger"
+
 	"github.com/matryer/is"
 )
 
@@ -25,46 +27,36 @@ func TestNewPGDatasourceName(t *testing.T) {
 }
 
 func TestDatastore_DB(t *testing.T) {
-	type fields struct {
-		db *sql.DB
+	is := is.New(t)
+
+	logger := logger.NewLogger()
+
+	ogdb, cleanup, err := NewDB(NewPGDatasourceName("localhost", "go_api_basic", "postgres", "", 5432), logger)
+	defer cleanup()
+	if err != nil {
+		t.Fatal(err)
 	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   *sql.DB
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ds := &Datastore{
-				db: tt.fields.db,
-			}
-			if got := ds.DB(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("DB() = %v, want %v", got, tt.want)
-			}
-		})
-	}
+	ds := Datastore{db: ogdb}
+	db := ds.DB()
+
+	is.Equal(db, ogdb)
 }
 
 func TestNewDatastore(t *testing.T) {
-	type args struct {
-		db *sql.DB
+	is := is.New(t)
+
+	logger := logger.NewLogger()
+
+	db, cleanup, err := NewDB(NewPGDatasourceName("localhost", "go_api_basic", "postgres", "", 5432), logger)
+	defer cleanup()
+	if err != nil {
+		t.Fatal(err)
 	}
-	tests := []struct {
-		name string
-		args args
-		want *Datastore
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := NewDatastore(tt.args.db); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewDatastore() = %v, want %v", got, tt.want)
-			}
-		})
-	}
+	got := NewDatastore(db)
+
+	want := &Datastore{db: db}
+
+	is.Equal(got, want)
 }
 
 func TestNewNullInt64(t *testing.T) {
@@ -76,7 +68,8 @@ func TestNewNullInt64(t *testing.T) {
 		args args
 		want sql.NullInt64
 	}{
-		// TODO: Add test cases.
+		{"has value", args{i: 23}, sql.NullInt64{Int64: 23, Valid: true}},
+		{"zero value", args{i: 0}, sql.NullInt64{Int64: 0, Valid: false}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -96,7 +89,8 @@ func TestNewNullString(t *testing.T) {
 		args args
 		want sql.NullString
 	}{
-		// TODO: Add test cases.
+		{"has value", args{s: "foobar"}, sql.NullString{String: "foobar", Valid: true}},
+		{"zero value", args{s: ""}, sql.NullString{String: "", Valid: false}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
