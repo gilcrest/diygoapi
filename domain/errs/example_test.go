@@ -10,9 +10,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/rs/zerolog"
-
 	"github.com/gilcrest/go-api-basic/domain/errs"
+	"github.com/gilcrest/go-api-basic/domain/logger"
 )
 
 func ExampleError() {
@@ -54,15 +53,15 @@ func ExampleMatch() {
 func ExampleHTTPErrorResponse() {
 
 	w := httptest.NewRecorder()
-	logger := setupLogger()
+	l := logger.NewLogger(os.Stdout, false)
 
 	err := layer4()
-	errs.HTTPErrorResponse(w, logger, err)
+	errs.HTTPErrorResponse(w, l, err)
 
 	fmt.Println(w.Body)
 	// Output:
 	//
-	// {"level":"error","error":"errors/layer4: input_validation_error] errors/layer3] errors/layer2] errors/layer1|: Actual error message","HTTPStatusCode":400,"Kind":"input_validation_error","Parameter":"testParam","Code":"0212","message":"Response Error Sent"}
+	// {"level":"error","error":"Actual error message","http_statuscode":400,"Kind":"input_validation_error","Parameter":"testParam","Code":"0212","severity":"ERROR","message":"Response Error Sent"}
 	// {"error":{"kind":"input_validation_error","code":"0212","param":"testParam","message":"Actual error message"}}
 }
 
@@ -82,12 +81,7 @@ func ExampleHTTPErrorResponse() {
 func ExampleE() {
 	err := layer4()
 	if err != nil {
-		switch t := errors.Cause(err).(type) {
-		case *errs.Error:
-			fmt.Printf("%+v\n", t.Err)
-		default:
-			fmt.Println("WTF!")
-		}
+		fmt.Println(err.Error())
 	}
 
 	// Output:
@@ -112,16 +106,6 @@ func layer2() error {
 
 func layer1() error {
 	return errs.E(errs.Validation, errs.Parameter("testParam"), errs.Code("0212"), errors.New("Actual error message"))
-}
-
-func setupLogger() zerolog.Logger {
-	zerolog.TimeFieldFormat = ""
-
-	// set logging level based on input
-	zerolog.SetGlobalLevel(zerolog.DebugLevel)
-
-	// start a new logger with Stdout as the target
-	return zerolog.New(os.Stdout).With().Logger()
 }
 
 // One alternative is to return custom error values, called sentinel errors.
