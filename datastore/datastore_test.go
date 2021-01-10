@@ -2,6 +2,7 @@ package datastore
 
 import (
 	"database/sql"
+	"os"
 	"reflect"
 	"testing"
 
@@ -29,7 +30,7 @@ func TestNewPGDatasourceName(t *testing.T) {
 func TestDatastore_DB(t *testing.T) {
 	is := is.New(t)
 
-	logger := logger.NewLogger()
+	logger := logger.NewLogger(os.Stdout, true)
 
 	ogdb, cleanup, err := NewDB(NewPGDatasourceName("localhost", "go_api_basic", "postgres", "", 5432), logger)
 	defer cleanup()
@@ -45,7 +46,7 @@ func TestDatastore_DB(t *testing.T) {
 func TestNewDatastore(t *testing.T) {
 	is := is.New(t)
 
-	logger := logger.NewLogger()
+	logger := logger.NewLogger(os.Stdout, true)
 
 	db, cleanup, err := NewDB(NewPGDatasourceName("localhost", "go_api_basic", "postgres", "", 5432), logger)
 	defer cleanup()
