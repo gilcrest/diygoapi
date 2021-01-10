@@ -1,24 +1,18 @@
 package logger
 
 import (
-	"os"
+	"io"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/pkgerrors"
 )
 
-// NewLogger sets up the zerolog.Logger
-func NewLogger() zerolog.Logger {
-
-	// write logs using Unix timestamps
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-
-	// set ErrorStackMarshaler to pkgerrors.MarshalStack
-	// to enable error stack traces
-	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
-
-	// start a new logger with Stdout as the target
-	lgr := zerolog.New(os.Stdout).With().Timestamp().Logger()
+// NewLogger is a convenience function to initialize a zerolog.Logger
+func NewLogger(w io.Writer, withTimestamp bool) zerolog.Logger {
+	lgr := zerolog.New(w)
+	if withTimestamp {
+		lgr = lgr.With().Timestamp().Logger()
+	}
 
 	// Add Severity Hook. Zerolog by default outputs structured logs
 	// with "level":"error" as its leveling. Google Cloud as an
@@ -58,4 +52,16 @@ func (h GCPSeverityHook) Run(e *zerolog.Event, level zerolog.Level, msg string) 
 	default:
 		e.Str(lvlKey, "DEFAULT")
 	}
+}
+
+// WriteErrorStackGlobal is a convenience wrapper to set the zerolog
+// Global variable ErrorStackMarshaler to write Error stacks for logs
+func WriteErrorStackGlobal(i bool) {
+	if !i {
+		zerolog.ErrorStackMarshaler = nil
+		return
+	}
+	// set ErrorStackMarshaler to pkgerrors.MarshalStack
+	// to enable error stack traces
+	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 }
