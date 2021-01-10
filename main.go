@@ -2,11 +2,12 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"strconv"
+
+	"github.com/pkg/errors"
 
 	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/gilcrest/go-api-basic/domain/errs"
@@ -57,14 +58,17 @@ func main() {
 	flag.Parse()
 
 	// setup logger with appropriate defaults
-	logger := logger.NewLogger()
+	logger := logger.NewLogger(os.Stdout, true)
 
 	// determine logging level
 	loglvl := newLogLevel(cf)
 
-	// set logging level based on flag input
+	// set global logging level based on flag input
 	zerolog.SetGlobalLevel(loglvl)
 	logger.Info().Msgf("logging level set to %s", loglvl)
+
+	// set global logging time field format to Unix timestamp
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 
 	// validate port in acceptable range
 	if cf.port < 0 || cf.port > 65535 {
