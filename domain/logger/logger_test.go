@@ -3,29 +3,40 @@ package logger
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"os"
 	"reflect"
+	"regexp"
 	"testing"
+
+	"github.com/gilcrest/go-api-basic/domain/errs"
+	"github.com/pkg/errors"
 
 	"github.com/rs/zerolog"
 )
 
 func TestNewLogger(t *testing.T) {
 	// empty string for TimeFieldFormat will write logs with UNIX time
-	zerolog.TimeFieldFormat = ""
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	// start a new logger with Stdout as the target
 	lgr := zerolog.New(os.Stdout).With().Timestamp().Logger()
 	lgr = lgr.Hook(GCPSeverityHook{})
 
+	type args struct {
+		w             io.Writer
+		withTimestamp bool
+	}
+
 	tests := []struct {
 		name string
+		args args
 		want zerolog.Logger
 	}{
-		{"New Logger", lgr},
+		{"stdout", args{os.Stdout, true}, lgr},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewLogger(); !reflect.DeepEqual(got, tt.want) {
+			if got := NewLogger(tt.args.w, tt.args.withTimestamp); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("NewLogger() = %v, want %v", got, tt.want)
 			}
 		})
@@ -78,4 +89,38 @@ func TestGCPSeverityHook_Run(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestWriteErrorStackGlobal(t *testing.T) {
+	t.Run("with stack", func(t *testing.T) {
+		WriteErrorStackGlobal(true)
+		out := &bytes.Buffer{}
+		logger := zerolog.New(out)
+
+		err := errs.E(errors.New("some error"))
+		e := err.(*errs.Error)
+		logger.Log().Stack().Err(e.Err).Msg("")
+
+		got := out.String()
+		want := `{"stack".*`
+		if ok, _ := regexp.MatchString(want, got); !ok {
+			t.Errorf("invalid log output:\ngot:  %v\nwant: %v", got, want)
+		}
+	})
+
+	t.Run("without stack", func(t *testing.T) {
+		WriteErrorStackGlobal(false)
+		out := &bytes.Buffer{}
+		logger := zerolog.New(out)
+
+		err := errs.E(errors.New("some error"))
+		e := err.(*errs.Error)
+		logger.Log().Stack().Err(e.Err).Msg("")
+
+		got := out.String()
+		want := `{"error".*`
+		if ok, _ := regexp.MatchString(want, got); !ok {
+			t.Errorf("invalid log output:\ngot:  %v\nwant: %v", got, want)
+		}
+	})
 }
