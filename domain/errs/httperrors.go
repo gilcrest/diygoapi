@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/pkg/errors"
-
 	"github.com/rs/zerolog"
 )
 
@@ -39,7 +37,7 @@ func HTTPErrorResponse(w http.ResponseWriter, logger zerolog.Logger, err error) 
 	if err != nil {
 		// perform a "type switch" https://tour.golang.org/methods/16
 		// to determine the interface value type
-		switch e := errors.Cause(err).(type) {
+		switch e := err.(type) {
 		// If the interface value is of type Error (not a typical error, but
 		// the Error interface defined above), then
 		case *Error:
@@ -48,7 +46,7 @@ func HTTPErrorResponse(w http.ResponseWriter, logger zerolog.Logger, err error) 
 			// HTTP status code. If the error is empty, just
 			// send the HTTP Status Code as response
 			if e.isZero() {
-				logger.Error().Int("HTTP Error StatusCode", httpStatusCode).Msg("empty error")
+				logger.Error().Stack().Int("http_statuscode", httpStatusCode).Msg("empty error")
 				sendError(w, "", httpStatusCode)
 			} else if e.Kind == Unauthenticated {
 				// For Unauthenticated and Unauthorized errors,
@@ -61,18 +59,18 @@ func HTTPErrorResponse(w http.ResponseWriter, logger zerolog.Logger, err error) 
 				// authenticated but isn’t authorized to perform the requested operation on
 				// the given resource."
 				logger.Error().Stack().Err(e.Err).
-					Int("HTTP Error StatusCode", http.StatusUnauthorized).
+					Int("http_statuscode", http.StatusUnauthorized).
 					Msg("Unauthenticated Request")
 				sendError(w, "", httpStatusCode)
 			} else if e.Kind == Unauthorized {
 				logger.Error().Stack().Err(e.Err).
-					Int("HTTP Error StatusCode", http.StatusForbidden).
+					Int("http_statuscode", http.StatusForbidden).
 					Msg("Unauthorized Request")
 				sendError(w, "", httpStatusCode)
 			} else {
 				// log the error with stacktrace
 				logger.Error().Stack().Err(e.Err).
-					Int("HTTPStatusCode", httpStatusCode).
+					Int("http_statuscode", httpStatusCode).
 					Str("Kind", e.Kind.String()).
 					Str("Parameter", string(e.Param)).
 					Str("Code", string(e.Code)).
