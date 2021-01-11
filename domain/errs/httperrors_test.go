@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
 	"github.com/gilcrest/go-api-basic/domain/logger"
@@ -74,6 +76,40 @@ func TestHTTPErrorResponse_StatusCode(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			HTTPErrorResponse(tt.args.w, l, tt.args.err)
 			if got := tt.args.w.Result().StatusCode; got != tt.want {
+				t.Errorf("httpErrorStatusCode() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestHTTPErrorResponse_Body(t *testing.T) {
+
+	type args struct {
+		w   *httptest.ResponseRecorder
+		l   zerolog.Logger
+		err error
+	}
+
+	var b bytes.Buffer
+	l := logger.NewLogger(&b, false)
+
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{"empty", args{httptest.NewRecorder(), l, &Error{}}, ""},
+		{"unauthenticated", args{httptest.NewRecorder(), l, E(Unauthenticated)}, ""},
+		{"unauthorized", args{httptest.NewRecorder(), l, E(Unauthorized)}, ""},
+		{"normal", args{httptest.NewRecorder(), l, E(Exist, Parameter("some_param"), Code("some_code"), errors.New("some error"))}, `{"error":{"kind":"item_already_exists","code":"some_code","param":"some_param","message":"some error"}}`},
+		{"not via E", args{httptest.NewRecorder(), l, errors.New("some error")}, "{\"error\":{\"kind\":\"unanticipated_error\",\"code\":\"Unanticipated\",\"message\":\"Unexpected error - contact support\"}}"},
+		{"nil error", args{httptest.NewRecorder(), l, nil}, ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			HTTPErrorResponse(tt.args.w, l, tt.args.err)
+			if got := strings.TrimSpace(tt.args.w.Body.String()); got != tt.want {
 				t.Errorf("httpErrorStatusCode() = %v, want %v", got, tt.want)
 			}
 		})
