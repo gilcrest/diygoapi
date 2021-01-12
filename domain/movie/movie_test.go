@@ -60,7 +60,7 @@ func TestNewMovieErrorExtlID(t *testing.T) {
 	}
 }
 
-// Testing error when sent a nil ExtlID
+// Testing error when User invalid
 func TestNewMovieErrorInvalidUser(t *testing.T) {
 	t.Helper()
 
@@ -72,4 +72,31 @@ func TestNewMovieErrorInvalidUser(t *testing.T) {
 	if gotMovie, gotError := movie.NewMovie(uid, "externalID", &u); !reflect.DeepEqual(wantError, gotError) && gotMovie != nil {
 		t.Errorf("Want: %v\nGot: %v", wantError, gotError)
 	}
+}
+
+// Testing error when sent
+func TestNewMovie(t *testing.T) {
+	t.Helper()
+
+	u := newValidUser()
+	uid, _ := uuid.NewUUID()
+	externalID := "externalID"
+
+	wantMovie := movie.Movie{
+		ID:         uid,
+		ExternalID: externalID,
+		CreateUser: u,
+		UpdateUser: u,
+	}
+
+	if gotMovie, gotError := movie.NewMovie(uid, externalID, &u); (gotMovie.ID != uid ||
+		gotMovie.ExternalID != wantMovie.ExternalID ||
+		gotMovie.CreateUser != wantMovie.CreateUser ||
+		gotMovie.UpdateUser != wantMovie.UpdateUser) && gotError == nil {
+		t.Errorf("Want: %v\nGot: %v\n\n", wantMovie.ID, gotMovie.ID)
+		t.Errorf("Want: %v\nGot: %v\n\n", wantMovie.ExternalID, gotMovie.ExternalID)
+		t.Errorf("Want: %v\nGot: %v\n\n", wantMovie.CreateUser, gotMovie.CreateUser)
+		t.Errorf("Want: %v\nGot: %v\n\n", wantMovie.UpdateUser, gotMovie.UpdateUser)
+	}
+
 }
