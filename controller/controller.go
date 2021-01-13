@@ -10,8 +10,8 @@ import (
 	"github.com/rs/zerolog/hlog"
 )
 
-// StandardResponse is meant to be included in all response bodies
-// and includes "standard" response fields
+// StandardResponse is meant to be included in all non-error
+// response bodies and includes "standard" response fields
 type StandardResponse struct {
 	Path      string      `json:"path,omitempty"`
 	RequestID string      `json:"request_id,omitempty"`
