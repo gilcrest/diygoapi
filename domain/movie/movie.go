@@ -27,7 +27,7 @@ func NewMovie(id uuid.UUID, extlID string, u *user.User) (*Movie, error) {
 		return nil, errs.E(errs.Validation, errs.Parameter("User"), errors.New("User is invalid"))
 	}
 
-	now := time.Now()
+	now := time.Now().UTC()
 
 	return &Movie{
 		ID:         id,
