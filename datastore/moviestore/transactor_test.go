@@ -3,8 +3,13 @@ package moviestore
 import (
 	"context"
 	"database/sql"
+	"os"
 	"reflect"
 	"testing"
+
+	"github.com/gilcrest/go-api-basic/datastore"
+	"github.com/gilcrest/go-api-basic/datastore/datastoretest"
+	"github.com/gilcrest/go-api-basic/domain/logger"
 
 	"github.com/gilcrest/go-api-basic/domain/movie"
 )
@@ -13,13 +18,28 @@ func TestNewTx(t *testing.T) {
 	type args struct {
 		tx *sql.Tx
 	}
+	dsn := datastoretest.NewPGDatasourceName(t)
+	lgr := logger.NewLogger(os.Stdout, true)
+
+	db, cleanup, err := datastore.NewDB(dsn, lgr)
+	defer cleanup()
+	if err != nil {
+		t.Errorf("datastore.NewDB error = %v", err)
+	}
+	ctx := context.Background()
+	sqltx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		t.Errorf("db.BeginTx() error = %v", err)
+	}
+	tx := &Tx{sqltx}
+
 	tests := []struct {
 		name    string
 		args    args
 		want    *Tx
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"typical", args{sqltx}, tx, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -35,57 +55,88 @@ func TestNewTx(t *testing.T) {
 	}
 }
 
-func TestTx_Create(t1 *testing.T) {
-	type fields struct {
-		Tx *sql.Tx
+func TestTx_Create(t *testing.T) {
+	dsn := datastoretest.NewPGDatasourceName(t)
+	lgr := logger.NewLogger(os.Stdout, true)
+
+	db, cleanup, err := datastore.NewDB(dsn, lgr)
+	defer cleanup()
+	if err != nil {
+		t.Errorf("datastore.NewDB error = %v", err)
 	}
+	ctx := context.Background()
+	m := newMovie(t)
 	type args struct {
 		ctx context.Context
 		m   *movie.Movie
 	}
 	tests := []struct {
-		name    string
-		fields  fields
+		name string
+		//fields  fields
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"typical", args{ctx, m}, false},
 	}
 	for _, tt := range tests {
-		t1.Run(tt.name, func(t1 *testing.T) {
-			t := &Tx{
-				Tx: tt.fields.Tx,
+		t.Run(tt.name, func(t1 *testing.T) {
+			sqltx, err := db.BeginTx(ctx, nil)
+			if err != nil {
+				t.Errorf("db.BeginTx() error = %v", err)
 			}
-			if err := t.Create(tt.args.ctx, tt.args.m); (err != nil) != tt.wantErr {
+			tx := &Tx{
+				Tx: sqltx,
+			}
+			if err := tx.Create(tt.args.ctx, tt.args.m); (err != nil) != tt.wantErr {
 				t1.Errorf("Create() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				t1.Errorf("tx.Rollback() error = %v", rollbackErr)
 			}
 		})
 	}
 }
 
 func TestTx_Delete(t1 *testing.T) {
-	type fields struct {
-		Tx *sql.Tx
-	}
 	type args struct {
 		ctx context.Context
 		m   *movie.Movie
 	}
+	dsn := datastoretest.NewPGDatasourceName(t1)
+	lgr := logger.NewLogger(os.Stdout, true)
+
+	// I am intentionally not using the cleanup function that is
+	// returned from NewDB as I need the DB to stay open for the test
+	// t.Cleanup function
+	db, _, err := datastore.NewDB(dsn, lgr)
+	if err != nil {
+		t1.Errorf("datastore.NewDB error = %v", err)
+	}
+	ctx := context.Background()
+
+	m := newMovieDBHelper(t1, ctx, db)
+
 	tests := []struct {
 		name    string
-		fields  fields
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"typical", args{ctx, m}, false},
 	}
 	for _, tt := range tests {
 		t1.Run(tt.name, func(t1 *testing.T) {
+			sqltx, err := db.BeginTx(ctx, nil)
+			if err != nil {
+				t1.Errorf("db.BeginTx() error = %v", err)
+			}
 			t := &Tx{
-				Tx: tt.fields.Tx,
+				Tx: sqltx,
 			}
 			if err := t.Delete(tt.args.ctx, tt.args.m); (err != nil) != tt.wantErr {
 				t1.Errorf("Delete() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if rollbackErr := t.Rollback(); rollbackErr != nil {
+				t1.Errorf("tx.Rollback() error = %v", rollbackErr)
 			}
 		})
 	}
