@@ -77,7 +77,7 @@ func TestDB_FindAll(t *testing.T) {
 
 	// create a movie with the helper to ensure that at least one row
 	// is returned
-	_ = newMovieHelper(t, ctx, db)
+	_ = newMovieDBHelper(t, ctx, db)
 
 	tests := []struct {
 		name    string
@@ -125,7 +125,7 @@ func TestDB_FindByID(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	m := newMovieHelper(t, ctx, db)
+	m := newMovieDBHelper(t, ctx, db)
 
 	tests := []struct {
 		name    string
@@ -157,27 +157,13 @@ func TestDB_FindByID(t *testing.T) {
 	}
 }
 
-// newMovieHelper creates/inserts a new movie in the db and then
+// newMovieDBHelper creates/inserts a new movie in the db and then
 // registers a t.Cleanup function to delete it. The insert and
 // delete are both in separate database transactions
-func newMovieHelper(t *testing.T, ctx context.Context, db *sql.DB) *movie.Movie {
+func newMovieDBHelper(t *testing.T, ctx context.Context, db *sql.DB) *movie.Movie {
 	t.Helper()
 
-	id := uuid.New()
-	extlID, err := random.CryptoString(15)
-	if err != nil {
-		t.Fatalf("random.CryptoString() error = %v", err)
-	}
-	u := &user.User{
-		Email:     "gilcrest@gmail.com",
-		FirstName: "Dan",
-		LastName:  "Gillis",
-	}
-
-	m, err := movie.NewMovie(id, extlID, u)
-	if err != nil {
-		t.Fatalf("movie.NewMovie() error = %v", err)
-	}
+	m := newMovie(t)
 
 	sqltx1, err := db.BeginTx(ctx, nil)
 	if err != nil {
@@ -210,5 +196,25 @@ func newMovieHelper(t *testing.T, ctx context.Context, db *sql.DB) *movie.Movie 
 
 	})
 
+	return m
+}
+
+func newMovie(t *testing.T) *movie.Movie {
+	t.Helper()
+
+	id := uuid.New()
+	extlID, err := random.CryptoString(15)
+	if err != nil {
+		t.Fatalf("random.CryptoString() error = %v", err)
+	}
+	u := &user.User{
+		Email:     "gilcrest@gmail.com",
+		FirstName: "Dan",
+		LastName:  "Gillis",
+	}
+	m, err := movie.NewMovie(id, extlID, u)
+	if err != nil {
+		t.Fatalf("movie.NewMovie() error = %v", err)
+	}
 	return m
 }
