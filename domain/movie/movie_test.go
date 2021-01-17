@@ -3,6 +3,7 @@ package movie_test
 import (
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/movie"
@@ -88,14 +89,107 @@ func TestNewMovie(t *testing.T) {
 		CreateUser: u,
 		UpdateUser: u,
 	}
+	gotMovie, gotError := movie.NewMovie(uid, externalID, &u)
+	if gotError != nil {
 
-	if gotMovie, gotError := movie.NewMovie(uid, externalID, &u); (gotMovie.ID != uid ||
-		gotMovie.ExternalID != wantMovie.ExternalID ||
-		gotMovie.CreateUser != wantMovie.CreateUser ||
-		gotMovie.UpdateUser != wantMovie.UpdateUser) && gotError == nil {
-		t.Errorf("Want: %v\nGot: %v\n\n", wantMovie.ID, gotMovie.ID)
-		t.Errorf("Want: %v\nGot: %v\n\n", wantMovie.ExternalID, gotMovie.ExternalID)
-		t.Errorf("Want: %v\nGot: %v\n\n", wantMovie.CreateUser, gotMovie.CreateUser)
-		t.Errorf("Want: %v\nGot: %v\n\n", wantMovie.UpdateUser, gotMovie.UpdateUser)
+		if gotMovie.ID != uid {
+			t.Errorf("Want: %v\nGot: %v\n\n", wantMovie.ID, gotMovie.ID)
+		}
+		if gotMovie.ExternalID != wantMovie.ExternalID {
+			t.Errorf("Want: %v\nGot: %v\n\n", wantMovie.ExternalID, gotMovie.ExternalID)
+		}
+		if gotMovie.CreateUser != wantMovie.CreateUser {
+			t.Errorf("Want: %v\nGot: %v\n\n", wantMovie.CreateUser, gotMovie.CreateUser)
+		}
+		if gotMovie.UpdateUser != wantMovie.UpdateUser {
+			t.Errorf("Want: %v\nGot: %v\n\n", wantMovie.UpdateUser, gotMovie.UpdateUser)
+		}
+	}
+}
+
+func TestSetExternalID(t *testing.T) {
+	u := newValidUser()
+	uid, _ := uuid.NewUUID()
+	externalID := "externalID"
+	externalID2 := "externalIDUpdated"
+
+	gotMovie, _ := movie.NewMovie(uid, externalID, &u)
+
+	gotMovie.SetExternalID(externalID2)
+
+	if gotMovie.ExternalID != externalID2 {
+		t.Errorf("Want: %v\nGot: %v\n\n", gotMovie.ExternalID, externalID2)
+	}
+}
+
+func TestSetTitle(t *testing.T) {
+	u := newValidUser()
+	uid, _ := uuid.NewUUID()
+	externalID := "externalID"
+	Title := "Movie Title"
+
+	gotMovie, _ := movie.NewMovie(uid, externalID, &u)
+
+	gotMovie.SetTitle(Title)
+
+	if gotMovie.Title != Title {
+		t.Errorf("Want: %v\nGot: %v\n\n", gotMovie.Title, Title)
+	}
+}
+
+func TestSetRated(t *testing.T) {
+	u := newValidUser()
+	uid, _ := uuid.NewUUID()
+	externalID := "externalID"
+	Rated := "R"
+
+	gotMovie, _ := movie.NewMovie(uid, externalID, &u)
+
+	gotMovie.SetRated(Rated)
+
+	if gotMovie.Rated != Rated {
+		t.Errorf("Want: %v\nGot: %v\n\n", gotMovie.Rated, Rated)
+	}
+}
+
+func TestSetReleasedOk(t *testing.T) {
+	newRealeased := time.Now()
+
+	u := newValidUser()
+	uid, _ := uuid.NewUUID()
+	externalID := "externalID"
+
+	gotMovie, _ := movie.NewMovie(uid, externalID, &u)
+
+	gotMovie, _ = gotMovie.SetReleased(newRealeased.Format(time.RFC3339))
+
+	if gotMovie.Released != newRealeased {
+		t.Errorf("Want: %v\nGot: %v\n\n", newRealeased, gotMovie.Released)
+	}
+
+	//if e.Error() != "" {
+	//t.Errorf("Error: %v", e)
+	//}
+}
+
+func TestSetReleasedWrong(t *testing.T) {
+	newRealeased := "wrong-time"
+
+	u := newValidUser()
+	uid, _ := uuid.NewUUID()
+	externalID := "externalID"
+
+	gotMovie, _ := movie.NewMovie(uid, externalID, &u)
+
+	_, e := gotMovie.SetReleased(newRealeased)
+	_, err := time.Parse(time.RFC3339, newRealeased)
+
+	want := errs.E(errs.Validation,
+		errs.Code("invalid_date_format"),
+		errs.Parameter("release_date"),
+		errors.WithStack(err))
+
+	if e.Error() != want.Error() {
+		t.Errorf("\nWant: %v\nGot: %v\n\n", want, e)
 	}
 }
