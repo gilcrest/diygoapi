@@ -43,7 +43,7 @@ func TestNewMovieErrorUuid(t *testing.T) {
 
 	u := newValidUser()
 	wantError := errs.E(errs.Validation, errs.Parameter("ID"), errors.New(errs.MissingField("ID").Error()))
-	if gotMovie, gotError := movie.NewMovie(uuid.UUID{}, "randomExternalId", &u); !reflect.DeepEqual(wantError, gotError) && gotMovie != nil {
+	if gotMovie, gotError := movie.NewMovie(uuid.UUID{}, "randomExternalId", &u); !reflect.DeepEqual(wantError.Error(), gotError.Error()) && gotMovie != nil {
 		t.Errorf("Want: %v\nGot: %v", wantError, gotError)
 	}
 }
@@ -55,7 +55,7 @@ func TestNewMovieErrorExtlID(t *testing.T) {
 	u := newValidUser()
 	uid, _ := uuid.NewUUID()
 	wantError := errs.E(errs.Validation, errs.Parameter("ID"), errors.New(errs.MissingField("ID").Error()))
-	if gotMovie, gotError := movie.NewMovie(uid, "", &u); !reflect.DeepEqual(wantError, gotError) && gotMovie != nil {
+	if gotMovie, gotError := movie.NewMovie(uid, "", &u); !reflect.DeepEqual(wantError.Error(), gotError.Error()) && gotMovie != nil {
 		t.Errorf("Want: %v\nGot: %v", wantError, gotError)
 	}
 }
@@ -69,12 +69,12 @@ func TestNewMovieErrorInvalidUser(t *testing.T) {
 
 	wantError := errs.E(errs.Validation, errs.Parameter("User"), errors.New("User is invalid"))
 
-	if gotMovie, gotError := movie.NewMovie(uid, "externalID", &u); !reflect.DeepEqual(wantError, gotError) && gotMovie != nil {
+	if gotMovie, gotError := movie.NewMovie(uid, "externalID", &u); !reflect.DeepEqual(wantError.Error(), gotError.Error()) && gotMovie != nil {
 		t.Errorf("Want: %v\nGot: %v", wantError, gotError)
 	}
 }
 
-// Testing error when sent
+// Testing creating NewMovie
 func TestNewMovie(t *testing.T) {
 	t.Helper()
 
@@ -98,5 +98,4 @@ func TestNewMovie(t *testing.T) {
 		t.Errorf("Want: %v\nGot: %v\n\n", wantMovie.CreateUser, gotMovie.CreateUser)
 		t.Errorf("Want: %v\nGot: %v\n\n", wantMovie.UpdateUser, gotMovie.UpdateUser)
 	}
-
 }
