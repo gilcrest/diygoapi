@@ -267,7 +267,6 @@ func TestSetUpdateUser(t *testing.T) {
 }
 
 func TestSetUpdateTime(t *testing.T) {
-
 	u := newValidUser()
 	uid, _ := uuid.NewUUID()
 	externalID := "externalID"
@@ -283,5 +282,133 @@ func TestSetUpdateTime(t *testing.T) {
 
 	if oldTimeSeconds < updatedTimeSeconds {
 		t.Errorf("Previous time '%v' should be lower than '%v'", oldTimeSeconds, updatedTimeSeconds)
+	}
+}
+
+func TestValidMovie(t *testing.T) {
+	u := newValidUser()
+	uid, _ := uuid.NewUUID()
+	externalID := "externalID"
+
+	gotMovie, _ := movie.NewMovie(uid, externalID, &u)
+
+	gotMovie, _ = gotMovie.SetReleased("1996-12-19T16:39:57-08:00")
+
+	gotMovie.
+		SetTitle("Movie Title").
+		SetRated("R").
+		SetRunTime(19).
+		SetDirector("Movie Director").
+		SetWriter("Movie Writer")
+
+	if gotMovie.IsValid() != nil {
+		t.Errorf("\nWant: %v\nGot: %v\n\n", nil, gotMovie.IsValid())
+	}
+}
+
+func TestInvalidMovieTitle(t *testing.T) {
+	u := newValidUser()
+	uid, _ := uuid.NewUUID()
+	externalID := "externalID"
+
+	gotMovie, _ := movie.NewMovie(uid, externalID, &u)
+	wantErr := errs.E(errs.Validation, errs.Parameter("title"), errs.MissingField("title"))
+
+	if err := gotMovie.IsValid(); err.Error() != wantErr.Error() {
+		t.Errorf("\nWant: %v\nGot: %v\n\n", wantErr.Error(), err.Error())
+	}
+}
+
+func TestInvalidMovieRated(t *testing.T) {
+	u := newValidUser()
+	uid, _ := uuid.NewUUID()
+	externalID := "externalID"
+
+	gotMovie, _ := movie.NewMovie(uid, externalID, &u)
+
+	gotMovie.SetTitle("Movie Title")
+
+	wantErr := errs.E(errs.Validation, errs.Parameter("rated"), errs.MissingField("Rated"))
+
+	if err := gotMovie.IsValid(); err.Error() != wantErr.Error() {
+		t.Errorf("\nWant: %v\nGot: %v\n\n", wantErr.Error(), err.Error())
+	}
+}
+
+func TestInvalidMovieReleased(t *testing.T) {
+	u := newValidUser()
+	uid, _ := uuid.NewUUID()
+	externalID := "externalID"
+
+	gotMovie, _ := movie.NewMovie(uid, externalID, &u)
+
+	gotMovie.
+		SetTitle("Movie Title").
+		SetRated("R")
+
+	wantErr := errs.E(errs.Validation, errs.Parameter("release_date"), "Released must have a value")
+
+	if err := gotMovie.IsValid(); err.Error() != wantErr.Error() {
+		t.Errorf("\nWant: %v\nGot: %v\n\n", wantErr.Error(), err.Error())
+	}
+}
+
+func TestInvalidMovieRunTime(t *testing.T) {
+	u := newValidUser()
+	uid, _ := uuid.NewUUID()
+	externalID := "externalID"
+
+	gotMovie, _ := movie.NewMovie(uid, externalID, &u)
+
+	gotMovie, _ = gotMovie.SetReleased("1996-12-19T16:39:57-08:00")
+	gotMovie.
+		SetTitle("Movie Title").
+		SetRated("R")
+
+	wantErr := errs.E(errs.Validation, errs.Parameter("run_time"), "Run time must be greater than zero")
+
+	if err := gotMovie.IsValid(); err.Error() != wantErr.Error() {
+		t.Errorf("\nWant: %v\nGot: %v\n\n", wantErr.Error(), err.Error())
+	}
+}
+
+func TestInvalidMovieDirector(t *testing.T) {
+	u := newValidUser()
+	uid, _ := uuid.NewUUID()
+	externalID := "externalID"
+
+	gotMovie, _ := movie.NewMovie(uid, externalID, &u)
+
+	gotMovie, _ = gotMovie.SetReleased("1996-12-19T16:39:57-08:00")
+	gotMovie.
+		SetTitle("Movie Title").
+		SetRated("R").
+		SetRunTime(19)
+
+	wantErr := errs.E(errs.Validation, errs.Parameter("director"), errs.MissingField("Director"))
+
+	if err := gotMovie.IsValid(); err.Error() != wantErr.Error() {
+		t.Errorf("\nWant: %v\nGot: %v\n\n", wantErr.Error(), err.Error())
+	}
+}
+
+func TestInvalidMovieWriter(t *testing.T) {
+	u := newValidUser()
+	uid, _ := uuid.NewUUID()
+	externalID := "externalID"
+
+	gotMovie, _ := movie.NewMovie(uid, externalID, &u)
+
+	gotMovie, _ = gotMovie.SetReleased("1996-12-19T16:39:57-08:00")
+	gotMovie.
+		SetTitle("Movie Title").
+		SetRated("R").
+		SetRunTime(19).
+		SetDirector("Movie Director")
+
+	wantErr := errs.E(errs.Validation, errs.Parameter("writer"), errs.MissingField("Writer"))
+
+	if err := gotMovie.IsValid(); err.Error() != wantErr.Error() {
+		t.Errorf("\nWant: %v\nGot: %v\n\n", wantErr.Error(), err.Error())
 	}
 }
