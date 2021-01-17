@@ -193,3 +193,95 @@ func TestSetReleasedWrong(t *testing.T) {
 		t.Errorf("\nWant: %v\nGot: %v\n\n", want, e)
 	}
 }
+
+func TestSetRunTime(t *testing.T) {
+	rt := 1999
+
+	u := newValidUser()
+	uid, _ := uuid.NewUUID()
+	externalID := "externalID"
+
+	gotMovie, _ := movie.NewMovie(uid, externalID, &u)
+
+	gotMovie.SetRunTime(rt)
+
+	if gotMovie.RunTime != rt {
+		t.Errorf("\nWant: %v\nGot: %v\n\n", rt, gotMovie.RunTime)
+	}
+}
+
+func TestSetDirector(t *testing.T) {
+	d := "Director Drach"
+
+	u := newValidUser()
+	uid, _ := uuid.NewUUID()
+	externalID := "externalID"
+
+	gotMovie, _ := movie.NewMovie(uid, externalID, &u)
+
+	gotMovie.SetDirector(d)
+
+	if gotMovie.Director != d {
+		t.Errorf("\nWant: %v\nGot: %v\n\n", d, gotMovie.Director)
+	}
+}
+
+func TestSetWriter(t *testing.T) {
+	w := "Writer Drach"
+
+	u := newValidUser()
+	uid, _ := uuid.NewUUID()
+	externalID := "externalID"
+
+	gotMovie, _ := movie.NewMovie(uid, externalID, &u)
+
+	gotMovie.SetWriter(w)
+
+	if gotMovie.Writer != w {
+		t.Errorf("\nWant: %v\nGot: %v\n\n", w, gotMovie.Writer)
+	}
+}
+
+func TestSetUpdateUser(t *testing.T) {
+	u := newValidUser()
+	uid, _ := uuid.NewUUID()
+	externalID := "externalID"
+
+	newUser := user.User{
+		Email:        "foo2@bar.com",
+		LastName:     "Barw",
+		FirstName:    "Foow",
+		FullName:     "Foow Barw",
+		HostedDomain: "example.com.br",
+		PictureURL:   "example.com.br/profile-we.png",
+		ProfileLink:  "example.com.br/FoowBar",
+	}
+
+	gotMovie, _ := movie.NewMovie(uid, externalID, &u)
+
+	gotMovie.SetUpdateUser(&newUser)
+
+	if gotMovie.UpdateUser != newUser {
+		t.Errorf("\nWant: %v\nGot: %v\n\n", newUser, gotMovie.UpdateUser)
+	}
+}
+
+func TestSetUpdateTime(t *testing.T) {
+
+	u := newValidUser()
+	uid, _ := uuid.NewUUID()
+	externalID := "externalID"
+
+	gotMovie, _ := movie.NewMovie(uid, externalID, &u)
+
+	oldTime := gotMovie.UpdateTime
+
+	gotMovie.SetUpdateTime()
+
+	oldTimeSeconds := time.Since(oldTime).Seconds()
+	updatedTimeSeconds := time.Since(gotMovie.UpdateTime).Seconds()
+
+	if oldTimeSeconds < updatedTimeSeconds {
+		t.Errorf("Previous time '%v' should be lower than '%v'", oldTimeSeconds, updatedTimeSeconds)
+	}
+}
