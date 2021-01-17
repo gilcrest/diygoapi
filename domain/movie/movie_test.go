@@ -25,6 +25,17 @@ func newValidUser() user.User {
 	}
 }
 
+func NewValidUserMovie() (user.User, *movie.Movie) {
+	uid := uuid.New()
+	externalID := "ExternalID"
+
+	u := newValidUser()
+
+	m, _ := movie.NewMovie(uid, externalID, &u)
+
+	return u, m
+}
+
 // Returns an invalid user defined by the method user.IsValid()
 func newInvalidUser() user.User {
 	return user.User{
@@ -108,12 +119,8 @@ func TestNewMovie(t *testing.T) {
 }
 
 func TestSetExternalID(t *testing.T) {
-	u := newValidUser()
-	uid, _ := uuid.NewUUID()
-	externalID := "externalID"
+	_, gotMovie := NewValidUserMovie()
 	externalID2 := "externalIDUpdated"
-
-	gotMovie, _ := movie.NewMovie(uid, externalID, &u)
 
 	gotMovie.SetExternalID(externalID2)
 
@@ -123,12 +130,8 @@ func TestSetExternalID(t *testing.T) {
 }
 
 func TestSetTitle(t *testing.T) {
-	u := newValidUser()
-	uid, _ := uuid.NewUUID()
-	externalID := "externalID"
+	_, gotMovie := NewValidUserMovie()
 	Title := "Movie Title"
-
-	gotMovie, _ := movie.NewMovie(uid, externalID, &u)
 
 	gotMovie.SetTitle(Title)
 
@@ -138,12 +141,8 @@ func TestSetTitle(t *testing.T) {
 }
 
 func TestSetRated(t *testing.T) {
-	u := newValidUser()
-	uid, _ := uuid.NewUUID()
-	externalID := "externalID"
+	_, gotMovie := NewValidUserMovie()
 	Rated := "R"
-
-	gotMovie, _ := movie.NewMovie(uid, externalID, &u)
 
 	gotMovie.SetRated(Rated)
 
@@ -155,11 +154,7 @@ func TestSetRated(t *testing.T) {
 func TestSetReleasedOk(t *testing.T) {
 	newRealeased := time.Now()
 
-	u := newValidUser()
-	uid, _ := uuid.NewUUID()
-	externalID := "externalID"
-
-	gotMovie, _ := movie.NewMovie(uid, externalID, &u)
+	_, gotMovie := NewValidUserMovie()
 
 	gotMovie, _ = gotMovie.SetReleased(newRealeased.Format(time.RFC3339))
 
@@ -175,11 +170,7 @@ func TestSetReleasedOk(t *testing.T) {
 func TestSetReleasedWrong(t *testing.T) {
 	newRealeased := "wrong-time"
 
-	u := newValidUser()
-	uid, _ := uuid.NewUUID()
-	externalID := "externalID"
-
-	gotMovie, _ := movie.NewMovie(uid, externalID, &u)
+	_, gotMovie := NewValidUserMovie()
 
 	_, e := gotMovie.SetReleased(newRealeased)
 	_, err := time.Parse(time.RFC3339, newRealeased)
@@ -197,11 +188,7 @@ func TestSetReleasedWrong(t *testing.T) {
 func TestSetRunTime(t *testing.T) {
 	rt := 1999
 
-	u := newValidUser()
-	uid, _ := uuid.NewUUID()
-	externalID := "externalID"
-
-	gotMovie, _ := movie.NewMovie(uid, externalID, &u)
+	_, gotMovie := NewValidUserMovie()
 
 	gotMovie.SetRunTime(rt)
 
@@ -213,11 +200,7 @@ func TestSetRunTime(t *testing.T) {
 func TestSetDirector(t *testing.T) {
 	d := "Director Drach"
 
-	u := newValidUser()
-	uid, _ := uuid.NewUUID()
-	externalID := "externalID"
-
-	gotMovie, _ := movie.NewMovie(uid, externalID, &u)
+	_, gotMovie := NewValidUserMovie()
 
 	gotMovie.SetDirector(d)
 
@@ -229,11 +212,7 @@ func TestSetDirector(t *testing.T) {
 func TestSetWriter(t *testing.T) {
 	w := "Writer Drach"
 
-	u := newValidUser()
-	uid, _ := uuid.NewUUID()
-	externalID := "externalID"
-
-	gotMovie, _ := movie.NewMovie(uid, externalID, &u)
+	_, gotMovie := NewValidUserMovie()
 
 	gotMovie.SetWriter(w)
 
@@ -243,9 +222,7 @@ func TestSetWriter(t *testing.T) {
 }
 
 func TestSetUpdateUser(t *testing.T) {
-	u := newValidUser()
-	uid, _ := uuid.NewUUID()
-	externalID := "externalID"
+	_, gotMovie := NewValidUserMovie()
 
 	newUser := user.User{
 		Email:        "foo2@bar.com",
@@ -257,8 +234,6 @@ func TestSetUpdateUser(t *testing.T) {
 		ProfileLink:  "example.com.br/FoowBar",
 	}
 
-	gotMovie, _ := movie.NewMovie(uid, externalID, &u)
-
 	gotMovie.SetUpdateUser(&newUser)
 
 	if gotMovie.UpdateUser != newUser {
@@ -267,11 +242,7 @@ func TestSetUpdateUser(t *testing.T) {
 }
 
 func TestSetUpdateTime(t *testing.T) {
-	u := newValidUser()
-	uid, _ := uuid.NewUUID()
-	externalID := "externalID"
-
-	gotMovie, _ := movie.NewMovie(uid, externalID, &u)
+	_, gotMovie := NewValidUserMovie()
 
 	oldTime := gotMovie.UpdateTime
 
@@ -286,11 +257,7 @@ func TestSetUpdateTime(t *testing.T) {
 }
 
 func TestValidMovie(t *testing.T) {
-	u := newValidUser()
-	uid, _ := uuid.NewUUID()
-	externalID := "externalID"
-
-	gotMovie, _ := movie.NewMovie(uid, externalID, &u)
+	_, gotMovie := NewValidUserMovie()
 
 	gotMovie, _ = gotMovie.SetReleased("1996-12-19T16:39:57-08:00")
 
@@ -307,11 +274,8 @@ func TestValidMovie(t *testing.T) {
 }
 
 func TestInvalidMovieTitle(t *testing.T) {
-	u := newValidUser()
-	uid, _ := uuid.NewUUID()
-	externalID := "externalID"
+	_, gotMovie := NewValidUserMovie()
 
-	gotMovie, _ := movie.NewMovie(uid, externalID, &u)
 	wantErr := errs.E(errs.Validation, errs.Parameter("title"), errs.MissingField("title"))
 
 	if err := gotMovie.IsValid(); err.Error() != wantErr.Error() {
@@ -320,11 +284,7 @@ func TestInvalidMovieTitle(t *testing.T) {
 }
 
 func TestInvalidMovieRated(t *testing.T) {
-	u := newValidUser()
-	uid, _ := uuid.NewUUID()
-	externalID := "externalID"
-
-	gotMovie, _ := movie.NewMovie(uid, externalID, &u)
+	_, gotMovie := NewValidUserMovie()
 
 	gotMovie.SetTitle("Movie Title")
 
@@ -336,11 +296,7 @@ func TestInvalidMovieRated(t *testing.T) {
 }
 
 func TestInvalidMovieReleased(t *testing.T) {
-	u := newValidUser()
-	uid, _ := uuid.NewUUID()
-	externalID := "externalID"
-
-	gotMovie, _ := movie.NewMovie(uid, externalID, &u)
+	_, gotMovie := NewValidUserMovie()
 
 	gotMovie.
 		SetTitle("Movie Title").
@@ -354,11 +310,7 @@ func TestInvalidMovieReleased(t *testing.T) {
 }
 
 func TestInvalidMovieRunTime(t *testing.T) {
-	u := newValidUser()
-	uid, _ := uuid.NewUUID()
-	externalID := "externalID"
-
-	gotMovie, _ := movie.NewMovie(uid, externalID, &u)
+	_, gotMovie := NewValidUserMovie()
 
 	gotMovie, _ = gotMovie.SetReleased("1996-12-19T16:39:57-08:00")
 	gotMovie.
@@ -373,11 +325,7 @@ func TestInvalidMovieRunTime(t *testing.T) {
 }
 
 func TestInvalidMovieDirector(t *testing.T) {
-	u := newValidUser()
-	uid, _ := uuid.NewUUID()
-	externalID := "externalID"
-
-	gotMovie, _ := movie.NewMovie(uid, externalID, &u)
+	_, gotMovie := NewValidUserMovie()
 
 	gotMovie, _ = gotMovie.SetReleased("1996-12-19T16:39:57-08:00")
 	gotMovie.
@@ -393,11 +341,7 @@ func TestInvalidMovieDirector(t *testing.T) {
 }
 
 func TestInvalidMovieWriter(t *testing.T) {
-	u := newValidUser()
-	uid, _ := uuid.NewUUID()
-	externalID := "externalID"
-
-	gotMovie, _ := movie.NewMovie(uid, externalID, &u)
+	_, gotMovie := NewValidUserMovie()
 
 	gotMovie, _ = gotMovie.SetReleased("1996-12-19T16:39:57-08:00")
 	gotMovie.
