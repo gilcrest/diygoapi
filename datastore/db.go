@@ -12,18 +12,20 @@ import (
 // NewDB returns an open database handle of 0 or more underlying PostgreSQL connections
 func NewDB(dsn PGDatasourceName, logger zerolog.Logger) (*sql.DB, func(), error) {
 
+	f := func() {}
+
 	// Open the postgres database using the postgres driver (pq)
 	// func Open(driverName, dataSourceName string) (*DB, error)
 	db, err := sql.Open("postgres", dsn.String())
 	if err != nil {
-		return nil, nil, errs.E(err)
+		return nil, f, errs.E(errs.Database, err)
 	}
 
 	logger.Info().Msgf("sql database opened for %s on port %d", dsn.Host, dsn.Port)
 
 	err = validateDB(db, logger)
 	if err != nil {
-		return nil, nil, err
+		return nil, f, err
 	}
 
 	return db, func() { db.Close() }, nil

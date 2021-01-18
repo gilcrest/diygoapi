@@ -4,6 +4,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/gilcrest/go-api-basic/domain/logger"
+
 	"github.com/rs/zerolog"
 )
 
@@ -13,30 +15,31 @@ func Test_NewDB(t *testing.T) {
 		l    zerolog.Logger
 	}
 
-	// empty string for TimeFieldFormat will write logs with UNIX time
-	zerolog.TimeFieldFormat = ""
-	// set logging level based on input
-	zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	// start a new logger with Stdout as the target
-	logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
-
+	lgr := logger.NewLogger(os.Stdout, true)
 	dsn := NewPGDatasourceName("localhost", "go_api_basic", "postgres", "", 5432)
+	baddsn := NewPGDatasourceName("badhost", "go_api_basic", "postgres", "", 5432)
 
 	tests := []struct {
-		name string
-		args args
+		name    string
+		args    args
+		wantErr bool
 	}{
-		{"App DB", args{dsn, logger}},
+		{"App DB", args{dsn, lgr}, false},
+		{"Bad DSN", args{baddsn, lgr}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			db, _, err := NewDB(tt.args.pgds, tt.args.l)
-			if err != nil {
-				t.Errorf("Error from newDB = %v", err)
+			db, cleanup, err := NewDB(tt.args.pgds, tt.args.l)
+			defer cleanup()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewDB() error = %v, wantErr %v", err, tt.wantErr)
+				return
 			}
-			err = db.Ping()
-			if err != nil {
-				t.Errorf("Error pinging database = %v", err)
+			if err == nil {
+				err = db.Ping()
+				if err != nil {
+					t.Errorf("Error pinging database = %v", err)
+				}
 			}
 		})
 	}

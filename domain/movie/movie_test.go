@@ -152,19 +152,19 @@ func TestSetRated(t *testing.T) {
 }
 
 func TestSetReleasedOk(t *testing.T) {
-	newRealeased := time.Now()
+	newReleased := "1984-01-02T15:04:05Z"
+	r, err := time.Parse(time.RFC3339, newReleased)
+	if err != nil {
+		t.Fatalf("time.Parse() error = %v", err)
+	}
 
 	_, gotMovie := NewValidUserMovie()
 
-	gotMovie, _ = gotMovie.SetReleased(newRealeased.Format(time.RFC3339))
+	gotMovie, _ = gotMovie.SetReleased(newReleased)
 
-	if gotMovie.Released != newRealeased {
-		t.Errorf("Want: %v\nGot: %v\n\n", newRealeased, gotMovie.Released)
+	if gotMovie.Released != r {
+		t.Errorf("Want: %v\nGot: %v\n\n", newReleased, gotMovie.Released)
 	}
-
-	//if e.Error() != "" {
-	//t.Errorf("Error: %v", e)
-	//}
 }
 
 func TestSetReleasedWrong(t *testing.T) {
@@ -354,5 +354,50 @@ func TestInvalidMovieWriter(t *testing.T) {
 
 	if err := gotMovie.IsValid(); err.Error() != wantErr.Error() {
 		t.Errorf("\nWant: %v\nGot: %v\n\n", wantErr.Error(), err.Error())
+	}
+}
+
+func TestMovie_IsValid(t *testing.T) {
+	type fields struct {
+		ID         uuid.UUID
+		ExternalID string
+		Title      string
+		Rated      string
+		Released   time.Time
+		RunTime    int
+		Director   string
+		Writer     string
+		CreateUser user.User
+		CreateTime time.Time
+		UpdateUser user.User
+		UpdateTime time.Time
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		wantErr bool
+	}{
+		{},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := &movie.Movie{
+				ID:         tt.fields.ID,
+				ExternalID: tt.fields.ExternalID,
+				Title:      tt.fields.Title,
+				Rated:      tt.fields.Rated,
+				Released:   tt.fields.Released,
+				RunTime:    tt.fields.RunTime,
+				Director:   tt.fields.Director,
+				Writer:     tt.fields.Writer,
+				CreateUser: tt.fields.CreateUser,
+				CreateTime: tt.fields.CreateTime,
+				UpdateUser: tt.fields.UpdateUser,
+				UpdateTime: tt.fields.UpdateTime,
+			}
+			if err := m.IsValid(); (err != nil) != tt.wantErr {
+				t.Errorf("IsValid() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
 	}
 }

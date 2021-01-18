@@ -91,12 +91,12 @@ func (ds *Datastore) BeginTx(ctx context.Context) (*sql.Tx, error) {
 // the Datastore interface. Proper error handling is also considered.
 func (ds *Datastore) RollbackTx(tx *sql.Tx, err error) error {
 	if tx == nil {
-		return errs.E(errs.Database, errors.New("tx cannot be nil"))
+		return errs.E(errs.Database, errs.Code("nil_tx"), errors.New(fmt.Sprintf("RollbackTx() error = tx cannot be nil: Original error = %s", err.Error())))
 	}
 
 	// Attempt to rollback the transaction
 	if rollbackErr := tx.Rollback(); rollbackErr != nil {
-		return errs.E(errs.Database, rollbackErr)
+		return errs.E(errs.Database, errs.Code("rollback_err"), errors.New(fmt.Sprintf("RollbackTx() error = %v: Original error = %s", rollbackErr, err.Error())))
 	}
 
 	// If rollback was successful, send back original error

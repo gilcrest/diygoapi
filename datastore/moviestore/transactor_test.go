@@ -142,29 +142,45 @@ func TestTx_Delete(t1 *testing.T) {
 	}
 }
 
-func TestTx_Update(t1 *testing.T) {
-	type fields struct {
-		Tx *sql.Tx
+func TestTx_Update(t *testing.T) {
+	dsn := datastoretest.NewPGDatasourceName(t)
+	lgr := logger.NewLogger(os.Stdout, true)
+
+	// I am intentionally not using the cleanup function that is
+	// returned from NewDB as I need the DB to stay open for the test
+	// t.Cleanup function
+	db, _, err := datastore.NewDB(dsn, lgr)
+	if err != nil {
+		t.Errorf("datastore.NewDB error = %v", err)
 	}
+	ctx := context.Background()
+	m := newMovieDBHelper(t, ctx, db)
+
 	type args struct {
 		ctx context.Context
 		m   *movie.Movie
 	}
 	tests := []struct {
 		name    string
-		fields  fields
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"typical", args{ctx, m}, false},
 	}
 	for _, tt := range tests {
-		t1.Run(tt.name, func(t1 *testing.T) {
-			t := &Tx{
-				Tx: tt.fields.Tx,
+		t.Run(tt.name, func(t1 *testing.T) {
+			sqltx, err := db.BeginTx(ctx, nil)
+			if err != nil {
+				t1.Errorf("db.BeginTx() error = %v", err)
 			}
-			if err := t.Update(tt.args.ctx, tt.args.m); (err != nil) != tt.wantErr {
+			tx := &Tx{
+				Tx: sqltx,
+			}
+			if err := tx.Update(tt.args.ctx, tt.args.m); (err != nil) != tt.wantErr {
 				t1.Errorf("Update() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				t1.Errorf("tx.Rollback() error = %v", rollbackErr)
 			}
 		})
 	}
