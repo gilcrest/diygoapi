@@ -240,6 +240,12 @@ func Match(err1, err2 error) bool {
 	if e1.Kind != Other && e2.Kind != e1.Kind {
 		return false
 	}
+	if e1.Param != "" && e2.Param != e1.Param {
+		return false
+	}
+	if e1.Code != "" && e2.Code != e1.Code {
+		return false
+	}
 	if e1.Err != nil {
 		if _, ok := e1.Err.(*Error); ok {
 			return Match(e1.Err, e2.Err)
