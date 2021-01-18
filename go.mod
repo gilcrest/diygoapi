@@ -4,7 +4,8 @@ go 1.13
 
 require (
 	cloud.google.com/go v0.75.0 // indirect
-	github.com/google/uuid v1.1.4
+	github.com/frankban/quicktest v1.11.3
+	github.com/google/uuid v1.1.5
 	github.com/google/wire v0.4.0
 	github.com/gorilla/mux v1.8.0
 	github.com/justinas/alice v1.2.0
@@ -14,10 +15,10 @@ require (
 	github.com/rs/zerolog v1.20.0
 	go.opencensus.io v0.22.5
 	gocloud.dev v0.21.0
-	golang.org/x/oauth2 v0.0.0-20210112200429-01de73cf58bd
-	golang.org/x/sys v0.0.0-20210113000019-eaf3bda374d2 // indirect
+	golang.org/x/oauth2 v0.0.0-20210113205817-d3ed898aa8a3
+	golang.org/x/sys v0.0.0-20210113181707-4bcb84eeeb78 // indirect
 	golang.org/x/text v0.3.5 // indirect
 	google.golang.org/api v0.36.0
-	google.golang.org/genproto v0.0.0-20210111234610-22ae2b108f89 // indirect
-	google.golang.org/grpc v1.34.1 // indirect
+	google.golang.org/genproto v0.0.0-20210114201628-6edceaf6022f // indirect
+	google.golang.org/grpc v1.35.0 // indirect
 )
