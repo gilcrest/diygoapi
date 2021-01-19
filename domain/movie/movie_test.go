@@ -356,3 +356,9 @@ func TestInvalidMovieWriter(t *testing.T) {
 		t.Errorf("\nWant: %v\nGot: %v\n\n", wantErr.Error(), err.Error())
 	}
 }
+
+type Tests struct {
+	name    string
+	m       *movie.Movie
+	wantErr error
+}
