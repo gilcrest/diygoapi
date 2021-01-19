@@ -362,3 +362,51 @@ type Tests struct {
 	m       *movie.Movie
 	wantErr error
 }
+
+func getMovieTests() []Tests {
+	tests := []Tests{}
+	// Valid Movie
+	m1 := NewValidMovie()
+	m1, _ = m1.SetReleased("1996-12-19T16:39:57-08:00")
+	m1.
+		SetTitle("API Movie").
+		SetRated("R").
+		SetRunTime(19).
+		SetDirector("Director Foo").
+		SetWriter("Writer Foo")
+
+	tests = append(tests, Tests{
+		name:    "Valid Movie",
+		m:       m1,
+		wantErr: nil,
+	})
+
+	m2 := NewValidMovie()
+	m2, _ = m2.SetReleased("1996-12-19T16:39:57-08:00")
+	m2.
+		SetRated("R").
+		SetRunTime(19).
+		SetDirector("Director Foo").
+		SetWriter("Writer Foo")
+
+	tests = append(tests, Tests{
+		name:    "Missing Title",
+		m:       m2,
+		wantErr: errs.E(errs.Validation, errs.Parameter("title"), errs.MissingField("title")),
+	})
+
+	return tests
+}
+
+func TestMovie_IsValid(t *testing.T) {
+	tests := getMovieTests()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.m.IsValid(); tt.wantErr != nil {
+				c := qt.New(t)
+				c.Assert(errs.Match(err, tt.wantErr), qt.Equals, true)
+			}
+		})
+	}
+}
