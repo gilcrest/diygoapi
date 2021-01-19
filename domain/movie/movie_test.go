@@ -1,15 +1,15 @@
 package movie_test
 
 import (
-	"reflect"
-	"testing"
-	"time"
-
+	qt "github.com/frankban/quicktest"
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/movie"
 	"github.com/gilcrest/go-api-basic/domain/user"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"reflect"
+	"testing"
+	"time"
 )
 
 // Returns a valid User with mocked data
@@ -25,7 +25,7 @@ func newValidUser() user.User {
 	}
 }
 
-func NewValidUserMovie() (user.User, *movie.Movie) {
+func NewValidMovie() *movie.Movie {
 	uid := uuid.New()
 	externalID := "ExternalID"
 
@@ -33,7 +33,7 @@ func NewValidUserMovie() (user.User, *movie.Movie) {
 
 	m, _ := movie.NewMovie(uid, externalID, &u)
 
-	return u, m
+	return m
 }
 
 // Returns an invalid user defined by the method user.IsValid()
@@ -119,7 +119,7 @@ func TestNewMovie(t *testing.T) {
 }
 
 func TestSetExternalID(t *testing.T) {
-	_, gotMovie := NewValidUserMovie()
+	gotMovie := NewValidMovie()
 	externalID2 := "externalIDUpdated"
 
 	gotMovie.SetExternalID(externalID2)
@@ -130,7 +130,7 @@ func TestSetExternalID(t *testing.T) {
 }
 
 func TestSetTitle(t *testing.T) {
-	_, gotMovie := NewValidUserMovie()
+	gotMovie := NewValidMovie()
 	Title := "Movie Title"
 
 	gotMovie.SetTitle(Title)
@@ -141,7 +141,7 @@ func TestSetTitle(t *testing.T) {
 }
 
 func TestSetRated(t *testing.T) {
-	_, gotMovie := NewValidUserMovie()
+	gotMovie := NewValidMovie()
 	Rated := "R"
 
 	gotMovie.SetRated(Rated)
@@ -158,7 +158,7 @@ func TestSetReleasedOk(t *testing.T) {
 		t.Fatalf("time.Parse() error = %v", err)
 	}
 
-	_, gotMovie := NewValidUserMovie()
+	gotMovie := NewValidMovie()
 
 	gotMovie, _ = gotMovie.SetReleased(newReleased)
 
@@ -170,7 +170,7 @@ func TestSetReleasedOk(t *testing.T) {
 func TestSetReleasedWrong(t *testing.T) {
 	newRealeased := "wrong-time"
 
-	_, gotMovie := NewValidUserMovie()
+	gotMovie := NewValidMovie()
 
 	_, e := gotMovie.SetReleased(newRealeased)
 	_, err := time.Parse(time.RFC3339, newRealeased)
@@ -188,7 +188,7 @@ func TestSetReleasedWrong(t *testing.T) {
 func TestSetRunTime(t *testing.T) {
 	rt := 1999
 
-	_, gotMovie := NewValidUserMovie()
+	gotMovie := NewValidMovie()
 
 	gotMovie.SetRunTime(rt)
 
@@ -200,7 +200,7 @@ func TestSetRunTime(t *testing.T) {
 func TestSetDirector(t *testing.T) {
 	d := "Director Drach"
 
-	_, gotMovie := NewValidUserMovie()
+	gotMovie := NewValidMovie()
 
 	gotMovie.SetDirector(d)
 
@@ -212,7 +212,7 @@ func TestSetDirector(t *testing.T) {
 func TestSetWriter(t *testing.T) {
 	w := "Writer Drach"
 
-	_, gotMovie := NewValidUserMovie()
+	gotMovie := NewValidMovie()
 
 	gotMovie.SetWriter(w)
 
@@ -222,7 +222,7 @@ func TestSetWriter(t *testing.T) {
 }
 
 func TestSetUpdateUser(t *testing.T) {
-	_, gotMovie := NewValidUserMovie()
+	gotMovie := NewValidMovie()
 
 	newUser := user.User{
 		Email:        "foo2@bar.com",
@@ -242,7 +242,7 @@ func TestSetUpdateUser(t *testing.T) {
 }
 
 func TestSetUpdateTime(t *testing.T) {
-	_, gotMovie := NewValidUserMovie()
+	gotMovie := NewValidMovie()
 
 	oldTime := gotMovie.UpdateTime
 
@@ -257,7 +257,7 @@ func TestSetUpdateTime(t *testing.T) {
 }
 
 func TestValidMovie(t *testing.T) {
-	_, gotMovie := NewValidUserMovie()
+	gotMovie := NewValidMovie()
 
 	gotMovie, _ = gotMovie.SetReleased("1996-12-19T16:39:57-08:00")
 
@@ -274,7 +274,7 @@ func TestValidMovie(t *testing.T) {
 }
 
 func TestInvalidMovieTitle(t *testing.T) {
-	_, gotMovie := NewValidUserMovie()
+	gotMovie := NewValidMovie()
 
 	wantErr := errs.E(errs.Validation, errs.Parameter("title"), errs.MissingField("title"))
 
@@ -284,7 +284,7 @@ func TestInvalidMovieTitle(t *testing.T) {
 }
 
 func TestInvalidMovieRated(t *testing.T) {
-	_, gotMovie := NewValidUserMovie()
+	gotMovie := NewValidMovie()
 
 	gotMovie.SetTitle("Movie Title")
 
@@ -296,7 +296,7 @@ func TestInvalidMovieRated(t *testing.T) {
 }
 
 func TestInvalidMovieReleased(t *testing.T) {
-	_, gotMovie := NewValidUserMovie()
+	gotMovie := NewValidMovie()
 
 	gotMovie.
 		SetTitle("Movie Title").
@@ -310,7 +310,7 @@ func TestInvalidMovieReleased(t *testing.T) {
 }
 
 func TestInvalidMovieRunTime(t *testing.T) {
-	_, gotMovie := NewValidUserMovie()
+	gotMovie := NewValidMovie()
 
 	gotMovie, _ = gotMovie.SetReleased("1996-12-19T16:39:57-08:00")
 	gotMovie.
@@ -325,7 +325,7 @@ func TestInvalidMovieRunTime(t *testing.T) {
 }
 
 func TestInvalidMovieDirector(t *testing.T) {
-	_, gotMovie := NewValidUserMovie()
+	gotMovie := NewValidMovie()
 
 	gotMovie, _ = gotMovie.SetReleased("1996-12-19T16:39:57-08:00")
 	gotMovie.
@@ -341,7 +341,7 @@ func TestInvalidMovieDirector(t *testing.T) {
 }
 
 func TestInvalidMovieWriter(t *testing.T) {
-	_, gotMovie := NewValidUserMovie()
+	gotMovie := NewValidMovie()
 
 	gotMovie, _ = gotMovie.SetReleased("1996-12-19T16:39:57-08:00")
 	gotMovie.
