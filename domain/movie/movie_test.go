@@ -25,7 +25,7 @@ func newValidUser() user.User {
 	}
 }
 
-func NewValidMovie() *movie.Movie {
+func newValidMovie() *movie.Movie {
 	uid := uuid.New()
 	externalID := "ExternalID"
 
@@ -119,7 +119,7 @@ func TestNewMovie(t *testing.T) {
 }
 
 func TestSetExternalID(t *testing.T) {
-	gotMovie := NewValidMovie()
+	gotMovie := newValidMovie()
 	externalID2 := "externalIDUpdated"
 
 	gotMovie.SetExternalID(externalID2)
@@ -130,7 +130,7 @@ func TestSetExternalID(t *testing.T) {
 }
 
 func TestSetTitle(t *testing.T) {
-	gotMovie := NewValidMovie()
+	gotMovie := newValidMovie()
 	Title := "Movie Title"
 
 	gotMovie.SetTitle(Title)
@@ -141,7 +141,7 @@ func TestSetTitle(t *testing.T) {
 }
 
 func TestSetRated(t *testing.T) {
-	gotMovie := NewValidMovie()
+	gotMovie := newValidMovie()
 	Rated := "R"
 
 	gotMovie.SetRated(Rated)
@@ -158,7 +158,7 @@ func TestSetReleasedOk(t *testing.T) {
 		t.Fatalf("time.Parse() error = %v", err)
 	}
 
-	gotMovie := NewValidMovie()
+	gotMovie := newValidMovie()
 
 	gotMovie, _ = gotMovie.SetReleased(newReleased)
 
@@ -170,7 +170,7 @@ func TestSetReleasedOk(t *testing.T) {
 func TestSetReleasedWrong(t *testing.T) {
 	newRealeased := "wrong-time"
 
-	gotMovie := NewValidMovie()
+	gotMovie := newValidMovie()
 
 	_, e := gotMovie.SetReleased(newRealeased)
 	_, err := time.Parse(time.RFC3339, newRealeased)
@@ -188,7 +188,7 @@ func TestSetReleasedWrong(t *testing.T) {
 func TestSetRunTime(t *testing.T) {
 	rt := 1999
 
-	gotMovie := NewValidMovie()
+	gotMovie := newValidMovie()
 
 	gotMovie.SetRunTime(rt)
 
@@ -200,7 +200,7 @@ func TestSetRunTime(t *testing.T) {
 func TestSetDirector(t *testing.T) {
 	d := "Director Drach"
 
-	gotMovie := NewValidMovie()
+	gotMovie := newValidMovie()
 
 	gotMovie.SetDirector(d)
 
@@ -212,7 +212,7 @@ func TestSetDirector(t *testing.T) {
 func TestSetWriter(t *testing.T) {
 	w := "Writer Drach"
 
-	gotMovie := NewValidMovie()
+	gotMovie := newValidMovie()
 
 	gotMovie.SetWriter(w)
 
@@ -222,7 +222,7 @@ func TestSetWriter(t *testing.T) {
 }
 
 func TestSetUpdateUser(t *testing.T) {
-	gotMovie := NewValidMovie()
+	gotMovie := newValidMovie()
 
 	newUser := user.User{
 		Email:        "foo2@bar.com",
@@ -242,7 +242,7 @@ func TestSetUpdateUser(t *testing.T) {
 }
 
 func TestSetUpdateTime(t *testing.T) {
-	gotMovie := NewValidMovie()
+	gotMovie := newValidMovie()
 
 	oldTime := gotMovie.UpdateTime
 
@@ -266,7 +266,7 @@ func getMovieTests() []Tests {
 	tests := []Tests{}
 
 	// Valid Movie
-	m1 := NewValidMovie()
+	m1 := newValidMovie()
 	m1, _ = m1.SetReleased("1996-12-19T16:39:57-08:00")
 	m1.
 		SetTitle("API Movie").
@@ -281,7 +281,7 @@ func getMovieTests() []Tests {
 		wantErr: nil,
 	})
 
-	m2 := NewValidMovie()
+	m2 := newValidMovie()
 	m2, _ = m2.SetReleased("1996-12-19T16:39:57-08:00")
 	m2.
 		SetRated("R").
@@ -295,7 +295,7 @@ func getMovieTests() []Tests {
 		wantErr: errs.E(errs.Validation, errs.Parameter("title"), errs.MissingField("title")),
 	})
 
-	m3 := NewValidMovie()
+	m3 := newValidMovie()
 	m3, _ = m3.SetReleased("1996-12-19T16:39:57-08:00")
 	m3.
 		SetTitle("Movie Title").
@@ -309,7 +309,7 @@ func getMovieTests() []Tests {
 		wantErr: errs.E(errs.Validation, errs.Parameter("rated"), errs.MissingField("Rated")),
 	})
 
-	m4 := NewValidMovie()
+	m4 := newValidMovie()
 	m4.
 		SetTitle("Movie Title").
 		SetRated("R").
@@ -323,7 +323,7 @@ func getMovieTests() []Tests {
 		wantErr: errs.E(errs.Validation, errs.Parameter("release_date"), "Released must have a value"),
 	})
 
-	m5 := NewValidMovie()
+	m5 := newValidMovie()
 	m5, _ = m5.SetReleased("1996-12-19T16:39:57-08:00")
 	m5.
 		SetTitle("Movie Title").
@@ -337,7 +337,7 @@ func getMovieTests() []Tests {
 		wantErr: errs.E(errs.Validation, errs.Parameter("run_time"), "Run time must be greater than zero"),
 	})
 
-	m6 := NewValidMovie()
+	m6 := newValidMovie()
 	m6, _ = m6.SetReleased("1996-12-19T16:39:57-08:00")
 	m6.
 		SetTitle("Movie Title").
@@ -351,7 +351,7 @@ func getMovieTests() []Tests {
 		wantErr: errs.E(errs.Validation, errs.Parameter("director"), errs.MissingField("Director")),
 	})
 
-	m7 := NewValidMovie()
+	m7 := newValidMovie()
 	m7, _ = m7.SetReleased("1996-12-19T16:39:57-08:00")
 	m7.
 		SetTitle("Movie Title").
