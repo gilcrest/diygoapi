@@ -256,107 +256,6 @@ func TestSetUpdateTime(t *testing.T) {
 	}
 }
 
-func TestValidMovie(t *testing.T) {
-	gotMovie := NewValidMovie()
-
-	gotMovie, _ = gotMovie.SetReleased("1996-12-19T16:39:57-08:00")
-
-	gotMovie.
-		SetTitle("Movie Title").
-		SetRated("R").
-		SetRunTime(19).
-		SetDirector("Movie Director").
-		SetWriter("Movie Writer")
-
-	if gotMovie.IsValid() != nil {
-		t.Errorf("\nWant: %v\nGot: %v\n\n", nil, gotMovie.IsValid())
-	}
-}
-
-func TestInvalidMovieTitle(t *testing.T) {
-	gotMovie := NewValidMovie()
-
-	wantErr := errs.E(errs.Validation, errs.Parameter("title"), errs.MissingField("title"))
-
-	if err := gotMovie.IsValid(); err.Error() != wantErr.Error() {
-		t.Errorf("\nWant: %v\nGot: %v\n\n", wantErr.Error(), err.Error())
-	}
-}
-
-func TestInvalidMovieRated(t *testing.T) {
-	gotMovie := NewValidMovie()
-
-	gotMovie.SetTitle("Movie Title")
-
-	wantErr := errs.E(errs.Validation, errs.Parameter("rated"), errs.MissingField("Rated"))
-
-	if err := gotMovie.IsValid(); err.Error() != wantErr.Error() {
-		t.Errorf("\nWant: %v\nGot: %v\n\n", wantErr.Error(), err.Error())
-	}
-}
-
-func TestInvalidMovieReleased(t *testing.T) {
-	gotMovie := NewValidMovie()
-
-	gotMovie.
-		SetTitle("Movie Title").
-		SetRated("R")
-
-	wantErr := errs.E(errs.Validation, errs.Parameter("release_date"), "Released must have a value")
-
-	if err := gotMovie.IsValid(); err.Error() != wantErr.Error() {
-		t.Errorf("\nWant: %v\nGot: %v\n\n", wantErr.Error(), err.Error())
-	}
-}
-
-func TestInvalidMovieRunTime(t *testing.T) {
-	gotMovie := NewValidMovie()
-
-	gotMovie, _ = gotMovie.SetReleased("1996-12-19T16:39:57-08:00")
-	gotMovie.
-		SetTitle("Movie Title").
-		SetRated("R")
-
-	wantErr := errs.E(errs.Validation, errs.Parameter("run_time"), "Run time must be greater than zero")
-
-	if err := gotMovie.IsValid(); err.Error() != wantErr.Error() {
-		t.Errorf("\nWant: %v\nGot: %v\n\n", wantErr.Error(), err.Error())
-	}
-}
-
-func TestInvalidMovieDirector(t *testing.T) {
-	gotMovie := NewValidMovie()
-
-	gotMovie, _ = gotMovie.SetReleased("1996-12-19T16:39:57-08:00")
-	gotMovie.
-		SetTitle("Movie Title").
-		SetRated("R").
-		SetRunTime(19)
-
-	wantErr := errs.E(errs.Validation, errs.Parameter("director"), errs.MissingField("Director"))
-
-	if err := gotMovie.IsValid(); err.Error() != wantErr.Error() {
-		t.Errorf("\nWant: %v\nGot: %v\n\n", wantErr.Error(), err.Error())
-	}
-}
-
-func TestInvalidMovieWriter(t *testing.T) {
-	gotMovie := NewValidMovie()
-
-	gotMovie, _ = gotMovie.SetReleased("1996-12-19T16:39:57-08:00")
-	gotMovie.
-		SetTitle("Movie Title").
-		SetRated("R").
-		SetRunTime(19).
-		SetDirector("Movie Director")
-
-	wantErr := errs.E(errs.Validation, errs.Parameter("writer"), errs.MissingField("Writer"))
-
-	if err := gotMovie.IsValid(); err.Error() != wantErr.Error() {
-		t.Errorf("\nWant: %v\nGot: %v\n\n", wantErr.Error(), err.Error())
-	}
-}
-
 type Tests struct {
 	name    string
 	m       *movie.Movie
@@ -365,6 +264,7 @@ type Tests struct {
 
 func getMovieTests() []Tests {
 	tests := []Tests{}
+
 	// Valid Movie
 	m1 := NewValidMovie()
 	m1, _ = m1.SetReleased("1996-12-19T16:39:57-08:00")
@@ -393,6 +293,75 @@ func getMovieTests() []Tests {
 		name:    "Missing Title",
 		m:       m2,
 		wantErr: errs.E(errs.Validation, errs.Parameter("title"), errs.MissingField("title")),
+	})
+
+	m3 := NewValidMovie()
+	m3, _ = m3.SetReleased("1996-12-19T16:39:57-08:00")
+	m3.
+		SetTitle("Movie Title").
+		SetRunTime(19).
+		SetDirector("Director Foo").
+		SetWriter("Writer Foo")
+
+	tests = append(tests, Tests{
+		name:    "Missing Rated",
+		m:       m3,
+		wantErr: errs.E(errs.Validation, errs.Parameter("rated"), errs.MissingField("Rated")),
+	})
+
+	m4 := NewValidMovie()
+	m4.
+		SetTitle("Movie Title").
+		SetRated("R").
+		SetRunTime(19).
+		SetDirector("Director Foo").
+		SetWriter("Writer Foo")
+
+	tests = append(tests, Tests{
+		name:    "Missing Released",
+		m:       m4,
+		wantErr: errs.E(errs.Validation, errs.Parameter("release_date"), "Released must have a value"),
+	})
+
+	m5 := NewValidMovie()
+	m5, _ = m5.SetReleased("1996-12-19T16:39:57-08:00")
+	m5.
+		SetTitle("Movie Title").
+		SetRated("R").
+		SetDirector("Director Foo").
+		SetWriter("Writer Foo")
+
+	tests = append(tests, Tests{
+		name:    "Missing Run Time",
+		m:       m5,
+		wantErr: errs.E(errs.Validation, errs.Parameter("run_time"), "Run time must be greater than zero"),
+	})
+
+	m6 := NewValidMovie()
+	m6, _ = m6.SetReleased("1996-12-19T16:39:57-08:00")
+	m6.
+		SetTitle("Movie Title").
+		SetRated("R").
+		SetRunTime(19).
+		SetWriter("Movie Writer")
+
+	tests = append(tests, Tests{
+		name:    "Missing Director",
+		m:       m6,
+		wantErr: errs.E(errs.Validation, errs.Parameter("director"), errs.MissingField("Director")),
+	})
+
+	m7 := NewValidMovie()
+	m7, _ = m7.SetReleased("1996-12-19T16:39:57-08:00")
+	m7.
+		SetTitle("Movie Title").
+		SetRated("R").
+		SetRunTime(19).
+		SetDirector("Movie Director")
+	tests = append(tests, Tests{
+		name:    "Missing Writer",
+		m:       m7,
+		wantErr: errs.E(errs.Validation, errs.Parameter("writer"), errs.MissingField("Writer")),
 	})
 
 	return tests
