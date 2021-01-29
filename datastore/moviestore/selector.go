@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/gilcrest/go-api-basic/datastore"
+
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/movie"
 
@@ -16,23 +18,25 @@ type Selector interface {
 	FindAll(context.Context) ([]*movie.Movie, error)
 }
 
-// NewDB is an initializer for DB
-func NewDB(db *sql.DB) (*DB, error) {
-	if db == nil {
-		return nil, errs.E(errs.Database, errors.New(errs.MissingField("db").Error()))
+// NewDefaultSelector is an initializer for DB
+func NewDefaultSelector(ds datastore.Datastorer) (DefaultSelector, error) {
+	if ds == nil {
+		return DefaultSelector{}, errs.E(errs.Database, errors.New(errs.MissingField("ds").Error()))
 	}
-	return &DB{DB: db}, nil
+	return DefaultSelector{ds}, nil
 }
 
-// DB is the database implementation for READ operations for a movie
-type DB struct {
-	*sql.DB
+// DefaultSelector is the database implementation for READ operations for a movie
+type DefaultSelector struct {
+	datastore.Datastorer
 }
 
 // FindByID returns a Movie struct to populate the response
-func (d *DB) FindByID(ctx context.Context, extlID string) (*movie.Movie, error) {
+func (d DefaultSelector) FindByID(ctx context.Context, extlID string) (*movie.Movie, error) {
+	db := d.Datastorer.DB()
+
 	// Prepare the sql statement using bind variables
-	row := d.DB.QueryRowContext(ctx,
+	row := db.QueryRowContext(ctx,
 		`select movie_id,
 				extl_id,
 				title,
@@ -73,9 +77,11 @@ func (d *DB) FindByID(ctx context.Context, extlID string) (*movie.Movie, error) 
 }
 
 // FindAll returns a slice of Movie structs to populate the response
-func (d *DB) FindAll(ctx context.Context) ([]*movie.Movie, error) {
+func (d DefaultSelector) FindAll(ctx context.Context) ([]*movie.Movie, error) {
+	db := d.Datastorer.DB()
+
 	// use QueryContext to get back sql.Rows
-	rows, err := d.DB.QueryContext(ctx,
+	rows, err := db.QueryContext(ctx,
 		`select movie_id,
 					  extl_id,
 					  title,

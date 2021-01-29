@@ -2,8 +2,8 @@ package moviestore
 
 import (
 	"context"
-	"database/sql"
 
+	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/pkg/errors"
 
 	"github.com/gilcrest/go-api-basic/domain/errs"
@@ -18,23 +18,29 @@ type Transactor interface {
 	Delete(ctx context.Context, m *movie.Movie) error
 }
 
-// NewTx is an initializer for Tx
-func NewTx(tx *sql.Tx) (*Tx, error) {
-	if tx == nil {
-		return nil, errs.E(errors.New(errs.MissingField("tx").Error()))
+// NewDefaultTransactor is an initializer for DefaultMovieStore
+func NewDefaultTransactor(ds datastore.Datastorer) (DefaultTransactor, error) {
+	if ds == nil {
+		return DefaultTransactor{}, errs.E(errors.New(errs.MissingField("ds").Error()))
 	}
-	return &Tx{Tx: tx}, nil
+	return DefaultTransactor{ds}, nil
 }
 
-// Tx is the database implementation for DML operations for a movie
-type Tx struct {
-	*sql.Tx
+// DefaultTransactor is the default database implementation
+// for DML operations for a movie
+type DefaultTransactor struct {
+	datastorer datastore.Datastorer
 }
 
 // Create inserts a record in the user table using a stored function
-func (t *Tx) Create(ctx context.Context, m *movie.Movie) error {
+func (ms DefaultTransactor) Create(ctx context.Context, m *movie.Movie) error {
+	tx, err := ms.datastorer.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
+
 	// Prepare the sql statement using bind variables
-	stmt, err := t.Tx.PrepareContext(ctx, `
+	stmt, err := tx.PrepareContext(ctx, `
 	select o_create_timestamp,
 		   o_update_timestamp
 	  from demo.create_movie (
@@ -50,7 +56,7 @@ func (t *Tx) Create(ctx context.Context, m *movie.Movie) error {
 		p_create_username => $10)`)
 
 	if err != nil {
-		return errs.E(errs.Database, err)
+		return errs.E(errs.Database, ms.datastorer.RollbackTx(tx, err))
 	}
 	defer stmt.Close()
 
@@ -73,21 +79,26 @@ func (t *Tx) Create(ctx context.Context, m *movie.Movie) error {
 		m.CreateUser.Email) //$10
 
 	if err != nil {
-		return errs.E(errs.Database, err)
+		return errs.E(errs.Database, ms.datastorer.RollbackTx(tx, err))
 	}
 	defer rows.Close()
 
 	// Iterate through the returned record(s)
 	for rows.Next() {
 		if err := rows.Scan(&m.CreateTime, &m.UpdateTime); err != nil {
-			return errs.E(errs.Database, err)
+			return errs.E(errs.Database, ms.datastorer.RollbackTx(tx, err))
 		}
 	}
 
 	// If any error was encountered while iterating through rows.Next above
 	// it will be returned here
 	if err := rows.Err(); err != nil {
-		return errs.E(errs.Database, err)
+		return errs.E(errs.Database, ms.datastorer.RollbackTx(tx, err))
+	}
+
+	// Commit the Transaction
+	if err := ms.datastorer.CommitTx(tx); err != nil {
+		return errs.E(errs.Database, ms.datastorer.RollbackTx(tx, err))
 	}
 
 	return nil
@@ -95,9 +106,14 @@ func (t *Tx) Create(ctx context.Context, m *movie.Movie) error {
 
 // Update updates a record in the database using the external ID of
 // the Movie
-func (t *Tx) Update(ctx context.Context, m *movie.Movie) error {
+func (ms DefaultTransactor) Update(ctx context.Context, m *movie.Movie) error {
+	tx, err := ms.datastorer.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
+
 	// Prepare the sql statement using bind variables
-	stmt, err := t.Tx.PrepareContext(ctx, `
+	stmt, err := tx.PrepareContext(ctx, `
 	update demo.movie
 	   set title = $1,
 		   rated = $2,
@@ -108,10 +124,10 @@ func (t *Tx) Update(ctx context.Context, m *movie.Movie) error {
 		   update_username = $7,
 		   update_timestamp = $8
 	 where extl_id = $9
- returning movie_id, create_username, create_timestamp`)
+returning movie_id, create_username, create_timestamp`)
 
 	if err != nil {
-		return errs.E(errs.Database, err)
+		return errs.E(errs.Database, ms.datastorer.RollbackTx(tx, err))
 	}
 	defer stmt.Close()
 
@@ -129,21 +145,21 @@ func (t *Tx) Update(ctx context.Context, m *movie.Movie) error {
 		m.ExternalID)       //$9
 
 	if err != nil {
-		return errs.E(errs.Database, err)
+		return errs.E(errs.Database, ms.datastorer.RollbackTx(tx, err))
 	}
 	defer rows.Close()
 
 	// Iterate through the returned record(s)
 	for rows.Next() {
 		if err := rows.Scan(&m.ID, &m.CreateUser.Email, &m.CreateTime); err != nil {
-			return errs.E(errs.Database, err)
+			return errs.E(errs.Database, ms.datastorer.RollbackTx(tx, err))
 		}
 	}
 
 	// If any error was encountered while iterating through rows.Next above
 	// it will be returned here
 	if err := rows.Err(); err != nil {
-		return errs.E(errs.Database, err)
+		return errs.E(errs.Database, ms.datastorer.RollbackTx(tx, err))
 	}
 
 	// If the table's primary key is not returned as part of the
@@ -155,32 +171,47 @@ func (t *Tx) Update(ctx context.Context, m *movie.Movie) error {
 	// db.Exec and check RowsAffected (like I do in delete below),
 	// but I wanted to show an alternative which can be useful here
 	if m.ID == uuid.Nil {
-		return errs.E(errs.Database, "Invalid ID - no records updated")
+		return errs.E(errs.Database, ms.datastorer.RollbackTx(tx, errors.New("Invalid ID - no records updated")))
+	}
+
+	// Commit the Transaction
+	if err := ms.datastorer.CommitTx(tx); err != nil {
+		return errs.E(errs.Database, ms.datastorer.RollbackTx(tx, err))
 	}
 
 	return nil
 }
 
 // Delete removes the Movie record from the table
-func (t *Tx) Delete(ctx context.Context, m *movie.Movie) error {
-	result, execErr := t.Tx.ExecContext(ctx,
+func (ms DefaultTransactor) Delete(ctx context.Context, m *movie.Movie) error {
+	tx, err := ms.datastorer.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
+
+	result, execErr := tx.ExecContext(ctx,
 		`DELETE from demo.movie
 		        WHERE movie_id = $1`, m.ID)
 
 	if execErr != nil {
-		return errs.E(errs.Database, execErr)
+		return errs.E(errs.Database, ms.datastorer.RollbackTx(tx, execErr))
 	}
 
 	// Only 1 row should be deleted, check the result count to
 	// ensure this is correct
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return errs.E(errs.Database, err)
+		return errs.E(errs.Database, ms.datastorer.RollbackTx(tx, err))
 	}
 	if rowsAffected == 0 {
-		return errs.E(errs.Database, "No Rows Deleted")
+		return errs.E(errs.Database, ms.datastorer.RollbackTx(tx, errors.New("No Rows Deleted")))
 	} else if rowsAffected > 1 {
-		return errs.E(errs.Database, "Too Many Rows Deleted")
+		return errs.E(errs.Database, ms.datastorer.RollbackTx(tx, errors.New("Too Many Rows Deleted")))
+	}
+
+	// Commit the Transaction
+	if err := ms.datastorer.CommitTx(tx); err != nil {
+		return errs.E(errs.Database, ms.datastorer.RollbackTx(tx, err))
 	}
 
 	return nil

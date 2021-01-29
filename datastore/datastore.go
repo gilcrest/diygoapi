@@ -57,24 +57,24 @@ func (dsn PGDatasourceName) String() string {
 	}
 }
 
-// NewDatastore is an initializer for the Datastore struct
-func NewDatastore(db *sql.DB) *Datastore {
-	return &Datastore{db: db}
+// NewDefaultDatastore is an initializer for the default Datastore struct
+func NewDefaultDatastore(db *sql.DB) DefaultDatastore {
+	return DefaultDatastore{db: db}
 }
 
-// Datastore is a concrete implementation for a sql database
-type Datastore struct {
+// DefaultDatastore is a concrete implementation for a sql database
+type DefaultDatastore struct {
 	db *sql.DB
 }
 
 // DB returns the sql.Db for the Datastore struct
-func (ds *Datastore) DB() *sql.DB {
+func (ds DefaultDatastore) DB() *sql.DB {
 	return ds.db
 }
 
 // BeginTx is a wrapper for sql.DB.BeginTx in order to expose from
 // the Datastore interface
-func (ds *Datastore) BeginTx(ctx context.Context) (*sql.Tx, error) {
+func (ds DefaultDatastore) BeginTx(ctx context.Context) (*sql.Tx, error) {
 	if ds.db == nil {
 		return nil, errs.E(errs.Database, errors.New("DB cannot be nil"))
 	}
@@ -89,7 +89,7 @@ func (ds *Datastore) BeginTx(ctx context.Context) (*sql.Tx, error) {
 
 // RollbackTx is a wrapper for sql.Tx.Rollback in order to expose from
 // the Datastore interface. Proper error handling is also considered.
-func (ds *Datastore) RollbackTx(tx *sql.Tx, err error) error {
+func (ds DefaultDatastore) RollbackTx(tx *sql.Tx, err error) error {
 	if tx == nil {
 		return errs.E(errs.Database, errs.Code("nil_tx"), errors.New(fmt.Sprintf("RollbackTx() error = tx cannot be nil: Original error = %s", err.Error())))
 	}
@@ -105,7 +105,7 @@ func (ds *Datastore) RollbackTx(tx *sql.Tx, err error) error {
 
 // CommitTx is a wrapper for sql.Tx.Commit in order to expose from
 // the Datastore interface. Proper error handling is also considered.
-func (ds *Datastore) CommitTx(tx *sql.Tx) error {
+func (ds DefaultDatastore) CommitTx(tx *sql.Tx) error {
 	if err := tx.Commit(); err != nil {
 		return errs.E(errs.Database, err)
 	}
