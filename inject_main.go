@@ -7,25 +7,48 @@ import (
 	"database/sql"
 	"net/http"
 
-	"github.com/gilcrest/go-api-basic/app"
+	"github.com/gilcrest/go-api-basic/datastore/moviestore"
+
+	"github.com/gilcrest/go-api-basic/domain/auth"
+	"github.com/gilcrest/go-api-basic/gateway/authgateway"
+
 	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/gilcrest/go-api-basic/handler"
-	"github.com/google/wire"
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
 	"go.opencensus.io/trace"
+
+	"github.com/google/wire"
 	"gocloud.dev/server"
 	"gocloud.dev/server/driver"
 	"gocloud.dev/server/health"
 	"gocloud.dev/server/health/sqlhealth"
 )
 
-// applicationSet is the Wire provider set for the application
-var applicationSet = wire.NewSet(
-	app.NewApplication,
-	newRouter,
-	wire.Bind(new(http.Handler), new(*mux.Router)),
-	handler.NewAppHandler,
+var movieHandlerSet = wire.NewSet(
+	wire.Struct(new(authgateway.GoogleToken2User), "*"),
+	wire.Bind(new(auth.UserRetriever), new(authgateway.GoogleToken2User)),
+	wire.Struct(new(auth.DefaultAuthorizer), "*"),
+	wire.Bind(new(auth.Authorizer), new(auth.DefaultAuthorizer)),
+	moviestore.NewDefaultTransactor,
+	wire.Bind(new(moviestore.Transactor), new(moviestore.DefaultTransactor)),
+	moviestore.NewDefaultSelector,
+	wire.Bind(new(moviestore.Selector), new(moviestore.DefaultSelector)),
+	wire.Struct(new(handler.DefaultMovieHandlers), "*"),
+	wire.Struct(new(handler.DefaultPingHandler), "*"),
+	handler.ProvideCreateMovieHandler,
+	handler.ProvideFindMovieByIDHandler,
+	handler.ProvideFindAllMoviesHandler,
+	handler.ProvideUpdateMovieHandler,
+	handler.ProvideDeleteMovieHandler,
+	handler.ProvidePingHandler,
+	wire.Struct(new(handler.Handlers), "*"),
+)
+
+var datastoreSet = wire.NewSet(
+	datastore.NewDB,
+	datastore.NewDefaultDatastore,
+	wire.Bind(new(datastore.Datastorer), new(datastore.DefaultDatastore)),
 )
 
 // goCloudServerSet
@@ -36,6 +59,11 @@ var goCloudServerSet = wire.NewSet(
 	wire.Bind(new(driver.Server), new(*server.DefaultDriver)),
 )
 
+var routerSet = wire.NewSet(
+	handler.NewMuxRouter,
+	wire.Bind(new(http.Handler), new(*mux.Router)),
+)
+
 // newServer is a Wire injector function that sets up the
 // application using a PostgreSQL implementation
 func newServer(ctx context.Context, logger zerolog.Logger, dsn datastore.PGDatasourceName) (*server.Server, func(), error) {
@@ -44,14 +72,41 @@ func newServer(ctx context.Context, logger zerolog.Logger, dsn datastore.PGDatas
 	wire.Build(
 		wire.InterfaceValue(new(trace.Exporter), trace.Exporter(nil)),
 		goCloudServerSet,
-		applicationSet,
 		appHealthChecks,
 		wire.Struct(new(server.Options), "HealthChecks", "TraceExporter", "DefaultSamplingPolicy", "Driver"),
-		datastore.NewDB,
-		wire.Bind(new(datastore.Datastorer), new(*datastore.Datastore)),
-		datastore.NewDatastore)
+		datastoreSet,
+		movieHandlerSet,
+		routerSet,
+	)
 	return nil, nil, nil
 }
+
+//// applicationSet is the Wire provider set for the application
+//var applicationSet = wire.NewSet(
+//	app.NewApplication,
+//	newRouter,
+//	wire.Bind(new(http.Handler), new(*mux.Router)),
+//	handler.NewAppHandler,
+//)
+//
+//)
+//
+//// newServer is a Wire injector function that sets up the
+//// application using a PostgreSQL implementation
+//func newServer(ctx context.Context, logger zerolog.Logger, dsn datastore.PGDatasourceName) (*server.Server, func(), error) {
+//	// This will be filled in by Wire with providers from the provider sets in
+//	// wire.Build.
+//	wire.Build(
+//		wire.InterfaceValue(new(trace.Exporter), trace.Exporter(nil)),
+//		goCloudServerSet,
+//		applicationSet,
+//		appHealthChecks,
+//		wire.Struct(new(server.Options), "HealthChecks", "TraceExporter", "DefaultSamplingPolicy", "Driver"),
+//		datastore.NewDB,
+//		wire.Bind(new(datastore.Datastorer), new(*datastore.Datastore)),
+//		datastore.NewDatastore)
+//	return nil, nil, nil
+//}
 
 // appHealthChecks returns a health check for the database. This will signal
 // to Kubernetes or other orchestrators that the server should not receive

@@ -4,22 +4,48 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/rs/zerolog/hlog"
+	"github.com/gilcrest/go-api-basic/datastore"
 
-	"github.com/gilcrest/go-api-basic/controller/pingcontroller"
 	"github.com/gilcrest/go-api-basic/domain/errs"
+	"github.com/rs/zerolog/hlog"
 )
 
-// Ping handles GET requests for the /ping endpoint
-func (ah *AppHandler) Ping(w http.ResponseWriter, r *http.Request) {
+// PingHandler is a Handler that gives app status, such as db ping, etc.
+type PingHandler http.Handler
+
+func ProvidePingHandler(h DefaultPingHandler) PingHandler {
+	return http.HandlerFunc(h.Ping)
+}
+
+type DefaultPingHandler struct {
+	Datastorer datastore.Datastorer
+}
+
+//Ping handles GET requests for the /ping endpoint
+func (h DefaultPingHandler) Ping(w http.ResponseWriter, r *http.Request) {
+	type pingResponseData struct {
+		DBUp bool `json:"db_up"`
+	}
+
+	// pull logger from request context
 	logger := *hlog.FromRequest(r)
+	// pull the context from the http request
+	ctx := r.Context()
 
-	// Initialize SearchController
-	sc := pingcontroller.NewPingController(ah.App)
+	// check if db connection is still alive
+	var dbok bool
+	err := h.Datastorer.DB().PingContext(ctx)
+	// if there is no error, db is up, set dbok to true,
+	// if db is down, log the error
+	if err != nil {
+		logger.Error().Err(err).Msg("PingContext returned an error")
+	} else {
+		dbok = true
+	}
 
-	// Send the request context and request struct to the controller
-	// Receive a response or error in return
-	response, err := sc.Ping(r)
+	pr := pingResponseData{DBUp: dbok}
+
+	response, err := NewStandardResponse(r, pr)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, err)
 		return

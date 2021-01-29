@@ -8,8 +8,10 @@ package main
 import (
 	"context"
 	"database/sql"
-	"github.com/gilcrest/go-api-basic/app"
 	"github.com/gilcrest/go-api-basic/datastore"
+	"github.com/gilcrest/go-api-basic/datastore/moviestore"
+	"github.com/gilcrest/go-api-basic/domain/auth"
+	"github.com/gilcrest/go-api-basic/gateway/authgateway"
 	"github.com/gilcrest/go-api-basic/handler"
 	"github.com/google/wire"
 	"github.com/gorilla/mux"
@@ -25,14 +27,47 @@ import (
 // Injectors from inject_main.go:
 
 func newServer(ctx context.Context, logger zerolog.Logger, dsn datastore.PGDatasourceName) (*server.Server, func(), error) {
+	googleToken2User := authgateway.GoogleToken2User{}
+	defaultAuthorizer := auth.DefaultAuthorizer{}
 	db, cleanup, err := datastore.NewDB(dsn, logger)
 	if err != nil {
 		return nil, nil, err
 	}
-	datastoreDatastore := datastore.NewDatastore(db)
-	application := app.NewApplication(datastoreDatastore, logger)
-	appHandler := handler.NewAppHandler(application)
-	router := newRouter(appHandler)
+	defaultDatastore := datastore.NewDefaultDatastore(db)
+	defaultTransactor, err := moviestore.NewDefaultTransactor(defaultDatastore)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	defaultSelector, err := moviestore.NewDefaultSelector(defaultDatastore)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	defaultMovieHandlers := handler.DefaultMovieHandlers{
+		UserRetriever: googleToken2User,
+		Authorizer:    defaultAuthorizer,
+		Transactor:    defaultTransactor,
+		Selector:      defaultSelector,
+	}
+	createMovieHandler := handler.ProvideCreateMovieHandler(defaultMovieHandlers)
+	findMovieByIDHandler := handler.ProvideFindMovieByIDHandler(defaultMovieHandlers)
+	findAllMoviesHandler := handler.ProvideFindAllMoviesHandler(defaultMovieHandlers)
+	updateMovieHandler := handler.ProvideUpdateMovieHandler(defaultMovieHandlers)
+	deleteMovieHandler := handler.ProvideDeleteMovieHandler(defaultMovieHandlers)
+	defaultPingHandler := handler.DefaultPingHandler{
+		Datastorer: defaultDatastore,
+	}
+	pingHandler := handler.ProvidePingHandler(defaultPingHandler)
+	handlers := handler.Handlers{
+		CreateMovieHandler:   createMovieHandler,
+		FindMovieByIDHandler: findMovieByIDHandler,
+		FindAllMoviesHandler: findAllMoviesHandler,
+		UpdateMovieHandler:   updateMovieHandler,
+		DeleteMovieHandler:   deleteMovieHandler,
+		PingHandler:          pingHandler,
+	}
+	router := handler.NewMuxRouter(logger, handlers)
 	v, cleanup2 := appHealthChecks(db)
 	exporter := _wireExporterValue
 	sampler := trace.AlwaysSample()
@@ -56,11 +91,14 @@ var (
 
 // inject_main.go:
 
-// applicationSet is the Wire provider set for the application
-var applicationSet = wire.NewSet(app.NewApplication, newRouter, wire.Bind(new(http.Handler), new(*mux.Router)), handler.NewAppHandler)
+var movieHandlerSet = wire.NewSet(wire.Struct(new(authgateway.GoogleToken2User), "*"), wire.Bind(new(auth.UserRetriever), new(authgateway.GoogleToken2User)), wire.Struct(new(auth.DefaultAuthorizer), "*"), wire.Bind(new(auth.Authorizer), new(auth.DefaultAuthorizer)), moviestore.NewDefaultTransactor, wire.Bind(new(moviestore.Transactor), new(moviestore.DefaultTransactor)), moviestore.NewDefaultSelector, wire.Bind(new(moviestore.Selector), new(moviestore.DefaultSelector)), wire.Struct(new(handler.DefaultMovieHandlers), "*"), wire.Struct(new(handler.DefaultPingHandler), "*"), handler.ProvideCreateMovieHandler, handler.ProvideFindMovieByIDHandler, handler.ProvideFindAllMoviesHandler, handler.ProvideUpdateMovieHandler, handler.ProvideDeleteMovieHandler, handler.ProvidePingHandler, wire.Struct(new(handler.Handlers), "*"))
+
+var datastoreSet = wire.NewSet(datastore.NewDB, datastore.NewDefaultDatastore, wire.Bind(new(datastore.Datastorer), new(datastore.DefaultDatastore)))
 
 // goCloudServerSet
 var goCloudServerSet = wire.NewSet(trace.AlwaysSample, server.New, server.NewDefaultDriver, wire.Bind(new(driver.Server), new(*server.DefaultDriver)))
+
+var routerSet = wire.NewSet(handler.NewMuxRouter, wire.Bind(new(http.Handler), new(*mux.Router)))
 
 // appHealthChecks returns a health check for the database. This will signal
 // to Kubernetes or other orchestrators that the server should not receive
