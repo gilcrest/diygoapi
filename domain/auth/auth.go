@@ -8,17 +8,15 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"golang.org/x/oauth2"
-	googleoauth "google.golang.org/api/oauth2/v2"
-
 	"github.com/pkg/errors"
+	"golang.org/x/oauth2"
 
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/user"
 )
 
-// AccessToken represents an Oauth2 access token found
-// in an HTTP header as a Bearer token
+// AccessToken represents an access token found in an
+// HTTP header, typically a Bearer token for Oauth2
 type AccessToken struct {
 	Token     string
 	TokenType string
@@ -29,19 +27,8 @@ func (at AccessToken) NewGoogleOauth2Token() *oauth2.Token {
 	return &oauth2.Token{AccessToken: at.Token, TokenType: at.TokenType}
 }
 
-// newUser initializes the user.User struct given a Userinfo struct
-// from Google
-func newUser(userinfo *googleoauth.Userinfo) *user.User {
-	return &user.User{
-		Email:     userinfo.Email,
-		LastName:  userinfo.FamilyName,
-		FirstName: userinfo.GivenName,
-		FullName:  userinfo.Name,
-		//Gender:       userinfo.Gender,
-		HostedDomain: userinfo.Hd,
-		PictureURL:   userinfo.Picture,
-		ProfileLink:  userinfo.Link,
-	}
+type UserRetriever interface {
+	User(ctx context.Context, token AccessToken) (*user.User, error)
 }
 
 // Authorizer interface authorizes access to a resource given
@@ -50,14 +37,19 @@ type Authorizer interface {
 	Authorize(ctx context.Context, sub *user.User, obj string, act string) error
 }
 
-// Auth struct satisfies the Authorizer interface
-type Auth struct{}
+// DefaultAuthorizer struct satisfies the Authorizer interface.
+// The DefaultAuthorizer.Authorize method ensures a subject (user)
+// can perform a particular action on an object. e.g. gilcrest can
+// read (GET) the resource at the /ping path. This is obviously
+// completely bogus right now, eventually need to look into something
+// like Casbin for ACL/RBAC
+type DefaultAuthorizer struct{}
 
 // Authorize authorizes a subject (user) can perform a particular
 // action on an object. e.g. gilcrest can read (GET) the resource
 // at the /ping path. This is obviously completely bogus right now,
 // eventually need to look into something like Casbin for ACL/RBAC
-func (a Auth) Authorize(ctx context.Context, sub *user.User, obj string, act string) error {
+func (a DefaultAuthorizer) Authorize(ctx context.Context, sub *user.User, obj string, act string) error {
 	logger := *zerolog.Ctx(ctx)
 
 	const (
