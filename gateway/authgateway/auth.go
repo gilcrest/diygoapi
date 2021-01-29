@@ -3,6 +3,8 @@ package authgateway
 import (
 	"context"
 
+	"github.com/gilcrest/go-api-basic/domain/auth"
+
 	"github.com/gilcrest/go-api-basic/domain/user"
 
 	"golang.org/x/oauth2"
@@ -12,10 +14,25 @@ import (
 	"github.com/gilcrest/go-api-basic/domain/errs"
 )
 
-// UserInfo makes an outbound https call to Google using their
+// GoogleToken2User is used to convert an auth.AccessToken to a User
+// through Google's API
+type GoogleToken2User struct{}
+
+// User calls the Google Userinfo API with the access token and converts
+// the Userinfo struct to a User struct
+func (c GoogleToken2User) User(ctx context.Context, token auth.AccessToken) (*user.User, error) {
+	ui, err := userInfo(ctx, token.NewGoogleOauth2Token())
+	if err != nil {
+		return nil, err
+	}
+
+	return newUser(ui), nil
+}
+
+// userInfo makes an outbound https call to Google using their
 // Oauth2 v2 api and returns a Userinfo struct which has most
 // profile data elements you typically need
-func UserInfo(ctx context.Context, token *oauth2.Token) (*googleoauth.Userinfo, error) {
+func userInfo(ctx context.Context, token *oauth2.Token) (*googleoauth.Userinfo, error) {
 
 	oauthService, err := googleoauth.NewService(ctx, option.WithTokenSource(oauth2.StaticTokenSource(token)))
 	if err != nil {
@@ -36,9 +53,9 @@ func UserInfo(ctx context.Context, token *oauth2.Token) (*googleoauth.Userinfo, 
 	return userInfo, nil
 }
 
-// NewUser initializes the user.User struct given a Userinfo struct
+// newUser initializes the user.User struct given a Userinfo struct
 // from Google
-func NewUser(userinfo *googleoauth.Userinfo) *user.User {
+func newUser(userinfo *googleoauth.Userinfo) *user.User {
 	return &user.User{
 		Email:     userinfo.Email,
 		LastName:  userinfo.FamilyName,
