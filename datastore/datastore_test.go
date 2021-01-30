@@ -74,7 +74,7 @@ func TestDatastore_DB(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ds := Datastore{db: ogdb}
+	ds := DefaultDatastore{db: ogdb}
 	db := ds.DB()
 
 	is.Equal(db, ogdb)
@@ -90,9 +90,9 @@ func TestNewDatastore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := NewDatastore(db)
+	got := NewDefaultDatastore(db)
 
-	want := &Datastore{db: db}
+	want := DefaultDatastore{db: db}
 
 	is.Equal(got, want)
 }
@@ -168,7 +168,7 @@ func TestDatastore_BeginTx(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ds := &Datastore{
+			ds := &DefaultDatastore{
 				db: tt.fields.db,
 			}
 			if tt.wantErr == true {
@@ -233,7 +233,7 @@ func TestDatastore_RollbackTx(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Log(tt.name)
-			ds := &Datastore{
+			ds := &DefaultDatastore{
 				db: tt.fields.db,
 			}
 			err := ds.RollbackTx(tt.args.tx, tt.args.err)
@@ -300,7 +300,7 @@ func TestDatastore_CommitTx(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ds := &Datastore{
+			ds := &DefaultDatastore{
 				db: tt.fields.db,
 			}
 			if err := ds.CommitTx(tt.args.tx); (err != nil) != tt.wantErr {
