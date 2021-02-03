@@ -34,16 +34,8 @@ func newServer(ctx context.Context, logger zerolog.Logger, dsn datastore.PGDatas
 		return nil, nil, err
 	}
 	defaultDatastore := datastore.NewDefaultDatastore(db)
-	defaultTransactor, err := moviestore.NewDefaultTransactor(defaultDatastore)
-	if err != nil {
-		cleanup()
-		return nil, nil, err
-	}
-	defaultSelector, err := moviestore.NewDefaultSelector(defaultDatastore)
-	if err != nil {
-		cleanup()
-		return nil, nil, err
-	}
+	defaultTransactor := moviestore.NewDefaultTransactor(defaultDatastore)
+	defaultSelector := moviestore.NewDefaultSelector(defaultDatastore)
 	defaultMovieHandlers := handler.DefaultMovieHandlers{
 		UserRetriever: googleToken2User,
 		Authorizer:    defaultAuthorizer,
