@@ -1,3 +1,4 @@
+// Package moviestore performs all DML and select operations for a movie
 package moviestore
 
 import (
@@ -5,7 +6,6 @@ import (
 	"database/sql"
 
 	"github.com/gilcrest/go-api-basic/datastore"
-
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/movie"
 
@@ -18,12 +18,9 @@ type Selector interface {
 	FindAll(context.Context) ([]*movie.Movie, error)
 }
 
-// NewDefaultSelector is an initializer for DB
-func NewDefaultSelector(ds datastore.Datastorer) (DefaultSelector, error) {
-	if ds == nil {
-		return DefaultSelector{}, errs.E(errs.Database, errors.New(errs.MissingField("ds").Error()))
-	}
-	return DefaultSelector{ds}, nil
+// NewDefaultSelector is an initializer for DefaultSelector
+func NewDefaultSelector(ds datastore.Datastorer) DefaultSelector {
+	return DefaultSelector{ds}
 }
 
 // DefaultSelector is the database implementation for READ operations for a movie
