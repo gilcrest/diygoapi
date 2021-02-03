@@ -1,3 +1,5 @@
+// Package movie contains the business or "domain" logic for creating
+// a Movie for this demo
 package movie
 
 import (
@@ -114,7 +116,7 @@ func (m *Movie) IsValid() error {
 		return errs.E(errs.Validation, errs.Parameter("title"), errs.MissingField("title"))
 	case m.Rated == "":
 		return errs.E(errs.Validation, errs.Parameter("rated"), errs.MissingField("Rated"))
-	case m.Released.IsZero() == true:
+	case m.Released.IsZero():
 		return errs.E(errs.Validation, errs.Parameter("release_date"), "Released must have a value")
 	case m.RunTime <= 0:
 		return errs.E(errs.Validation, errs.Parameter("run_time"), "Run time must be greater than zero")

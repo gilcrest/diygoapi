@@ -1,3 +1,4 @@
+// Package random has helper functions to create random strings or bytes
 package random
 
 import (
@@ -11,6 +12,7 @@ import (
 // It will return an error if the system's secure random
 // number generator fails to function correctly, in which
 // case the caller should not continue.
+// Taken from https://stackoverflow.com/questions/35781197/generating-a-random-fixed-length-byte-array-in-go
 func GenerateRandomBytes(n int) ([]byte, error) {
 	b := make([]byte, n)
 	_, err := rand.Read(b)

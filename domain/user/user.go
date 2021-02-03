@@ -1,3 +1,4 @@
+// Package user holds details about a person who is using the application
 package user
 
 // User holds details of a User from Google

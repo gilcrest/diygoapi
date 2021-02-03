@@ -1,3 +1,5 @@
+// Package logger has helpers to setup a zerolog.Logger
+//   https://github.com/rs/zerolog
 package logger
 
 import (

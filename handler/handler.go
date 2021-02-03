@@ -1,3 +1,4 @@
+// Package handler is for all the application handlers and routing
 package handler
 
 import (

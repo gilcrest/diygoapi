@@ -1,3 +1,6 @@
+// Package datastore is used to interact with a datastore. It has
+// functions to help setup a sql.DB as well as helpers for working
+// with the sql.DB once it's initialized.
 package datastore
 
 import (
@@ -100,7 +103,7 @@ func (ds DefaultDatastore) RollbackTx(tx *sql.Tx, err error) error {
 	}
 
 	// If rollback was successful, send back original error
-	return errs.E(errs.Database, err)
+	return err
 }
 
 // CommitTx is a wrapper for sql.Tx.Commit in order to expose from
