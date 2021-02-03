@@ -334,6 +334,10 @@ func (h DefaultMovieHandlers) DeleteMovie(w http.ResponseWriter, r *http.Request
 	extlid := vars["id"]
 
 	// Find the Movie by ID using the selector.FindByID method
+	// It's arguable I don't need to do this and can just send
+	// the external ID to the database Transactor directly instead,
+	// (I'd have to rework it slightly) but this way works as an
+	// example
 	m, err := h.Selector.FindByID(ctx, extlid)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, err)
