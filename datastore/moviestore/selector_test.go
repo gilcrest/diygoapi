@@ -2,24 +2,25 @@ package moviestore
 
 import (
 	"context"
-	"database/sql"
 	"os"
 	"reflect"
 	"testing"
 
+	"github.com/gilcrest/go-api-basic/domain/user"
+	"github.com/matryer/is"
+
+	"github.com/gilcrest/go-api-basic/domain/movie"
+	"github.com/gilcrest/go-api-basic/domain/random"
+	"github.com/google/uuid"
+
 	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/gilcrest/go-api-basic/datastore/datastoretest"
 	"github.com/gilcrest/go-api-basic/domain/logger"
-	"github.com/gilcrest/go-api-basic/domain/movie"
-	"github.com/gilcrest/go-api-basic/domain/random"
-	"github.com/gilcrest/go-api-basic/domain/user"
-	"github.com/google/uuid"
-	"github.com/matryer/is"
 )
 
-func TestNewDB(t *testing.T) {
+func TestNewDefaultSelector(t *testing.T) {
 	type args struct {
-		db *sql.DB
+		ds datastore.Datastorer
 	}
 
 	dsn := datastoretest.NewPGDatasourceName(t)
@@ -30,34 +31,29 @@ func TestNewDB(t *testing.T) {
 	if err != nil {
 		t.Errorf("datastore.NewDB error = %v", err)
 	}
-	moviestoreDB := &DB{db}
+	defaultDatastore := datastore.NewDefaultDatastore(db)
+	defaultSelector := DefaultSelector{defaultDatastore}
 
 	tests := []struct {
-		name    string
-		args    args
-		want    *DB
-		wantErr bool
+		name string
+		args args
+		want DefaultSelector
 	}{
-		{"postgresql db", args{db: db}, moviestoreDB, false},
-		{"nil db", args{db: nil}, nil, true},
+		{"default datastore", args{ds: defaultDatastore}, defaultSelector},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewDB(tt.args.db)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("NewDB() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
+			got := NewDefaultSelector(tt.args.ds)
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewDB() got = %v, want %v", got, tt.want)
+				t.Errorf("NewDefaultSelector() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestDB_FindAll(t *testing.T) {
+func TestDefaultSelector_FindAll(t *testing.T) {
 	type fields struct {
-		DB *sql.DB
+		Datastorer datastore.Datastorer
 	}
 	type args struct {
 		ctx context.Context
@@ -73,11 +69,12 @@ func TestDB_FindAll(t *testing.T) {
 	if err != nil {
 		t.Errorf("datastore.NewDB error = %v", err)
 	}
+	ds := datastore.NewDefaultDatastore(db)
 	ctx := context.Background()
 
 	// create a movie with the helper to ensure that at least one row
 	// is returned
-	_ = newMovieDBHelper(t, ctx, db)
+	_ = newMovieDBHelper(t, ctx, ds, true)
 
 	tests := []struct {
 		name    string
@@ -85,12 +82,12 @@ func TestDB_FindAll(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		{"standard test", fields{DB: db}, args{ctx: ctx}, false},
+		{"standard test", fields{Datastorer: ds}, args{ctx: ctx}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := &DB{
-				DB: tt.fields.DB,
+			d := &DefaultSelector{
+				Datastorer: tt.fields.Datastorer,
 			}
 			got, err := d.FindAll(tt.args.ctx)
 			if (err != nil) != tt.wantErr {
@@ -102,11 +99,11 @@ func TestDB_FindAll(t *testing.T) {
 	}
 }
 
-func TestDB_FindByID(t *testing.T) {
+func TestDefaultSelector_FindByID(t *testing.T) {
 	is := is.NewRelaxed(t)
 
 	type fields struct {
-		DB *sql.DB
+		Datastorer datastore.Datastorer
 	}
 	type args struct {
 		ctx    context.Context
@@ -123,9 +120,10 @@ func TestDB_FindByID(t *testing.T) {
 	if err != nil {
 		t.Errorf("datastore.NewDB error = %v", err)
 	}
+	ds := datastore.NewDefaultDatastore(db)
 	ctx := context.Background()
 
-	m := newMovieDBHelper(t, ctx, db)
+	m := newMovieDBHelper(t, ctx, ds, true)
 
 	tests := []struct {
 		name    string
@@ -134,12 +132,12 @@ func TestDB_FindByID(t *testing.T) {
 		want    *movie.Movie
 		wantErr bool
 	}{
-		{"happy path", fields{db}, args{ctx, m.ExternalID}, m, false},
+		{"happy path", fields{Datastorer: ds}, args{ctx, m.ExternalID}, m, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := &DB{
-				DB: tt.fields.DB,
+			d := &DefaultSelector{
+				Datastorer: tt.fields.Datastorer,
 			}
 			got, err := d.FindByID(tt.args.ctx, tt.args.extlID)
 			if (err != nil) != tt.wantErr {
@@ -160,41 +158,26 @@ func TestDB_FindByID(t *testing.T) {
 // newMovieDBHelper creates/inserts a new movie in the db and then
 // registers a t.Cleanup function to delete it. The insert and
 // delete are both in separate database transactions
-func newMovieDBHelper(t *testing.T, ctx context.Context, db *sql.DB) *movie.Movie {
+func newMovieDBHelper(t *testing.T, ctx context.Context, ds datastore.Datastorer, cleanup bool) *movie.Movie {
 	t.Helper()
 
 	m := newMovie(t)
 
-	sqltx1, err := db.BeginTx(ctx, nil)
+	defaultTransactor := NewDefaultTransactor(ds)
+
+	err := defaultTransactor.Create(ctx, m)
 	if err != nil {
-		t.Fatalf("db.BeginTx error = %v", err)
+		t.Fatalf("defaultTransactor.Create error = %v", err)
 	}
 
-	tx := Tx{sqltx1}
-	err = tx.Create(ctx, m)
-	if err != nil {
-		t.Fatalf("tx.Create() error = %v", err)
+	if cleanup == true {
+		t.Cleanup(func() {
+			err := defaultTransactor.Delete(ctx, m)
+			if err != nil {
+				t.Fatalf("t.Cleanup defaultTransactor.Delete error = %v", err)
+			}
+		})
 	}
-
-	if err := tx.Commit(); err != nil {
-		t.Fatalf("tx.Commit() error = %v", err)
-	}
-
-	t.Cleanup(func() {
-		sqltx2, err := db.BeginTx(ctx, nil)
-		if err != nil {
-			t.Fatalf("db.BeginTx error = %v", err)
-		}
-
-		tx2 := Tx{sqltx2}
-		if err := tx2.Delete(ctx, m); err != nil {
-			t.Fatalf("tx.Delete error = %v", err)
-		}
-		if err := tx2.Commit(); err != nil {
-			t.Fatalf("tx.Commit() error = %v", err)
-		}
-
-	})
 
 	return m
 }
