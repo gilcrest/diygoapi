@@ -18,10 +18,14 @@ import (
 // CreateMovieHandler is a Handler creates a Movie
 type CreateMovieHandler http.Handler
 
+// ProvideCreateMovieHandler is a provider for the
+// CreateMovieHandler for wire
 func ProvideCreateMovieHandler(h DefaultMovieHandlers) CreateMovieHandler {
 	return http.HandlerFunc(h.CreateMovie)
 }
 
+// DefaultMovieHandlers are the default handlers for CRUD operations
+// for a Movie. Each method on the struct is a separate handler.
 type DefaultMovieHandlers struct {
 	UserRetriever auth.UserRetriever
 	Authorizer    auth.Authorizer
@@ -29,6 +33,7 @@ type DefaultMovieHandlers struct {
 	Selector      moviestore.Selector
 }
 
+// CreateMovie is a HandlerFunc used to create a Movie
 func (h DefaultMovieHandlers) CreateMovie(w http.ResponseWriter, r *http.Request) {
 	// createMovieRequestBody is the request struct for Create
 	type createMovieRequestBody struct {
@@ -160,6 +165,8 @@ func (h DefaultMovieHandlers) CreateMovie(w http.ResponseWriter, r *http.Request
 	}
 }
 
+// ProvideUpdateMovieHandler is a provider for the
+// UpdateMovieHandler for wire
 func ProvideUpdateMovieHandler(h DefaultMovieHandlers) UpdateMovieHandler {
 	return http.HandlerFunc(h.UpdateMovie)
 }
@@ -290,6 +297,8 @@ func (h DefaultMovieHandlers) UpdateMovie(w http.ResponseWriter, r *http.Request
 	}
 }
 
+// ProvideDeleteMovieHandler is a provider for the
+// DeleteMovieHandler for wire
 func ProvideDeleteMovieHandler(h DefaultMovieHandlers) DeleteMovieHandler {
 	return http.HandlerFunc(h.DeleteMovie)
 }
@@ -372,6 +381,8 @@ func (h DefaultMovieHandlers) DeleteMovie(w http.ResponseWriter, r *http.Request
 	}
 }
 
+// ProvideFindMovieByIDHandler is a provider for the
+// FindMovieByIDHandler for wire
 func ProvideFindMovieByIDHandler(h DefaultMovieHandlers) FindMovieByIDHandler {
 	return http.HandlerFunc(h.FindByID)
 }
@@ -460,6 +471,8 @@ func (h DefaultMovieHandlers) FindByID(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ProvideFindAllMoviesHandler is a provider for the
+// FindAllMoviesHandler for wire
 func ProvideFindAllMoviesHandler(h DefaultMovieHandlers) FindAllMoviesHandler {
 	return http.HandlerFunc(h.FindAllMovies)
 }
