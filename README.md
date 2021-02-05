@@ -4,7 +4,7 @@ A RESTful API template (built with Go)
 
 The goal of this project is to make an example/template of a relational database-backed REST HTTP API that has characteristics needed to ensure success in a high volume environment. I'm gearing this towards beginners, as I struggled with a lot of this over the past couple of years and would like to help others getting started.
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/gilcrest/go-api-basic.svg)](https://pkg.go.dev/github.com/gilcrest/go-api-basic)
+[![Go Reference](https://pkg.go.dev/badge/github.com/gilcrest/go-api-basic.svg)](https://pkg.go.dev/github.com/gilcrest/go-api-basic) [![Go Report Card](https://goreportcard.com/badge/github.com/gilcrest/go-api-basic)](https://goreportcard.com/report/github.com/gilcrest/go-api-basic)
 
 ## API Walkthrough
 
