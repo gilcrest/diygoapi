@@ -74,7 +74,7 @@ func TestDefaultSelector_FindAll(t *testing.T) {
 
 	// create a movie with the helper to ensure that at least one row
 	// is returned
-	_ = newMovieDBHelper(t, ctx, ds, true)
+	_ = newMovieDBHelper(ctx, t, ds, true)
 
 	tests := []struct {
 		name    string
@@ -123,7 +123,7 @@ func TestDefaultSelector_FindByID(t *testing.T) {
 	ds := datastore.NewDefaultDatastore(db)
 	ctx := context.Background()
 
-	m := newMovieDBHelper(t, ctx, ds, true)
+	m := newMovieDBHelper(ctx, t, ds, true)
 
 	tests := []struct {
 		name    string
@@ -158,7 +158,7 @@ func TestDefaultSelector_FindByID(t *testing.T) {
 // newMovieDBHelper creates/inserts a new movie in the db and then
 // registers a t.Cleanup function to delete it. The insert and
 // delete are both in separate database transactions
-func newMovieDBHelper(t *testing.T, ctx context.Context, ds datastore.Datastorer, cleanup bool) *movie.Movie {
+func newMovieDBHelper(ctx context.Context, t *testing.T, ds datastore.Datastorer, cleanup bool) *movie.Movie {
 	t.Helper()
 
 	m := newMovie(t)
