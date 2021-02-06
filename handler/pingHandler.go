@@ -13,10 +13,12 @@ import (
 // PingHandler is a Handler that gives app status, such as db ping, etc.
 type PingHandler http.Handler
 
+// ProvidePingHandler is a provider for the PingHandler for wire
 func ProvidePingHandler(h DefaultPingHandler) PingHandler {
 	return http.HandlerFunc(h.Ping)
 }
 
+// DefaultPingHandler is a handler to allow for general health checks
 type DefaultPingHandler struct {
 	Datastorer datastore.Datastorer
 }

@@ -57,21 +57,25 @@ type Movie struct {
 	UpdateTime time.Time
 }
 
+// SetExternalID is a setter for a Movie External ID
 func (m *Movie) SetExternalID(id string) *Movie {
 	m.ExternalID = id
 	return m
 }
 
+// SetTitle is a setter for a Movie title
 func (m *Movie) SetTitle(t string) *Movie {
 	m.Title = t
 	return m
 }
 
+// SetRated is a setter for a Movie rating
 func (m *Movie) SetRated(r string) *Movie {
 	m.Rated = r
 	return m
 }
 
+// SetReleased is a setter for a Movie release date
 func (m *Movie) SetReleased(r string) (*Movie, error) {
 	t, err := time.Parse(time.RFC3339, r)
 	if err != nil {
@@ -84,26 +88,31 @@ func (m *Movie) SetReleased(r string) (*Movie, error) {
 	return m, nil
 }
 
+// SetRunTime is a setter for a Movie run time in minutes
 func (m *Movie) SetRunTime(rt int) *Movie {
 	m.RunTime = rt
 	return m
 }
 
+// SetDirector is a setter for a Movie director
 func (m *Movie) SetDirector(d string) *Movie {
 	m.Director = d
 	return m
 }
 
+// SetWriter is a setter for a Movie writer
 func (m *Movie) SetWriter(w string) *Movie {
 	m.Writer = w
 	return m
 }
 
+// SetUpdateUser is a setter for a Movie update user
 func (m *Movie) SetUpdateUser(u *user.User) *Movie {
 	m.UpdateUser = *u
 	return m
 }
 
+// SetUpdateTime is a setter for a Movie update time
 func (m *Movie) SetUpdateTime() *Movie {
 	m.UpdateTime = time.Now().UTC()
 	return m
