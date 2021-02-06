@@ -9,6 +9,8 @@ import (
 	"github.com/gilcrest/go-api-basic/datastore"
 )
 
+// NewPGDatasourceName is a test helper to get a PGDatasourceName
+// from environment variables
 func NewPGDatasourceName(t *testing.T) datastore.PGDatasourceName {
 	t.Helper()
 

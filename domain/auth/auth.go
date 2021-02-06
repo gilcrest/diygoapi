@@ -27,6 +27,7 @@ func (at AccessToken) NewGoogleOauth2Token() *oauth2.Token {
 	return &oauth2.Token{AccessToken: at.Token, TokenType: at.TokenType}
 }
 
+// UserRetriever interface is used to retrieve a user from an access token
 type UserRetriever interface {
 	User(ctx context.Context, token AccessToken) (*user.User, error)
 }
@@ -111,6 +112,7 @@ func SetAccessToken2Context(ctx context.Context, token, tokenType string) contex
 	return context.WithValue(ctx, contextKeyAccessToken, at)
 }
 
+// AccessControlList (ACL) describes permissions for a given object
 type AccessControlList struct {
 	Subject string
 	Object  string
