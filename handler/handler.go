@@ -48,15 +48,13 @@ func AddStandardHandlerChain(logger zerolog.Logger, c alice.Chain) alice.Chain {
 	c = c.Append(hlog.UserAgentHandler("user_agent"))
 	c = c.Append(hlog.RefererHandler("referer"))
 	c = c.Append(hlog.RequestIDHandler("request_id", "Request-Id"))
-	c = c.Append(ResponseHeaderHandler)
 
 	return c
 }
 
-// ResponseHeaderHandler middleware is used to add any
-// standard HTTP response headers. All of the responses for this app
-// have a JSON based response body
-func ResponseHeaderHandler(h http.Handler) http.Handler {
+// JSONContentTypeHandler middleware is used to add the application/json
+// Content-Type Header for responses
+func JSONContentTypeHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Add("Content-Type", "application/json")
@@ -125,7 +123,7 @@ func NewStandardResponse(r *http.Request, d interface{}) (*StandardResponse, err
 	// gets Trace ID from request
 	id, ok := hlog.IDFromRequest(r)
 	if !ok {
-		return nil, errs.E(errors.New("trace ID not properly set to request context"))
+		return nil, errs.E(errors.New("request ID not properly set to request context"))
 	}
 	sr.RequestID = id.String()
 
