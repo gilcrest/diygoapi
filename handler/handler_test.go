@@ -58,7 +58,6 @@ func TestAccessTokenHandler(t *testing.T) {
 				Token:     "abcdef123",
 				TokenType: "Bearer",
 			}
-			t.Log(token)
 			c.Assert(token, qt.Equals, wantToken)
 		})
 
