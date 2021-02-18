@@ -1,4 +1,4 @@
-// Package authgateway is used for all out bound calls to authenticate
+// Package authgateway encapsulates outbound calls to authenticate
 // a User
 package authgateway
 
