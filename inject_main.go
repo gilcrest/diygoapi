@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/gilcrest/go-api-basic/datastore/moviestore"
+	"github.com/gilcrest/go-api-basic/datastore/pingstore"
 
 	"github.com/gilcrest/go-api-basic/domain/auth"
 	"github.com/gilcrest/go-api-basic/gateway/authgateway"
@@ -25,6 +26,13 @@ import (
 	"gocloud.dev/server/health/sqlhealth"
 )
 
+var pingHandlerSet = wire.NewSet(
+	pingstore.NewDefaultPinger,
+	wire.Bind(new(pingstore.Pinger), new(pingstore.DefaultPinger)),
+	wire.Struct(new(handler.DefaultPingHandler), "*"),
+	handler.ProvidePingHandler,
+)
+
 var movieHandlerSet = wire.NewSet(
 	wire.Struct(new(authgateway.GoogleToken2User), "*"),
 	wire.Bind(new(auth.UserRetriever), new(authgateway.GoogleToken2User)),
@@ -35,13 +43,11 @@ var movieHandlerSet = wire.NewSet(
 	moviestore.NewDefaultSelector,
 	wire.Bind(new(moviestore.Selector), new(moviestore.DefaultSelector)),
 	wire.Struct(new(handler.DefaultMovieHandlers), "*"),
-	wire.Struct(new(handler.DefaultPingHandler), "*"),
 	handler.ProvideCreateMovieHandler,
 	handler.ProvideFindMovieByIDHandler,
 	handler.ProvideFindAllMoviesHandler,
 	handler.ProvideUpdateMovieHandler,
 	handler.ProvideDeleteMovieHandler,
-	handler.ProvidePingHandler,
 	wire.Struct(new(handler.Handlers), "*"),
 )
 
@@ -76,6 +82,7 @@ func newServer(ctx context.Context, logger zerolog.Logger, dsn datastore.PGDatas
 		wire.Struct(new(server.Options), "HealthChecks", "TraceExporter", "DefaultSamplingPolicy", "Driver"),
 		datastoreSet,
 		movieHandlerSet,
+		pingHandlerSet,
 		routerSet,
 	)
 	return nil, nil, nil

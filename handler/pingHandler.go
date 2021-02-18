@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/gilcrest/go-api-basic/datastore"
+	"github.com/gilcrest/go-api-basic/datastore/pingstore"
 
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/rs/zerolog/hlog"
@@ -20,10 +20,10 @@ func ProvidePingHandler(h DefaultPingHandler) PingHandler {
 
 // DefaultPingHandler is a handler to allow for general health checks
 type DefaultPingHandler struct {
-	Datastorer datastore.Datastorer
+	Pinger pingstore.Pinger
 }
 
-//Ping handles GET requests for the /ping endpoint
+// Ping handles GET requests for the /ping endpoint
 func (h DefaultPingHandler) Ping(w http.ResponseWriter, r *http.Request) {
 	type pingResponseData struct {
 		DBUp bool `json:"db_up"`
@@ -36,11 +36,11 @@ func (h DefaultPingHandler) Ping(w http.ResponseWriter, r *http.Request) {
 
 	// check if db connection is still alive
 	var dbok bool
-	err := h.Datastorer.DB().PingContext(ctx)
+	err := h.Pinger.PingDB(ctx)
 	// if there is no error, db is up, set dbok to true,
 	// if db is down, log the error
 	if err != nil {
-		logger.Error().Err(err).Msg("PingContext returned an error")
+		logger.Error().Err(err).Msg("PingDB error")
 	} else {
 		dbok = true
 	}
