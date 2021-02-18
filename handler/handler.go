@@ -26,9 +26,13 @@ type Handlers struct {
 	PingHandler          PingHandler
 }
 
-// AddStandardHandlerChain returns an alice.Chain initialized with all the standard
-// handlers for logging, authentication and response headers and fields
-func AddStandardHandlerChain(logger zerolog.Logger, c alice.Chain) alice.Chain {
+// LoggerHandlerChain returns a handler chain (via alice.Chain)
+// initialized with all the standard handlers for logging. The logger
+// will be added to the request context for subsequent use with pre-populated
+// fields, including the request method, url, status, size, duration, remote IP,
+// user agent, referer. A unique Request ID is also added to the logger, context
+// and response headers.
+func LoggerHandlerChain(logger zerolog.Logger, c alice.Chain) alice.Chain {
 
 	// Install the logger handler with default output on the console
 	c = c.Append(hlog.NewHandler(logger))
@@ -43,11 +47,11 @@ func AddStandardHandlerChain(logger zerolog.Logger, c alice.Chain) alice.Chain {
 			Int("size", size).
 			Dur("duration", duration).
 			Msg("")
-	}))
-	c = c.Append(hlog.RemoteAddrHandler("ip"))
-	c = c.Append(hlog.UserAgentHandler("user_agent"))
-	c = c.Append(hlog.RefererHandler("referer"))
-	c = c.Append(hlog.RequestIDHandler("request_id", "Request-Id"))
+	})).
+		Append(hlog.RemoteAddrHandler("remote_ip")).
+		Append(hlog.UserAgentHandler("user_agent")).
+		Append(hlog.RefererHandler("referer")).
+		Append(hlog.RequestIDHandler("request_id", "Request-Id"))
 
 	return c
 }

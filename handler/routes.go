@@ -9,14 +9,14 @@ import (
 // NewMuxRouter sets up the mux.Router and registers routes to URL paths
 // using the available handlers
 func NewMuxRouter(logger zerolog.Logger, handlers Handlers) *mux.Router {
-	// I should take this as a dependency, but need to do some work with wire
+	// create a new gorilla/mux router
 	rtr := mux.NewRouter()
 
-	// I should take this as a dependency, but need to do some work with wire
+	// Start a new alice handler chain
 	c := alice.New()
 
-	// add Standard Handler chain and zerolog logger to Context
-	c = AddStandardHandlerChain(logger, c)
+	// add LoggerHandlerChain handler chain and zerolog logger to Context
+	c = LoggerHandlerChain(logger, c)
 
 	// send Router through PathPrefix method to validate any standard
 	// subroutes you may want for your APIs. e.g. I always want to be
