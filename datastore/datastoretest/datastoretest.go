@@ -1,4 +1,5 @@
-// Package datastoretest is for datastore helper functions
+// Package datastoretest provides testing helper functions for the
+// datastore package
 package datastoretest
 
 import (

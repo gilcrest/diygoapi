@@ -1,3 +1,5 @@
+// Package authtest provides testing helper functions for the
+// auth package
 package authtest
 
 import (

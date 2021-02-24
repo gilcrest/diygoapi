@@ -1,3 +1,5 @@
+// Package usertest provides testing helper functions for the
+// user package
 package usertest
 
 import (
