@@ -25,7 +25,7 @@ func Test_newUser(t *testing.T) {
 		Picture:    "google.com/picture",
 	}
 
-	u := &user.User{
+	u := user.User{
 		Email:        "otto.maddox@helpinghandacceptanceco.com",
 		LastName:     "Maddox",
 		FirstName:    "Otto",
@@ -38,7 +38,7 @@ func Test_newUser(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want *user.User
+		want user.User
 	}{
 		{"typical", args{ui}, u},
 	}
@@ -60,10 +60,10 @@ func TestGoogleToken2User_User(t *testing.T) {
 	// use the Google oauth2 playground https://developers.google.com/oauthplayground/
 	// to get a valid Access token to test this function
 	at := auth.AccessToken{
-		Token:     "ya29.A0AfH6SMBnm00fV6q1a9txFgFntz0p3eNXLGfpUFJYMcJbUwXr009nUuobSQ9lpD7DkbWFcntJkaXfqmYUpl2xM7qEwj8Qo9JhEMHwC5gT1HAEI-CipvcpsMPDCm1pSnn5XM8xLXDAt4sm2AJ2s43psCfHdmGZ",
-		TokenType: "Bearer",
+		Token:     "ya29.A0AfH6SMDnot1CTCJETGz-qLcpnga_0FntDuQX3c1g6wdGj0yVWmKyGrRZPEgZOGEG8Hklk0-ROSGidi618b15u_95X22dEy_CrJXwjUrNwN8qRlONEIbFvKr9T_YLdwI8srgT5IG0edKtOiHZ473fnLO8qgpt",
+		TokenType: auth.BearerTokenType,
 	}
-	u := &user.User{Email: "otto.maddox711@gmail.com",
+	u := user.User{Email: "otto.maddox711@gmail.com",
 		LastName:   "Maddox",
 		FirstName:  "Otto",
 		FullName:   "Otto Maddox",
@@ -71,22 +71,22 @@ func TestGoogleToken2User_User(t *testing.T) {
 	}
 	bt := auth.AccessToken{
 		Token:     "badToken",
-		TokenType: "Bearer",
+		TokenType: auth.BearerTokenType,
 	}
 
 	tests := []struct {
 		name    string
 		args    args
-		want    *user.User
+		want    user.User
 		wantErr bool
 	}{
 		{"typical", args{ctx, at}, u, false},
-		{"bad token", args{ctx, bt}, nil, true},
+		{"bad token", args{ctx, bt}, user.User{}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := GoogleToken2User{}
-			got, err := c.User(tt.args.ctx, tt.args.token)
+			c := GoogleAccessTokenConverter{}
+			got, err := c.Convert(tt.args.ctx, tt.args.token)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("User() error = %v, wantErr %v", err, tt.wantErr)
 				return

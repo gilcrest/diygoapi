@@ -15,6 +15,8 @@ import (
 	"github.com/gilcrest/go-api-basic/domain/user"
 )
 
+const BearerTokenType string = "Bearer"
+
 // AccessToken represents an access token found in an
 // HTTP header, typically a Bearer token for Oauth2
 type AccessToken struct {
@@ -27,15 +29,16 @@ func (at AccessToken) NewGoogleOauth2Token() *oauth2.Token {
 	return &oauth2.Token{AccessToken: at.Token, TokenType: at.TokenType}
 }
 
-// UserRetriever interface is used to retrieve a user from an access token
-type UserRetriever interface {
-	User(ctx context.Context, token AccessToken) (*user.User, error)
+// AccessTokenConverter interface is used to convert an access token
+// to a User
+type AccessTokenConverter interface {
+	Convert(ctx context.Context, token AccessToken) (user.User, error)
 }
 
 // Authorizer interface authorizes access to a resource given
 // a user and action
 type Authorizer interface {
-	Authorize(ctx context.Context, sub *user.User, obj string, act string) error
+	Authorize(ctx context.Context, sub user.User, obj string, act string) error
 }
 
 // DefaultAuthorizer struct satisfies the Authorizer interface.
@@ -50,7 +53,7 @@ type DefaultAuthorizer struct{}
 // action on an object. e.g. gilcrest can read (GET) the resource
 // at the /ping path. This is obviously completely bogus right now,
 // eventually need to look into something like Casbin for ACL/RBAC
-func (a DefaultAuthorizer) Authorize(ctx context.Context, sub *user.User, obj string, act string) error {
+func (a DefaultAuthorizer) Authorize(ctx context.Context, sub user.User, obj string, act string) error {
 	logger := *zerolog.Ctx(ctx)
 
 	const (
@@ -61,7 +64,7 @@ func (a DefaultAuthorizer) Authorize(ctx context.Context, sub *user.User, obj st
 	switch strings.HasPrefix(obj, movies) && (act == http.MethodPost || act == http.MethodPut || act == http.MethodDelete || act == http.MethodGet) {
 	case true:
 		switch sub.Email {
-		case "gilcrest@gmail.com":
+		case "otto.maddox711@gmail.com":
 			authorized = true
 		}
 	}

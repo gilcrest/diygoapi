@@ -66,13 +66,12 @@ func JSONContentTypeHandler(h http.Handler) http.Handler {
 		})
 }
 
-// AccessTokenHandler middleware is used to set the Bearer token
-// to the context as an auth.AccessToken
+// AccessTokenHandler middleware is used to pull the Bearer token
+// from the Authorization header and set it to the request context
+// as an auth.AccessToken
 func AccessTokenHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
-			const tokenType string = "Bearer"
-
 			logger := *hlog.FromRequest(r)
 			var token string
 
@@ -86,7 +85,7 @@ func AccessTokenHandler(h http.Handler) http.Handler {
 			headerValue, ok := r.Header["Authorization"]
 			if ok && len(headerValue) >= 1 {
 				token = headerValue[0]
-				token = strings.TrimPrefix(token, tokenType+" ")
+				token = strings.TrimPrefix(token, auth.BearerTokenType+" ")
 			}
 
 			// If the token is empty...
@@ -105,7 +104,7 @@ func AccessTokenHandler(h http.Handler) http.Handler {
 			}
 
 			// add access token to context
-			ctx = auth.SetAccessToken2Context(ctx, token, tokenType)
+			ctx = auth.SetAccessToken2Context(ctx, token, auth.BearerTokenType)
 
 			// call original, adding access token to request context
 			h.ServeHTTP(w, r.WithContext(ctx))

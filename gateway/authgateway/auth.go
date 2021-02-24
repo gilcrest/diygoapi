@@ -6,26 +6,24 @@ import (
 	"context"
 
 	"github.com/gilcrest/go-api-basic/domain/auth"
-
+	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/user"
 
 	"golang.org/x/oauth2"
 	googleoauth "google.golang.org/api/oauth2/v2"
 	"google.golang.org/api/option"
-
-	"github.com/gilcrest/go-api-basic/domain/errs"
 )
 
-// GoogleToken2User is used to convert an auth.AccessToken to a User
+// GoogleAccessTokenConverter is used to convert an auth.AccessToken to a User
 // through Google's API
-type GoogleToken2User struct{}
+type GoogleAccessTokenConverter struct{}
 
-// User calls the Google Userinfo API with the access token and converts
+// Convert calls the Google Userinfo API with the access token and converts
 // the Userinfo struct to a User struct
-func (c GoogleToken2User) User(ctx context.Context, token auth.AccessToken) (*user.User, error) {
+func (c GoogleAccessTokenConverter) Convert(ctx context.Context, token auth.AccessToken) (user.User, error) {
 	ui, err := userInfo(ctx, token.NewGoogleOauth2Token())
 	if err != nil {
-		return nil, err
+		return user.User{}, err
 	}
 
 	return newUser(ui), nil
@@ -57,8 +55,8 @@ func userInfo(ctx context.Context, token *oauth2.Token) (*googleoauth.Userinfo, 
 
 // newUser initializes the user.User struct given a Userinfo struct
 // from Google
-func newUser(userinfo *googleoauth.Userinfo) *user.User {
-	return &user.User{
+func newUser(userinfo *googleoauth.Userinfo) user.User {
+	return user.User{
 		Email:     userinfo.Email,
 		LastName:  userinfo.FamilyName,
 		FirstName: userinfo.GivenName,

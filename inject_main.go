@@ -34,8 +34,8 @@ var pingHandlerSet = wire.NewSet(
 )
 
 var movieHandlerSet = wire.NewSet(
-	wire.Struct(new(authgateway.GoogleToken2User), "*"),
-	wire.Bind(new(auth.UserRetriever), new(authgateway.GoogleToken2User)),
+	wire.Struct(new(authgateway.GoogleAccessTokenConverter), "*"),
+	wire.Bind(new(auth.AccessTokenConverter), new(authgateway.GoogleAccessTokenConverter)),
 	wire.Struct(new(auth.DefaultAuthorizer), "*"),
 	wire.Bind(new(auth.Authorizer), new(auth.DefaultAuthorizer)),
 	moviestore.NewDefaultTransactor,

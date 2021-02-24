@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/gilcrest/go-api-basic/domain/user/usertest"
+
 	"github.com/gilcrest/go-api-basic/domain/user"
 
 	"golang.org/x/oauth2"
@@ -19,7 +21,7 @@ func TestAccessToken_NewGoogleOauth2Token(t *testing.T) {
 
 	gtoken := &oauth2.Token{
 		AccessToken: "abcdef123",
-		TokenType:   "Bearer",
+		TokenType:   BearerTokenType,
 	}
 
 	tests := []struct {
@@ -27,7 +29,7 @@ func TestAccessToken_NewGoogleOauth2Token(t *testing.T) {
 		fields fields
 		want   *oauth2.Token
 	}{
-		{"typical", fields{Token: "abcdef123", TokenType: "Bearer"}, gtoken},
+		{"typical", fields{Token: "abcdef123", TokenType: BearerTokenType}, gtoken},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -45,14 +47,14 @@ func TestAccessToken_NewGoogleOauth2Token(t *testing.T) {
 func TestDefaultAuthorizer_Authorize(t *testing.T) {
 	type args struct {
 		ctx context.Context
-		sub *user.User
+		sub user.User
 		obj string
 		act string
 	}
 
 	ctx := context.Background()
-	u := &user.User{Email: "gilcrest@gmail.com"}
-	invalidUser := &user.User{Email: "badactor@gmail.com"}
+	u := usertest.NewUser(t)
+	invalidUser := user.User{Email: "badactor@gmail.com"}
 	obj := "/api/v1/movies"
 	act := http.MethodGet
 
@@ -82,11 +84,10 @@ func TestSetAccessToken2Context(t *testing.T) {
 	}
 	ctx := context.Background()
 	token := "abcdef123"
-	bearer := "Bearer"
 
 	at := AccessToken{
 		Token:     token,
-		TokenType: bearer,
+		TokenType: BearerTokenType,
 	}
 
 	wantCtx := context.WithValue(ctx, contextKeyAccessToken, at)
@@ -96,7 +97,7 @@ func TestSetAccessToken2Context(t *testing.T) {
 		args args
 		want context.Context
 	}{
-		{"typical", args{ctx, token, bearer}, wantCtx},
+		{"typical", args{ctx, token, BearerTokenType}, wantCtx},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -112,7 +113,6 @@ func TestFromRequest(t *testing.T) {
 		r *http.Request
 	}
 	token := "abcdef123"
-	bearer := "Bearer"
 
 	r, err := http.NewRequest(http.MethodGet, "/api/v1/movies", nil)
 	if err != nil {
@@ -120,11 +120,11 @@ func TestFromRequest(t *testing.T) {
 	}
 	at := AccessToken{
 		Token:     token,
-		TokenType: bearer,
+		TokenType: BearerTokenType,
 	}
 
 	ctx := context.Background()
-	ctx = SetAccessToken2Context(ctx, token, bearer)
+	ctx = SetAccessToken2Context(ctx, token, BearerTokenType)
 	r = r.WithContext(ctx)
 
 	noAccessTokenRequest, err := http.NewRequest(http.MethodGet, "/api/v1/movies", nil)
@@ -137,11 +137,11 @@ func TestFromRequest(t *testing.T) {
 		t.Fatalf("http.NewRequest() error = %v", err)
 	}
 	ctx2 := context.Background()
-	ctx2 = SetAccessToken2Context(ctx2, "", bearer)
+	ctx2 = SetAccessToken2Context(ctx2, "", BearerTokenType)
 	noTokenRequest = noTokenRequest.WithContext(ctx2)
 	at2 := AccessToken{
 		Token:     "",
-		TokenType: bearer,
+		TokenType: BearerTokenType,
 	}
 
 	tests := []struct {

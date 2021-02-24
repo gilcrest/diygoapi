@@ -28,7 +28,7 @@ import (
 // Injectors from inject_main.go:
 
 func newServer(ctx context.Context, logger zerolog.Logger, dsn datastore.PGDatasourceName) (*server.Server, func(), error) {
-	googleToken2User := authgateway.GoogleToken2User{}
+	googleAccessTokenConverter := authgateway.GoogleAccessTokenConverter{}
 	defaultAuthorizer := auth.DefaultAuthorizer{}
 	db, cleanup, err := datastore.NewDB(dsn, logger)
 	if err != nil {
@@ -38,10 +38,10 @@ func newServer(ctx context.Context, logger zerolog.Logger, dsn datastore.PGDatas
 	defaultTransactor := moviestore.NewDefaultTransactor(defaultDatastore)
 	defaultSelector := moviestore.NewDefaultSelector(defaultDatastore)
 	defaultMovieHandlers := handler.DefaultMovieHandlers{
-		UserRetriever: googleToken2User,
-		Authorizer:    defaultAuthorizer,
-		Transactor:    defaultTransactor,
-		Selector:      defaultSelector,
+		AccessTokenConverter: googleAccessTokenConverter,
+		Authorizer:           defaultAuthorizer,
+		Transactor:           defaultTransactor,
+		Selector:             defaultSelector,
 	}
 	createMovieHandler := handler.ProvideCreateMovieHandler(defaultMovieHandlers)
 	findMovieByIDHandler := handler.ProvideFindMovieByIDHandler(defaultMovieHandlers)
@@ -87,7 +87,7 @@ var (
 
 var pingHandlerSet = wire.NewSet(pingstore.NewDefaultPinger, wire.Bind(new(pingstore.Pinger), new(pingstore.DefaultPinger)), wire.Struct(new(handler.DefaultPingHandler), "*"), handler.ProvidePingHandler)
 
-var movieHandlerSet = wire.NewSet(wire.Struct(new(authgateway.GoogleToken2User), "*"), wire.Bind(new(auth.UserRetriever), new(authgateway.GoogleToken2User)), wire.Struct(new(auth.DefaultAuthorizer), "*"), wire.Bind(new(auth.Authorizer), new(auth.DefaultAuthorizer)), moviestore.NewDefaultTransactor, wire.Bind(new(moviestore.Transactor), new(moviestore.DefaultTransactor)), moviestore.NewDefaultSelector, wire.Bind(new(moviestore.Selector), new(moviestore.DefaultSelector)), wire.Struct(new(handler.DefaultMovieHandlers), "*"), handler.ProvideCreateMovieHandler, handler.ProvideFindMovieByIDHandler, handler.ProvideFindAllMoviesHandler, handler.ProvideUpdateMovieHandler, handler.ProvideDeleteMovieHandler, wire.Struct(new(handler.Handlers), "*"))
+var movieHandlerSet = wire.NewSet(wire.Struct(new(authgateway.GoogleAccessTokenConverter), "*"), wire.Bind(new(auth.AccessTokenConverter), new(authgateway.GoogleAccessTokenConverter)), wire.Struct(new(auth.DefaultAuthorizer), "*"), wire.Bind(new(auth.Authorizer), new(auth.DefaultAuthorizer)), moviestore.NewDefaultTransactor, wire.Bind(new(moviestore.Transactor), new(moviestore.DefaultTransactor)), moviestore.NewDefaultSelector, wire.Bind(new(moviestore.Selector), new(moviestore.DefaultSelector)), wire.Struct(new(handler.DefaultMovieHandlers), "*"), handler.ProvideCreateMovieHandler, handler.ProvideFindMovieByIDHandler, handler.ProvideFindAllMoviesHandler, handler.ProvideUpdateMovieHandler, handler.ProvideDeleteMovieHandler, wire.Struct(new(handler.Handlers), "*"))
 
 var datastoreSet = wire.NewSet(datastore.NewDB, datastore.NewDefaultDatastore, wire.Bind(new(datastore.Datastorer), new(datastore.DefaultDatastore)))
 

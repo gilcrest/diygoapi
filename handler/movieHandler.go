@@ -27,10 +27,10 @@ func ProvideCreateMovieHandler(h DefaultMovieHandlers) CreateMovieHandler {
 // DefaultMovieHandlers are the default handlers for CRUD operations
 // for a Movie. Each method on the struct is a separate handler.
 type DefaultMovieHandlers struct {
-	UserRetriever auth.UserRetriever
-	Authorizer    auth.Authorizer
-	Transactor    moviestore.Transactor
-	Selector      moviestore.Selector
+	AccessTokenConverter auth.AccessTokenConverter
+	Authorizer           auth.Authorizer
+	Transactor           moviestore.Transactor
+	Selector             moviestore.Selector
 }
 
 // CreateMovie is a HandlerFunc used to create a Movie
@@ -69,7 +69,7 @@ func (h DefaultMovieHandlers) CreateMovie(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	u, err := h.UserRetriever.User(ctx, accessToken)
+	u, err := h.AccessTokenConverter.Convert(ctx, accessToken)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, err)
 		return
@@ -211,7 +211,7 @@ func (h DefaultMovieHandlers) UpdateMovie(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	u, err := h.UserRetriever.User(ctx, accessToken)
+	u, err := h.AccessTokenConverter.Convert(ctx, accessToken)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, err)
 		return
@@ -324,7 +324,7 @@ func (h DefaultMovieHandlers) DeleteMovie(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	u, err := h.UserRetriever.User(ctx, accessToken)
+	u, err := h.AccessTokenConverter.Convert(ctx, accessToken)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, err)
 		return
@@ -417,7 +417,7 @@ func (h DefaultMovieHandlers) FindByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u, err := h.UserRetriever.User(ctx, accessToken)
+	u, err := h.AccessTokenConverter.Convert(ctx, accessToken)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, err)
 		return
@@ -507,7 +507,7 @@ func (h DefaultMovieHandlers) FindAllMovies(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	u, err := h.UserRetriever.User(ctx, accessToken)
+	u, err := h.AccessTokenConverter.Convert(ctx, accessToken)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, err)
 		return

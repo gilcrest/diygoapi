@@ -8,12 +8,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/gilcrest/go-api-basic/domain/user/usertest"
+
 	"github.com/rs/zerolog/hlog"
 
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/pkg/errors"
-
-	"github.com/gilcrest/go-api-basic/domain/user"
 
 	qt "github.com/frankban/quicktest"
 
@@ -47,7 +47,7 @@ func TestAccessTokenHandler(t *testing.T) {
 		if err != nil {
 			t.Fatalf("http.NewRequest() error = %v", err)
 		}
-		req.Header.Add("Authorization", "Bearer abcdef123")
+		req.Header.Add("Authorization", auth.BearerTokenType+" abcdef123")
 
 		testAccessTokenHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			token, err := auth.FromRequest(r)
@@ -56,7 +56,7 @@ func TestAccessTokenHandler(t *testing.T) {
 			}
 			wantToken := auth.AccessToken{
 				Token:     "abcdef123",
-				TokenType: "Bearer",
+				TokenType: auth.BearerTokenType,
 			}
 			c.Assert(token, qt.Equals, wantToken)
 		})
@@ -108,7 +108,7 @@ func TestNewStandardResponse(t *testing.T) {
 		if err != nil {
 			t.Fatalf("http.NewRequest() error = %v", err)
 		}
-		u := user.User{Email: "otto.maddox711@gmail.com"}
+		u := usertest.NewUser(t)
 		_, err = NewStandardResponse(req, u)
 		wantErr := errs.E(errors.New("request ID not properly set to request context"))
 
@@ -138,7 +138,7 @@ func TestNewStandardResponse(t *testing.T) {
 		h := hlog.RequestIDHandler("request_id", "Request-Id")(testHandler)
 		h.ServeHTTP(rr, req)
 
-		u := user.User{Email: "otto.maddox711@gmail.com"}
+		u := usertest.NewUser(t)
 		sr, err := NewStandardResponse(req, u)
 		if err != nil {
 			t.Fatalf("NewStandardResponse() error = %v", err)
