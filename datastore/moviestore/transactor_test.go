@@ -17,14 +17,10 @@ func TestNewDefaultTransactor(t *testing.T) {
 	type args struct {
 		ds datastore.Datastorer
 	}
-	dsn := datastoretest.NewPGDatasourceName(t)
 	lgr := logger.NewLogger(os.Stdout, true)
 
-	db, cleanup, err := datastore.NewDB(dsn, lgr)
+	db, cleanup := datastoretest.NewDB(t, lgr)
 	defer cleanup()
-	if err != nil {
-		t.Errorf("datastore.NewDB error = %v", err)
-	}
 	defaultDatastore := datastore.NewDefaultDatastore(db)
 	defaultTransactor := DefaultTransactor{defaultDatastore}
 
@@ -52,16 +48,12 @@ func TestDefaultTransactor_Create(t *testing.T) {
 		ctx context.Context
 		m   *movie.Movie
 	}
-	dsn := datastoretest.NewPGDatasourceName(t)
 	lgr := logger.NewLogger(os.Stdout, true)
 
 	// I am intentionally not using the cleanup function that is
 	// returned from NewDB as I need the DB to stay open for the test
 	// t.Cleanup function
-	db, _, err := datastore.NewDB(dsn, lgr)
-	if err != nil {
-		t.Errorf("datastore.NewDB error = %v", err)
-	}
+	db, _ := datastoretest.NewDB(t, lgr)
 	defaultDatastore := datastore.NewDefaultDatastore(db)
 	defaultTransactor := NewDefaultTransactor(defaultDatastore)
 	ctx := context.Background()
@@ -101,16 +93,12 @@ func TestDefaultTransactor_Update(t *testing.T) {
 		ctx context.Context
 		m   *movie.Movie
 	}
-	dsn := datastoretest.NewPGDatasourceName(t)
 	lgr := logger.NewLogger(os.Stdout, true)
 
 	// I am intentionally not using the cleanup function that is
 	// returned from NewDB as I need the DB to stay open for the test
 	// t.Cleanup function
-	db, _, err := datastore.NewDB(dsn, lgr)
-	if err != nil {
-		t.Errorf("datastore.NewDB error = %v", err)
-	}
+	db, _ := datastoretest.NewDB(t, lgr)
 	defaultDatastore := datastore.NewDefaultDatastore(db)
 	// defaultTransactor := NewDefaultTransactor(defaultDatastore)
 	ctx := context.Background()
@@ -153,16 +141,12 @@ func TestDefaultTransactor_Delete(t *testing.T) {
 		ctx context.Context
 		m   *movie.Movie
 	}
-	dsn := datastoretest.NewPGDatasourceName(t)
 	lgr := logger.NewLogger(os.Stdout, true)
 
 	// I am intentionally not using the cleanup function that is
 	// returned from NewDB as I need the DB to stay open for the test
 	// t.Cleanup function
-	db, _, err := datastore.NewDB(dsn, lgr)
-	if err != nil {
-		t.Errorf("datastore.NewDB error = %v", err)
-	}
+	db, _ := datastoretest.NewDB(t, lgr)
 	defaultDatastore := datastore.NewDefaultDatastore(db)
 	// defaultTransactor := NewDefaultTransactor(defaultDatastore)
 	ctx := context.Background()

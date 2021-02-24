@@ -6,7 +6,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/gilcrest/go-api-basic/domain/user"
+	"github.com/gilcrest/go-api-basic/domain/user/usertest"
+
 	"github.com/matryer/is"
 
 	"github.com/gilcrest/go-api-basic/domain/movie"
@@ -23,14 +24,11 @@ func TestNewDefaultSelector(t *testing.T) {
 		ds datastore.Datastorer
 	}
 
-	dsn := datastoretest.NewPGDatasourceName(t)
 	lgr := logger.NewLogger(os.Stdout, true)
 
-	db, cleanup, err := datastore.NewDB(dsn, lgr)
+	db, cleanup := datastoretest.NewDB(t, lgr)
 	defer cleanup()
-	if err != nil {
-		t.Errorf("datastore.NewDB error = %v", err)
-	}
+
 	defaultDatastore := datastore.NewDefaultDatastore(db)
 	defaultSelector := DefaultSelector{defaultDatastore}
 
@@ -59,16 +57,12 @@ func TestDefaultSelector_FindAll(t *testing.T) {
 		ctx context.Context
 	}
 
-	dsn := datastoretest.NewPGDatasourceName(t)
 	lgr := logger.NewLogger(os.Stdout, true)
 
 	// I am intentionally not using the cleanup function that is
 	// returned from NewDB as I need the DB to stay open for the test
 	// t.Cleanup function
-	db, _, err := datastore.NewDB(dsn, lgr)
-	if err != nil {
-		t.Errorf("datastore.NewDB error = %v", err)
-	}
+	db, _ := datastoretest.NewDB(t, lgr)
 	ds := datastore.NewDefaultDatastore(db)
 	ctx := context.Background()
 
@@ -110,16 +104,12 @@ func TestDefaultSelector_FindByID(t *testing.T) {
 		extlID string
 	}
 
-	dsn := datastoretest.NewPGDatasourceName(t)
 	lgr := logger.NewLogger(os.Stdout, true)
 
 	// I am intentionally not using the cleanup function that is
 	// returned from NewDB as I need the DB to stay open for the test
 	// t.Cleanup function
-	db, _, err := datastore.NewDB(dsn, lgr)
-	if err != nil {
-		t.Errorf("datastore.NewDB error = %v", err)
-	}
+	db, _ := datastoretest.NewDB(t, lgr)
 	ds := datastore.NewDefaultDatastore(db)
 	ctx := context.Background()
 
@@ -190,11 +180,7 @@ func newMovie(t *testing.T) *movie.Movie {
 	if err != nil {
 		t.Fatalf("random.CryptoString() error = %v", err)
 	}
-	u := &user.User{
-		Email:     "gilcrest@gmail.com",
-		FirstName: "Dan",
-		LastName:  "Gillis",
-	}
+	u := usertest.NewUser(t)
 	m, err := movie.NewMovie(id, extlID, u)
 	if err != nil {
 		t.Fatalf("movie.NewMovie() error = %v", err)
