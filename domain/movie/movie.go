@@ -19,7 +19,7 @@ type Writer interface {
 }
 
 // NewMovie initializes a Movie struct for use in Movie creation
-func NewMovie(id uuid.UUID, extlID string, u *user.User) (*Movie, error) {
+func NewMovie(id uuid.UUID, extlID string, u user.User) (*Movie, error) {
 	switch {
 	case id == uuid.Nil:
 		return nil, errs.E(errs.Validation, errs.Parameter("ID"), errors.New(errs.MissingField("ID").Error()))
@@ -34,9 +34,9 @@ func NewMovie(id uuid.UUID, extlID string, u *user.User) (*Movie, error) {
 	return &Movie{
 		ID:         id,
 		ExternalID: extlID,
-		CreateUser: *u,
+		CreateUser: u,
 		CreateTime: now,
-		UpdateUser: *u,
+		UpdateUser: u,
 		UpdateTime: now,
 	}, nil
 }
@@ -107,8 +107,8 @@ func (m *Movie) SetWriter(w string) *Movie {
 }
 
 // SetUpdateUser is a setter for a Movie update user
-func (m *Movie) SetUpdateUser(u *user.User) *Movie {
-	m.UpdateUser = *u
+func (m *Movie) SetUpdateUser(u user.User) *Movie {
+	m.UpdateUser = u
 	return m
 }
 

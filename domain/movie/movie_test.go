@@ -1,15 +1,16 @@
 package movie_test
 
 import (
+	"reflect"
+	"testing"
+	"time"
+
 	qt "github.com/frankban/quicktest"
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/movie"
 	"github.com/gilcrest/go-api-basic/domain/user"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
-	"reflect"
-	"testing"
-	"time"
 )
 
 // Returns a valid User with mocked data
@@ -31,7 +32,7 @@ func newValidMovie() *movie.Movie {
 
 	u := newValidUser()
 
-	m, _ := movie.NewMovie(uid, externalID, &u)
+	m, _ := movie.NewMovie(uid, externalID, u)
 
 	return m
 }
@@ -55,7 +56,7 @@ func TestNewMovieErrorUuid(t *testing.T) {
 
 	u := newValidUser()
 	wantError := errs.E(errs.Validation, errs.Parameter("ID"), errors.New(errs.MissingField("ID").Error()))
-	if gotMovie, gotError := movie.NewMovie(uuid.UUID{}, "randomExternalId", &u); !reflect.DeepEqual(wantError.Error(), gotError.Error()) && gotMovie != nil {
+	if gotMovie, gotError := movie.NewMovie(uuid.UUID{}, "randomExternalId", u); !reflect.DeepEqual(wantError.Error(), gotError.Error()) && gotMovie != nil {
 		t.Errorf("Want: %v\nGot: %v", wantError, gotError)
 	}
 }
@@ -67,7 +68,7 @@ func TestNewMovieErrorExtlID(t *testing.T) {
 	u := newValidUser()
 	uid, _ := uuid.NewUUID()
 	wantError := errs.E(errs.Validation, errs.Parameter("ID"), errors.New(errs.MissingField("ID").Error()))
-	if gotMovie, gotError := movie.NewMovie(uid, "", &u); !reflect.DeepEqual(wantError.Error(), gotError.Error()) && gotMovie != nil {
+	if gotMovie, gotError := movie.NewMovie(uid, "", u); !reflect.DeepEqual(wantError.Error(), gotError.Error()) && gotMovie != nil {
 		t.Errorf("Want: %v\nGot: %v", wantError, gotError)
 	}
 }
@@ -81,7 +82,7 @@ func TestNewMovieErrorInvalidUser(t *testing.T) {
 
 	wantError := errs.E(errs.Validation, errs.Parameter("User"), errors.New("User is invalid"))
 
-	if gotMovie, gotError := movie.NewMovie(uid, "externalID", &u); !reflect.DeepEqual(wantError.Error(), gotError.Error()) && gotMovie != nil {
+	if gotMovie, gotError := movie.NewMovie(uid, "externalID", u); !reflect.DeepEqual(wantError.Error(), gotError.Error()) && gotMovie != nil {
 		t.Errorf("Want: %v\nGot: %v", wantError, gotError)
 	}
 }
@@ -100,7 +101,7 @@ func TestNewMovie(t *testing.T) {
 		CreateUser: u,
 		UpdateUser: u,
 	}
-	gotMovie, gotError := movie.NewMovie(uid, externalID, &u)
+	gotMovie, gotError := movie.NewMovie(uid, externalID, u)
 	if gotError != nil {
 
 		if gotMovie.ID != uid {
@@ -234,7 +235,7 @@ func TestSetUpdateUser(t *testing.T) {
 		ProfileLink:  "example.com.br/FoowBar",
 	}
 
-	gotMovie.SetUpdateUser(&newUser)
+	gotMovie.SetUpdateUser(newUser)
 
 	if gotMovie.UpdateUser != newUser {
 		t.Errorf("\nWant: %v\nGot: %v\n\n", newUser, gotMovie.UpdateUser)
