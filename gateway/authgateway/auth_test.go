@@ -2,6 +2,7 @@ package authgateway
 
 import (
 	"context"
+	"os"
 	"reflect"
 	"testing"
 
@@ -57,10 +58,16 @@ func TestGoogleToken2User_User(t *testing.T) {
 		token auth.AccessToken
 	}
 	ctx := context.Background()
+
 	// use the Google oauth2 playground https://developers.google.com/oauthplayground/
 	// to get a valid Access token to test this function
+	token, ok := os.LookupEnv("GOOGLE_ACCESS_TOKEN")
+	if !ok {
+		t.Fatalf("GOOGLE_ACCESS_TOKEN environment variable not properly set")
+	}
+
 	at := auth.AccessToken{
-		Token:     "ya29.A0AfH6SMDnot1CTCJETGz-qLcpnga_0FntDuQX3c1g6wdGj0yVWmKyGrRZPEgZOGEG8Hklk0-ROSGidi618b15u_95X22dEy_CrJXwjUrNwN8qRlONEIbFvKr9T_YLdwI8srgT5IG0edKtOiHZ473fnLO8qgpt",
+		Token:     token,
 		TokenType: auth.BearerTokenType,
 	}
 	u := user.User{Email: "otto.maddox711@gmail.com",
