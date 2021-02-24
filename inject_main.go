@@ -7,6 +7,8 @@ import (
 	"database/sql"
 	"net/http"
 
+	"github.com/gilcrest/go-api-basic/domain/random"
+
 	"github.com/gilcrest/go-api-basic/datastore/moviestore"
 	"github.com/gilcrest/go-api-basic/datastore/pingstore"
 
@@ -34,6 +36,8 @@ var pingHandlerSet = wire.NewSet(
 )
 
 var movieHandlerSet = wire.NewSet(
+	wire.Struct(new(random.DefaultStringGenerator), "*"),
+	wire.Bind(new(random.StringGenerator), new(random.DefaultStringGenerator)),
 	wire.Struct(new(authgateway.GoogleAccessTokenConverter), "*"),
 	wire.Bind(new(auth.AccessTokenConverter), new(authgateway.GoogleAccessTokenConverter)),
 	wire.Struct(new(auth.DefaultAuthorizer), "*"),

@@ -27,10 +27,11 @@ func ProvideCreateMovieHandler(h DefaultMovieHandlers) CreateMovieHandler {
 // DefaultMovieHandlers are the default handlers for CRUD operations
 // for a Movie. Each method on the struct is a separate handler.
 type DefaultMovieHandlers struct {
-	AccessTokenConverter auth.AccessTokenConverter
-	Authorizer           auth.Authorizer
-	Transactor           moviestore.Transactor
-	Selector             moviestore.Selector
+	AccessTokenConverter  auth.AccessTokenConverter
+	Authorizer            auth.Authorizer
+	RandomStringGenerator random.StringGenerator
+	Transactor            moviestore.Transactor
+	Selector              moviestore.Selector
 }
 
 // CreateMovie is a HandlerFunc used to create a Movie
@@ -97,7 +98,7 @@ func (h DefaultMovieHandlers) CreateMovie(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	extlID, err := random.CryptoString(15)
+	extlID, err := h.RandomStringGenerator.CryptoString(15)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, err)
 		return

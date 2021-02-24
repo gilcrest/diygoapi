@@ -6,12 +6,13 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/gilcrest/go-api-basic/domain/random"
+
 	"github.com/gilcrest/go-api-basic/domain/user/usertest"
 
 	"github.com/matryer/is"
 
 	"github.com/gilcrest/go-api-basic/domain/movie"
-	"github.com/gilcrest/go-api-basic/domain/random"
 	"github.com/google/uuid"
 
 	"github.com/gilcrest/go-api-basic/datastore"
@@ -176,7 +177,8 @@ func newMovie(t *testing.T) *movie.Movie {
 	t.Helper()
 
 	id := uuid.New()
-	extlID, err := random.CryptoString(15)
+	rsg := random.DefaultStringGenerator{}
+	extlID, err := rsg.CryptoString(15)
 	if err != nil {
 		t.Fatalf("random.CryptoString() error = %v", err)
 	}
