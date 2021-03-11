@@ -53,6 +53,12 @@ func Test_newUser(t *testing.T) {
 }
 
 func TestGoogleToken2User_User(t *testing.T) {
+	// set environment variable NO_INT to skip integration
+	// dependent tests
+	if os.Getenv("SKIP_INT") == "true" {
+		t.Skip("skipping integration test")
+	}
+
 	type args struct {
 		ctx   context.Context
 		token auth.AccessToken
@@ -63,7 +69,7 @@ func TestGoogleToken2User_User(t *testing.T) {
 	// to get a valid Access token to test this function
 	token, ok := os.LookupEnv("GOOGLE_ACCESS_TOKEN")
 	if !ok {
-		t.Fatalf("GOOGLE_ACCESS_TOKEN environment variable not properly set")
+		t.Fatalf("GOOGLE_ACCESS_TOKEN environment variable not properly set\nSet environment variable SKIP_INT = true to skip integration tests")
 	}
 
 	at := auth.AccessToken{
