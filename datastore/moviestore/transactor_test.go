@@ -104,7 +104,8 @@ func TestDefaultTransactor_Update(t *testing.T) {
 	ctx := context.Background()
 	// create a movie with the helper to ensure that at least one row
 	// is returned
-	m := newMovieDBHelper(ctx, t, defaultDatastore, true)
+	m, mCleanup := NewMovieDBHelper(t, ctx, defaultDatastore)
+	t.Cleanup(mCleanup)
 	// The ID would not be set on an update, as only the external ID
 	// is known to the client
 	m.ID = uuid.Nil
@@ -152,7 +153,7 @@ func TestDefaultTransactor_Delete(t *testing.T) {
 	ctx := context.Background()
 	// create a movie with the helper to ensure that at least one row
 	// is returned
-	m := newMovieDBHelper(ctx, t, defaultDatastore, false)
+	m, _ := NewMovieDBHelper(t, ctx, defaultDatastore)
 
 	m2 := &movie.Movie{}
 
