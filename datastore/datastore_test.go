@@ -7,17 +7,15 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/gilcrest/go-api-basic/domain/errs"
-
+	qt "github.com/frankban/quicktest"
 	"github.com/pkg/errors"
 
+	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/logger"
-
-	"github.com/matryer/is"
 )
 
 func TestNewPGDatasourceName(t *testing.T) {
-	is := is.New(t)
+	c := qt.New(t)
 
 	got := NewPGDatasourceName("localhost", "go_api_basic", "postgres", "", 5432)
 
@@ -29,7 +27,7 @@ func TestNewPGDatasourceName(t *testing.T) {
 		Password: "",
 	}
 
-	is.Equal(got, want)
+	c.Assert(got, qt.Equals, want)
 }
 
 func TestPGDatasourceName_String(t *testing.T) {
@@ -65,7 +63,7 @@ func TestPGDatasourceName_String(t *testing.T) {
 }
 
 func TestDatastore_DB(t *testing.T) {
-	is := is.New(t)
+	c := qt.New(t)
 
 	logger := logger.NewLogger(os.Stdout, true)
 
@@ -77,11 +75,11 @@ func TestDatastore_DB(t *testing.T) {
 	ds := DefaultDatastore{db: ogdb}
 	db := ds.DB()
 
-	is.Equal(db, ogdb)
+	c.Assert(db, qt.Equals, ogdb)
 }
 
 func TestNewDatastore(t *testing.T) {
-	is := is.New(t)
+	c := qt.New(t)
 
 	logger := logger.NewLogger(os.Stdout, true)
 
@@ -94,7 +92,7 @@ func TestNewDatastore(t *testing.T) {
 
 	want := DefaultDatastore{db: db}
 
-	is.Equal(got, want)
+	c.Assert(got, qt.Equals, want)
 }
 
 func TestNewNullInt64(t *testing.T) {
