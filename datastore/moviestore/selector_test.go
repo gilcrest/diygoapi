@@ -6,14 +6,11 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/gilcrest/go-api-basic/domain/random"
+	"github.com/google/go-cmp/cmp/cmpopts"
 
-	"github.com/gilcrest/go-api-basic/domain/user/usertest"
-
-	"github.com/matryer/is"
+	qt "github.com/frankban/quicktest"
 
 	"github.com/gilcrest/go-api-basic/domain/movie"
-	"github.com/google/uuid"
 
 	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/gilcrest/go-api-basic/datastore/datastoretest"
@@ -69,7 +66,8 @@ func TestDefaultSelector_FindAll(t *testing.T) {
 
 	// create a movie with the helper to ensure that at least one row
 	// is returned
-	_ = newMovieDBHelper(ctx, t, ds, true)
+	_, movieCleanup := NewMovieDBHelper(t, ctx, ds)
+	t.Cleanup(movieCleanup)
 
 	tests := []struct {
 		name    string
@@ -95,7 +93,7 @@ func TestDefaultSelector_FindAll(t *testing.T) {
 }
 
 func TestDefaultSelector_FindByID(t *testing.T) {
-	is := is.NewRelaxed(t)
+	c := qt.New(t)
 
 	type fields struct {
 		Datastorer datastore.Datastorer
@@ -114,7 +112,7 @@ func TestDefaultSelector_FindByID(t *testing.T) {
 	ds := datastore.NewDefaultDatastore(db)
 	ctx := context.Background()
 
-	m := newMovieDBHelper(ctx, t, ds, true)
+	m, _ := NewMovieDBHelper(t, ctx, ds)
 
 	tests := []struct {
 		name    string
@@ -135,7 +133,10 @@ func TestDefaultSelector_FindByID(t *testing.T) {
 				t.Errorf("FindByID() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			is.Equal(got.ID, tt.want.ID)
+			ignoreFields := cmpopts.IgnoreFields(movie.Movie{},
+				"ExternalID", "CreateUser", "UpdateUser", "CreateTime", "UpdateTime")
+
+			c.Assert(got, qt.CmpEquals(ignoreFields), tt.want)
 			if got.CreateTime.IsZero() == true {
 				t.Error("CreateTime is zero, it should have a value")
 			}
@@ -144,48 +145,4 @@ func TestDefaultSelector_FindByID(t *testing.T) {
 			}
 		})
 	}
-}
-
-// newMovieDBHelper creates/inserts a new movie in the db and then
-// registers a t.Cleanup function to delete it. The insert and
-// delete are both in separate database transactions
-func newMovieDBHelper(ctx context.Context, t *testing.T, ds datastore.Datastorer, cleanup bool) *movie.Movie {
-	t.Helper()
-
-	m := newMovie(t)
-
-	defaultTransactor := NewDefaultTransactor(ds)
-
-	err := defaultTransactor.Create(ctx, m)
-	if err != nil {
-		t.Fatalf("defaultTransactor.Create error = %v", err)
-	}
-
-	if cleanup == true {
-		t.Cleanup(func() {
-			err := defaultTransactor.Delete(ctx, m)
-			if err != nil {
-				t.Fatalf("t.Cleanup defaultTransactor.Delete error = %v", err)
-			}
-		})
-	}
-
-	return m
-}
-
-func newMovie(t *testing.T) *movie.Movie {
-	t.Helper()
-
-	id := uuid.New()
-	rsg := random.DefaultStringGenerator{}
-	extlID, err := rsg.CryptoString(15)
-	if err != nil {
-		t.Fatalf("random.CryptoString() error = %v", err)
-	}
-	u := usertest.NewUser(t)
-	m, err := movie.NewMovie(id, extlID, u)
-	if err != nil {
-		t.Fatalf("movie.NewMovie() error = %v", err)
-	}
-	return m
 }
