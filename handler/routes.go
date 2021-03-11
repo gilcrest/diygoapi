@@ -43,7 +43,7 @@ func NewMuxRouter(logger zerolog.Logger, handlers Handlers) *mux.Router {
 
 	// Match only PUT requests having an ID at /api/v1/movies/{id}
 	// with the Content-Type header = application/json
-	rtr.Handle(moviesV1PathRoot+"/{id}",
+	rtr.Handle(moviesV1PathRoot+"/{extlID}",
 		c.Append(AccessTokenHandler).
 			Append(JSONContentTypeHandler).
 			Then(handlers.UpdateMovieHandler)).
@@ -51,14 +51,14 @@ func NewMuxRouter(logger zerolog.Logger, handlers Handlers) *mux.Router {
 		Headers("Content-Type", "application/json")
 
 	// Match only DELETE requests having an ID at /api/v1/movies/{id}
-	rtr.Handle(moviesV1PathRoot+"/{id}",
+	rtr.Handle(moviesV1PathRoot+"/{extlID}",
 		c.Append(AccessTokenHandler).
 			Append(JSONContentTypeHandler).
 			Then(handlers.DeleteMovieHandler)).
 		Methods(http.MethodDelete)
 
 	// Match only GET requests having an ID at /api/v1/movies/{id}
-	rtr.Handle(moviesV1PathRoot+"/{id}",
+	rtr.Handle(moviesV1PathRoot+"/{extlID}",
 		c.Append(AccessTokenHandler).
 			Append(JSONContentTypeHandler).
 			Then(handlers.FindMovieByIDHandler)).
