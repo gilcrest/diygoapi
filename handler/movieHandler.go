@@ -104,7 +104,7 @@ func (h DefaultMovieHandlers) CreateMovie(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Call the Add method to perform domain business logic
+	// Call the NewMovie method to perform domain business logic
 	m, err := movie.NewMovie(uuid.New(), extlID, u)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, err)
@@ -228,7 +228,7 @@ func (h DefaultMovieHandlers) UpdateMovie(w http.ResponseWriter, r *http.Request
 	// current request, if any. id is the external id given for the
 	// movie
 	vars := mux.Vars(r)
-	extlid := vars["id"]
+	extlid := vars["extlID"]
 
 	// Declare rb as an instance of updateMovieRequestBody
 	rb := new(updateMovieRequestBody)
@@ -260,6 +260,12 @@ func (h DefaultMovieHandlers) UpdateMovie(w http.ResponseWriter, r *http.Request
 	m.SetWriter(rb.Writer)
 	m.SetUpdateUser(u)
 	m.SetUpdateTime()
+
+	err = m.IsValid()
+	if err != nil {
+		errs.HTTPErrorResponse(w, logger, err)
+		return
+	}
 
 	// Call the Update method of the Transactor to update the record
 	// in the database.
@@ -310,10 +316,10 @@ type DeleteMovieHandler http.Handler
 // DeleteMovie handles DELETE requests for the /movies/{id} endpoint
 // and updates the given movie
 func (h DefaultMovieHandlers) DeleteMovie(w http.ResponseWriter, r *http.Request) {
-	// DeleteMovieResponse is the response struct for deleted Movies
-	type DeleteMovieResponse struct {
-		ExtlID  string `json:"extl_id"`
-		Deleted bool   `json:"deleted"`
+	// deleteMovieResponse is the response struct for deleted Movies
+	type deleteMovieResponse struct {
+		ExternalID string `json:"extl_id"`
+		Deleted    bool   `json:"deleted"`
 	}
 
 	logger := *hlog.FromRequest(r)
@@ -362,9 +368,9 @@ func (h DefaultMovieHandlers) DeleteMovie(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	dmr := DeleteMovieResponse{
-		ExtlID:  m.ExternalID,
-		Deleted: true,
+	dmr := deleteMovieResponse{
+		ExternalID: m.ExternalID,
+		Deleted:    true,
 	}
 
 	// Populate the response
