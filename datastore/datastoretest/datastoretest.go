@@ -87,3 +87,26 @@ func NewDB(t *testing.T, lgr zerolog.Logger) (*sql.DB, func()) {
 	}
 	return db, cleanup
 }
+
+// NewDefaultDatastore provides a datastore.DefaultDatastore struct
+// initialized with a sql.DB and cleanup function for testing.
+// The following environment variables must be set to connect to the DB.
+//
+// 		DB Host     = PG_APP_HOST
+//		Port        = PG_APP_PORT
+//		DB Name     = PG_APP_DBNAME
+//		DB User     = PG_APP_USERNAME
+//		DB Password = PG_APP_PASSWORD
+func NewDefaultDatastore(t *testing.T, lgr zerolog.Logger) (datastore.DefaultDatastore, func()) {
+	t.Helper()
+
+	dsn := newPGDatasourceName(t)
+	db, cleanup, err := datastore.NewDB(dsn, lgr)
+	if err != nil {
+		t.Fatalf("datastore.NewDB() error = %v", err)
+	}
+
+	ds := datastore.NewDefaultDatastore(db)
+
+	return ds, cleanup
+}
