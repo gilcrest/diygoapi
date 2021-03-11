@@ -121,6 +121,8 @@ func (m *Movie) SetUpdateTime() *Movie {
 // IsValid performs validation of the struct
 func (m *Movie) IsValid() error {
 	switch {
+	case m.ExternalID == "":
+		return errs.E(errs.Validation, errs.Parameter("extlID"), errs.MissingField("extlID"))
 	case m.Title == "":
 		return errs.E(errs.Validation, errs.Parameter("title"), errs.MissingField("title"))
 	case m.Rated == "":
