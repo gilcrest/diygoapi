@@ -3,12 +3,12 @@ package moviestore
 import (
 	"context"
 
-	"github.com/gilcrest/go-api-basic/datastore"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 
+	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/movie"
-	"github.com/google/uuid"
 )
 
 // Transactor performs DML actions against the DB
