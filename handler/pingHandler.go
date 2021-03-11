@@ -31,18 +31,16 @@ func (h DefaultPingHandler) Ping(w http.ResponseWriter, r *http.Request) {
 
 	// pull logger from request context
 	logger := *hlog.FromRequest(r)
+
 	// pull the context from the http request
 	ctx := r.Context()
 
-	// check if db connection is still alive
-	var dbok bool
+	dbok := true
 	err := h.Pinger.PingDB(ctx)
-	// if there is no error, db is up, set dbok to true,
-	// if db is down, log the error
 	if err != nil {
+		// if error from PingDB, log the error, set dbok to false
 		logger.Error().Err(err).Msg("PingDB error")
-	} else {
-		dbok = true
+		dbok = false
 	}
 
 	pr := pingResponseData{DBUp: dbok}
