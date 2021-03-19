@@ -5,104 +5,140 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"strconv"
 
+	"github.com/peterbourgon/ff/v3"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 
 	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/logger"
-
-	"github.com/rs/zerolog"
 )
 
-// cliFlags are the command line flags parsed at startup
-type cliFlags struct {
-	logLevel   string
-	port       int
-	dbhost     string
-	dbport     int
-	dbname     string
-	dbuser     string
-	dbpassword string
-}
+const (
+	// exitFail is the exit code if the program
+	// fails.
+	exitFail = 1
+)
 
 func main() {
-	// Initialize cliFlags and return a pointer to it
-	cf := new(cliFlags)
+	if err := run(os.Args); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "%s\n", err)
+		os.Exit(exitFail)
+	}
+}
 
-	// loglvl flag allows for setting logging level, e.g. to run the server
-	// with level set to debug, it'd be: ./server loglvl=debug
-	// If not set, defaults to error
-	flag.StringVar(&cf.logLevel, "loglvl", "info", "sets log level (debug, warn, error, fatal, panic, disabled)")
+func run(args []string) error {
 
-	// port flag is what http.ListenAndServe will listen on. default is 8080 if not set
-	flag.IntVar(&cf.port, "port", 8080, "network port to listen on")
-
-	// dbhost is the database host
-	flag.StringVar(&cf.dbhost, "dbhost", "", "postgresql database host")
-
-	// dbport is the database host
-	flag.IntVar(&cf.dbport, "dbport", 0, "postgresql database port")
-
-	// dbname is the database name
-	flag.StringVar(&cf.dbname, "dbname", "", "postgresql database name")
-
-	// dbname is the database name
-	flag.StringVar(&cf.dbuser, "dbuser", "", "postgresql database user")
-
-	// dbname is the database name
-	flag.StringVar(&cf.dbpassword, "dbpassword", "", "postgresql database password")
-
-	// Parse the command line flags from above
-	flag.Parse()
+	flgs, err := newFlags(args)
+	if err != nil {
+		return err
+	}
 
 	// setup logger with appropriate defaults
-	logger := logger.NewLogger(os.Stdout, true)
+	lgr := logger.NewLogger(os.Stdout, true)
 
 	// determine logging level
-	loglvl := newLogLevel(cf)
+	loglevel := newLogLevel(flgs.loglvl)
 
 	// set global logging level based on flag input
-	zerolog.SetGlobalLevel(loglvl)
-	logger.Info().Msgf("logging level set to %s", loglvl)
+	zerolog.SetGlobalLevel(loglevel)
+	lgr.Info().Msgf("logging level set to %s", loglevel)
 
 	// set global logging time field format to Unix timestamp
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 
 	// validate port in acceptable range
-	if cf.port < 0 || cf.port > 65535 {
-		logger.Fatal().Msgf("port %d is not within valid port range (0 to 65535", cf.port)
+	err = portRange(flgs.port)
+	if err != nil {
+		lgr.Fatal().Err(err).Msg("portRange() error")
 	}
 
-	dsn, err := newPGDatasourceName(cf)
-	if err != nil {
-		logger.Fatal().Err(err).Msg("Error returned from newPGDatasourceName")
-	}
+	//get struct holding PostgreSQL datasource name details
+	dsn := datastore.NewPGDatasourceName(flgs.dbhost, flgs.dbname, flgs.dbuser, flgs.dbpassword, flgs.dbport)
 
 	// initialize a non-nil, empty context
 	ctx := context.Background()
 
 	// newServer function returns a pointer to a gocloud server, a
 	// cleanup function and an error
-	srv, cleanup, err := newServer(ctx, logger, dsn)
+	srv, cleanup, err := newServer(ctx, lgr, dsn)
 	if err != nil {
-		logger.Fatal().Err(err).Msg("Error returned from newServer")
+		lgr.Fatal().Err(err).Msg("Error returned from newServer")
 	}
 	defer cleanup()
 
 	// Listen and serve HTTP
-	logger.Fatal().Err(srv.ListenAndServe(fmt.Sprintf(":%d", cf.port))).Msg("Fatal Server Error")
+	lgr.Fatal().Err(srv.ListenAndServe(fmt.Sprintf(":%d", flgs.port))).Msg("Fatal Server Error")
+
+	return nil
+}
+
+type flags struct {
+	// log-level flag allows for setting logging level, e.g. to run the server
+	// with level set to debug, it'd be: ./server -log-level=debug
+	// If not set, defaults to error
+	loglvl string
+
+	// port flag is what http.ListenAndServe will listen on. default is 8080 if not set
+	port int
+
+	// dbhost is the database host
+	dbhost string
+
+	// dbport is the database port
+	dbport int
+
+	// dbname is the database name
+	dbname string
+
+	// dbuser is the database user
+	dbuser string
+
+	// dbpassword is the database user's password
+	dbpassword string
+}
+
+// newFlags parses the command line flags using ff and returns
+// a flags struct or an error
+func newFlags(args []string) (flgs flags, err error) {
+	// create new FlagSet using the program name being executed (args[0])
+	// as the name of the FlagSet
+	fs := flag.NewFlagSet(args[0], flag.ContinueOnError)
+
+	var (
+		loglvl     = fs.String("log-level", "info", "sets log level (debug, warn, error, fatal, panic, disabled), (also via LOG_LEVEL)")
+		port       = fs.Int("port", 8080, "listen port for server (also via PORT)")
+		dbhost     = fs.String("db-host", "", "postgresql database host (also via DB_HOST)")
+		dbport     = fs.Int("db-port", 5432, "postgresql database port (also via DB_PORT)")
+		dbname     = fs.String("db-name", "", "postgresql database name (also via DB_NAME)")
+		dbuser     = fs.String("db-user", "", "postgresql database user (also via DB_USER)")
+		dbpassword = fs.String("db-password", "", "postgresql database password (also via DB_PASSWORD)")
+	)
+
+	// Parse the command line flags from above
+	err = ff.Parse(fs, args[1:], ff.WithEnvVarNoPrefix())
+	if err != nil {
+		return flgs, err
+	}
+
+	return flags{
+		loglvl:     *loglvl,
+		port:       *port,
+		dbhost:     *dbhost,
+		dbport:     *dbport,
+		dbname:     *dbname,
+		dbuser:     *dbuser,
+		dbpassword: *dbpassword,
+	}, nil
 }
 
 // newLogLevel sets up the logging level (e.g. Debug, Info, Error, etc.)
-// It takes a pointer to a string as that is how a parsed command line flag news
-// and the intention is for the name to be set at run time
-func newLogLevel(flags *cliFlags) zerolog.Level {
+func newLogLevel(loglvl string) zerolog.Level {
 
 	var lvl zerolog.Level
 
-	switch flags.logLevel {
+	switch loglvl {
 	case "debug":
 		lvl = zerolog.DebugLevel
 	case "info":
@@ -124,81 +160,10 @@ func newLogLevel(flags *cliFlags) zerolog.Level {
 	return lvl
 }
 
-func newPGDatasourceName(flags *cliFlags) (datastore.PGDatasourceName, error) {
-
-	// Constants for the PostgreSQL Database connection
-	const (
-		pgDBHost     string = "PG_APP_HOST"
-		pgDBPort     string = "PG_APP_PORT"
-		pgDBName     string = "PG_APP_DBNAME"
-		pgDBUser     string = "PG_APP_USERNAME"
-		pgDBPassword string = "PG_APP_PASSWORD"
-	)
-
-	var (
-		ds         datastore.PGDatasourceName
-		dbHost     string
-		dbPort     int
-		dbName     string
-		dbUser     string
-		dbPassword string
-		ok         bool
-		err        error
-	)
-
-	// check cli flag first, if has value, use it, otherwise
-	// check environment variable
-	dbHost = flags.dbhost
-	if dbHost == "" {
-		dbHost, ok = os.LookupEnv(pgDBHost)
-		if !ok {
-			return ds, errs.E(errors.New(fmt.Sprintf("No environment variable found for %s", pgDBHost)))
-		}
+// portRange validates the port be in an acceptable range
+func portRange(port int) error {
+	if port < 0 || port > 65535 {
+		return errs.E(errors.New(fmt.Sprintf("port %d is not within valid port range (0 to 65535)", port)))
 	}
-
-	// check cli flag first, if has value, use it, otherwise
-	// check environment variable
-	dbPort = flags.dbport
-	if dbPort == 0 {
-		p, ok := os.LookupEnv(pgDBPort)
-		if !ok {
-			return ds, errs.E(errors.New(fmt.Sprintf("No environment variable found for %s", pgDBPort)))
-		}
-		dbPort, err = strconv.Atoi(p)
-		if err != nil {
-			return ds, errs.E(errors.New(fmt.Sprintf("Unable to convert db port %s to int", p)))
-		}
-	}
-
-	// check cli flag first, if has value, use it, otherwise
-	// check environment variable
-	dbName = flags.dbname
-	if dbName == "" {
-		dbName, ok = os.LookupEnv(pgDBName)
-		if !ok {
-			return ds, errs.E(errors.New(fmt.Sprintf("No environment variable found for %s", pgDBName)))
-		}
-	}
-
-	// check cli flag first, if has value, use it, otherwise
-	// check environment variable
-	dbUser = flags.dbuser
-	if dbUser == "" {
-		dbUser, ok = os.LookupEnv(pgDBUser)
-		if !ok {
-			return ds, errs.E(errors.New(fmt.Sprintf("No environment variable found for %s", pgDBUser)))
-		}
-	}
-
-	// check cli flag first, if has value, use it, otherwise
-	// check environment variable
-	dbPassword = flags.dbpassword
-	if dbPassword == "" {
-		dbPassword, ok = os.LookupEnv(pgDBPassword)
-		if !ok {
-			return ds, errs.E(errors.New(fmt.Sprintf("No environment variable found for %s", pgDBPassword)))
-		}
-	}
-
-	return datastore.NewPGDatasourceName(dbHost, dbName, dbUser, dbPassword, dbPort), nil
+	return nil
 }

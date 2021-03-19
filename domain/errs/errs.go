@@ -215,7 +215,7 @@ func E(args ...interface{}) error {
 // Match compares its two error arguments. It can be used to check
 // for expected errors in tests. Both arguments must have underlying
 // type *Error or Match will return false. Otherwise it returns true
-// iff every non-zero element of the first error is equal to the
+// if every non-zero element of the first error is equal to the
 // corresponding element of the second.
 // If the Err field is a *Error, Match recurs on that field;
 // otherwise it compares the strings returned by the Error methods.
@@ -224,7 +224,7 @@ func E(args ...interface{}) error {
 //
 // For example,
 //	Match(errors.E(upspin.UserName("joe@schmoe.com"), errors.Permission), err)
-// tests whether err is an Error with Kind=Permission and User=joe@schmoe.com.
+//  tests whether err is an Error with Kind=Permission and User=joe@schmoe.com.
 func Match(err1, err2 error) bool {
 	e1, ok := err1.(*Error)
 	if !ok {

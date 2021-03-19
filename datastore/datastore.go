@@ -129,7 +129,7 @@ func NewNullString(s string) sql.NullString {
 }
 
 // NewNullInt64 returns a null if i == 0, otherwise it returns
-// the int64 which was input
+// the int64 which was input.
 func NewNullInt64(i int64) sql.NullInt64 {
 	if i == 0 {
 		return sql.NullInt64{}

@@ -34,11 +34,11 @@ To run the app, the following environment variables need to be set:
 ##### PostgreSQL
 
 ```bash
-export PG_APP_DBNAME="go_api_basic"
-export PG_APP_USERNAME="postgres"
-export PG_APP_PASSWORD=""
-export PG_APP_HOST="localhost"
-export PG_APP_PORT="5432"
+export DB_NAME="go_api_basic"
+export DB_USER="postgres"
+export DB_PASSWORD=""
+export DB_HOST="localhost"
+export DB_PORT="5432"
 ```
 
 You can set these however you like (permanently in something like .bash_profile if on a mac, etc. - see some notes [here](https://gist.github.com/gilcrest/d5981b873d1e2fc9646602eedd384ba6#environment-variables)), but my preferred way is to run a bash script to set the environment variables to whichever environment I'm connecting to temporarily for the current shell environment. I have included an example script file (`setlocalEnvVars.sh`) in the /scripts directory. The below statements assume you're running the command from the project root directory.

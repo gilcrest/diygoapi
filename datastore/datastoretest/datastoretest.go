@@ -1,5 +1,7 @@
 // Package datastoretest provides testing helper functions for the
-// datastore package
+// datastore package. I am intentionally repeating functions that
+// are in datastore here as I want different versions as helpers
+// with less logging
 package datastoretest
 
 import (
@@ -20,11 +22,11 @@ func newPGDatasourceName(t *testing.T) datastore.PGDatasourceName {
 
 	// Constants for the PostgreSQL Database connection
 	const (
-		pgDBHost     string = "PG_APP_HOST"
-		pgDBPort     string = "PG_APP_PORT"
-		pgDBName     string = "PG_APP_DBNAME"
-		pgDBUser     string = "PG_APP_USERNAME"
-		pgDBPassword string = "PG_APP_PASSWORD"
+		pgDBHost     string = "DB_HOST"
+		pgDBPort     string = "DB_PORT"
+		pgDBName     string = "DB_NAME"
+		pgDBUser     string = "DB_USER"
+		pgDBPassword string = "DB_PASSWORD"
 	)
 
 	var (
@@ -72,41 +74,44 @@ func newPGDatasourceName(t *testing.T) datastore.PGDatasourceName {
 // NewDB provides a sql.DB and cleanup function for testing.
 // The following environment variables must be set to connect to the DB.
 //
-// 		DB Host     = PG_APP_HOST
-//		Port        = PG_APP_PORT
-//		DB Name     = PG_APP_DBNAME
-//		DB User     = PG_APP_USERNAME
-//		DB Password = PG_APP_PASSWORD
+// 		DB Host     = DB_HOST
+//		Port        = DB_PORT
+//		DB Name     = DB_NAME
+//		DB User     = DB_USER
+//		DB Password = DB_PASSWORD
 func NewDB(t *testing.T, lgr zerolog.Logger) (*sql.DB, func()) {
 	t.Helper()
 
 	dsn := newPGDatasourceName(t)
-	db, cleanup, err := datastore.NewDB(dsn, lgr)
+
+	// Open the postgres database using the postgres driver (pq)
+	// func Open(driverName, dataSourceName string) (*DB, error)
+	db, err := sql.Open("postgres", dsn.String())
 	if err != nil {
-		t.Fatalf("datastore.NewDB() error = %v", err)
+		t.Fatalf("sql.Open() error = %v", err)
 	}
-	return db, cleanup
+
+	err = db.Ping()
+	if err != nil {
+		t.Fatalf("db.Ping() error = %v", err)
+	}
+
+	return db, func() { db.Close() }
 }
 
 // NewDefaultDatastore provides a datastore.DefaultDatastore struct
 // initialized with a sql.DB and cleanup function for testing.
 // The following environment variables must be set to connect to the DB.
 //
-// 		DB Host     = PG_APP_HOST
-//		Port        = PG_APP_PORT
-//		DB Name     = PG_APP_DBNAME
-//		DB User     = PG_APP_USERNAME
-//		DB Password = PG_APP_PASSWORD
+// 		DB Host     = DB_HOST
+//		Port        = DB_PORT
+//		DB Name     = DB_NAME
+//		DB User     = DB_USER
+//		DB Password = DB_PASSWORD
 func NewDefaultDatastore(t *testing.T, lgr zerolog.Logger) (datastore.DefaultDatastore, func()) {
 	t.Helper()
 
-	dsn := newPGDatasourceName(t)
-	db, cleanup, err := datastore.NewDB(dsn, lgr)
-	if err != nil {
-		t.Fatalf("datastore.NewDB() error = %v", err)
-	}
+	db, cleanup := NewDB(t, lgr)
 
-	ds := datastore.NewDefaultDatastore(db)
-
-	return ds, cleanup
+	return datastore.NewDefaultDatastore(db), cleanup
 }

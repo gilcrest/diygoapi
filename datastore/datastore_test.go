@@ -116,27 +116,6 @@ func TestNewNullInt64(t *testing.T) {
 	}
 }
 
-func TestNewNullString(t *testing.T) {
-	type args struct {
-		s string
-	}
-	tests := []struct {
-		name string
-		args args
-		want sql.NullString
-	}{
-		{"has value", args{s: "foobar"}, sql.NullString{String: "foobar", Valid: true}},
-		{"zero value", args{s: ""}, sql.NullString{String: "", Valid: false}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := NewNullString(tt.args.s); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewNullString() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestDatastore_BeginTx(t *testing.T) {
 	type fields struct {
 		db      *sql.DB
@@ -304,6 +283,30 @@ func TestDatastore_CommitTx(t *testing.T) {
 			if err := ds.CommitTx(tt.args.tx); (err != nil) != tt.wantErr {
 				t.Errorf("CommitTx() error = %v, wantErr %v", err, tt.wantErr)
 			}
+		})
+	}
+}
+
+func TestNewNullString(t *testing.T) {
+	c := qt.New(t)
+	type args struct {
+		s string
+	}
+
+	wantNotNull := sql.NullString{String: "not null", Valid: true}
+	wantNull := sql.NullString{String: "", Valid: false}
+	tests := []struct {
+		name string
+		args args
+		want sql.NullString
+	}{
+		{"not null string", args{s: "not null"}, wantNotNull},
+		{"null string", args{s: ""}, wantNull},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := NewNullString(tt.args.s)
+			c.Assert(got, qt.Equals, tt.want)
 		})
 	}
 }

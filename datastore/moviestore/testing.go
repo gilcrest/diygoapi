@@ -50,5 +50,12 @@ func newMovie(t *testing.T) *movie.Movie {
 	if err != nil {
 		t.Fatalf("movie.NewMovie() error = %v", err)
 	}
+	m, _ = m.SetReleased("1984-03-02T00:00:00Z")
+	m.SetTitle("Repo Man").
+		SetRated("R").
+		SetRunTime(92).
+		SetWriter("Alex Cox").
+		SetDirector("Alex Cox")
+
 	return m
 }

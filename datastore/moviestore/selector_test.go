@@ -24,10 +24,9 @@ func TestNewDefaultSelector(t *testing.T) {
 
 	lgr := logger.NewLogger(os.Stdout, true)
 
-	db, cleanup := datastoretest.NewDB(t, lgr)
-	defer cleanup()
+	defaultDatastore, cleanup := datastoretest.NewDefaultDatastore(t, lgr)
+	t.Cleanup(cleanup)
 
-	defaultDatastore := datastore.NewDefaultDatastore(db)
 	defaultSelector := DefaultSelector{defaultDatastore}
 
 	tests := []struct {
@@ -58,10 +57,9 @@ func TestDefaultSelector_FindAll(t *testing.T) {
 	lgr := logger.NewLogger(os.Stdout, true)
 
 	// I am intentionally not using the cleanup function that is
-	// returned from NewDB as I need the DB to stay open for the test
+	// returned as I need the DB to stay open for the test
 	// t.Cleanup function
-	db, _ := datastoretest.NewDB(t, lgr)
-	ds := datastore.NewDefaultDatastore(db)
+	ds, _ := datastoretest.NewDefaultDatastore(t, lgr)
 	ctx := context.Background()
 
 	// create a movie with the helper to ensure that at least one row
@@ -106,10 +104,9 @@ func TestDefaultSelector_FindByID(t *testing.T) {
 	lgr := logger.NewLogger(os.Stdout, true)
 
 	// I am intentionally not using the cleanup function that is
-	// returned from NewDB as I need the DB to stay open for the test
+	// returned as I need the DB to stay open for the test
 	// t.Cleanup function
-	db, _ := datastoretest.NewDB(t, lgr)
-	ds := datastore.NewDefaultDatastore(db)
+	ds, _ := datastoretest.NewDefaultDatastore(t, lgr)
 	ctx := context.Background()
 
 	m, _ := NewMovieDBHelper(t, ctx, ds)

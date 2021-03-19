@@ -5,11 +5,11 @@
 # ". ./setlocalEnvVars.sh" or "source ./setlocalEnvVars.sh"
 
 # Database Environment variables
-export PG_APP_DBNAME="go_api_basic"
-export PG_APP_USERNAME="postgres"
-export PG_APP_PASSWORD=""
-export PG_APP_HOST="localhost"
-export PG_APP_PORT="5432"
+export DB_NAME="go_api_basic"
+export DB_USER="postgres"
+export DB_PASSWORD=""
+export DB_HOST="localhost"
+export DB_PORT="5432"
 
 # Google Oauth2 token - use the Google oauth2 playground https://developers.google.com/oauthplayground/
 # and replace below

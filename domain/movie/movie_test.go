@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp/cmpopts"
+
 	qt "github.com/frankban/quicktest"
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/movie"
@@ -243,18 +245,21 @@ func TestSetUpdateUser(t *testing.T) {
 }
 
 func TestSetUpdateTime(t *testing.T) {
-	gotMovie := newValidMovie()
+	// initialize quicktest checker
+	c := qt.New(t)
 
-	oldTime := gotMovie.UpdateTime
+	// get a new movie
+	m := newValidMovie()
 
-	gotMovie.SetUpdateTime()
+	// UpdateTime is set to now in utc as part of NewMovie
+	originalTime := m.UpdateTime
 
-	oldTimeSeconds := time.Since(oldTime).Seconds()
-	updatedTimeSeconds := time.Since(gotMovie.UpdateTime).Seconds()
+	// Call SetUpdateTime to update to now in utc
+	m.SetUpdateTime()
 
-	if oldTimeSeconds < updatedTimeSeconds {
-		t.Errorf("Previous time '%v' should be lower than '%v'", oldTimeSeconds, updatedTimeSeconds)
-	}
+	within1Second := cmpopts.EquateApproxTime(time.Second)
+
+	c.Assert(originalTime, qt.CmpEquals(within1Second), m.UpdateTime)
 }
 
 type Tests struct {
@@ -363,6 +368,21 @@ func getMovieTests() []Tests {
 		name:    "Missing Writer",
 		m:       m7,
 		wantErr: errs.E(errs.Validation, errs.Parameter("writer"), errs.MissingField("Writer")),
+	})
+
+	m8 := newValidMovie()
+	m8, _ = m8.SetReleased("1996-12-19T16:39:57-08:00")
+	m8.
+		SetTitle("Movie Title").
+		SetRated("R").
+		SetRunTime(19).
+		SetDirector("Movie Director").
+		SetWriter("Movie Writer")
+	m8.ExternalID = ""
+	tests = append(tests, Tests{
+		name:    "Missing ExternalID",
+		m:       m8,
+		wantErr: errs.E(errs.Validation, errs.Parameter("extlID"), errs.MissingField("extlID")),
 	})
 
 	return tests

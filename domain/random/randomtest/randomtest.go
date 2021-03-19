@@ -1,3 +1,4 @@
+// Package randomtest has test helpers for the random package
 package randomtest
 
 import "testing"

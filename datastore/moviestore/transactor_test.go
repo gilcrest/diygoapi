@@ -19,9 +19,8 @@ func TestNewDefaultTransactor(t *testing.T) {
 	}
 	lgr := logger.NewLogger(os.Stdout, true)
 
-	db, cleanup := datastoretest.NewDB(t, lgr)
-	defer cleanup()
-	defaultDatastore := datastore.NewDefaultDatastore(db)
+	defaultDatastore, cleanup := datastoretest.NewDefaultDatastore(t, lgr)
+	t.Cleanup(cleanup)
 	defaultTransactor := DefaultTransactor{defaultDatastore}
 
 	tests := []struct {
@@ -51,10 +50,9 @@ func TestDefaultTransactor_Create(t *testing.T) {
 	lgr := logger.NewLogger(os.Stdout, true)
 
 	// I am intentionally not using the cleanup function that is
-	// returned from NewDB as I need the DB to stay open for the test
+	// returned as I need the DB to stay open for the test
 	// t.Cleanup function
-	db, _ := datastoretest.NewDB(t, lgr)
-	defaultDatastore := datastore.NewDefaultDatastore(db)
+	defaultDatastore, _ := datastoretest.NewDefaultDatastore(t, lgr)
 	defaultTransactor := NewDefaultTransactor(defaultDatastore)
 	ctx := context.Background()
 	m := newMovie(t)
@@ -96,10 +94,9 @@ func TestDefaultTransactor_Update(t *testing.T) {
 	lgr := logger.NewLogger(os.Stdout, true)
 
 	// I am intentionally not using the cleanup function that is
-	// returned from NewDB as I need the DB to stay open for the test
+	// returned as I need the DB to stay open for the test
 	// t.Cleanup function
-	db, _ := datastoretest.NewDB(t, lgr)
-	defaultDatastore := datastore.NewDefaultDatastore(db)
+	defaultDatastore, _ := datastoretest.NewDefaultDatastore(t, lgr)
 	// defaultTransactor := NewDefaultTransactor(defaultDatastore)
 	ctx := context.Background()
 	// create a movie with the helper to ensure that at least one row
@@ -145,10 +142,9 @@ func TestDefaultTransactor_Delete(t *testing.T) {
 	lgr := logger.NewLogger(os.Stdout, true)
 
 	// I am intentionally not using the cleanup function that is
-	// returned from NewDB as I need the DB to stay open for the test
+	// returned as I need the DB to stay open for the test
 	// t.Cleanup function
-	db, _ := datastoretest.NewDB(t, lgr)
-	defaultDatastore := datastore.NewDefaultDatastore(db)
+	defaultDatastore, _ := datastoretest.NewDefaultDatastore(t, lgr)
 	// defaultTransactor := NewDefaultTransactor(defaultDatastore)
 	ctx := context.Background()
 	// create a movie with the helper to ensure that at least one row

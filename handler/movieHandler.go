@@ -347,7 +347,7 @@ func (h DefaultMovieHandlers) DeleteMovie(w http.ResponseWriter, r *http.Request
 	// current request, if any. id is the external id given for the
 	// movie
 	vars := mux.Vars(r)
-	extlid := vars["id"]
+	extlid := vars["extlID"]
 
 	// Find the Movie by ID using the selector.FindByID method
 	// It's arguable I don't need to do this and can just send
@@ -440,7 +440,7 @@ func (h DefaultMovieHandlers) FindByID(w http.ResponseWriter, r *http.Request) {
 	// current request, if any. id is the external id given for the
 	// movie
 	vars := mux.Vars(r)
-	extlid := vars["id"]
+	extlid := vars["extlID"]
 
 	// Find the Movie by ID using the selector.FindByID method
 	m, err := h.Selector.FindByID(ctx, extlid)

@@ -1,3 +1,4 @@
+// Package auth is for authorization logic
 package auth
 
 import (
