@@ -1,402 +1,271 @@
-package movie_test
+package movie
 
 import (
-	"reflect"
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp/cmpopts"
-
 	qt "github.com/frankban/quicktest"
-	"github.com/gilcrest/go-api-basic/domain/errs"
-	"github.com/gilcrest/go-api-basic/domain/movie"
-	"github.com/gilcrest/go-api-basic/domain/user"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+
+	"github.com/gilcrest/go-api-basic/domain/errs"
+	"github.com/gilcrest/go-api-basic/domain/user"
+	"github.com/gilcrest/go-api-basic/domain/user/usertest"
 )
 
-// Returns a valid User with mocked data
-func newValidUser() user.User {
-	return user.User{
-		Email:        "foo@bar.com",
-		LastName:     "Bar",
-		FirstName:    "Foo",
-		FullName:     "Foo Bar",
-		HostedDomain: "example.com",
-		PictureURL:   "example.com/profile.png",
-		ProfileLink:  "example.com/FooBar",
-	}
-}
-
-func newValidMovie() *movie.Movie {
-	uid := uuid.New()
-	externalID := "ExternalID"
-
-	u := newValidUser()
-
-	m, _ := movie.NewMovie(uid, externalID, u)
-
-	return m
-}
-
-// Returns an invalid user defined by the method user.IsValid()
-func newInvalidUser() user.User {
-	return user.User{
-		Email:        "",
-		LastName:     "",
-		FirstName:    "",
-		FullName:     "",
-		HostedDomain: "example.com",
-		PictureURL:   "example.com/profile.png",
-		ProfileLink:  "example.com/FooBar",
-	}
-}
-
-// Testing error when sent a nil uuid
-func TestNewMovieErrorUuid(t *testing.T) {
-	t.Helper()
-
-	u := newValidUser()
-	wantError := errs.E(errs.Validation, errs.Parameter("ID"), errors.New(errs.MissingField("ID").Error()))
-	if gotMovie, gotError := movie.NewMovie(uuid.UUID{}, "randomExternalId", u); !reflect.DeepEqual(wantError.Error(), gotError.Error()) && gotMovie != nil {
-		t.Errorf("Want: %v\nGot: %v", wantError, gotError)
-	}
-}
-
-// Testing error when sent a nil ExtlID
-func TestNewMovieErrorExtlID(t *testing.T) {
-	t.Helper()
-
-	u := newValidUser()
-	uid, _ := uuid.NewUUID()
-	wantError := errs.E(errs.Validation, errs.Parameter("ID"), errors.New(errs.MissingField("ID").Error()))
-	if gotMovie, gotError := movie.NewMovie(uid, "", u); !reflect.DeepEqual(wantError.Error(), gotError.Error()) && gotMovie != nil {
-		t.Errorf("Want: %v\nGot: %v", wantError, gotError)
-	}
-}
-
-// Testing error when User invalid
-func TestNewMovieErrorInvalidUser(t *testing.T) {
-	t.Helper()
-
-	u := newInvalidUser()
-	uid, _ := uuid.NewUUID()
-
-	wantError := errs.E(errs.Validation, errs.Parameter("User"), errors.New("User is invalid"))
-
-	if gotMovie, gotError := movie.NewMovie(uid, "externalID", u); !reflect.DeepEqual(wantError.Error(), gotError.Error()) && gotMovie != nil {
-		t.Errorf("Want: %v\nGot: %v", wantError, gotError)
-	}
-}
-
-// Testing creating NewMovie
 func TestNewMovie(t *testing.T) {
-	t.Helper()
+	c := qt.New(t)
 
-	u := newValidUser()
-	uid, _ := uuid.NewUUID()
-	externalID := "externalID"
+	id := uuid.New()
+	extlID := "ExternalID"
 
-	wantMovie := movie.Movie{
-		ID:         uid,
-		ExternalID: externalID,
-		CreateUser: u,
-		UpdateUser: u,
+	m := &Movie{
+		ID:         id,
+		ExternalID: extlID,
+		Title:      "",
+		Rated:      "",
+		Released:   time.Time{},
+		RunTime:    0,
+		Director:   "",
+		Writer:     "",
+		CreateUser: usertest.NewUser(t),
+		CreateTime: time.Now().UTC(),
+		UpdateUser: usertest.NewUser(t),
+		UpdateTime: time.Now().UTC(),
 	}
-	gotMovie, gotError := movie.NewMovie(uid, externalID, u)
-	if gotError != nil {
 
-		if gotMovie.ID != uid {
-			t.Errorf("Want: %v\nGot: %v\n\n", wantMovie.ID, gotMovie.ID)
-		}
-		if gotMovie.ExternalID != wantMovie.ExternalID {
-			t.Errorf("Want: %v\nGot: %v\n\n", wantMovie.ExternalID, gotMovie.ExternalID)
-		}
-		if gotMovie.CreateUser != wantMovie.CreateUser {
-			t.Errorf("Want: %v\nGot: %v\n\n", wantMovie.CreateUser, gotMovie.CreateUser)
-		}
-		if gotMovie.UpdateUser != wantMovie.UpdateUser {
-			t.Errorf("Want: %v\nGot: %v\n\n", wantMovie.UpdateUser, gotMovie.UpdateUser)
-		}
+	ignoreFields := cmpopts.IgnoreFields(Movie{}, "CreateTime", "UpdateTime")
+	within1Second := cmpopts.EquateApproxTime(time.Second)
+
+	type args struct {
+		id     uuid.UUID
+		extlID string
+		u      user.User
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    *Movie
+		wantErr error
+	}{
+		{"typical", args{id, extlID, usertest.NewUser(t)}, m, nil},
+		{"nil uuid", args{uuid.Nil, extlID, usertest.NewUser(t)}, nil, errs.E(errs.Validation, errs.Parameter("ID"), errors.New(errs.MissingField("ID").Error()))},
+		{"empty External ID", args{id, "", usertest.NewUser(t)}, nil, errs.E(errs.Validation, errs.Parameter("extlID"), errors.New(errs.MissingField("extlID").Error()))},
+		{"invalid User", args{id, extlID, usertest.NewInvalidUser(t)}, nil, errs.E(errs.Validation, errs.Parameter("User"), errors.New("User is invalid"))},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := NewMovie(tt.args.id, tt.args.extlID, tt.args.u)
+			if (err != nil) && (tt.wantErr == nil) {
+				t.Errorf("NewMovie() error = %v, nil expected", err)
+				return
+			}
+			c.Assert(err, qt.CmpEquals(cmp.Comparer(errs.Match)), tt.wantErr)
+			if got != nil {
+				c.Assert(got, qt.CmpEquals(ignoreFields), tt.want)
+				c.Assert(got.CreateTime, qt.CmpEquals(within1Second), tt.want.CreateTime)
+				c.Assert(got.UpdateTime, qt.CmpEquals(within1Second), tt.want.UpdateTime)
+			}
+		})
 	}
 }
 
 func TestSetExternalID(t *testing.T) {
-	gotMovie := newValidMovie()
-	externalID2 := "externalIDUpdated"
+	c := qt.New(t)
 
-	gotMovie.SetExternalID(externalID2)
+	got := new(Movie).SetExternalID("ExternalID")
+	want := &Movie{ExternalID: "ExternalID"}
 
-	if gotMovie.ExternalID != externalID2 {
-		t.Errorf("Want: %v\nGot: %v\n\n", gotMovie.ExternalID, externalID2)
-	}
+	c.Assert(got, qt.DeepEquals, want)
 }
 
 func TestSetTitle(t *testing.T) {
-	gotMovie := newValidMovie()
-	Title := "Movie Title"
+	c := qt.New(t)
 
-	gotMovie.SetTitle(Title)
+	got := new(Movie).SetTitle("The Return of the Living Dead")
+	want := &Movie{Title: "The Return of the Living Dead"}
 
-	if gotMovie.Title != Title {
-		t.Errorf("Want: %v\nGot: %v\n\n", gotMovie.Title, Title)
-	}
+	c.Assert(got, qt.DeepEquals, want)
 }
 
 func TestSetRated(t *testing.T) {
-	gotMovie := newValidMovie()
-	Rated := "R"
+	c := qt.New(t)
 
-	gotMovie.SetRated(Rated)
+	got := new(Movie).SetRated("R")
+	want := &Movie{Rated: "R"}
 
-	if gotMovie.Rated != Rated {
-		t.Errorf("Want: %v\nGot: %v\n\n", gotMovie.Rated, Rated)
-	}
+	c.Assert(got, qt.DeepEquals, want)
 }
 
-func TestSetReleasedOk(t *testing.T) {
-	newReleased := "1984-01-02T15:04:05Z"
-	r, err := time.Parse(time.RFC3339, newReleased)
-	if err != nil {
-		t.Fatalf("time.Parse() error = %v", err)
+func TestMovie_SetReleased(t *testing.T) {
+	c := qt.New(t)
+
+	type args struct {
+		r string
 	}
 
-	gotMovie := newValidMovie()
+	tme, _ := time.Parse(time.RFC3339, "1985-08-16T00:00:00Z")
 
-	gotMovie, _ = gotMovie.SetReleased(newReleased)
-
-	if gotMovie.Released != r {
-		t.Errorf("Want: %v\nGot: %v\n\n", newReleased, gotMovie.Released)
+	og := new(Movie)
+	wantMovie := &Movie{
+		Released: tme,
 	}
-}
 
-func TestSetReleasedWrong(t *testing.T) {
-	newRealeased := "wrong-time"
-
-	gotMovie := newValidMovie()
-
-	_, e := gotMovie.SetReleased(newRealeased)
-	_, err := time.Parse(time.RFC3339, newRealeased)
-
-	want := errs.E(errs.Validation,
-		errs.Code("invalid_date_format"),
-		errs.Parameter("release_date"),
-		errors.WithStack(err))
-
-	if e.Error() != want.Error() {
-		t.Errorf("\nWant: %v\nGot: %v\n\n", want, e)
+	tests := []struct {
+		name    string
+		ogMovie *Movie
+		args    args
+		want    *Movie
+		wantErr bool
+	}{
+		{"typical", og, args{"1985-08-16T00:00:00Z"}, wantMovie, false},
+		{"empty string", og, args{""}, wantMovie, true},
+		{"the year 20000", og, args{"20000-08-16T00:00:00Z"}, wantMovie, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := tt.ogMovie
+			got, err := m.SetReleased(tt.args.r)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("SetReleased() error = %v, nil expected", err)
+				return
+			}
+			if got != nil {
+				c.Assert(got, qt.DeepEquals, tt.want)
+				return
+			}
+			c.Assert(err, qt.Not(qt.IsNil))
+		})
 	}
 }
 
 func TestSetRunTime(t *testing.T) {
-	rt := 1999
+	c := qt.New(t)
 
-	gotMovie := newValidMovie()
+	got := new(Movie).SetRunTime(91)
+	want := &Movie{RunTime: 91}
 
-	gotMovie.SetRunTime(rt)
-
-	if gotMovie.RunTime != rt {
-		t.Errorf("\nWant: %v\nGot: %v\n\n", rt, gotMovie.RunTime)
-	}
+	c.Assert(got, qt.DeepEquals, want)
 }
 
 func TestSetDirector(t *testing.T) {
-	d := "Director Drach"
+	c := qt.New(t)
 
-	gotMovie := newValidMovie()
+	got := new(Movie).SetDirector(`Dan O'Bannon'`)
+	want := &Movie{Director: `Dan O'Bannon'`}
 
-	gotMovie.SetDirector(d)
-
-	if gotMovie.Director != d {
-		t.Errorf("\nWant: %v\nGot: %v\n\n", d, gotMovie.Director)
-	}
+	c.Assert(got, qt.DeepEquals, want)
 }
 
 func TestSetWriter(t *testing.T) {
-	w := "Writer Drach"
+	c := qt.New(t)
 
-	gotMovie := newValidMovie()
+	got := new(Movie).SetWriter("Russell Streiner")
+	want := &Movie{Writer: "Russell Streiner"}
 
-	gotMovie.SetWriter(w)
-
-	if gotMovie.Writer != w {
-		t.Errorf("\nWant: %v\nGot: %v\n\n", w, gotMovie.Writer)
-	}
+	c.Assert(got, qt.DeepEquals, want)
 }
 
 func TestSetUpdateUser(t *testing.T) {
-	gotMovie := newValidMovie()
+	c := qt.New(t)
 
-	newUser := user.User{
-		Email:        "foo2@bar.com",
-		LastName:     "Barw",
-		FirstName:    "Foow",
-		FullName:     "Foow Barw",
-		HostedDomain: "example.com.br",
-		PictureURL:   "example.com.br/profile-we.png",
-		ProfileLink:  "example.com.br/FoowBar",
-	}
+	u := usertest.NewUser(t)
 
-	gotMovie.SetUpdateUser(newUser)
+	got := new(Movie).SetUpdateUser(u)
+	want := &Movie{UpdateUser: u}
 
-	if gotMovie.UpdateUser != newUser {
-		t.Errorf("\nWant: %v\nGot: %v\n\n", newUser, gotMovie.UpdateUser)
-	}
+	c.Assert(got, qt.DeepEquals, want)
 }
 
 func TestSetUpdateTime(t *testing.T) {
 	// initialize quicktest checker
 	c := qt.New(t)
 
-	// get a new movie
-	m := newValidMovie()
+	ogt := time.Now().UTC()
 
-	// UpdateTime is set to now in utc as part of NewMovie
-	originalTime := m.UpdateTime
+	// get a new movie
+	m := new(Movie)
 
 	// Call SetUpdateTime to update to now in utc
 	m.SetUpdateTime()
 
+	// should be within 1 second of ogt
 	within1Second := cmpopts.EquateApproxTime(time.Second)
 
-	c.Assert(originalTime, qt.CmpEquals(within1Second), m.UpdateTime)
-}
-
-type Tests struct {
-	name    string
-	m       *movie.Movie
-	wantErr error
-}
-
-func getMovieTests() []Tests {
-	tests := []Tests{}
-
-	// Valid Movie
-	m1 := newValidMovie()
-	m1, _ = m1.SetReleased("1996-12-19T16:39:57-08:00")
-	m1.
-		SetTitle("API Movie").
-		SetRated("R").
-		SetRunTime(19).
-		SetDirector("Director Foo").
-		SetWriter("Writer Foo")
-
-	tests = append(tests, Tests{
-		name:    "Valid Movie",
-		m:       m1,
-		wantErr: nil,
-	})
-
-	m2 := newValidMovie()
-	m2, _ = m2.SetReleased("1996-12-19T16:39:57-08:00")
-	m2.
-		SetRated("R").
-		SetRunTime(19).
-		SetDirector("Director Foo").
-		SetWriter("Writer Foo")
-
-	tests = append(tests, Tests{
-		name:    "Missing Title",
-		m:       m2,
-		wantErr: errs.E(errs.Validation, errs.Parameter("title"), errs.MissingField("title")),
-	})
-
-	m3 := newValidMovie()
-	m3, _ = m3.SetReleased("1996-12-19T16:39:57-08:00")
-	m3.
-		SetTitle("Movie Title").
-		SetRunTime(19).
-		SetDirector("Director Foo").
-		SetWriter("Writer Foo")
-
-	tests = append(tests, Tests{
-		name:    "Missing Rated",
-		m:       m3,
-		wantErr: errs.E(errs.Validation, errs.Parameter("rated"), errs.MissingField("Rated")),
-	})
-
-	m4 := newValidMovie()
-	m4.
-		SetTitle("Movie Title").
-		SetRated("R").
-		SetRunTime(19).
-		SetDirector("Director Foo").
-		SetWriter("Writer Foo")
-
-	tests = append(tests, Tests{
-		name:    "Missing Released",
-		m:       m4,
-		wantErr: errs.E(errs.Validation, errs.Parameter("release_date"), "Released must have a value"),
-	})
-
-	m5 := newValidMovie()
-	m5, _ = m5.SetReleased("1996-12-19T16:39:57-08:00")
-	m5.
-		SetTitle("Movie Title").
-		SetRated("R").
-		SetDirector("Director Foo").
-		SetWriter("Writer Foo")
-
-	tests = append(tests, Tests{
-		name:    "Missing Run Time",
-		m:       m5,
-		wantErr: errs.E(errs.Validation, errs.Parameter("run_time"), "Run time must be greater than zero"),
-	})
-
-	m6 := newValidMovie()
-	m6, _ = m6.SetReleased("1996-12-19T16:39:57-08:00")
-	m6.
-		SetTitle("Movie Title").
-		SetRated("R").
-		SetRunTime(19).
-		SetWriter("Movie Writer")
-
-	tests = append(tests, Tests{
-		name:    "Missing Director",
-		m:       m6,
-		wantErr: errs.E(errs.Validation, errs.Parameter("director"), errs.MissingField("Director")),
-	})
-
-	m7 := newValidMovie()
-	m7, _ = m7.SetReleased("1996-12-19T16:39:57-08:00")
-	m7.
-		SetTitle("Movie Title").
-		SetRated("R").
-		SetRunTime(19).
-		SetDirector("Movie Director")
-	tests = append(tests, Tests{
-		name:    "Missing Writer",
-		m:       m7,
-		wantErr: errs.E(errs.Validation, errs.Parameter("writer"), errs.MissingField("Writer")),
-	})
-
-	m8 := newValidMovie()
-	m8, _ = m8.SetReleased("1996-12-19T16:39:57-08:00")
-	m8.
-		SetTitle("Movie Title").
-		SetRated("R").
-		SetRunTime(19).
-		SetDirector("Movie Director").
-		SetWriter("Movie Writer")
-	m8.ExternalID = ""
-	tests = append(tests, Tests{
-		name:    "Missing ExternalID",
-		m:       m8,
-		wantErr: errs.E(errs.Validation, errs.Parameter("extlID"), errs.MissingField("extlID")),
-	})
-
-	return tests
+	c.Assert(ogt, qt.CmpEquals(within1Second), m.UpdateTime)
 }
 
 func TestMovie_IsValid(t *testing.T) {
-	tests := getMovieTests()
+	c := qt.New(t)
 
+	type fields struct {
+		ID         uuid.UUID
+		ExternalID string
+		Title      string
+		Rated      string
+		Released   time.Time
+		RunTime    int
+		Director   string
+		Writer     string
+		CreateUser user.User
+		CreateTime time.Time
+		UpdateUser user.User
+		UpdateTime time.Time
+	}
+
+	rd, _ := time.Parse(time.RFC3339, "1985-08-16T00:00:00Z")
+
+	movieFunc := func() *Movie {
+		return &Movie{
+			ID:         uuid.New(),
+			ExternalID: "TROTLD",
+			Title:      "The Return of the Living Dead",
+			Rated:      "R",
+			Released:   rd,
+			RunTime:    91,
+			Director:   "Dan O'Bannon",
+			Writer:     "Russell Streiner",
+			CreateUser: usertest.NewUser(t),
+			CreateTime: time.Now().UTC(),
+			UpdateUser: usertest.NewUser(t),
+			UpdateTime: time.Now().UTC(),
+		}
+	}
+
+	m1 := movieFunc()
+	m2 := movieFunc().SetExternalID("")
+	m3 := movieFunc().SetTitle("")
+	m4 := movieFunc().SetRated("")
+	m5, err := movieFunc().SetReleased("0001-01-01T00:00:00Z")
+	c.Assert(err, qt.IsNil)
+	m6 := movieFunc().SetRunTime(0)
+	m7 := movieFunc().SetDirector("")
+	m8 := movieFunc().SetWriter("")
+
+	tests := []struct {
+		name    string
+		m       *Movie
+		wantErr error
+	}{
+		{"typical no error", m1, nil},
+		{"empty ExternalID", m2, errs.E(errs.Validation, errs.Parameter("extlID"), errs.MissingField("extlID"))},
+		{"empty Title", m3, errs.E(errs.Validation, errs.Parameter("title"), errs.MissingField("title"))},
+		{"empty Rated", m4, errs.E(errs.Validation, errs.Parameter("rated"), errs.MissingField("rated"))},
+		{"zero Released", m5, errs.E(errs.Validation, errs.Parameter("release_date"), "release_date must have a value")},
+		{"zero RunTime", m6, errs.E(errs.Validation, errs.Parameter("run_time"), "run_time must be greater than zero")},
+		{"empty Director", m7, errs.E(errs.Validation, errs.Parameter("director"), errs.MissingField("director"))},
+		{"empty Writer", m8, errs.E(errs.Validation, errs.Parameter("writer"), errs.MissingField("writer"))},
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.m.IsValid(); tt.wantErr != nil {
-				c := qt.New(t)
-				c.Assert(errs.Match(err, tt.wantErr), qt.Equals, true)
+			err := tt.m.IsValid()
+			if (err != nil) && (tt.wantErr == nil) {
+				t.Errorf("IsValid() error = %v; nil expected", err)
+				return
 			}
+			c.Assert(err, qt.CmpEquals(cmp.Comparer(errs.Match)), tt.wantErr)
 		})
 	}
 }

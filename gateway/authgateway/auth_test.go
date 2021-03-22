@@ -3,15 +3,20 @@ package authgateway
 import (
 	"context"
 	"os"
-	"reflect"
 	"testing"
+
+	qt "github.com/frankban/quicktest"
+
+	googleoauth "google.golang.org/api/oauth2/v2"
 
 	"github.com/gilcrest/go-api-basic/domain/auth"
 	"github.com/gilcrest/go-api-basic/domain/user"
-	googleoauth "google.golang.org/api/oauth2/v2"
+	"github.com/gilcrest/go-api-basic/domain/user/usertest"
 )
 
 func Test_newUser(t *testing.T) {
+	c := qt.New(t)
+
 	type args struct {
 		userinfo *googleoauth.Userinfo
 	}
@@ -45,14 +50,15 @@ func Test_newUser(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := newUser(tt.args.userinfo); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("newUser() = %v, want %v", got, tt.want)
-			}
+			got := newUser(tt.args.userinfo)
+			c.Assert(got, qt.Equals, tt.want)
 		})
 	}
 }
 
 func TestGoogleToken2User_User(t *testing.T) {
+	c := qt.New(t)
+
 	// set environment variable NO_INT to skip integration
 	// dependent tests
 	if os.Getenv("SKIP_INT") == "true" {
@@ -76,16 +82,13 @@ func TestGoogleToken2User_User(t *testing.T) {
 		Token:     token,
 		TokenType: auth.BearerTokenType,
 	}
-	u := user.User{Email: "otto.maddox711@gmail.com",
-		LastName:   "Maddox",
-		FirstName:  "Otto",
-		FullName:   "Otto Maddox",
-		PictureURL: "https://lh3.googleusercontent.com/-RYXuWxjLdxo/AAAAAAAAAAI/AAAAAAAAAAA/AMZuucmr33m3QLTjdUatlkppT3NSN5-s8g/s96-c/photo.jpg",
-	}
+	u := usertest.NewUser(t)
 	bt := auth.AccessToken{
 		Token:     "badToken",
 		TokenType: auth.BearerTokenType,
 	}
+
+	zeroUser := user.User{}
 
 	tests := []struct {
 		name    string
@@ -94,19 +97,21 @@ func TestGoogleToken2User_User(t *testing.T) {
 		wantErr bool
 	}{
 		{"typical", args{ctx, at}, u, false},
-		{"bad token", args{ctx, bt}, user.User{}, true},
+		{"bad token", args{ctx, bt}, zeroUser, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := GoogleAccessTokenConverter{}
-			got, err := c.Convert(tt.args.ctx, tt.args.token)
+			gat := GoogleAccessTokenConverter{}
+			got, err := gat.Convert(tt.args.ctx, tt.args.token)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("User() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("Convert() error = %v, nil expected", err)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("User() got = %v, want %v", got, tt.want)
+			if got != zeroUser {
+				c.Assert(got, qt.Equals, tt.want)
+				return
 			}
+			c.Assert(err, qt.Not(qt.IsNil))
 		})
 	}
 }

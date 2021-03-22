@@ -3,7 +3,6 @@
 package movie
 
 import (
-	"context"
 	"time"
 
 	"github.com/gilcrest/go-api-basic/domain/errs"
@@ -12,19 +11,13 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Writer is used to create/update a Movie
-type Writer interface {
-	Add(ctx context.Context) error
-	Update(ctx context.Context, id string) error
-}
-
 // NewMovie initializes a Movie struct for use in Movie creation
 func NewMovie(id uuid.UUID, extlID string, u user.User) (*Movie, error) {
 	switch {
 	case id == uuid.Nil:
 		return nil, errs.E(errs.Validation, errs.Parameter("ID"), errors.New(errs.MissingField("ID").Error()))
 	case extlID == "":
-		return nil, errs.E(errs.Validation, errs.Parameter("ID"), errors.New(errs.MissingField("ID").Error()))
+		return nil, errs.E(errs.Validation, errs.Parameter("extlID"), errors.New(errs.MissingField("extlID").Error()))
 	case !u.IsValid():
 		return nil, errs.E(errs.Validation, errs.Parameter("User"), errors.New("User is invalid"))
 	}
@@ -126,15 +119,15 @@ func (m *Movie) IsValid() error {
 	case m.Title == "":
 		return errs.E(errs.Validation, errs.Parameter("title"), errs.MissingField("title"))
 	case m.Rated == "":
-		return errs.E(errs.Validation, errs.Parameter("rated"), errs.MissingField("Rated"))
+		return errs.E(errs.Validation, errs.Parameter("rated"), errs.MissingField("rated"))
 	case m.Released.IsZero():
-		return errs.E(errs.Validation, errs.Parameter("release_date"), "Released must have a value")
+		return errs.E(errs.Validation, errs.Parameter("release_date"), "release_date must have a value")
 	case m.RunTime <= 0:
-		return errs.E(errs.Validation, errs.Parameter("run_time"), "Run time must be greater than zero")
+		return errs.E(errs.Validation, errs.Parameter("run_time"), "run_time must be greater than zero")
 	case m.Director == "":
-		return errs.E(errs.Validation, errs.Parameter("director"), errs.MissingField("Director"))
+		return errs.E(errs.Validation, errs.Parameter("director"), errs.MissingField("director"))
 	case m.Writer == "":
-		return errs.E(errs.Validation, errs.Parameter("writer"), errs.MissingField("Writer"))
+		return errs.E(errs.Validation, errs.Parameter("writer"), errs.MissingField("writer"))
 	}
 
 	return nil
