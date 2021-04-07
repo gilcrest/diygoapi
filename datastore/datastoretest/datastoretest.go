@@ -79,14 +79,14 @@ func newPGDatasourceName(t *testing.T) datastore.PGDatasourceName {
 //		DB Name     = DB_NAME
 //		DB User     = DB_USER
 //		DB Password = DB_PASSWORD
-func NewDB(t *testing.T, lgr zerolog.Logger) (*sql.DB, func()) {
+func NewDB(t *testing.T) (db *sql.DB, cleanup func()) {
 	t.Helper()
 
 	dsn := newPGDatasourceName(t)
 
+	var err error
 	// Open the postgres database using the postgres driver (pq)
-	// func Open(driverName, dataSourceName string) (*DB, error)
-	db, err := sql.Open("postgres", dsn.String())
+	db, err = sql.Open("postgres", dsn.String())
 	if err != nil {
 		t.Fatalf("sql.Open() error = %v", err)
 	}
@@ -96,7 +96,9 @@ func NewDB(t *testing.T, lgr zerolog.Logger) (*sql.DB, func()) {
 		t.Fatalf("db.Ping() error = %v", err)
 	}
 
-	return db, func() { db.Close() }
+	cleanup = func() { db.Close() }
+
+	return db, cleanup
 }
 
 // NewDefaultDatastore provides a datastore.DefaultDatastore struct
@@ -111,7 +113,7 @@ func NewDB(t *testing.T, lgr zerolog.Logger) (*sql.DB, func()) {
 func NewDefaultDatastore(t *testing.T, lgr zerolog.Logger) (datastore.DefaultDatastore, func()) {
 	t.Helper()
 
-	db, cleanup := NewDB(t, lgr)
+	db, cleanup := NewDB(t)
 
 	return datastore.NewDefaultDatastore(db), cleanup
 }

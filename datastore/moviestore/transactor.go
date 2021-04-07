@@ -18,7 +18,7 @@ type Transactor interface {
 	Delete(ctx context.Context, m *movie.Movie) error
 }
 
-// NewDefaultTransactor is an initializer for DefaultMovieStore
+// NewDefaultTransactor is an initializer for DefaultTransactor
 func NewDefaultTransactor(ds datastore.Datastorer) DefaultTransactor {
 	return DefaultTransactor{ds}
 }

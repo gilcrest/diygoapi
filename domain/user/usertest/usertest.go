@@ -23,7 +23,7 @@ func NewUser(t *testing.T) user.User {
 	}
 }
 
-// Returns an invalid user defined by the method user.IsValid()
+// NewInvalidUser returns an invalid user defined by the method user.IsValid()
 func NewInvalidUser(t *testing.T) user.User {
 	t.Helper()
 

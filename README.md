@@ -2,7 +2,7 @@
 
 A RESTful API template (built with Go)
 
-The goal of this project is to make an example/template of a relational database-backed REST HTTP API that has characteristics needed to ensure success in a high volume environment. I'm gearing this towards beginners, as I struggled with a lot of this over the past couple of years and would like to help others getting started.
+The goal of this project is to be an example/template/boilerplate of a relational database-backed REST HTTP API that has characteristics needed to ensure success in a high volume environment. This is geared this towards beginners, as I struggled with a lot of this over the past few years and would like to help others getting started.
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/gilcrest/go-api-basic.svg)](https://pkg.go.dev/github.com/gilcrest/go-api-basic) [![Go Report Card](https://goreportcard.com/badge/github.com/gilcrest/go-api-basic)](https://goreportcard.com/report/github.com/gilcrest/go-api-basic)
 
@@ -12,26 +12,167 @@ The following is an in-depth walkthrough of this project. This walkthrough has a
 
 ## Minimum Requirements
 
-You need to have Go and PostgreSQL installed in order to run these APIs.
+You need to have Go and PostgreSQL installed in order to run these APIs. In addition, several database objects must be created (see [Database Setup](#database-setup) below)
 
-### Database Setup
+## Table of Contents
 
-#### Local DB Setup
+- [Getting Started](#getting-started)
+  - [Database Objects Setup](#database-objects-setup)
+  - [Program Execution](#program-execution)
+    - [Command Line Flags](#command-line-flags)
+    - [Environment Setup](#environment-setup)
+      - [Database Connection Environment Variables](database-connection-environment-variables)
+    - [Run the Binary](#run-the-binary)
+  - [Ping](#ping)
+  - [Authentication and Authorization](#authentication-and-authorization)
+  - [cURL Commands to Call Services](#curl-commands-to-call-services)
+  - [Project Walkthrough](#project-walkthrough)
+    - [Errors](#errors)
 
-After you've installed PostgreSQL locally, the [demo_ddl.sql](https://github.com/gilcrest/go-api-basic/blob/master/demo.ddl) script (*DDL = **D**ata **D**efinition **L**anguage*) located in the root directory needs to be run, however, there are some things to know. At the highest level, PostgreSQL has the concept of databases, separate from schemas. In my script, the first statement creates a database called `go_api_basic` - this is of course optional and you can use the default postgres database or your user database or whatever you prefer. When connecting later, you'll set the database to whatever is your preference. Depending on what PostgreSQL IDE you're running the DDL in, you'll likely need to stop after this first statement, switch to this database, and then continue to run the remainder of the DDL statements. These statements create a schema (`demo`) within the database, one table (`demo.movie`) and one function (`demo.create_movie`) used on create/insert.
+---
+
+## Getting Started
+
+### Database Objects Setup
+
+Assuming PostgreSQL is installed locally, the [demo_ddl.sql](https://github.com/gilcrest/go-api-basic/blob/master/demo.ddl) script (*DDL = **D**ata **D**efinition **L**anguage*) located in the root directory needs to be run, however, there are some things to know. At the highest level, PostgreSQL has the concept of databases, separate from schemas. A database is a container of other objects (tables, views, functions, indexes, etc.). There is no limit no the number of databases inside a PostgreSQL server.
+
+In the DDL script, the first statement creates a database called `go_api_basic`:
 
 ```sql
 create database go_api_basic
     with owner postgres;
 ```
 
- In addition, [environment variables](https://en.wikipedia.org/wiki/Environment_variable) need to be in place for the database.
+> Using this database is optional; you can use the default `postgres` database or your user database or whatever you prefer. When connecting later, you can set the database to whatever is your preference. If you do choose to create a separate database like this, depending on what PostgreSQL IDE you're running the DDL in, you'll likely need to stop after this first statement, switch to this database, and then continue to run the remainder of the DDL statements.
+
+The remainder of the statements create a schema (`demo`) within the database:
+
+```sql
+create schema demo;
+```
+
+one table (`demo.movie`):
+
+```sql
+create table demo.movie
+(
+    movie_id uuid not null
+        constraint movie_pk
+            primary key,
+    extl_id varchar(250) not null,
+    title varchar(1000) not null,
+    rated varchar(10),
+    released date,
+    run_time integer,
+    director varchar(1000),
+    writer varchar(1000),
+    create_username varchar,
+    create_timestamp timestamp with time zone,
+    update_username varchar,
+    update_timestamp timestamp with time zone
+);
+
+alter table demo.movie owner to postgres;
+
+create unique index movie_extl_id_uindex
+    on demo.movie (extl_id);
+```
+
+and one function (`demo.create_movie`) used on create/insert:
+
+```sql
+create function demo.create_movie(p_id uuid, p_extl_id character varying, p_title character varying, p_rated character varying, p_released date, p_run_time integer, p_director character varying, p_writer character varying, p_create_client_id uuid, p_create_username character varying)
+    returns TABLE(o_create_timestamp timestamp without time zone, o_update_timestamp timestamp without time zone)
+    language plpgsql
+as
+$$
+DECLARE
+    v_dml_timestamp TIMESTAMP;
+    v_create_timestamp timestamp;
+    v_update_timestamp timestamp;
+BEGIN
+
+    v_dml_timestamp := now() at time zone 'utc';
+
+    INSERT INTO demo.movie (movie_id,
+                            extl_id,
+                            title,
+                            rated,
+                            released,
+                            run_time,
+                            director,
+                            writer,
+                            create_username,
+                            create_timestamp,
+                            update_username,
+                            update_timestamp)
+    VALUES (p_id,
+            p_extl_id,
+            p_title,
+            p_rated,
+            p_released,
+            p_run_time,
+            p_director,
+            p_writer,
+            p_create_username,
+            v_dml_timestamp,
+            p_create_username,
+            v_dml_timestamp)
+    RETURNING create_timestamp, update_timestamp
+        into v_create_timestamp, v_update_timestamp;
+
+    o_create_timestamp := v_create_timestamp;
+    o_update_timestamp := v_update_timestamp;
+
+    RETURN NEXT;
+
+END;
+
+$$;
+
+alter function demo.create_movie(uuid, varchar, varchar, varchar, date, integer, varchar, varchar, uuid, varchar) owner to postgres;
+```
+
+## Program Execution
+
+TL;DR - just show me how to install and run the code. Fork or clone the code.
+
+```bash
+git clone https://github.com/gilcrest/go-api-basic.git
+```
+
+To validate your installation and ensure you've got connectivity to the database, do the following:
+
+Build the code from the program root directory
+
+```bash
+go build -o server
+```
+
+> This sends the output of `go build` to a binary file called `server` in the same directory.
+
+### Command Line Flags
+
+When running the program binary, several flags can be passed - the list is below. A PostgreSQL database connection is required. There are two choices for establishing a database connection on startup. Either pass the connection parameters as flags or set them as environment variables. You can also choose a combination of both. Flags always take precedence, so if a flag is passed, that will be used. If there is no flag set, then the program checks for a matching environment variable. If neither are found, the flag's default values will be used and, depending on the flag, may result in a connection error.
+
+| Flag Name | DB Connection Parameter | Description | Environment Variable |
+| ----------------------- |-------------| --------- | -------------------- |
+| log-level   | N/A       | zerolog logging level (debug, info, etc.) | LOG_LEVEL |
+| port        | N/A       | Port the server will listen on | PORT |
+| db-host     | host      | The host name of the database server. | DB_HOST |
+| db-port     | port      | The port number the server is listening on. Defaults to the PostgreSQL™ standard port number (5432). | DB_PORT |
+| db-name     | database  | The database name. | DB_NAME |
+| db-user     | user      | PostgreSQL™ user name to connect as. | DB_USER |
+| db-password | password  | Password to be used if the server demands password authentication. | DB_PASSWORD |
+
+### Environment Setup
+
+If you choose to use [environment variables](https://en.wikipedia.org/wiki/Environment_variable) instead of flags for connecting to the database, you can set these however you like (permanently in something like .bash_profile if on a mac, etc. - see some notes [here](https://gist.github.com/gilcrest/d5981b873d1e2fc9646602eedd384ba6#environment-variables)), but my preferred way is to run a bash script to set the environment variables temporarily for the current shell environment. I have included an example script file (`setlocalEnvVars.sh`) in the `/scripts/ddl` directory. The below statements assume you're running the command from the project root directory.
+
+In order to set the environment variables using this script, first set the environment variable values to whatever is appropriate for your environment:
 
 #### Database Connection Environment Variables
-
-To run the app, the following environment variables need to be set:
-
-##### PostgreSQL
 
 ```bash
 export DB_NAME="go_api_basic"
@@ -41,48 +182,28 @@ export DB_HOST="localhost"
 export DB_PORT="5432"
 ```
 
-You can set these however you like (permanently in something like .bash_profile if on a mac, etc. - see some notes [here](https://gist.github.com/gilcrest/d5981b873d1e2fc9646602eedd384ba6#environment-variables)), but my preferred way is to run a bash script to set the environment variables to whichever environment I'm connecting to temporarily for the current shell environment. I have included an example script file (`setlocalEnvVars.sh`) in the /scripts directory. The below statements assume you're running the command from the project root directory.
-
-In order to set the environment variables using this script, you'll need to set the script to executable:
+Next, you'll need to set the script to executable
 
 ```bash
 chmod +x ./scripts/setlocalEnvVars.sh
 ```
 
-Then execute the file in the current shell environment:
+Finally, execute the file in the current shell environment:
 
 ```bash
-source ./scripts/setlocalEnvVars.sh
+source ./scripts/ddl/setlocalEnvVars.sh
 ```
 
-## Installation
-
-TL;DR - just show me how to install and run the code. Fork or clone the code.
+### Run the Binary
 
 ```bash
-git clone https://github.com/gilcrest/go-api-basic.git
+./server -log-level=debug -db-host=localhost -db-port=5432 -db-name=go_api_basic -db-user=postgres -db-password=fakePassword
 ```
 
-To validate your installation ensure you've got connectivity to the database, do the following:
-
-Build the code from the root directory
+Upon running, you should see something similar to the following:
 
 ```bash
-go build -o server
-```
-
-> This sends the output of `go build` to a file called `server` in the same directory.
-
-Execute the file
-
-```bash
-./server -loglvl=debug
-```
-
-You should see something similar to the following:
-
-```bash
-$ ./server -loglvl=debug
+$ ./server -log-level=debug
 {"level":"info","time":1608170937,"severity":"INFO","message":"logging level set to debug"}
 {"level":"info","time":1608170937,"severity":"INFO","message":"sql database opened for localhost on port 5432"}
 {"level":"info","time":1608170937,"severity":"INFO","message":"sql database Ping returned successfully"}
@@ -91,9 +212,9 @@ $ ./server -loglvl=debug
 {"level":"info","time":1608170937,"severity":"INFO","message":"current database: go_api_basic"}
 ```
 
-### Ping (unauthenticated)
+## Ping
 
-The easiest api to interact with is the `ping` service. The idea of the service is a simple health check that returns a series of flags denoting health of the system (queue depths, database up boolean, etc.). For right now, the only thing it checks is if the database is up and pingable. I have left this service unauthenticated so there's at least one service that you can get to without having to have an authentication token, but in actuality, I would typically have every service behind a security token.
+The easiest service to interact with is the `ping` service. The idea of the service is a simple health check that returns a series of flags denoting health of the system (queue depths, database up boolean, etc.). For right now, the only thing it checks is if the database is up and pingable. I have left this service unauthenticated so there's at least one service that you can get to without having to have an authentication token, but in actuality, I would typically have every service behind a security token.
 
 Use cURL GET request to call `ping`:
 
@@ -125,7 +246,7 @@ Once a user has authenticated through this flow, all calls to services (other th
 
 So long as you've got a valid token and are properly setup in the authorization function, you can then execute all four operations (create, read, update, delete) using cURL.
 
-### cURL Commands to Call API
+## cURL Commands to Call Services
 
 **Create** - use the `POST` HTTP verb at `/api/v1/movies`:
 
@@ -379,6 +500,6 @@ and the error log looks like (I cut off parts of the stack for brevity):
 err := errs.E(errors.New("seems we have an error here"))
 ```
 
-## 1/3/2021 - README under construction
+## 4/7/2021 - README under construction
 
-I have taken out the remainder of the documentation for now until I complete my next goal of adding more tests to just about everything. I think adding tests will likely further shape the structure and program flow that I'm going to wait until I've completed that exercise to complete this README.
+I have finally finished adding all tests and refactoring as a result. I will be making a lot of progress on this README shortly.

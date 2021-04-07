@@ -16,6 +16,8 @@ import (
 	"github.com/gilcrest/go-api-basic/domain/user"
 )
 
+// BearerTokenType is used in authorization to access a
+// resource
 const BearerTokenType string = "Bearer"
 
 // AccessToken represents an access token found in an

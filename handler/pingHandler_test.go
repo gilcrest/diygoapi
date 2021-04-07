@@ -33,7 +33,7 @@ func TestDefaultPingHandler_Ping(t *testing.T) {
 
 		lgr := logger.NewLogger(os.Stdout, true)
 		// initialize a sql.DB and cleanup function for it
-		db, cleanup := datastoretest.NewDB(t, lgr)
+		db, cleanup := datastoretest.NewDB(t)
 		defer cleanup()
 		ds := datastore.NewDefaultDatastore(db)
 		pinger := pingstore.NewDefaultPinger(ds)

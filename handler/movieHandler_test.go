@@ -417,8 +417,6 @@ func TestDefaultMovieHandlers_UpdateMovie(t *testing.T) {
 		// defer cleanup of movie record until after the test is completed
 		t.Cleanup(movieCleanup)
 
-		// NewMovieDBHelper is
-
 		// initialize the DefaultTransactor for the moviestore
 		transactor := moviestore.NewDefaultTransactor(ds)
 

@@ -15,7 +15,7 @@ import (
 	"github.com/rs/zerolog/hlog"
 )
 
-// CreateMovieHandler is a Handler creates a Movie
+// CreateMovieHandler is a Handler that creates a Movie
 type CreateMovieHandler http.Handler
 
 // ProvideCreateMovieHandler is a provider for the
