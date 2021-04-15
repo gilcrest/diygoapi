@@ -19,6 +19,24 @@ const (
 	// exitFail is the exit code if the program
 	// fails.
 	exitFail = 1
+	// log level environment variable name
+	loglevelEnv string = "LOG_LEVEL"
+	// minimum accepted log level environment variable name
+	logLevelMinEnv string = "LOG_LEVEL_MIN"
+	// log error stack environment variable name
+	logErrorStackEnv string = "LOG_ERROR_STACK"
+	// server port environment variable name
+	portEnv string = "PORT"
+	// database host environment variable name
+	dbHostEnv string = "DB_HOST"
+	// database port environment variable name
+	dbPortEnv string = "DB_PORT"
+	// database name environment variable name
+	dbNameEnv string = "DB_NAME"
+	// database user environment variable name
+	dbUserEnv string = "DB_USER"
+	// database user password environment variable name
+	dbPasswordEnv string = "DB_PASSWORD"
 )
 
 func main() {
@@ -35,18 +53,39 @@ func run(args []string) error {
 		return err
 	}
 
+	// determine minimum logging level based on flag input
+	minlvl, err := zerolog.ParseLevel(flgs.logLvlMin)
+	if err != nil {
+		return err
+	}
+
+	// determine logging level based on flag input
+	lvl, err := zerolog.ParseLevel(flgs.loglvl)
+	if err != nil {
+		return err
+	}
+
 	// setup logger with appropriate defaults
-	lgr := logger.NewLogger(os.Stdout, true)
+	lgr := logger.NewLogger(os.Stdout, minlvl, true)
 
-	// determine logging level
-	loglevel := newLogLevel(flgs.loglvl)
-
-	// set global logging level based on flag input
-	zerolog.SetGlobalLevel(loglevel)
-	lgr.Info().Msgf("logging level set to %s", loglevel)
+	// logs will be written at the level set in NewLogger (which is
+	// also the minimum level). If the logs are to be written at a
+	// different level than the minimum, use SetGlobalLevel to set
+	// the global logging level to that. Minimum rules will still
+	// apply.
+	if minlvl != lvl {
+		zerolog.SetGlobalLevel(lvl)
+	}
 
 	// set global logging time field format to Unix timestamp
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+
+	lgr.Info().Msgf("minimum accepted logging level set to %s", minlvl)
+	lgr.Info().Msgf("logging level set to %s", lvl)
+
+	// set global to log errors with stack (or not) based on flag
+	logger.WriteErrorStackGlobal(flgs.logErrorStack)
+	lgr.Info().Msgf("log error stack global set to %t", flgs.logErrorStack)
 
 	// validate port in acceptable range
 	err = portRange(flgs.port)
@@ -80,6 +119,18 @@ type flags struct {
 	// If not set, defaults to error
 	loglvl string
 
+	// log-level-min flag sets the minimum accepted logging level
+	// - e.g. in production, you may have a policy to never allow logs at
+	// trace level. You could set the minimum log level to Debug. Even
+	// if the Global log level is set to Trace, only logs at Debug
+	// and above would be logged. Default level is trace.
+	logLvlMin string
+
+	// logErrorStack flag determines whether or not a full error stack
+	// should be logged. If true, error stacks are logged, if false,
+	// just the error is logged
+	logErrorStack bool
+
 	// port flag is what http.ListenAndServe will listen on. default is 8080 if not set
 	port int
 
@@ -107,13 +158,15 @@ func newFlags(args []string) (flgs flags, err error) {
 	fs := flag.NewFlagSet(args[0], flag.ContinueOnError)
 
 	var (
-		loglvl     = fs.String("log-level", "info", "sets log level (debug, warn, error, fatal, panic, disabled), (also via LOG_LEVEL)")
-		port       = fs.Int("port", 8080, "listen port for server (also via PORT)")
-		dbhost     = fs.String("db-host", "", "postgresql database host (also via DB_HOST)")
-		dbport     = fs.Int("db-port", 5432, "postgresql database port (also via DB_PORT)")
-		dbname     = fs.String("db-name", "", "postgresql database name (also via DB_NAME)")
-		dbuser     = fs.String("db-user", "", "postgresql database user (also via DB_USER)")
-		dbpassword = fs.String("db-password", "", "postgresql database password (also via DB_PASSWORD)")
+		logLvlMin     = fs.String("log-level-min", "trace", fmt.Sprintf("sets minimum log level (trace, debug, info, warn, error, fatal, panic, disabled), (also via %s)", logLevelMinEnv))
+		loglvl        = fs.String("log-level", "info", fmt.Sprintf("sets log level (trace, debug, info, warn, error, fatal, panic, disabled), (also via %s)", loglevelEnv))
+		logErrorStack = fs.Bool("log-error-stack", true, fmt.Sprintf("if true, log full error stacktrace, else just log error, (also via %s)", logErrorStackEnv))
+		port          = fs.Int("port", 8080, fmt.Sprintf("listen port for server (also via %s)", portEnv))
+		dbhost        = fs.String("db-host", "", fmt.Sprintf("postgresql database host (also via %s)", dbHostEnv))
+		dbport        = fs.Int("db-port", 5432, fmt.Sprintf("postgresql database port (also via %s)", dbPortEnv))
+		dbname        = fs.String("db-name", "", fmt.Sprintf("postgresql database name (also via %s)", dbNameEnv))
+		dbuser        = fs.String("db-user", "", fmt.Sprintf("postgresql database user (also via %s)", dbUserEnv))
+		dbpassword    = fs.String("db-password", "", fmt.Sprintf("postgresql database password (also via %s)", dbPasswordEnv))
 	)
 
 	// Parse the command line flags from above
@@ -123,41 +176,16 @@ func newFlags(args []string) (flgs flags, err error) {
 	}
 
 	return flags{
-		loglvl:     *loglvl,
-		port:       *port,
-		dbhost:     *dbhost,
-		dbport:     *dbport,
-		dbname:     *dbname,
-		dbuser:     *dbuser,
-		dbpassword: *dbpassword,
+		loglvl:        *loglvl,
+		logLvlMin:     *logLvlMin,
+		logErrorStack: *logErrorStack,
+		port:          *port,
+		dbhost:        *dbhost,
+		dbport:        *dbport,
+		dbname:        *dbname,
+		dbuser:        *dbuser,
+		dbpassword:    *dbpassword,
 	}, nil
-}
-
-// newLogLevel sets up the logging level (e.g. Debug, Info, Error, etc.)
-func newLogLevel(loglvl string) zerolog.Level {
-
-	var lvl zerolog.Level
-
-	switch loglvl {
-	case "debug":
-		lvl = zerolog.DebugLevel
-	case "info":
-		lvl = zerolog.InfoLevel
-	case "warn":
-		lvl = zerolog.WarnLevel
-	case "error":
-		lvl = zerolog.ErrorLevel
-	case "fatal":
-		lvl = zerolog.FatalLevel
-	case "panic":
-		lvl = zerolog.PanicLevel
-	case "disabled":
-		lvl = zerolog.Disabled
-	default:
-		lvl = zerolog.InfoLevel
-	}
-
-	return lvl
 }
 
 // portRange validates the port be in an acceptable range

@@ -8,6 +8,8 @@ import (
 	"net/http/httptest"
 	"os"
 
+	"github.com/rs/zerolog"
+
 	"github.com/pkg/errors"
 
 	"github.com/gilcrest/go-api-basic/domain/errs"
@@ -53,7 +55,7 @@ func ExampleMatch() {
 func ExampleHTTPErrorResponse() {
 
 	w := httptest.NewRecorder()
-	l := logger.NewLogger(os.Stdout, false)
+	l := logger.NewLogger(os.Stdout, zerolog.DebugLevel, false)
 
 	err := layer4()
 	errs.HTTPErrorResponse(w, l, err)

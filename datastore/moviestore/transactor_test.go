@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/rs/zerolog"
+
 	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/gilcrest/go-api-basic/datastore/datastoretest"
 	"github.com/gilcrest/go-api-basic/domain/logger"
@@ -17,7 +19,7 @@ func TestNewDefaultTransactor(t *testing.T) {
 	type args struct {
 		ds datastore.Datastorer
 	}
-	lgr := logger.NewLogger(os.Stdout, true)
+	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
 	defaultDatastore, cleanup := datastoretest.NewDefaultDatastore(t, lgr)
 	t.Cleanup(cleanup)
@@ -47,7 +49,7 @@ func TestDefaultTransactor_Create(t *testing.T) {
 		ctx context.Context
 		m   *movie.Movie
 	}
-	lgr := logger.NewLogger(os.Stdout, true)
+	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
 	// I am intentionally not using the cleanup function that is
 	// returned as I need the DB to stay open for the test
@@ -91,7 +93,7 @@ func TestDefaultTransactor_Update(t *testing.T) {
 		ctx context.Context
 		m   *movie.Movie
 	}
-	lgr := logger.NewLogger(os.Stdout, true)
+	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
 	// I am intentionally not using the cleanup function that is
 	// returned as I need the DB to stay open for the test
@@ -101,7 +103,7 @@ func TestDefaultTransactor_Update(t *testing.T) {
 	ctx := context.Background()
 	// create a movie with the helper to ensure that at least one row
 	// is returned
-	m, mCleanup := NewMovieDBHelper(t, ctx, defaultDatastore)
+	m, mCleanup := NewMovieDBHelper(ctx, t, defaultDatastore)
 	t.Cleanup(mCleanup)
 	// The ID would not be set on an update, as only the external ID
 	// is known to the client
@@ -139,7 +141,7 @@ func TestDefaultTransactor_Delete(t *testing.T) {
 		ctx context.Context
 		m   *movie.Movie
 	}
-	lgr := logger.NewLogger(os.Stdout, true)
+	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
 	// I am intentionally not using the cleanup function that is
 	// returned as I need the DB to stay open for the test
@@ -149,7 +151,7 @@ func TestDefaultTransactor_Delete(t *testing.T) {
 	ctx := context.Background()
 	// create a movie with the helper to ensure that at least one row
 	// is returned
-	m, _ := NewMovieDBHelper(t, ctx, defaultDatastore)
+	m, _ := NewMovieDBHelper(ctx, t, defaultDatastore)
 
 	m2 := &movie.Movie{}
 

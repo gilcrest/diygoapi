@@ -8,10 +8,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gilcrest/go-api-basic/domain/user/usertest"
-
-	"github.com/rs/zerolog/hlog"
-
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/pkg/errors"
 
@@ -35,7 +31,7 @@ func TestJSONContentTypeHandler(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 
-	handlers := JSONContentTypeHandler(testJSONContentTypeHandler)
+	handlers := JSONContentTypeResponseHandler(testJSONContentTypeHandler)
 	handlers.ServeHTTP(rr, req)
 }
 
@@ -97,57 +93,6 @@ func TestAccessTokenHandler(t *testing.T) {
 		// code should be 401, and the body should be empty
 		c.Assert(rr.Code, qt.Equals, http.StatusUnauthorized)
 		c.Assert(string(body), qt.Equals, "")
-	})
-}
-
-func TestNewStandardResponse(t *testing.T) {
-	t.Run("no request id", func(t *testing.T) {
-		c := qt.New(t)
-
-		req, err := http.NewRequest("GET", "/ping", nil)
-		if err != nil {
-			t.Fatalf("http.NewRequest() error = %v", err)
-		}
-		u := usertest.NewUser(t)
-		_, err = NewStandardResponse(req, u)
-		wantErr := errs.E(errors.New("request ID not properly set to request context"))
-
-		c.Assert(errs.Match(err, wantErr), qt.Equals, true)
-
-	})
-
-	t.Run("typical", func(t *testing.T) {
-		c := qt.New(t)
-
-		req, err := http.NewRequest("GET", "/ping", nil)
-		if err != nil {
-			t.Fatalf("http.NewRequest() error = %v", err)
-		}
-		rr := httptest.NewRecorder()
-
-		var requestID string
-		testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			rID, ok := hlog.IDFromRequest(r)
-			if !ok {
-				t.Fatal("Request ID not set to request context")
-			}
-			requestID = rID.String()
-			req = r
-		})
-
-		h := hlog.RequestIDHandler("request_id", "Request-Id")(testHandler)
-		h.ServeHTTP(rr, req)
-
-		u := usertest.NewUser(t)
-		sr, err := NewStandardResponse(req, u)
-		if err != nil {
-			t.Fatalf("NewStandardResponse() error = %v", err)
-		}
-
-		wantStandardResponse := &StandardResponse{Path: "/ping", RequestID: requestID, Data: u}
-
-		c.Assert(sr, qt.DeepEquals, wantStandardResponse)
-
 	})
 }
 

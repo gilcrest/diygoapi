@@ -61,7 +61,7 @@ func TestHTTPErrorResponse_StatusCode(t *testing.T) {
 	}
 
 	var b bytes.Buffer
-	l := logger.NewLogger(&b, false)
+	l := logger.NewLogger(&b, zerolog.DebugLevel, false)
 
 	tests := []struct {
 		name string
@@ -91,7 +91,7 @@ func TestHTTPErrorResponse_Body(t *testing.T) {
 	}
 
 	var b bytes.Buffer
-	l := logger.NewLogger(&b, false)
+	l := logger.NewLogger(&b, zerolog.DebugLevel, false)
 
 	tests := []struct {
 		name string

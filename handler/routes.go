@@ -11,6 +11,7 @@ import (
 const (
 	pathPrefix       string = "/api"
 	moviesV1PathRoot string = "/v1/movies"
+	loggerV1PathRoot string = "/v1/logger"
 )
 
 // NewMuxRouter sets up the mux.Router and registers routes to URL paths
@@ -36,7 +37,7 @@ func NewMuxRouter(logger zerolog.Logger, handlers Handlers) *mux.Router {
 	// with Content-Type header = application/json
 	rtr.Handle(moviesV1PathRoot,
 		c.Append(AccessTokenHandler).
-			Append(JSONContentTypeHandler).
+			Append(JSONContentTypeResponseHandler).
 			Then(handlers.CreateMovieHandler)).
 		Methods(http.MethodPost).
 		Headers("Content-Type", "application/json")
@@ -45,7 +46,7 @@ func NewMuxRouter(logger zerolog.Logger, handlers Handlers) *mux.Router {
 	// with the Content-Type header = application/json
 	rtr.Handle(moviesV1PathRoot+"/{extlID}",
 		c.Append(AccessTokenHandler).
-			Append(JSONContentTypeHandler).
+			Append(JSONContentTypeResponseHandler).
 			Then(handlers.UpdateMovieHandler)).
 		Methods(http.MethodPut).
 		Headers("Content-Type", "application/json")
@@ -53,27 +54,42 @@ func NewMuxRouter(logger zerolog.Logger, handlers Handlers) *mux.Router {
 	// Match only DELETE requests having an ID at /api/v1/movies/{id}
 	rtr.Handle(moviesV1PathRoot+"/{extlID}",
 		c.Append(AccessTokenHandler).
-			Append(JSONContentTypeHandler).
+			Append(JSONContentTypeResponseHandler).
 			Then(handlers.DeleteMovieHandler)).
 		Methods(http.MethodDelete)
 
 	// Match only GET requests having an ID at /api/v1/movies/{id}
 	rtr.Handle(moviesV1PathRoot+"/{extlID}",
 		c.Append(AccessTokenHandler).
-			Append(JSONContentTypeHandler).
+			Append(JSONContentTypeResponseHandler).
 			Then(handlers.FindMovieByIDHandler)).
 		Methods(http.MethodGet)
 
 	// Match only GET requests /api/v1/movies
 	rtr.Handle(moviesV1PathRoot,
 		c.Append(AccessTokenHandler).
-			Append(JSONContentTypeHandler).
+			Append(JSONContentTypeResponseHandler).
 			Then(handlers.FindAllMoviesHandler)).
 		Methods(http.MethodGet)
 
+	// Match only GET requests /api/v1/logger
+	rtr.Handle(loggerV1PathRoot,
+		c.Append(AccessTokenHandler).
+			Append(JSONContentTypeResponseHandler).
+			Then(handlers.ReadLoggerHandler)).
+		Methods(http.MethodGet)
+
+	// Match only PUT requests /api/v1/logger
+	rtr.Handle(loggerV1PathRoot,
+		c.Append(AccessTokenHandler).
+			Append(JSONContentTypeResponseHandler).
+			Then(handlers.UpdateLoggerHandler)).
+		Methods(http.MethodPut).
+		Headers("Content-Type", "application/json")
+
 	// Match only GET requests at /api/v1/ping
 	rtr.Handle("/v1/ping",
-		c.Append(JSONContentTypeHandler).
+		c.Append(JSONContentTypeResponseHandler).
 			Then(handlers.PingHandler)).
 		Methods(http.MethodGet)
 

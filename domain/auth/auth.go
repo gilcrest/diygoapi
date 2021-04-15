@@ -57,14 +57,15 @@ type DefaultAuthorizer struct{}
 // at the /ping path. This is obviously completely bogus right now,
 // eventually need to look into something like Casbin for ACL/RBAC
 func (a DefaultAuthorizer) Authorize(ctx context.Context, sub user.User, obj string, act string) error {
-	logger := *zerolog.Ctx(ctx)
+	lgr := *zerolog.Ctx(ctx)
 
 	const (
-		movies string = "/api/v1/movies"
+		moviesPath string = "/api/v1/movies"
+		loggerPath string = "/api/v1/logger"
 	)
 
 	var authorized bool
-	switch strings.HasPrefix(obj, movies) && (act == http.MethodPost || act == http.MethodPut || act == http.MethodDelete || act == http.MethodGet) {
+	switch (strings.HasPrefix(obj, moviesPath) || strings.HasPrefix(obj, loggerPath)) && (act == http.MethodPost || act == http.MethodPut || act == http.MethodDelete || act == http.MethodGet) {
 	case true:
 		switch sub.Email {
 		case "otto.maddox711@gmail.com":
@@ -73,11 +74,11 @@ func (a DefaultAuthorizer) Authorize(ctx context.Context, sub user.User, obj str
 	}
 
 	if authorized {
-		logger.Info().Str("sub", sub.Email).Str("obj", obj).Str("act", act).Msgf("Authorization Granted")
+		lgr.Info().Str("sub", sub.Email).Str("obj", obj).Str("act", act).Msgf("Authorization Granted")
 		return nil
 	}
 
-	logger.Info().Str("sub", sub.Email).Str("obj", obj).Str("act", act).Msgf("Authorization Denied")
+	lgr.Info().Str("sub", sub.Email).Str("obj", obj).Str("act", act).Msgf("Authorization Denied")
 
 	// "In summary, a 401 Unauthorized response should be used for missing or
 	// bad authentication, and a 403 Forbidden response should be used afterwards,

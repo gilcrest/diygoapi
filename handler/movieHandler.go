@@ -104,7 +104,7 @@ func (h DefaultMovieHandlers) CreateMovie(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Call the NewMovie method to perform domain business logic
+	// Call the NewMovie method for struct initialization
 	m, err := movie.NewMovie(uuid.New(), extlID, u)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, err)
@@ -137,7 +137,7 @@ func (h DefaultMovieHandlers) CreateMovie(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	cmr := createMovieResponse{
+	response := createMovieResponse{
 		ExternalID:      m.ExternalID,
 		Title:           m.Title,
 		Rated:           m.Rated,
@@ -151,15 +151,8 @@ func (h DefaultMovieHandlers) CreateMovie(w http.ResponseWriter, r *http.Request
 		UpdateTimestamp: m.UpdateTime.Format(time.RFC3339),
 	}
 
-	// Populate the response
-	response, err := NewStandardResponse(r, cmr)
-	if err != nil {
-		errs.HTTPErrorResponse(w, logger, err)
-		return
-	}
-
 	// Encode response struct to JSON for the response body
-	err = json.NewEncoder(w).Encode(*response)
+	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, errs.E(errs.Internal, err))
 		return
@@ -275,7 +268,7 @@ func (h DefaultMovieHandlers) UpdateMovie(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	mr := updateMovieResponse{
+	response := updateMovieResponse{
 		ExternalID:      m.ExternalID,
 		Title:           m.Title,
 		Rated:           m.Rated,
@@ -289,15 +282,8 @@ func (h DefaultMovieHandlers) UpdateMovie(w http.ResponseWriter, r *http.Request
 		UpdateTimestamp: m.UpdateTime.Format(time.RFC3339),
 	}
 
-	// Populate the response
-	response, err := NewStandardResponse(r, mr)
-	if err != nil {
-		errs.HTTPErrorResponse(w, logger, err)
-		return
-	}
-
 	// Encode response struct to JSON for the response body
-	err = json.NewEncoder(w).Encode(*response)
+	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, errs.E(errs.Internal, err))
 		return
@@ -368,20 +354,13 @@ func (h DefaultMovieHandlers) DeleteMovie(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	dmr := deleteMovieResponse{
+	response := deleteMovieResponse{
 		ExternalID: m.ExternalID,
 		Deleted:    true,
 	}
 
-	// Populate the response
-	response, err := NewStandardResponse(r, dmr)
-	if err != nil {
-		errs.HTTPErrorResponse(w, logger, err)
-		return
-	}
-
 	// Encode response struct to JSON for the response body
-	err = json.NewEncoder(w).Encode(*response)
+	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, errs.E(errs.Internal, err))
 		return
@@ -449,7 +428,7 @@ func (h DefaultMovieHandlers) FindByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mr := movieResponse{
+	response := movieResponse{
 		ExternalID:      m.ExternalID,
 		Title:           m.Title,
 		Rated:           m.Rated,
@@ -463,15 +442,8 @@ func (h DefaultMovieHandlers) FindByID(w http.ResponseWriter, r *http.Request) {
 		UpdateTimestamp: m.UpdateTime.Format(time.RFC3339),
 	}
 
-	// Populate the response
-	response, err := NewStandardResponse(r, mr)
-	if err != nil {
-		errs.HTTPErrorResponse(w, logger, err)
-		return
-	}
-
 	// Encode response struct to JSON for the response body
-	err = json.NewEncoder(w).Encode(*response)
+	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, errs.E(errs.Internal, err))
 		return
@@ -533,7 +505,7 @@ func (h DefaultMovieHandlers) FindAllMovies(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	var smr []movieResponse
+	var response []movieResponse
 	for _, m := range movies {
 		mr := movieResponse{
 			ExternalID:      m.ExternalID,
@@ -548,14 +520,7 @@ func (h DefaultMovieHandlers) FindAllMovies(w http.ResponseWriter, r *http.Reque
 			UpdateUsername:  m.UpdateUser.Email,
 			UpdateTimestamp: m.UpdateTime.Format(time.RFC3339),
 		}
-		smr = append(smr, mr)
-	}
-
-	// Populate the response
-	response, err := NewStandardResponse(r, smr)
-	if err != nil {
-		errs.HTTPErrorResponse(w, logger, err)
-		return
+		response = append(response, mr)
 	}
 
 	// Encode response struct to JSON for the response body

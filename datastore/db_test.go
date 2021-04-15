@@ -15,7 +15,7 @@ func Test_NewDB(t *testing.T) {
 		l    zerolog.Logger
 	}
 
-	lgr := logger.NewLogger(os.Stdout, true)
+	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 	dsn := NewPGDatasourceName("localhost", "go_api_basic", "postgres", "", 5432)
 	baddsn := NewPGDatasourceName("badhost", "go_api_basic", "postgres", "", 5432)
 
@@ -30,7 +30,7 @@ func Test_NewDB(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			db, cleanup, err := NewDB(tt.args.pgds, tt.args.l)
-			defer cleanup()
+			t.Cleanup(cleanup)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewDB() error = %v, wantErr %v", err, tt.wantErr)
 				return

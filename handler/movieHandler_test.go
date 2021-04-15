@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/rs/zerolog"
+
 	qt "github.com/frankban/quicktest"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
@@ -40,7 +42,7 @@ func TestDefaultMovieHandlers_CreateMovie(t *testing.T) {
 		c := qt.New(t)
 
 		// initialize a zerolog Logger
-		lgr := logger.NewLogger(os.Stdout, true)
+		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
 		// initialize DefaultDatastore
 		ds, cleanup := datastoretest.NewDefaultDatastore(t, lgr)
@@ -131,7 +133,7 @@ func TestDefaultMovieHandlers_CreateMovie(t *testing.T) {
 		// setup full handler chain needed for request
 		h := LoggerHandlerChain(lgr, ac).
 			Append(AccessTokenHandler).
-			Append(JSONContentTypeHandler).
+			Append(JSONContentTypeResponseHandler).
 			Append(requestIDMiddleware).
 			Then(createMovieHandler)
 
@@ -141,6 +143,9 @@ func TestDefaultMovieHandlers_CreateMovie(t *testing.T) {
 
 		// Assert that Response Status Code equals 200 (StatusOK)
 		c.Assert(rr.Code, qt.Equals, http.StatusOK)
+
+		// Assert that the request ID has been added to the response header
+		c.Assert(rr.Header().Get("Request-Id"), qt.Equals, requestID)
 
 		// createMovieResponse is the response struct for a Movie
 		// the response struct is tucked inside the handler, so we
@@ -159,43 +164,28 @@ func TestDefaultMovieHandlers_CreateMovie(t *testing.T) {
 			UpdateTimestamp string `json:"update_timestamp"`
 		}
 
-		// standardResponse is the standard response struct used for
-		// all response bodies, the Data field is actually an
-		// interface{} in the real struct (handler.StandardResponse),
-		// but it's easiest to decode to JSON using a proper struct
-		// as below
-		type standardResponse struct {
-			Path      string              `json:"path"`
-			RequestID string              `json:"request_id"`
-			Data      createMovieResponse `json:"data"`
-		}
-
 		// retrieve the mock User that is used for testing
 		u, _ := mockAccessTokenConverter.Convert(req.Context(), authtest.NewAccessToken(t))
 
 		// setup the expected response data
-		wantBody := standardResponse{
-			Path:      path,
-			RequestID: requestID,
-			Data: createMovieResponse{
-				ExternalID:      "superRandomString",
-				Title:           "Repo Man",
-				Rated:           "R",
-				Released:        "1984-03-02T00:00:00Z",
-				RunTime:         92,
-				Director:        "Alex Cox",
-				Writer:          "Alex Cox",
-				CreateUsername:  u.Email,
-				CreateTimestamp: "",
-				UpdateUsername:  u.Email,
-				UpdateTimestamp: "",
-			},
+		wantBody := createMovieResponse{
+			ExternalID:      "superRandomString",
+			Title:           "Repo Man",
+			Rated:           "R",
+			Released:        "1984-03-02T00:00:00Z",
+			RunTime:         92,
+			Director:        "Alex Cox",
+			Writer:          "Alex Cox",
+			CreateUsername:  u.Email,
+			CreateTimestamp: "",
+			UpdateUsername:  u.Email,
+			UpdateTimestamp: "",
 		}
 
-		// initialize standardResponse
-		gotBody := standardResponse{}
+		// initialize createMovieResponse
+		gotBody := createMovieResponse{}
 
-		// decode the response body into the standardResponse (gotBody)
+		// decode the response body into gotBody
 		err = DecoderErr(json.NewDecoder(rr.Result().Body).Decode(&gotBody))
 		defer rr.Result().Body.Close()
 
@@ -205,8 +195,8 @@ func TestDefaultMovieHandlers_CreateMovie(t *testing.T) {
 		// quicktest uses Google's cmp library for DeepEqual comparisons. It
 		// has some great options included with it. Below is an example of
 		// ignoring certain fields...
-		ignoreFields := cmpopts.IgnoreFields(standardResponse{},
-			"Data.ExternalID", "Data.CreateTimestamp", "Data.UpdateTimestamp")
+		ignoreFields := cmpopts.IgnoreFields(createMovieResponse{},
+			"ExternalID", "CreateTimestamp", "UpdateTimestamp")
 
 		// Assert that the response body (gotBody) is as expected (wantBody).
 		// The External ID needs to be unique as the database unique index
@@ -224,7 +214,7 @@ func TestDefaultMovieHandlers_CreateMovie(t *testing.T) {
 		c := qt.New(t)
 
 		// initialize a zerolog Logger
-		lgr := logger.NewLogger(os.Stdout, true)
+		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
 		// initialize MockTransactor for the moviestore
 		mockTransactor := newMockTransactor(t)
@@ -306,7 +296,7 @@ func TestDefaultMovieHandlers_CreateMovie(t *testing.T) {
 		// setup full handler chain needed for request
 		h := LoggerHandlerChain(lgr, ac).
 			Append(AccessTokenHandler).
-			Append(JSONContentTypeHandler).
+			Append(JSONContentTypeResponseHandler).
 			Append(requestIDMiddleware).
 			Then(createMovieHandler)
 
@@ -316,6 +306,9 @@ func TestDefaultMovieHandlers_CreateMovie(t *testing.T) {
 
 		// Assert that Response Status Code equals 200 (StatusOK)
 		c.Assert(rr.Code, qt.Equals, http.StatusOK)
+
+		// Assert that the request ID has been added to the response header
+		c.Assert(rr.Header().Get("Request-Id"), qt.Equals, requestID)
 
 		// createMovieResponse is the response struct for a Movie
 		// the response struct is tucked inside the handler, so we
@@ -334,43 +327,28 @@ func TestDefaultMovieHandlers_CreateMovie(t *testing.T) {
 			UpdateTimestamp string `json:"update_timestamp"`
 		}
 
-		// standardResponse is the standard response struct used for
-		// all response bodies, the Data field is actually an
-		// interface{} in the real struct (handler.StandardResponse),
-		// but it's easiest to decode to JSON using a proper struct
-		// as below
-		type standardResponse struct {
-			Path      string              `json:"path"`
-			RequestID string              `json:"request_id"`
-			Data      createMovieResponse `json:"data"`
-		}
-
 		// retrieve the mock User that is used for testing
 		u, _ := mockAccessTokenConverter.Convert(req.Context(), authtest.NewAccessToken(t))
 
 		// setup the expected response data
-		wantBody := standardResponse{
-			Path:      path,
-			RequestID: requestID,
-			Data: createMovieResponse{
-				ExternalID:      "superRandomString",
-				Title:           "Repo Man",
-				Rated:           "R",
-				Released:        "1984-03-02T00:00:00Z",
-				RunTime:         92,
-				Director:        "Alex Cox",
-				Writer:          "Alex Cox",
-				CreateUsername:  u.Email,
-				CreateTimestamp: time.Date(2008, 1, 8, 06, 54, 0, 0, time.UTC).String(),
-				UpdateUsername:  u.Email,
-				UpdateTimestamp: time.Date(2008, 1, 8, 06, 54, 0, 0, time.UTC).String(),
-			},
+		wantBody := createMovieResponse{
+			ExternalID:      "superRandomString",
+			Title:           "Repo Man",
+			Rated:           "R",
+			Released:        "1984-03-02T00:00:00Z",
+			RunTime:         92,
+			Director:        "Alex Cox",
+			Writer:          "Alex Cox",
+			CreateUsername:  u.Email,
+			CreateTimestamp: time.Date(2008, 1, 8, 06, 54, 0, 0, time.UTC).String(),
+			UpdateUsername:  u.Email,
+			UpdateTimestamp: time.Date(2008, 1, 8, 06, 54, 0, 0, time.UTC).String(),
 		}
 
-		// initialize standardResponse
-		gotBody := standardResponse{}
+		// initialize createMovieResponse
+		gotBody := createMovieResponse{}
 
-		// decode the response body into the standardResponse (gotBody)
+		// decode the response body into gotBody
 		err = DecoderErr(json.NewDecoder(rr.Result().Body).Decode(&gotBody))
 		defer rr.Result().Body.Close()
 
@@ -380,8 +358,8 @@ func TestDefaultMovieHandlers_CreateMovie(t *testing.T) {
 		// quicktest uses Google's cmp library for DeepEqual comparisons. It
 		// has some great options included with it. Below is an example of
 		// ignoring certain fields...
-		ignoreFields := cmpopts.IgnoreFields(standardResponse{},
-			"Data.CreateTimestamp", "Data.UpdateTimestamp")
+		ignoreFields := cmpopts.IgnoreFields(createMovieResponse{},
+			"CreateTimestamp", "UpdateTimestamp")
 
 		// Assert that the response body (gotBody) is as expected (wantBody).
 		// The Create/Update timestamps are ignored as they are always unique.
@@ -403,7 +381,7 @@ func TestDefaultMovieHandlers_UpdateMovie(t *testing.T) {
 		c := qt.New(t)
 
 		// initialize a zerolog Logger
-		lgr := logger.NewLogger(os.Stdout, true)
+		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
 		// initialize DefaultDatastore
 		ds, cleanup := datastoretest.NewDefaultDatastore(t, lgr)
@@ -412,7 +390,7 @@ func TestDefaultMovieHandlers_UpdateMovie(t *testing.T) {
 		t.Cleanup(cleanup)
 
 		// create a test movie in the database
-		m, movieCleanup := moviestore.NewMovieDBHelper(t, context.Background(), ds)
+		m, movieCleanup := moviestore.NewMovieDBHelper(context.Background(), t, ds)
 
 		// defer cleanup of movie record until after the test is completed
 		t.Cleanup(movieCleanup)
@@ -500,7 +478,7 @@ func TestDefaultMovieHandlers_UpdateMovie(t *testing.T) {
 		// setup full handler chain needed for request
 		h := LoggerHandlerChain(lgr, ac).
 			Append(AccessTokenHandler).
-			Append(JSONContentTypeHandler).
+			Append(JSONContentTypeResponseHandler).
 			Append(requestIDMiddleware).
 			Then(updateMovieHandler)
 
@@ -514,6 +492,9 @@ func TestDefaultMovieHandlers_UpdateMovie(t *testing.T) {
 
 		// Assert that Response Status Code equals 200 (StatusOK)
 		c.Assert(rr.Code, qt.Equals, http.StatusOK)
+
+		// Assert that the request ID has been added to the response header
+		c.Assert(rr.Header().Get("Request-Id"), qt.Equals, requestID)
 
 		// updateMovieResponse is the response struct for updating a
 		// Movie. The response struct is tucked inside the handler,
@@ -532,43 +513,28 @@ func TestDefaultMovieHandlers_UpdateMovie(t *testing.T) {
 			UpdateTimestamp string `json:"update_timestamp"`
 		}
 
-		// standardResponse is the standard response struct used for
-		// all response bodies, the Data field is actually an
-		// interface{} in the real struct (handler.StandardResponse),
-		// but it's easiest to decode to JSON using a proper struct
-		// as below
-		type standardResponse struct {
-			Path      string              `json:"path"`
-			RequestID string              `json:"request_id"`
-			Data      updateMovieResponse `json:"data"`
-		}
-
 		// retrieve the mock User that is used for testing
 		u, _ := mockAccessTokenConverter.Convert(req.Context(), authtest.NewAccessToken(t))
 
 		// setup the expected response data
-		wantBody := standardResponse{
-			Path:      path,
-			RequestID: requestID,
-			Data: updateMovieResponse{
-				//ExternalID:      "superRandomString",
-				Title:          "Repo Man",
-				Rated:          "R",
-				Released:       "1984-03-02T00:00:00Z",
-				RunTime:        92,
-				Director:       "Alex Cox",
-				Writer:         "Alex Cox",
-				CreateUsername: u.Email,
-				//CreateTimestamp: "",
-				UpdateUsername: u.Email,
-				//UpdateTimestamp: "",
-			},
+		wantBody := updateMovieResponse{
+			//ExternalID:      "superRandomString",
+			Title:          "Repo Man",
+			Rated:          "R",
+			Released:       "1984-03-02T00:00:00Z",
+			RunTime:        92,
+			Director:       "Alex Cox",
+			Writer:         "Alex Cox",
+			CreateUsername: u.Email,
+			//CreateTimestamp: "",
+			UpdateUsername: u.Email,
+			//UpdateTimestamp: "",
 		}
 
-		// initialize standardResponse
-		gotBody := standardResponse{}
+		// initialize updateMovieResponse
+		gotBody := updateMovieResponse{}
 
-		// decode the response body into the standardResponse (gotBody)
+		// decode the response body into gotBody
 		err = DecoderErr(json.NewDecoder(rr.Result().Body).Decode(&gotBody))
 		defer rr.Result().Body.Close()
 
@@ -578,8 +544,8 @@ func TestDefaultMovieHandlers_UpdateMovie(t *testing.T) {
 		// quicktest uses Google's cmp library for DeepEqual comparisons. It
 		// has some great options included with it. Below is an example of
 		// ignoring certain fields...
-		ignoreFields := cmpopts.IgnoreFields(standardResponse{},
-			"Data.ExternalID", "Data.CreateTimestamp", "Data.UpdateTimestamp")
+		ignoreFields := cmpopts.IgnoreFields(updateMovieResponse{},
+			"ExternalID", "CreateTimestamp", "UpdateTimestamp")
 
 		// Assert that the response body (gotBody) is as expected (wantBody).
 		// The External ID needs to be unique as the database unique index
@@ -605,7 +571,7 @@ func TestDefaultMovieHandlers_DeleteMovie(t *testing.T) {
 		c := qt.New(t)
 
 		// initialize a zerolog Logger
-		lgr := logger.NewLogger(os.Stdout, true)
+		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
 		// initialize DefaultDatastore
 		ds, cleanup := datastoretest.NewDefaultDatastore(t, lgr)
@@ -615,7 +581,7 @@ func TestDefaultMovieHandlers_DeleteMovie(t *testing.T) {
 
 		// create a test movie in the database, do not use cleanup
 		// function as this test should delete the movie
-		m, _ := moviestore.NewMovieDBHelper(t, context.Background(), ds)
+		m, _ := moviestore.NewMovieDBHelper(context.Background(), t, ds)
 
 		// initialize the DefaultTransactor for the moviestore
 		transactor := moviestore.NewDefaultTransactor(ds)
@@ -676,7 +642,7 @@ func TestDefaultMovieHandlers_DeleteMovie(t *testing.T) {
 		// setup full handler chain needed for request
 		h := LoggerHandlerChain(lgr, ac).
 			Append(AccessTokenHandler).
-			Append(JSONContentTypeHandler).
+			Append(JSONContentTypeResponseHandler).
 			Append(requestIDMiddleware).
 			Then(deleteMovieHandler)
 
@@ -691,6 +657,9 @@ func TestDefaultMovieHandlers_DeleteMovie(t *testing.T) {
 		// Assert that Response Status Code equals 200 (StatusOK)
 		c.Assert(rr.Code, qt.Equals, http.StatusOK)
 
+		// Assert that the request ID has been added to the response header
+		c.Assert(rr.Header().Get("Request-Id"), qt.Equals, requestID)
+
 		// deleteMovieResponse is the response struct for deleting a
 		// Movie. The response struct is tucked inside the handler,
 		// so we have to recreate it here
@@ -699,31 +668,16 @@ func TestDefaultMovieHandlers_DeleteMovie(t *testing.T) {
 			Deleted    bool   `json:"deleted"`
 		}
 
-		// standardResponse is the standard response struct used for
-		// all response bodies, the Data field is actually an
-		// interface{} in the real struct (handler.StandardResponse),
-		// but it's easiest to decode to JSON using a proper struct
-		// as below
-		type standardResponse struct {
-			Path      string              `json:"path"`
-			RequestID string              `json:"request_id"`
-			Data      deleteMovieResponse `json:"data"`
-		}
-
 		// setup the expected response data
-		wantBody := standardResponse{
-			Path:      path,
-			RequestID: requestID,
-			Data: deleteMovieResponse{
-				ExternalID: m.ExternalID,
-				Deleted:    true,
-			},
+		wantBody := deleteMovieResponse{
+			ExternalID: m.ExternalID,
+			Deleted:    true,
 		}
 
-		// initialize standardResponse
-		gotBody := standardResponse{}
+		// initialize deleteMovieResponse
+		gotBody := deleteMovieResponse{}
 
-		// decode the response body into the standardResponse (gotBody)
+		// decode the response body into gotBody
 		err := DecoderErr(json.NewDecoder(rr.Result().Body).Decode(&gotBody))
 		defer rr.Result().Body.Close()
 
@@ -754,7 +708,7 @@ func TestDefaultMovieHandlers_FindByID(t *testing.T) {
 		c := qt.New(t)
 
 		// initialize a zerolog Logger
-		lgr := logger.NewLogger(os.Stdout, true)
+		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
 		// initialize DefaultDatastore
 		ds, cleanup := datastoretest.NewDefaultDatastore(t, lgr)
@@ -763,7 +717,7 @@ func TestDefaultMovieHandlers_FindByID(t *testing.T) {
 		t.Cleanup(cleanup)
 
 		// create a test movie in the database
-		m, movieCleanup := moviestore.NewMovieDBHelper(t, context.Background(), ds)
+		m, movieCleanup := moviestore.NewMovieDBHelper(context.Background(), t, ds)
 
 		// defer cleanup of movie record until after the test is completed
 		t.Cleanup(movieCleanup)
@@ -851,7 +805,7 @@ func TestDefaultMovieHandlers_FindByID(t *testing.T) {
 		// setup full handler chain needed for request
 		h := LoggerHandlerChain(lgr, ac).
 			Append(AccessTokenHandler).
-			Append(JSONContentTypeHandler).
+			Append(JSONContentTypeResponseHandler).
 			Append(requestIDMiddleware).
 			Then(findMovieByIDHandler)
 
@@ -865,6 +819,9 @@ func TestDefaultMovieHandlers_FindByID(t *testing.T) {
 
 		// Assert that Response Status Code equals 200 (StatusOK)
 		c.Assert(rr.Code, qt.Equals, http.StatusOK)
+
+		// Assert that the request ID has been added to the response header
+		c.Assert(rr.Header().Get("Request-Id"), qt.Equals, requestID)
 
 		// movieResponse is the response struct for a
 		// Movie. The response struct is tucked inside the handler,
@@ -883,43 +840,28 @@ func TestDefaultMovieHandlers_FindByID(t *testing.T) {
 			UpdateTimestamp string `json:"update_timestamp"`
 		}
 
-		// standardResponse is the standard response struct used for
-		// all response bodies, the Data field is actually an
-		// interface{} in the real struct (handler.StandardResponse),
-		// but it's easiest to decode to JSON using a proper struct
-		// as below
-		type standardResponse struct {
-			Path      string        `json:"path"`
-			RequestID string        `json:"request_id"`
-			Data      movieResponse `json:"data"`
-		}
-
 		// retrieve the mock User that is used for testing
 		u, _ := mockAccessTokenConverter.Convert(req.Context(), authtest.NewAccessToken(t))
 
 		// setup the expected response data
-		wantBody := standardResponse{
-			Path:      path,
-			RequestID: requestID,
-			Data: movieResponse{
-				ExternalID:     m.ExternalID,
-				Title:          "Repo Man",
-				Rated:          "R",
-				Released:       "1984-03-02T00:00:00Z",
-				RunTime:        92,
-				Director:       "Alex Cox",
-				Writer:         "Alex Cox",
-				CreateUsername: u.Email,
-				//CreateTimestamp: "",
-				UpdateUsername: u.Email,
-				//UpdateTimestamp: "",
-			},
+		wantBody := movieResponse{
+			ExternalID:     m.ExternalID,
+			Title:          "Repo Man",
+			Rated:          "R",
+			Released:       "1984-03-02T00:00:00Z",
+			RunTime:        92,
+			Director:       "Alex Cox",
+			Writer:         "Alex Cox",
+			CreateUsername: u.Email,
+			//CreateTimestamp: "",
+			UpdateUsername: u.Email,
+			//UpdateTimestamp: "",
 		}
 
-		// initialize standardResponse
-		gotBody := standardResponse{}
+		// initialize movieResponse
+		gotBody := movieResponse{}
 
-		// decode the response body into the standardResponse (gotBody)
+		// decode the response body into gotBody
 		err = DecoderErr(json.NewDecoder(rr.Result().Body).Decode(&gotBody))
 		defer rr.Result().Body.Close()
 
@@ -929,8 +871,8 @@ func TestDefaultMovieHandlers_FindByID(t *testing.T) {
 		// quicktest uses Google's cmp library for DeepEqual comparisons. It
 		// has some great options included with it. Below is an example of
 		// ignoring certain fields...
-		ignoreFields := cmpopts.IgnoreFields(standardResponse{},
-			"Data.CreateTimestamp", "Data.UpdateTimestamp")
+		ignoreFields := cmpopts.IgnoreFields(movieResponse{},
+			"CreateTimestamp", "UpdateTimestamp")
 
 		// Assert that the response body (gotBody) is as expected (wantBody).
 		// The External ID needs to be unique as the database unique index
@@ -956,7 +898,7 @@ func TestDefaultMovieHandlers_FindAll(t *testing.T) {
 		c := qt.New(t)
 
 		// initialize a zerolog Logger
-		lgr := logger.NewLogger(os.Stdout, true)
+		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
 		// initialize MockTransactor for the moviestore
 		mockTransactor := newMockTransactor(t)
@@ -1017,7 +959,7 @@ func TestDefaultMovieHandlers_FindAll(t *testing.T) {
 		// setup full handler chain needed for request
 		h := LoggerHandlerChain(lgr, ac).
 			Append(AccessTokenHandler).
-			Append(JSONContentTypeHandler).
+			Append(JSONContentTypeResponseHandler).
 			Append(requestIDMiddleware).
 			Then(findAllMoviesHandler)
 
@@ -1031,6 +973,9 @@ func TestDefaultMovieHandlers_FindAll(t *testing.T) {
 
 		// Assert that Response Status Code equals 200 (StatusOK)
 		c.Assert(rr.Code, qt.Equals, http.StatusOK)
+
+		// Assert that the request ID has been added to the response header
+		c.Assert(rr.Header().Get("Request-Id"), qt.Equals, requestID)
 
 		// movieResponse is the response struct for a
 		// Movie. The response struct is tucked inside the handler,
@@ -1047,17 +992,6 @@ func TestDefaultMovieHandlers_FindAll(t *testing.T) {
 			CreateTimestamp string `json:"create_timestamp"`
 			UpdateUsername  string `json:"update_username"`
 			UpdateTimestamp string `json:"update_timestamp"`
-		}
-
-		// standardResponse is the standard response struct used for
-		// all response bodies, the Data field is actually an
-		// interface{} in the real struct (handler.StandardResponse),
-		// but it's easiest to decode to JSON using a proper struct
-		// as below
-		type standardResponse struct {
-			Path      string          `json:"path"`
-			RequestID string          `json:"request_id"`
-			Data      []movieResponse `json:"data"`
 		}
 
 		// get mocked slice of movies that should be returned
@@ -1085,16 +1019,12 @@ func TestDefaultMovieHandlers_FindAll(t *testing.T) {
 		}
 
 		// setup the expected response data
-		wantBody := standardResponse{
-			Path:      path,
-			RequestID: requestID,
-			Data:      smr,
-		}
+		wantBody := smr
 
-		// initialize standardResponse
-		gotBody := standardResponse{}
+		// initialize a slice of movieResponse{}
+		gotBody := []movieResponse{}
 
-		// decode the response body into the standardResponse (gotBody)
+		// decode the response body into gotBody
 		err = DecoderErr(json.NewDecoder(rr.Result().Body).Decode(&gotBody))
 		defer rr.Result().Body.Close()
 

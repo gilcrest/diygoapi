@@ -43,13 +43,7 @@ func (h DefaultPingHandler) Ping(w http.ResponseWriter, r *http.Request) {
 		dbok = false
 	}
 
-	pr := pingResponseData{DBUp: dbok}
-
-	response, err := NewStandardResponse(r, pr)
-	if err != nil {
-		errs.HTTPErrorResponse(w, logger, err)
-		return
-	}
+	response := pingResponseData{DBUp: dbok}
 
 	// Encode response struct to JSON for the response body
 	err = json.NewEncoder(w).Encode(response)

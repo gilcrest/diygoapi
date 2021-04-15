@@ -9,6 +9,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/rs/zerolog"
+
 	"github.com/gilcrest/go-api-basic/datastore/pingstore"
 
 	"github.com/rs/zerolog/hlog"
@@ -31,7 +33,7 @@ func TestDefaultPingHandler_Ping(t *testing.T) {
 		c := qt.New(t)
 		var emptyBody []byte
 
-		lgr := logger.NewLogger(os.Stdout, true)
+		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 		// initialize a sql.DB and cleanup function for it
 		db, cleanup := datastoretest.NewDB(t)
 		defer cleanup()
@@ -61,37 +63,35 @@ func TestDefaultPingHandler_Ping(t *testing.T) {
 		ac := alice.New()
 		h := LoggerHandlerChain(lgr, ac).
 			Append(testMiddleware).
-			Append(JSONContentTypeHandler).
+			Append(JSONContentTypeResponseHandler).
 			Then(pingHandler)
 		h.ServeHTTP(rr, req)
 
 		type pingResponseData struct {
 			DBUp bool `json:"db_up"`
 		}
-		type standardResponse struct {
-			Path      string           `json:"path"`
-			RequestID string           `json:"request_id"`
-			Data      pingResponseData `json:"data"`
-		}
-		prd := pingResponseData{DBUp: true}
-		wantBody := &standardResponse{Path: path, RequestID: requestID, Data: prd}
+		wantBody := pingResponseData{DBUp: true}
 
-		gotBody := new(standardResponse)
+		gotBody := pingResponseData{}
 		err := DecoderErr(json.NewDecoder(rr.Result().Body).Decode(&gotBody))
 		defer rr.Result().Body.Close()
 
 		c.Assert(err, qt.IsNil)
-		c.Assert(gotBody, qt.DeepEquals, wantBody)
-
 		// Response Status Code should be 200
 		c.Assert(rr.Code, qt.Equals, http.StatusOK)
+
+		// Assert that the request ID has been added to the response header
+		c.Assert(rr.Header().Get("Request-Id"), qt.Equals, requestID)
+
+		// Assert that the response body equals the body we want
+		c.Assert(gotBody, qt.DeepEquals, wantBody)
 	})
 
 	t.Run("mock", func(t *testing.T) {
 		c := qt.New(t)
 		var emptyBody []byte
 
-		lgr := logger.NewLogger(os.Stdout, true)
+		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 		mp := mockPinger{}
 		dph := DefaultPingHandler{
 			Pinger: mp,
@@ -117,30 +117,28 @@ func TestDefaultPingHandler_Ping(t *testing.T) {
 		ac := alice.New()
 		h := LoggerHandlerChain(lgr, ac).
 			Append(testMiddleware).
-			Append(JSONContentTypeHandler).
+			Append(JSONContentTypeResponseHandler).
 			Then(pingHandler)
 		h.ServeHTTP(rr, req)
 
 		type pingResponseData struct {
 			DBUp bool `json:"db_up"`
 		}
-		type standardResponse struct {
-			Path      string           `json:"path"`
-			RequestID string           `json:"request_id"`
-			Data      pingResponseData `json:"data"`
-		}
-		prd := pingResponseData{DBUp: true}
-		wantBody := &standardResponse{Path: path, RequestID: requestID, Data: prd}
+		wantBody := pingResponseData{DBUp: true}
 
-		gotBody := new(standardResponse)
+		gotBody := pingResponseData{}
 		err := DecoderErr(json.NewDecoder(rr.Result().Body).Decode(&gotBody))
 		defer rr.Result().Body.Close()
 
 		c.Assert(err, qt.IsNil)
-		c.Assert(gotBody, qt.DeepEquals, wantBody)
-
 		// Response Status Code should be 200
 		c.Assert(rr.Code, qt.Equals, http.StatusOK)
+
+		// Assert that the request ID has been added to the response header
+		c.Assert(rr.Header().Get("Request-Id"), qt.Equals, requestID)
+
+		// Assert that the response body equals the body we want
+		c.Assert(gotBody, qt.DeepEquals, wantBody)
 	})
 
 }

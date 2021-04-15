@@ -52,7 +52,12 @@ var movieHandlerSet = wire.NewSet(
 	handler.ProvideFindAllMoviesHandler,
 	handler.ProvideUpdateMovieHandler,
 	handler.ProvideDeleteMovieHandler,
-	wire.Struct(new(handler.Handlers), "*"),
+)
+
+var loggerHandlerSet = wire.NewSet(
+	wire.Struct(new(handler.DefaultLoggerHandlers), "*"),
+	handler.NewReadLoggerHandler,
+	handler.NewUpdateLoggerHandler,
 )
 
 var datastoreSet = wire.NewSet(
@@ -86,7 +91,9 @@ func newServer(ctx context.Context, logger zerolog.Logger, dsn datastore.PGDatas
 		wire.Struct(new(server.Options), "HealthChecks", "TraceExporter", "DefaultSamplingPolicy", "Driver"),
 		datastoreSet,
 		movieHandlerSet,
+		loggerHandlerSet,
 		pingHandlerSet,
+		wire.Struct(new(handler.Handlers), "*"),
 		routerSet,
 	)
 	return nil, nil, nil

@@ -14,7 +14,7 @@ import (
 // NewMovieDBHelper creates/inserts a new movie in the db and optionally
 // registers a t.Cleanup function to delete it. The insert and
 // delete are both in separate database transactions
-func NewMovieDBHelper(t *testing.T, ctx context.Context, ds datastore.Datastorer) (m *movie.Movie, cleanup func()) {
+func NewMovieDBHelper(ctx context.Context, t *testing.T, ds datastore.Datastorer) (m *movie.Movie, cleanup func()) {
 	t.Helper()
 
 	m = newMovie(t)

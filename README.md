@@ -154,23 +154,25 @@ go build -o server
 
 ### Command Line Flags
 
-When running the program binary, several flags can be passed - the list is below. A PostgreSQL database connection is required. There are two choices for establishing a database connection on startup. Either pass the connection parameters as flags or set them as environment variables. You can also choose a combination of both. Flags always take precedence, so if a flag is passed, that will be used. If there is no flag set, then the program checks for a matching environment variable. If neither are found, the flag's default values will be used and, depending on the flag, may result in a connection error.
+When running the program binary, a number flags can be passed. Peter Bourgon's [ff](https://github.com/peterbourgon/ff) library is used to parse the flags. If your preference is to set configuration with [environment variables](https://en.wikipedia.org/wiki/Environment_variable), that is possible as well. Flags take precedence, so if a flag is passed, that will be used. A PostgreSQL database connection is required. If there is no flag set, then the program checks for a matching environment variable. If neither are found, the flag's default value will be used and, depending on the flag, may result in a database connection error.
 
-| Flag Name | DB Connection Parameter | Description | Environment Variable |
-| ----------------------- |-------------| --------- | -------------------- |
-| log-level   | N/A       | zerolog logging level (debug, info, etc.) | LOG_LEVEL |
-| port        | N/A       | Port the server will listen on | PORT |
-| db-host     | host      | The host name of the database server. | DB_HOST |
-| db-port     | port      | The port number the server is listening on. Defaults to the PostgreSQL™ standard port number (5432). | DB_PORT |
-| db-name     | database  | The database name. | DB_NAME |
-| db-user     | user      | PostgreSQL™ user name to connect as. | DB_USER |
-| db-password | password  | Password to be used if the server demands password authentication. | DB_PASSWORD |
+| Flag Name       | Description | Environment Variable | Default |
+| --------------- | ----------- | -------------------- | ------- |
+| port            | Port the server will listen on | PORT | 8080|
+| log-level       | zerolog logging level (debug, info, etc.) | LOG_LEVEL | debug |
+| log-level-min   | sets the minimum accepted logging level | LOG_LEVEL_MIN | debug |
+| log-error-stack | If true, log full error stacktrace, else just log error | LOG_ERROR_STACK | false |
+| db-host         | The host name of the database server. | DB_HOST | |
+| db-port         | The port number the database server is listening on.| DB_PORT | 5432 |
+| db-name         | The database name. | DB_NAME | |
+| db-user         | PostgreSQL™ user name to connect as. | DB_USER | |
+| db-password     | Password to be used if the server demands password authentication. | DB_PASSWORD | |
 
 ### Environment Setup
 
-If you choose to use [environment variables](https://en.wikipedia.org/wiki/Environment_variable) instead of flags for connecting to the database, you can set these however you like (permanently in something like .bash_profile if on a mac, etc. - see some notes [here](https://gist.github.com/gilcrest/d5981b873d1e2fc9646602eedd384ba6#environment-variables)), but my preferred way is to run a bash script to set the environment variables temporarily for the current shell environment. I have included an example script file (`setlocalEnvVars.sh`) in the `/scripts/ddl` directory. The below statements assume you're running the command from the project root directory.
+If you choose to use [environment variables](https://en.wikipedia.org/wiki/Environment_variable) instead of flags for connecting to the database, you can set these however you like (permanently in something like .`bash_profile` if on a mac, etc. - see some notes [here](https://gist.github.com/gilcrest/d5981b873d1e2fc9646602eedd384ba6#environment-variables), but my preferred way is to run a bash script to set the environment variables temporarily for the current shell environment. I have included an example script file (`setlocalEnvVars.sh`) in the `/scripts/ddl` directory. The below statements assume you're running the command from the project root directory.
 
-In order to set the environment variables using this script, first set the environment variable values to whatever is appropriate for your environment:
+In order to set the environment variables using this script, first, in the file, set the environment variable values to whatever is appropriate for your environment:
 
 #### Database Connection Environment Variables
 
@@ -204,17 +206,19 @@ Upon running, you should see something similar to the following:
 
 ```bash
 $ ./server -log-level=debug
-{"level":"info","time":1608170937,"severity":"INFO","message":"logging level set to debug"}
-{"level":"info","time":1608170937,"severity":"INFO","message":"sql database opened for localhost on port 5432"}
-{"level":"info","time":1608170937,"severity":"INFO","message":"sql database Ping returned successfully"}
-{"level":"info","time":1608170937,"severity":"INFO","message":"database version: PostgreSQL 12.5 on x86_64-apple-darwin16.7.0, compiled by Apple LLVM version 8.1.0 (clang-802.0.42), 64-bit"}
-{"level":"info","time":1608170937,"severity":"INFO","message":"current database user: postgres"}
-{"level":"info","time":1608170937,"severity":"INFO","message":"current database: go_api_basic"}
+{"level":"info","time":1618260160,"severity":"INFO","message":"minimum accepted logging level set to trace"}
+{"level":"info","time":1618260160,"severity":"INFO","message":"logging level set to debug"}
+{"level":"info","time":1618260160,"severity":"INFO","message":"log error stack global set to true"}
+{"level":"info","time":1618260160,"severity":"INFO","message":"sql database opened for localhost on port 5432"}
+{"level":"info","time":1618260160,"severity":"INFO","message":"sql database Ping returned successfully"}
+{"level":"info","time":1618260160,"severity":"INFO","message":"database version: PostgreSQL 12.6 on x86_64-apple-darwin16.7.0, compiled by Apple LLVM version 8.1.0 (clang-802.0.42), 64-bit"}
+{"level":"info","time":1618260160,"severity":"INFO","message":"current database user: postgres"}
+{"level":"info","time":1618260160,"severity":"INFO","message":"current database: go_api_basic"}
 ```
 
 ## Ping
 
-The easiest service to interact with is the `ping` service. The idea of the service is a simple health check that returns a series of flags denoting health of the system (queue depths, database up boolean, etc.). For right now, the only thing it checks is if the database is up and pingable. I have left this service unauthenticated so there's at least one service that you can get to without having to have an authentication token, but in actuality, I would typically have every service behind a security token.
+With the server up and running, the easiest service to interact with is the `ping` service. The idea of the service is a simple health check that returns a series of flags denoting health of the system (queue depths, database up boolean, etc.). For right now, the only thing it checks is if the database is up and pingable. I have left this service unauthenticated so there's at least one service that you can get to without having to have an authentication token, but in actuality, I would typically have every service behind a security token.
 
 Use cURL GET request to call `ping`:
 
@@ -236,7 +240,7 @@ The response looks like:
 
 ## Authentication and Authorization
 
-The remainder of requests require authentication. I have chosen to use [Google's Oauth2 solution](https://developers.google.com/identity/protocols/oauth2/web-server) for these APIs. In order to use Google's Oauth2, you need to setup a Client ID and Client Secret and obtain an access token. The instructions [here](https://developers.google.com/identity/protocols/oauth2) are great. I recommend the [Google Oauth2 Playground](https://developers.google.com/oauthplayground/) once you get setup to be able to easily get fresh access tokens.
+The remainder of requests require authentication. I have chosen to use [Google's Oauth2 solution](https://developers.google.com/identity/protocols/oauth2/web-server) for these APIs. In order to use Google's Oauth2, you need to setup a Client ID and Client Secret and obtain an access token. The instructions [here](https://developers.google.com/identity/protocols/oauth2) are great. I recommend the [Google Oauth2 Playground](https://developers.google.com/oauthplayground/) once you get setup to be able to easily get fresh access tokens for testing.
 
 Once a user has authenticated through this flow, all calls to services (other than `ping`) require that the Google access token be sent as a `Bearer` token in the `Authorization` header.
 

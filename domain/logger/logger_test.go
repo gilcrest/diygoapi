@@ -19,11 +19,12 @@ func TestNewLogger(t *testing.T) {
 	// empty string for TimeFieldFormat will write logs with UNIX time
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	// start a new logger with Stdout as the target
-	lgr := zerolog.New(os.Stdout).With().Timestamp().Logger()
+	lgr := zerolog.New(os.Stdout).Level(zerolog.InfoLevel).With().Timestamp().Logger()
 	lgr = lgr.Hook(GCPSeverityHook{})
 
 	type args struct {
 		w             io.Writer
+		lvl           zerolog.Level
 		withTimestamp bool
 	}
 
@@ -32,11 +33,11 @@ func TestNewLogger(t *testing.T) {
 		args args
 		want zerolog.Logger
 	}{
-		{"stdout", args{os.Stdout, true}, lgr},
+		{"stdout", args{os.Stdout, zerolog.InfoLevel, true}, lgr},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewLogger(tt.args.w, tt.args.withTimestamp); !reflect.DeepEqual(got, tt.want) {
+			if got := NewLogger(tt.args.w, tt.args.lvl, tt.args.withTimestamp); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("NewLogger() = %v, want %v", got, tt.want)
 			}
 		})

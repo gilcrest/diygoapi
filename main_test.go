@@ -11,37 +11,7 @@ import (
 	"github.com/pkg/errors"
 
 	qt "github.com/frankban/quicktest"
-
-	"github.com/rs/zerolog"
 )
-
-func Test_newLogLevel(t *testing.T) {
-	c := qt.New(t)
-
-	type args struct {
-		loglvl string
-	}
-	tests := []struct {
-		name string
-		args args
-		want zerolog.Level
-	}{
-		{"debug", args{loglvl: "debug"}, zerolog.DebugLevel},
-		{"info", args{loglvl: "info"}, zerolog.InfoLevel},
-		{"warn", args{loglvl: "warn"}, zerolog.WarnLevel},
-		{"error", args{loglvl: "error"}, zerolog.ErrorLevel},
-		{"fatal", args{loglvl: "fatal"}, zerolog.FatalLevel},
-		{"panic", args{loglvl: "panic"}, zerolog.PanicLevel},
-		{"disabled", args{loglvl: "disabled"}, zerolog.Disabled},
-		{"default", args{loglvl: ""}, zerolog.InfoLevel},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := newLogLevel(tt.args.loglvl)
-			c.Assert(got, qt.Equals, tt.want)
-		})
-	}
-}
 
 func Test_portRange(t *testing.T) {
 	c := qt.New(t)
@@ -73,45 +43,29 @@ func Test_newFlags(t *testing.T) {
 		args []string
 	}
 
-	a1 := args{args: []string{"server", "-log-level=debug", "-port=8080", "-db-host=localhost", "-db-port=5432", "-db-name=go_api_basic", "-db-user=postgres", "-db-password=sosecret"}}
-
-	f1 := flags{
-		loglvl:     "debug",
-		port:       8080,
-		dbhost:     "localhost",
-		dbport:     5432,
-		dbname:     "go_api_basic",
-		dbuser:     "postgres",
-		dbpassword: "sosecret",
-	}
-
 	type envLookup struct {
 		value string
 		ok    bool
 	}
 
 	type originalEnvs struct {
-		logLevel   envLookup
-		port       envLookup
-		dbhost     envLookup
-		dbport     envLookup
-		dbname     envLookup
-		dbuser     envLookup
-		dbpassword envLookup
+		logLevel      envLookup
+		minLogLevel   envLookup
+		logErrorStack envLookup
+		port          envLookup
+		dbhost        envLookup
+		dbport        envLookup
+		dbname        envLookup
+		dbuser        envLookup
+		dbpassword    envLookup
 	}
 
-	const (
-		loglevelEnv   string = "LOG_LEVEL"
-		portEnv       string = "PORT"
-		dbHostEnv     string = "DB_HOST"
-		dbPortEnv     string = "DB_PORT"
-		dbNameEnv     string = "DB_NAME"
-		dbUserEnv     string = "DB_USER"
-		dbPasswordEnv string = "DB_PASSWORD"
-	)
-
-	ogEnvs := new(originalEnvs)
+	// get original state of environment variables before any test
+	// modifies them
+	ogEnvs := originalEnvs{}
 	ogEnvs.logLevel.value, ogEnvs.logLevel.ok = os.LookupEnv(loglevelEnv)
+	ogEnvs.minLogLevel.value, ogEnvs.minLogLevel.ok = os.LookupEnv(logLevelMinEnv)
+	ogEnvs.logErrorStack.value, ogEnvs.logErrorStack.ok = os.LookupEnv(logErrorStackEnv)
 	ogEnvs.port.value, ogEnvs.port.ok = os.LookupEnv(portEnv)
 	ogEnvs.dbhost.value, ogEnvs.dbhost.ok = os.LookupEnv(dbHostEnv)
 	ogEnvs.dbport.value, ogEnvs.dbport.ok = os.LookupEnv(dbPortEnv)
@@ -119,25 +73,78 @@ func Test_newFlags(t *testing.T) {
 	ogEnvs.dbuser.value, ogEnvs.dbuser.ok = os.LookupEnv(dbUserEnv)
 	ogEnvs.dbpassword.value, ogEnvs.dbpassword.ok = os.LookupEnv(dbPasswordEnv)
 
-	t.Logf("original %s = %s", loglevelEnv, ogEnvs.logLevel.value)
-	t.Logf("original %s = %s", portEnv, ogEnvs.port.value)
-	t.Logf("original %s = %s", dbHostEnv, ogEnvs.dbhost.value)
-	t.Logf("original %s = %s", dbPortEnv, ogEnvs.dbport.value)
-	t.Logf("original %s = %s", dbNameEnv, ogEnvs.dbname.value)
-	t.Logf("original %s = %s", dbUserEnv, ogEnvs.dbuser.value)
-	t.Logf("original %s = %s", dbPasswordEnv, ogEnvs.dbpassword.value)
+	if !ogEnvs.logLevel.ok {
+		t.Logf("%s is not set to the environment", loglevelEnv)
+	} else {
+		t.Logf("original %s = %s", loglevelEnv, ogEnvs.logLevel.value)
+	}
+	if !ogEnvs.minLogLevel.ok {
+		t.Logf("%s is not set to the environment", logLevelMinEnv)
+	} else {
+		t.Logf("original %s = %s", logLevelMinEnv, ogEnvs.logLevel.value)
+	}
+	if !ogEnvs.logErrorStack.ok {
+		t.Logf("%s is not set to the environment", logErrorStackEnv)
+	} else {
+		t.Logf("original %s = %s", logErrorStackEnv, ogEnvs.logErrorStack.value)
+	}
+	if !ogEnvs.port.ok {
+		t.Logf("%s is not set to the environment", portEnv)
+	} else {
+		t.Logf("original %s = %s", portEnv, ogEnvs.port.value)
+	}
+	if !ogEnvs.dbhost.ok {
+		t.Logf("%s is not set to the environment", dbHostEnv)
+	} else {
+		t.Logf("original %s = %s", dbHostEnv, ogEnvs.dbhost.value)
+	}
+	if !ogEnvs.dbport.ok {
+		t.Logf("%s is not set to the environment", dbPortEnv)
+	} else {
+		t.Logf("original %s = %s", dbPortEnv, ogEnvs.dbport.value)
+	}
+	if !ogEnvs.dbname.ok {
+		t.Logf("%s is not set to the environment", dbNameEnv)
+	} else {
+		t.Logf("original %s = %s", dbNameEnv, ogEnvs.dbname.value)
+	}
+	if !ogEnvs.dbuser.ok {
+		t.Logf("%s is not set to the environment", dbUserEnv)
+	} else {
+		t.Logf("original %s = %s", dbUserEnv, ogEnvs.dbuser.value)
+	}
+	if !ogEnvs.dbpassword.ok {
+		t.Logf("%s is not set to the environment", dbPasswordEnv)
+	} else {
+		t.Logf("original %s = %s", dbPasswordEnv, ogEnvs.dbpassword.value)
+	}
 
-	os.Setenv(loglevelEnv, "warn")
-	os.Setenv(portEnv, "8081")
-	os.Setenv(dbHostEnv, "hostwiththemost")
-	os.Setenv(dbPortEnv, "5150")
-	os.Setenv(dbNameEnv, "whatisinaname")
-	os.Setenv(dbUserEnv, "usersarelosers")
-	os.Setenv(dbPasswordEnv, "yeet")
+	emptyFunc := func() {}
 
-	cleanup := func() {
+	setEnvFunc := func() {
+		t.Log("setting environment variables for test")
+		os.Setenv(loglevelEnv, "warn")
+		os.Setenv(logLevelMinEnv, "debug")
+		os.Setenv(logErrorStackEnv, "false")
+		os.Setenv(portEnv, "8081")
+		os.Setenv(dbHostEnv, "hostwiththemost")
+		os.Setenv(dbPortEnv, "5150")
+		os.Setenv(dbNameEnv, "whatisinaname")
+		os.Setenv(dbUserEnv, "usersarelosers")
+		os.Setenv(dbPasswordEnv, "yeet")
+		t.Log("Environment setup completed")
+	}
+
+	cleanupEnvFunc := func() {
+		t.Log("resetting environment variables to original state from test")
 		if ogEnvs.logLevel.ok {
 			os.Setenv(loglevelEnv, ogEnvs.logLevel.value)
+		}
+		if ogEnvs.minLogLevel.ok {
+			os.Setenv(logLevelMinEnv, ogEnvs.minLogLevel.value)
+		}
+		if ogEnvs.logErrorStack.ok {
+			os.Setenv(logErrorStackEnv, ogEnvs.logErrorStack.value)
 		}
 		if ogEnvs.port.ok {
 			os.Setenv(portEnv, ogEnvs.port.value)
@@ -157,53 +164,87 @@ func Test_newFlags(t *testing.T) {
 		if ogEnvs.dbpassword.ok {
 			os.Setenv(dbPasswordEnv, ogEnvs.dbpassword.value)
 		}
+		t.Log("Environment cleanup completed")
 	}
-	t.Cleanup(cleanup)
+
+	a1 := args{args: []string{"server", "-log-level=info", "-log-level-min=debug", "-log-error-stack", "-port=8080", "-db-host=localhost", "-db-port=5432", "-db-name=go_api_basic", "-db-user=postgres", "-db-password=sosecret"}}
+	f1 := flags{
+		loglvl:        "info",
+		logLvlMin:     "debug",
+		logErrorStack: true,
+		port:          8080,
+		dbhost:        "localhost",
+		dbport:        5432,
+		dbname:        "go_api_basic",
+		dbuser:        "postgres",
+		dbpassword:    "sosecret",
+	}
 
 	a2 := args{args: []string{"server"}}
 	f2 := flags{
-		loglvl:     "warn",
-		port:       8081,
-		dbhost:     "hostwiththemost",
-		dbport:     5150,
-		dbname:     "whatisinaname",
-		dbuser:     "usersarelosers",
-		dbpassword: "yeet",
+		loglvl:        "warn",
+		logLvlMin:     "debug",
+		logErrorStack: false,
+		port:          8081,
+		dbhost:        "hostwiththemost",
+		dbport:        5150,
+		dbname:        "whatisinaname",
+		dbuser:        "usersarelosers",
+		dbpassword:    "yeet",
 	}
 
 	a3 := args{args: []string{"server", "-log-level=error"}}
 	f3 := flags{
-		loglvl:     "error",
-		port:       8081,
-		dbhost:     "hostwiththemost",
-		dbport:     5150,
-		dbname:     "whatisinaname",
-		dbuser:     "usersarelosers",
-		dbpassword: "yeet",
+		loglvl:        "error",
+		logLvlMin:     "debug",
+		logErrorStack: false,
+		port:          8081,
+		dbhost:        "hostwiththemost",
+		dbport:        5150,
+		dbname:        "whatisinaname",
+		dbuser:        "usersarelosers",
+		dbpassword:    "yeet",
 	}
 
 	a4 := args{args: []string{"server", "-badflag=true"}}
 	f4 := flags{}
 
+	a5 := args{args: []string{"server", "-log-level=debug", "-log-level-min=debug", "-log-error-stack", "-port=8080", "-db-host=localhost", "-db-port=5432", "-db-name=go_api_basic", "-db-user=postgres", "-db-password=sosecret"}}
+	f5 := flags{
+		loglvl:        "debug",
+		logLvlMin:     "debug",
+		logErrorStack: true,
+		port:          8080,
+		dbhost:        "localhost",
+		dbport:        5432,
+		dbname:        "go_api_basic",
+		dbuser:        "postgres",
+		dbpassword:    "sosecret",
+	}
+
 	tests := []struct {
-		name     string
-		args     args
-		wantFlgs flags
-		wantErr  bool
+		name        string
+		args        args
+		envFunc     func()
+		cleanupFunc func()
+		wantFlgs    flags
+		wantErr     bool
 	}{
-		{"all flags", a1, f1, false},
-		{"use environment", a2, f2, false},
-		{"mix flags and env", a3, f3, false},
-		{"invalid flag", a4, f4, true},
+		{"all flags", a1, emptyFunc, emptyFunc, f1, false},
+		{"min level flag", a5, emptyFunc, emptyFunc, f5, false},
+		{"invalid flag", a4, emptyFunc, emptyFunc, f4, true},
+		{"use environment", a2, setEnvFunc, cleanupEnvFunc, f2, false},
+		{"mix flags and env", a3, setEnvFunc, cleanupEnvFunc, f3, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			tt.envFunc()
 			gotFlgs, err := newFlags(tt.args.args)
 			c.Assert(gotFlgs, qt.Equals, tt.wantFlgs)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("newFlags() error = %v, wantErr %v", err, tt.wantErr)
 			}
-
+			tt.cleanupFunc()
 		})
 	}
 }

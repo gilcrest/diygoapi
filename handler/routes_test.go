@@ -6,12 +6,11 @@ import (
 	"testing"
 
 	qt "github.com/frankban/quicktest"
-
 	"github.com/gorilla/mux"
+	"github.com/rs/zerolog"
 
 	"github.com/gilcrest/go-api-basic/datastore/datastoretest"
 	"github.com/gilcrest/go-api-basic/datastore/pingstore"
-
 	"github.com/gilcrest/go-api-basic/domain/auth/authtest"
 	"github.com/gilcrest/go-api-basic/domain/logger"
 	"github.com/gilcrest/go-api-basic/domain/random"
@@ -24,7 +23,7 @@ func TestNewMuxRouter(t *testing.T) {
 		c := qt.New(t)
 
 		// initialize a zerolog Logger
-		lgr := logger.NewLogger(os.Stdout, true)
+		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
 		defaultDatastore, cleanup := datastoretest.NewDefaultDatastore(t, lgr)
 		t.Cleanup(cleanup)
@@ -56,6 +55,12 @@ func TestNewMuxRouter(t *testing.T) {
 		findAllMoviesHandler := ProvideFindAllMoviesHandler(defaultMovieHandlers)
 		updateMovieHandler := ProvideUpdateMovieHandler(defaultMovieHandlers)
 		deleteMovieHandler := ProvideDeleteMovieHandler(defaultMovieHandlers)
+		defaultLoggerHandlers := DefaultLoggerHandlers{
+			AccessTokenConverter: mockAccessTokenConverter,
+			Authorizer:           authtest.NewMockAuthorizer(t),
+		}
+		readLoggerHandler := NewReadLoggerHandler(defaultLoggerHandlers)
+		updateLoggerHandler := NewUpdateLoggerHandler(defaultLoggerHandlers)
 		defaultPinger := pingstore.NewDefaultPinger(defaultDatastore)
 		defaultPingHandler := DefaultPingHandler{
 			Pinger: defaultPinger,
@@ -67,6 +72,8 @@ func TestNewMuxRouter(t *testing.T) {
 			FindAllMoviesHandler: findAllMoviesHandler,
 			UpdateMovieHandler:   updateMovieHandler,
 			DeleteMovieHandler:   deleteMovieHandler,
+			ReadLoggerHandler:    readLoggerHandler,
+			UpdateLoggerHandler:  updateLoggerHandler,
 			PingHandler:          pingHandler,
 		}
 
@@ -87,6 +94,8 @@ func TestNewMuxRouter(t *testing.T) {
 			{pathPrefix + moviesV1PathRoot + "/{extlID}", []string{http.MethodDelete}},
 			{pathPrefix + moviesV1PathRoot + "/{extlID}", []string{http.MethodGet}},
 			{pathPrefix + moviesV1PathRoot, []string{http.MethodGet}},
+			{pathPrefix + loggerV1PathRoot, []string{http.MethodGet}},
+			{pathPrefix + loggerV1PathRoot, []string{http.MethodPut}},
 			{pathPrefix + "/v1/ping", []string{http.MethodGet}},
 		}
 

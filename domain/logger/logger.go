@@ -10,8 +10,11 @@ import (
 )
 
 // NewLogger is a convenience function to initialize a zerolog.Logger
-func NewLogger(w io.Writer, withTimestamp bool) zerolog.Logger {
-	lgr := zerolog.New(w)
+func NewLogger(w io.Writer, lvl zerolog.Level, withTimestamp bool) zerolog.Logger {
+	// logger is initialized with the writer and level passed in.
+	// All logs will be written at the given level (unless raised
+	// using zerolog.SetGlobalLevel)
+	lgr := zerolog.New(w).Level(lvl)
 	if withTimestamp {
 		lgr = lgr.With().Timestamp().Logger()
 	}
@@ -58,8 +61,8 @@ func (h GCPSeverityHook) Run(e *zerolog.Event, level zerolog.Level, msg string) 
 
 // WriteErrorStackGlobal is a convenience wrapper to set the zerolog
 // Global variable ErrorStackMarshaler to write Error stacks for logs
-func WriteErrorStackGlobal(i bool) {
-	if !i {
+func WriteErrorStackGlobal(writeStack bool) {
+	if !writeStack {
 		zerolog.ErrorStackMarshaler = nil
 		return
 	}

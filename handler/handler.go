@@ -23,6 +23,8 @@ type Handlers struct {
 	FindAllMoviesHandler FindAllMoviesHandler
 	UpdateMovieHandler   UpdateMovieHandler
 	DeleteMovieHandler   DeleteMovieHandler
+	ReadLoggerHandler    ReadLoggerHandler
+	UpdateLoggerHandler  UpdateLoggerHandler
 	PingHandler          PingHandler
 }
 
@@ -56,9 +58,9 @@ func LoggerHandlerChain(logger zerolog.Logger, c alice.Chain) alice.Chain {
 	return c
 }
 
-// JSONContentTypeHandler middleware is used to add the application/json
-// Content-Type Header for responses
-func JSONContentTypeHandler(h http.Handler) http.Handler {
+// JSONContentTypeResponseHandler middleware is used to add the
+// application/json Content-Type Header for responses
+func JSONContentTypeResponseHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Add("Content-Type", "application/json")
@@ -111,32 +113,9 @@ func AccessTokenHandler(h http.Handler) http.Handler {
 		})
 }
 
-// StandardResponse is meant to be included in all non-error
-// response bodies and includes "standard" response fields
-type StandardResponse struct {
-	Path      string      `json:"path,omitempty"`
-	RequestID string      `json:"request_id,omitempty"`
-	Data      interface{} `json:"data"`
-}
-
-// NewStandardResponse is an initializer for the StandardResponse struct
-func NewStandardResponse(r *http.Request, d interface{}) (*StandardResponse, error) {
-	var sr StandardResponse
-	sr.Path = r.URL.EscapedPath()
-	// gets Trace ID from request
-	id, ok := hlog.IDFromRequest(r)
-	if !ok {
-		return nil, errs.E(errors.New("request ID not properly set to request context"))
-	}
-	sr.RequestID = id.String()
-
-	sr.Data = d
-
-	return &sr, nil
-}
-
-// DecoderErr handles an error returned by json.NewDecoder(r.Body).Decode(&data)
-// this function will determine the appropriate error response
+// DecoderErr is a convenience function to handle errors returned by
+// json.NewDecoder(r.Body).Decode(&data) and return the appropriate
+// error response
 func DecoderErr(err error) error {
 	switch {
 	// If the request body is empty (io.EOF)

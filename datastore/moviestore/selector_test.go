@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/rs/zerolog"
+
 	"github.com/google/go-cmp/cmp/cmpopts"
 
 	qt "github.com/frankban/quicktest"
@@ -22,7 +24,7 @@ func TestNewDefaultSelector(t *testing.T) {
 		ds datastore.Datastorer
 	}
 
-	lgr := logger.NewLogger(os.Stdout, true)
+	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
 	defaultDatastore, cleanup := datastoretest.NewDefaultDatastore(t, lgr)
 	t.Cleanup(cleanup)
@@ -54,7 +56,7 @@ func TestDefaultSelector_FindAll(t *testing.T) {
 		ctx context.Context
 	}
 
-	lgr := logger.NewLogger(os.Stdout, true)
+	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
 	// I am intentionally not using the cleanup function that is
 	// returned as I need the DB to stay open for the test
@@ -64,7 +66,7 @@ func TestDefaultSelector_FindAll(t *testing.T) {
 
 	// create a movie with the helper to ensure that at least one row
 	// is returned
-	_, movieCleanup := NewMovieDBHelper(t, ctx, ds)
+	_, movieCleanup := NewMovieDBHelper(ctx, t, ds)
 	t.Cleanup(movieCleanup)
 
 	tests := []struct {
@@ -101,7 +103,7 @@ func TestDefaultSelector_FindByID(t *testing.T) {
 		extlID string
 	}
 
-	lgr := logger.NewLogger(os.Stdout, true)
+	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
 	// I am intentionally not using the cleanup function that is
 	// returned as I need the DB to stay open for the test
@@ -109,7 +111,7 @@ func TestDefaultSelector_FindByID(t *testing.T) {
 	ds, _ := datastoretest.NewDefaultDatastore(t, lgr)
 	ctx := context.Background()
 
-	m, _ := NewMovieDBHelper(t, ctx, ds)
+	m, _ := NewMovieDBHelper(ctx, t, ds)
 
 	tests := []struct {
 		name    string

@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/rs/zerolog"
+
 	qt "github.com/frankban/quicktest"
 	"github.com/pkg/errors"
 
@@ -65,10 +67,10 @@ func TestPGDatasourceName_String(t *testing.T) {
 func TestDatastore_DB(t *testing.T) {
 	c := qt.New(t)
 
-	logger := logger.NewLogger(os.Stdout, true)
+	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
-	ogdb, cleanup, err := NewDB(NewPGDatasourceName("localhost", "go_api_basic", "postgres", "", 5432), logger)
-	defer cleanup()
+	ogdb, cleanup, err := NewDB(NewPGDatasourceName("localhost", "go_api_basic", "postgres", "", 5432), lgr)
+	t.Cleanup(cleanup)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,10 +83,10 @@ func TestDatastore_DB(t *testing.T) {
 func TestNewDatastore(t *testing.T) {
 	c := qt.New(t)
 
-	logger := logger.NewLogger(os.Stdout, true)
+	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
-	db, cleanup, err := NewDB(NewPGDatasourceName("localhost", "go_api_basic", "postgres", "", 5432), logger)
-	defer cleanup()
+	db, cleanup, err := NewDB(NewPGDatasourceName("localhost", "go_api_basic", "postgres", "", 5432), lgr)
+	t.Cleanup(cleanup)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +128,7 @@ func TestDatastore_BeginTx(t *testing.T) {
 	}
 
 	dsn := NewPGDatasourceName("localhost", "go_api_basic", "postgres", "", 5432)
-	lgr := logger.NewLogger(os.Stdout, true)
+	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
 	db, cleanup, err := NewDB(dsn, lgr)
 	if err != nil {
@@ -175,10 +177,10 @@ func TestDatastore_RollbackTx(t *testing.T) {
 	}
 
 	dsn := NewPGDatasourceName("localhost", "go_api_basic", "postgres", "", 5432)
-	lgr := logger.NewLogger(os.Stdout, true)
+	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
 	db, cleanup, err := NewDB(dsn, lgr)
-	defer cleanup()
+	t.Cleanup(cleanup)
 	if err != nil {
 		t.Errorf("datastore.NewDB error = %v", err)
 	}
@@ -236,10 +238,10 @@ func TestDatastore_CommitTx(t *testing.T) {
 		tx *sql.Tx
 	}
 	dsn := NewPGDatasourceName("localhost", "go_api_basic", "postgres", "", 5432)
-	lgr := logger.NewLogger(os.Stdout, true)
+	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
 	db, cleanup, err := NewDB(dsn, lgr)
-	defer cleanup()
+	t.Cleanup(cleanup)
 	if err != nil {
 		t.Errorf("datastore.NewDB error = %v", err)
 	}

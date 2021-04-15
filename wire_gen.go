@@ -51,6 +51,12 @@ func newServer(ctx context.Context, logger zerolog.Logger, dsn datastore.PGDatas
 	findAllMoviesHandler := handler.ProvideFindAllMoviesHandler(defaultMovieHandlers)
 	updateMovieHandler := handler.ProvideUpdateMovieHandler(defaultMovieHandlers)
 	deleteMovieHandler := handler.ProvideDeleteMovieHandler(defaultMovieHandlers)
+	defaultLoggerHandlers := handler.DefaultLoggerHandlers{
+		AccessTokenConverter: googleAccessTokenConverter,
+		Authorizer:           defaultAuthorizer,
+	}
+	readLoggerHandler := handler.NewReadLoggerHandler(defaultLoggerHandlers)
+	updateLoggerHandler := handler.NewUpdateLoggerHandler(defaultLoggerHandlers)
 	defaultPinger := pingstore.NewDefaultPinger(defaultDatastore)
 	defaultPingHandler := handler.DefaultPingHandler{
 		Pinger: defaultPinger,
@@ -62,6 +68,8 @@ func newServer(ctx context.Context, logger zerolog.Logger, dsn datastore.PGDatas
 		FindAllMoviesHandler: findAllMoviesHandler,
 		UpdateMovieHandler:   updateMovieHandler,
 		DeleteMovieHandler:   deleteMovieHandler,
+		ReadLoggerHandler:    readLoggerHandler,
+		UpdateLoggerHandler:  updateLoggerHandler,
 		PingHandler:          pingHandler,
 	}
 	router := handler.NewMuxRouter(logger, handlers)
@@ -90,7 +98,9 @@ var (
 
 var pingHandlerSet = wire.NewSet(pingstore.NewDefaultPinger, wire.Bind(new(pingstore.Pinger), new(pingstore.DefaultPinger)), wire.Struct(new(handler.DefaultPingHandler), "*"), handler.ProvidePingHandler)
 
-var movieHandlerSet = wire.NewSet(wire.Struct(new(random.DefaultStringGenerator), "*"), wire.Bind(new(random.StringGenerator), new(random.DefaultStringGenerator)), wire.Struct(new(authgateway.GoogleAccessTokenConverter), "*"), wire.Bind(new(auth.AccessTokenConverter), new(authgateway.GoogleAccessTokenConverter)), wire.Struct(new(auth.DefaultAuthorizer), "*"), wire.Bind(new(auth.Authorizer), new(auth.DefaultAuthorizer)), moviestore.NewDefaultTransactor, wire.Bind(new(moviestore.Transactor), new(moviestore.DefaultTransactor)), moviestore.NewDefaultSelector, wire.Bind(new(moviestore.Selector), new(moviestore.DefaultSelector)), wire.Struct(new(handler.DefaultMovieHandlers), "*"), handler.ProvideCreateMovieHandler, handler.ProvideFindMovieByIDHandler, handler.ProvideFindAllMoviesHandler, handler.ProvideUpdateMovieHandler, handler.ProvideDeleteMovieHandler, wire.Struct(new(handler.Handlers), "*"))
+var movieHandlerSet = wire.NewSet(wire.Struct(new(random.DefaultStringGenerator), "*"), wire.Bind(new(random.StringGenerator), new(random.DefaultStringGenerator)), wire.Struct(new(authgateway.GoogleAccessTokenConverter), "*"), wire.Bind(new(auth.AccessTokenConverter), new(authgateway.GoogleAccessTokenConverter)), wire.Struct(new(auth.DefaultAuthorizer), "*"), wire.Bind(new(auth.Authorizer), new(auth.DefaultAuthorizer)), moviestore.NewDefaultTransactor, wire.Bind(new(moviestore.Transactor), new(moviestore.DefaultTransactor)), moviestore.NewDefaultSelector, wire.Bind(new(moviestore.Selector), new(moviestore.DefaultSelector)), wire.Struct(new(handler.DefaultMovieHandlers), "*"), handler.ProvideCreateMovieHandler, handler.ProvideFindMovieByIDHandler, handler.ProvideFindAllMoviesHandler, handler.ProvideUpdateMovieHandler, handler.ProvideDeleteMovieHandler)
+
+var loggerHandlerSet = wire.NewSet(wire.Struct(new(handler.DefaultLoggerHandlers), "*"), handler.NewReadLoggerHandler, handler.NewUpdateLoggerHandler)
 
 var datastoreSet = wire.NewSet(datastore.NewDB, datastore.NewDefaultDatastore, wire.Bind(new(datastore.Datastorer), new(datastore.DefaultDatastore)))
 
