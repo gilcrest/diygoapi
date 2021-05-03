@@ -4,114 +4,45 @@ package handler
 import (
 	"io"
 	"net/http"
-	"strings"
-	"time"
 
-	"github.com/gilcrest/go-api-basic/domain/auth"
 	"github.com/gilcrest/go-api-basic/domain/errs"
-	"github.com/justinas/alice"
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/hlog"
 )
 
 // Handlers is a bundled set of all the application's HTTP handlers
-// and HandlerFuncs
 type Handlers struct {
+	PingHandler          PingHandler
+	ReadLoggerHandler    ReadLoggerHandler
+	UpdateLoggerHandler  UpdateLoggerHandler
 	CreateMovieHandler   CreateMovieHandler
 	FindMovieByIDHandler FindMovieByIDHandler
 	FindAllMoviesHandler FindAllMoviesHandler
 	UpdateMovieHandler   UpdateMovieHandler
 	DeleteMovieHandler   DeleteMovieHandler
-	ReadLoggerHandler    ReadLoggerHandler
-	UpdateLoggerHandler  UpdateLoggerHandler
-	PingHandler          PingHandler
 }
 
-// LoggerHandlerChain returns a handler chain (via alice.Chain)
-// initialized with all the standard handlers for logging. The logger
-// will be added to the request context for subsequent use with pre-populated
-// fields, including the request method, url, status, size, duration, remote IP,
-// user agent, referer. A unique Request ID is also added to the logger, context
-// and response headers.
-func LoggerHandlerChain(logger zerolog.Logger, c alice.Chain) alice.Chain {
+// ReadLoggerHandler is a Handler that reads the current state of the
+// app logger
+type ReadLoggerHandler http.Handler
 
-	// Install the logger handler with default output on the console
-	c = c.Append(hlog.NewHandler(logger))
+// UpdateLoggerHandler is a Handler that reads the current state of the
+// app logger
+type UpdateLoggerHandler http.Handler
 
-	// Install extra handler to set request's context fields.
-	// Thanks to that handler, all our logs will come with some pre-populated fields.
-	c = c.Append(hlog.AccessHandler(func(r *http.Request, status, size int, duration time.Duration) {
-		hlog.FromRequest(r).Info().
-			Str("method", r.Method).
-			Stringer("url", r.URL).
-			Int("status", status).
-			Int("size", size).
-			Dur("duration", duration).
-			Msg("")
-	})).
-		Append(hlog.RemoteAddrHandler("remote_ip")).
-		Append(hlog.UserAgentHandler("user_agent")).
-		Append(hlog.RefererHandler("referer")).
-		Append(hlog.RequestIDHandler("request_id", "Request-Id"))
+// CreateMovieHandler is a Handler that creates a Movie
+type CreateMovieHandler http.Handler
 
-	return c
-}
+// UpdateMovieHandler is a Handler that updates a Movie
+type UpdateMovieHandler http.Handler
 
-// JSONContentTypeResponseHandler middleware is used to add the
-// application/json Content-Type Header for responses
-func JSONContentTypeResponseHandler(h http.Handler) http.Handler {
-	return http.HandlerFunc(
-		func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Add("Content-Type", "application/json")
-			h.ServeHTTP(w, r) // call original
-		})
-}
+// DeleteMovieHandler is a Handler that deletes a Movie
+type DeleteMovieHandler http.Handler
 
-// AccessTokenHandler middleware is used to pull the Bearer token
-// from the Authorization header and set it to the request context
-// as an auth.AccessToken
-func AccessTokenHandler(h http.Handler) http.Handler {
-	return http.HandlerFunc(
-		func(w http.ResponseWriter, r *http.Request) {
-			logger := *hlog.FromRequest(r)
-			var token string
+// FindMovieByIDHandler is a Handler finds a Movie by ID
+type FindMovieByIDHandler http.Handler
 
-			// retrieve the context from the http.Request
-			ctx := r.Context()
-
-			// Pull the token from the Authorization header
-			// by retrieving the value from the Header map with
-			// "Authorization" as the key
-			// format: Authorization: Bearer
-			headerValue, ok := r.Header["Authorization"]
-			if ok && len(headerValue) >= 1 {
-				token = headerValue[0]
-				token = strings.TrimPrefix(token, auth.BearerTokenType+" ")
-			}
-
-			// If the token is empty...
-			if token == "" {
-				// For Unauthenticated and Unauthorized errors,
-				// the response body should be empty. Use logger
-				// to log the error and then just send
-				// http.StatusUnauthorized (401) or http.StatusForbidden (403)
-				// depending on the circumstances. "In summary, a
-				// 401 Unauthorized response should be used for missing or bad authentication,
-				// and a 403 Forbidden response should be used afterwards, when the user is
-				// authenticated but isn’t authorized to perform the requested operation on
-				// the given resource."
-				errs.HTTPErrorResponse(w, logger, errs.E(errs.Unauthenticated, errors.New("Unauthenticated - empty Bearer token")))
-				return
-			}
-
-			// add access token to context
-			ctx = auth.SetAccessToken2Context(ctx, token, auth.BearerTokenType)
-
-			// call original, adding access token to request context
-			h.ServeHTTP(w, r.WithContext(ctx))
-		})
-}
+// FindAllMoviesHandler is a Handler that returns the entire set of Movies
+type FindAllMoviesHandler http.Handler
 
 // DecoderErr is a convenience function to handle errors returned by
 // json.NewDecoder(r.Body).Decode(&data) and return the appropriate

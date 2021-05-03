@@ -5,8 +5,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gilcrest/go-api-basic/domain/user"
+
 	"github.com/gilcrest/go-api-basic/datastore/moviestore"
-	"github.com/gilcrest/go-api-basic/domain/auth"
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/movie"
 	"github.com/gilcrest/go-api-basic/domain/random"
@@ -15,20 +16,35 @@ import (
 	"github.com/rs/zerolog/hlog"
 )
 
-// CreateMovieHandler is a Handler that creates a Movie
-type CreateMovieHandler http.Handler
-
-// ProvideCreateMovieHandler is a provider for the
-// CreateMovieHandler for wire
-func ProvideCreateMovieHandler(h DefaultMovieHandlers) CreateMovieHandler {
+// NewCreateMovieHandler is a provider for CreateMovieHandler
+func NewCreateMovieHandler(h DefaultMovieHandlers) CreateMovieHandler {
 	return http.HandlerFunc(h.CreateMovie)
+}
+
+// NewUpdateMovieHandler is a provider for UpdateMovieHandler
+func NewUpdateMovieHandler(h DefaultMovieHandlers) UpdateMovieHandler {
+	return http.HandlerFunc(h.UpdateMovie)
+}
+
+// NewDeleteMovieHandler is a provider for DeleteMovieHandler
+func NewDeleteMovieHandler(h DefaultMovieHandlers) DeleteMovieHandler {
+	return http.HandlerFunc(h.DeleteMovie)
+}
+
+// NewFindMovieByIDHandler is a provider for the
+// FindMovieByIDHandler for wire
+func NewFindMovieByIDHandler(h DefaultMovieHandlers) FindMovieByIDHandler {
+	return http.HandlerFunc(h.FindByID)
+}
+
+// NewFindAllMoviesHandler is a provider for FindAllMoviesHandler
+func NewFindAllMoviesHandler(h DefaultMovieHandlers) FindAllMoviesHandler {
+	return http.HandlerFunc(h.FindAllMovies)
 }
 
 // DefaultMovieHandlers are the default handlers for CRUD operations
 // for a Movie. Each method on the struct is a separate handler.
 type DefaultMovieHandlers struct {
-	AccessTokenConverter  auth.AccessTokenConverter
-	Authorizer            auth.Authorizer
 	RandomStringGenerator random.StringGenerator
 	Transactor            moviestore.Transactor
 	Selector              moviestore.Selector
@@ -62,21 +78,8 @@ func (h DefaultMovieHandlers) CreateMovie(w http.ResponseWriter, r *http.Request
 	}
 
 	logger := *hlog.FromRequest(r)
-	ctx := r.Context()
 
-	accessToken, err := auth.FromRequest(r)
-	if err != nil {
-		errs.HTTPErrorResponse(w, logger, err)
-		return
-	}
-
-	u, err := h.AccessTokenConverter.Convert(ctx, accessToken)
-	if err != nil {
-		errs.HTTPErrorResponse(w, logger, err)
-		return
-	}
-
-	err = h.Authorizer.Authorize(ctx, u, r.URL.Path, r.Method)
+	u, err := user.FromRequest(r)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, err)
 		return
@@ -131,7 +134,7 @@ func (h DefaultMovieHandlers) CreateMovie(w http.ResponseWriter, r *http.Request
 	// Call the Create method of the Transactor to insert data to
 	// the database (unless mocked, of course). If an error occurs,
 	// rollback the transaction
-	err = h.Transactor.Create(ctx, m)
+	err = h.Transactor.Create(r.Context(), m)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, err)
 		return
@@ -158,15 +161,6 @@ func (h DefaultMovieHandlers) CreateMovie(w http.ResponseWriter, r *http.Request
 		return
 	}
 }
-
-// ProvideUpdateMovieHandler is a provider for the
-// UpdateMovieHandler for wire
-func ProvideUpdateMovieHandler(h DefaultMovieHandlers) UpdateMovieHandler {
-	return http.HandlerFunc(h.UpdateMovie)
-}
-
-// UpdateMovieHandler is a Handler that updates a Movie
-type UpdateMovieHandler http.Handler
 
 // UpdateMovie handles PUT requests for the /movies/{id} endpoint
 // and updates the given movie
@@ -197,21 +191,8 @@ func (h DefaultMovieHandlers) UpdateMovie(w http.ResponseWriter, r *http.Request
 	}
 
 	logger := *hlog.FromRequest(r)
-	ctx := r.Context()
 
-	accessToken, err := auth.FromRequest(r)
-	if err != nil {
-		errs.HTTPErrorResponse(w, logger, err)
-		return
-	}
-
-	u, err := h.AccessTokenConverter.Convert(ctx, accessToken)
-	if err != nil {
-		errs.HTTPErrorResponse(w, logger, err)
-		return
-	}
-
-	err = h.Authorizer.Authorize(ctx, u, r.URL.Path, r.Method)
+	u, err := user.FromRequest(r)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, err)
 		return
@@ -262,7 +243,7 @@ func (h DefaultMovieHandlers) UpdateMovie(w http.ResponseWriter, r *http.Request
 
 	// Call the Update method of the Transactor to update the record
 	// in the database.
-	err = h.Transactor.Update(ctx, m)
+	err = h.Transactor.Update(r.Context(), m)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, err)
 		return
@@ -290,15 +271,6 @@ func (h DefaultMovieHandlers) UpdateMovie(w http.ResponseWriter, r *http.Request
 	}
 }
 
-// ProvideDeleteMovieHandler is a provider for the
-// DeleteMovieHandler for wire
-func ProvideDeleteMovieHandler(h DefaultMovieHandlers) DeleteMovieHandler {
-	return http.HandlerFunc(h.DeleteMovie)
-}
-
-// DeleteMovieHandler is a Handler that deletes a Movie
-type DeleteMovieHandler http.Handler
-
 // DeleteMovie handles DELETE requests for the /movies/{id} endpoint
 // and updates the given movie
 func (h DefaultMovieHandlers) DeleteMovie(w http.ResponseWriter, r *http.Request) {
@@ -309,25 +281,6 @@ func (h DefaultMovieHandlers) DeleteMovie(w http.ResponseWriter, r *http.Request
 	}
 
 	logger := *hlog.FromRequest(r)
-	ctx := r.Context()
-
-	accessToken, err := auth.FromRequest(r)
-	if err != nil {
-		errs.HTTPErrorResponse(w, logger, err)
-		return
-	}
-
-	u, err := h.AccessTokenConverter.Convert(ctx, accessToken)
-	if err != nil {
-		errs.HTTPErrorResponse(w, logger, err)
-		return
-	}
-
-	err = h.Authorizer.Authorize(ctx, u, r.URL.Path, r.Method)
-	if err != nil {
-		errs.HTTPErrorResponse(w, logger, err)
-		return
-	}
 
 	// gorilla mux Vars function returns the route variables for the
 	// current request, if any. id is the external id given for the
@@ -340,7 +293,7 @@ func (h DefaultMovieHandlers) DeleteMovie(w http.ResponseWriter, r *http.Request
 	// the external ID to the database Transactor directly instead,
 	// (I'd have to rework it slightly) but this way works as an
 	// example
-	m, err := h.Selector.FindByID(ctx, extlid)
+	m, err := h.Selector.FindByID(r.Context(), extlid)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, err)
 		return
@@ -348,7 +301,7 @@ func (h DefaultMovieHandlers) DeleteMovie(w http.ResponseWriter, r *http.Request
 
 	// Delete method of Transactor physically deletes the record
 	// from the DB, unless mocked
-	err = h.Transactor.Delete(ctx, m)
+	err = h.Transactor.Delete(r.Context(), m)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, err)
 		return
@@ -366,15 +319,6 @@ func (h DefaultMovieHandlers) DeleteMovie(w http.ResponseWriter, r *http.Request
 		return
 	}
 }
-
-// ProvideFindMovieByIDHandler is a provider for the
-// FindMovieByIDHandler for wire
-func ProvideFindMovieByIDHandler(h DefaultMovieHandlers) FindMovieByIDHandler {
-	return http.HandlerFunc(h.FindByID)
-}
-
-// FindMovieByIDHandler is a Handler finds a Movie by ID
-type FindMovieByIDHandler http.Handler
 
 // FindByID handles GET requests for the /movies/{id} endpoint
 // and finds a movie by it's ID
@@ -395,25 +339,6 @@ func (h DefaultMovieHandlers) FindByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	logger := *hlog.FromRequest(r)
-	ctx := r.Context()
-
-	accessToken, err := auth.FromRequest(r)
-	if err != nil {
-		errs.HTTPErrorResponse(w, logger, err)
-		return
-	}
-
-	u, err := h.AccessTokenConverter.Convert(ctx, accessToken)
-	if err != nil {
-		errs.HTTPErrorResponse(w, logger, err)
-		return
-	}
-
-	err = h.Authorizer.Authorize(ctx, u, r.URL.Path, r.Method)
-	if err != nil {
-		errs.HTTPErrorResponse(w, logger, err)
-		return
-	}
 
 	// gorilla mux Vars function returns the route variables for the
 	// current request, if any. id is the external id given for the
@@ -422,7 +347,7 @@ func (h DefaultMovieHandlers) FindByID(w http.ResponseWriter, r *http.Request) {
 	extlid := vars["extlID"]
 
 	// Find the Movie by ID using the selector.FindByID method
-	m, err := h.Selector.FindByID(ctx, extlid)
+	m, err := h.Selector.FindByID(r.Context(), extlid)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, err)
 		return
@@ -450,15 +375,6 @@ func (h DefaultMovieHandlers) FindByID(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// ProvideFindAllMoviesHandler is a provider for the
-// FindAllMoviesHandler for wire
-func ProvideFindAllMoviesHandler(h DefaultMovieHandlers) FindAllMoviesHandler {
-	return http.HandlerFunc(h.FindAllMovies)
-}
-
-// FindAllMoviesHandler is a Handler that returns the entire set of Movies
-type FindAllMoviesHandler http.Handler
-
 // FindAllMovies handles GET requests for the /movies endpoint and finds
 // all movies
 func (h DefaultMovieHandlers) FindAllMovies(w http.ResponseWriter, r *http.Request) {
@@ -478,28 +394,9 @@ func (h DefaultMovieHandlers) FindAllMovies(w http.ResponseWriter, r *http.Reque
 	}
 
 	logger := *hlog.FromRequest(r)
-	ctx := r.Context()
-
-	accessToken, err := auth.FromRequest(r)
-	if err != nil {
-		errs.HTTPErrorResponse(w, logger, err)
-		return
-	}
-
-	u, err := h.AccessTokenConverter.Convert(ctx, accessToken)
-	if err != nil {
-		errs.HTTPErrorResponse(w, logger, err)
-		return
-	}
-
-	err = h.Authorizer.Authorize(ctx, u, r.URL.Path, r.Method)
-	if err != nil {
-		errs.HTTPErrorResponse(w, logger, err)
-		return
-	}
 
 	// Find the list of all Movies using the selector.FindAll method
-	movies, err := h.Selector.FindAll(ctx)
+	movies, err := h.Selector.FindAll(r.Context())
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, err)
 		return

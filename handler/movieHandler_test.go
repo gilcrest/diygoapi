@@ -44,6 +44,16 @@ func TestDefaultMovieHandlers_CreateMovie(t *testing.T) {
 		// initialize a zerolog Logger
 		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
+		// initialize mockAccessTokenConverter
+		mockAccessTokenConverter := authtest.NewMockAccessTokenConverter(t)
+
+		mw := Middleware{
+			JSONContentTypeResponseMw: NewJSONContentTypeResponseMw(),
+			AccessTokenMw:             NewAccessTokenMw(),
+			ConvertAccessTokenMw:      NewConvertAccessTokenMw(mockAccessTokenConverter),
+			AuthorizeUserMw:           NewAuthorizeUserMw(auth.DefaultAuthorizer{}),
+		}
+
 		// initialize DefaultDatastore
 		ds, cleanup := datastoretest.NewDefaultDatastore(t, lgr)
 
@@ -56,17 +66,12 @@ func TestDefaultMovieHandlers_CreateMovie(t *testing.T) {
 		// initialize the DefaultSelector for the moviestore
 		selector := moviestore.NewDefaultSelector(ds)
 
-		// initialize mockAccessTokenConverter
-		mockAccessTokenConverter := authtest.NewMockAccessTokenConverter(t)
-
 		// initialize DefaultStringGenerator
 		randomStringGenerator := random.DefaultStringGenerator{}
 
 		// initialize DefaultMovieHandlers
 		dmh := DefaultMovieHandlers{
 			RandomStringGenerator: randomStringGenerator,
-			AccessTokenConverter:  mockAccessTokenConverter,
-			Authorizer:            authtest.NewMockAuthorizer(t),
 			Transactor:            transactor,
 			Selector:              selector,
 		}
@@ -120,7 +125,7 @@ func TestDefaultMovieHandlers_CreateMovie(t *testing.T) {
 		}
 
 		// retrieve createMovieHandler HTTP handler
-		createMovieHandler := ProvideCreateMovieHandler(dmh)
+		createMovieHandler := NewCreateMovieHandler(dmh)
 
 		// initialize ResponseRecorder to use with ServeHTTP as it
 		// satisfies ResponseWriter interface and records the response
@@ -131,9 +136,9 @@ func TestDefaultMovieHandlers_CreateMovie(t *testing.T) {
 		ac := alice.New()
 
 		// setup full handler chain needed for request
-		h := LoggerHandlerChain(lgr, ac).
-			Append(AccessTokenHandler).
-			Append(JSONContentTypeResponseHandler).
+		h := loggerHandlerChain(lgr, ac).
+			Extend(authChain(mw, ac)).
+			Append(mw.JSONContentTypeResponseMiddleware()).
 			Append(requestIDMiddleware).
 			Then(createMovieHandler)
 
@@ -225,11 +230,16 @@ func TestDefaultMovieHandlers_CreateMovie(t *testing.T) {
 		// initialize mockAccessTokenConverter
 		mockAccessTokenConverter := authtest.NewMockAccessTokenConverter(t)
 
+		mw := Middleware{
+			JSONContentTypeResponseMw: NewJSONContentTypeResponseMw(),
+			AccessTokenMw:             NewAccessTokenMw(),
+			ConvertAccessTokenMw:      NewConvertAccessTokenMw(mockAccessTokenConverter),
+			AuthorizeUserMw:           NewAuthorizeUserMw(auth.DefaultAuthorizer{}),
+		}
+
 		// initialize DefaultMovieHandlers
 		dmh := DefaultMovieHandlers{
 			RandomStringGenerator: randomtest.NewMockStringGenerator(t),
-			AccessTokenConverter:  mockAccessTokenConverter,
-			Authorizer:            authtest.NewMockAuthorizer(t),
 			Transactor:            mockTransactor,
 			Selector:              mockSelector,
 		}
@@ -283,7 +293,7 @@ func TestDefaultMovieHandlers_CreateMovie(t *testing.T) {
 		}
 
 		// retrieve createMovieHandler HTTP handler
-		createMovieHandler := ProvideCreateMovieHandler(dmh)
+		createMovieHandler := NewCreateMovieHandler(dmh)
 
 		// initialize ResponseRecorder to use with ServeHTTP as it
 		// satisfies ResponseWriter interface and records the response
@@ -294,9 +304,9 @@ func TestDefaultMovieHandlers_CreateMovie(t *testing.T) {
 		ac := alice.New()
 
 		// setup full handler chain needed for request
-		h := LoggerHandlerChain(lgr, ac).
-			Append(AccessTokenHandler).
-			Append(JSONContentTypeResponseHandler).
+		h := loggerHandlerChain(lgr, ac).
+			Extend(authChain(mw, ac)).
+			Append(mw.JSONContentTypeResponseMiddleware()).
 			Append(requestIDMiddleware).
 			Then(createMovieHandler)
 
@@ -383,6 +393,16 @@ func TestDefaultMovieHandlers_UpdateMovie(t *testing.T) {
 		// initialize a zerolog Logger
 		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
+		// initialize mockAccessTokenConverter
+		mockAccessTokenConverter := authtest.NewMockAccessTokenConverter(t)
+
+		mw := Middleware{
+			JSONContentTypeResponseMw: NewJSONContentTypeResponseMw(),
+			AccessTokenMw:             NewAccessTokenMw(),
+			ConvertAccessTokenMw:      NewConvertAccessTokenMw(mockAccessTokenConverter),
+			AuthorizeUserMw:           NewAuthorizeUserMw(auth.DefaultAuthorizer{}),
+		}
+
 		// initialize DefaultDatastore
 		ds, cleanup := datastoretest.NewDefaultDatastore(t, lgr)
 
@@ -401,17 +421,12 @@ func TestDefaultMovieHandlers_UpdateMovie(t *testing.T) {
 		// initialize the DefaultSelector for the moviestore
 		selector := moviestore.NewDefaultSelector(ds)
 
-		// initialize mockAccessTokenConverter
-		mockAccessTokenConverter := authtest.NewMockAccessTokenConverter(t)
-
 		// initialize DefaultStringGenerator
 		randomStringGenerator := random.DefaultStringGenerator{}
 
 		// initialize DefaultMovieHandlers
 		dmh := DefaultMovieHandlers{
 			RandomStringGenerator: randomStringGenerator,
-			AccessTokenConverter:  mockAccessTokenConverter,
-			Authorizer:            authtest.NewMockAuthorizer(t),
 			Transactor:            transactor,
 			Selector:              selector,
 		}
@@ -465,7 +480,7 @@ func TestDefaultMovieHandlers_UpdateMovie(t *testing.T) {
 		}
 
 		// retrieve createMovieHandler HTTP handler
-		updateMovieHandler := ProvideUpdateMovieHandler(dmh)
+		updateMovieHandler := NewUpdateMovieHandler(dmh)
 
 		// initialize ResponseRecorder to use with ServeHTTP as it
 		// satisfies ResponseWriter interface and records the response
@@ -476,9 +491,9 @@ func TestDefaultMovieHandlers_UpdateMovie(t *testing.T) {
 		ac := alice.New()
 
 		// setup full handler chain needed for request
-		h := LoggerHandlerChain(lgr, ac).
-			Append(AccessTokenHandler).
-			Append(JSONContentTypeResponseHandler).
+		h := loggerHandlerChain(lgr, ac).
+			Extend(authChain(mw, ac)).
+			Append(mw.JSONContentTypeResponseMiddleware()).
 			Append(requestIDMiddleware).
 			Then(updateMovieHandler)
 
@@ -573,6 +588,16 @@ func TestDefaultMovieHandlers_DeleteMovie(t *testing.T) {
 		// initialize a zerolog Logger
 		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
+		// initialize mockAccessTokenConverter
+		mockAccessTokenConverter := authtest.NewMockAccessTokenConverter(t)
+
+		mw := Middleware{
+			JSONContentTypeResponseMw: NewJSONContentTypeResponseMw(),
+			AccessTokenMw:             NewAccessTokenMw(),
+			ConvertAccessTokenMw:      NewConvertAccessTokenMw(mockAccessTokenConverter),
+			AuthorizeUserMw:           NewAuthorizeUserMw(auth.DefaultAuthorizer{}),
+		}
+
 		// initialize DefaultDatastore
 		ds, cleanup := datastoretest.NewDefaultDatastore(t, lgr)
 
@@ -589,17 +614,12 @@ func TestDefaultMovieHandlers_DeleteMovie(t *testing.T) {
 		// initialize the DefaultSelector for the moviestore
 		selector := moviestore.NewDefaultSelector(ds)
 
-		// initialize mockAccessTokenConverter
-		mockAccessTokenConverter := authtest.NewMockAccessTokenConverter(t)
-
 		// initialize DefaultStringGenerator
 		randomStringGenerator := random.DefaultStringGenerator{}
 
 		// initialize DefaultMovieHandlers
 		dmh := DefaultMovieHandlers{
 			RandomStringGenerator: randomStringGenerator,
-			AccessTokenConverter:  mockAccessTokenConverter,
-			Authorizer:            authtest.NewMockAuthorizer(t),
 			Transactor:            transactor,
 			Selector:              selector,
 		}
@@ -629,7 +649,7 @@ func TestDefaultMovieHandlers_DeleteMovie(t *testing.T) {
 		}
 
 		// retrieve createMovieHandler HTTP handler
-		deleteMovieHandler := ProvideDeleteMovieHandler(dmh)
+		deleteMovieHandler := NewDeleteMovieHandler(dmh)
 
 		// initialize ResponseRecorder to use with ServeHTTP as it
 		// satisfies ResponseWriter interface and records the response
@@ -640,9 +660,9 @@ func TestDefaultMovieHandlers_DeleteMovie(t *testing.T) {
 		ac := alice.New()
 
 		// setup full handler chain needed for request
-		h := LoggerHandlerChain(lgr, ac).
-			Append(AccessTokenHandler).
-			Append(JSONContentTypeResponseHandler).
+		h := loggerHandlerChain(lgr, ac).
+			Extend(authChain(mw, ac)).
+			Append(mw.JSONContentTypeResponseMiddleware()).
 			Append(requestIDMiddleware).
 			Then(deleteMovieHandler)
 
@@ -710,6 +730,16 @@ func TestDefaultMovieHandlers_FindByID(t *testing.T) {
 		// initialize a zerolog Logger
 		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
+		// initialize mockAccessTokenConverter
+		mockAccessTokenConverter := authtest.NewMockAccessTokenConverter(t)
+
+		mw := Middleware{
+			JSONContentTypeResponseMw: NewJSONContentTypeResponseMw(),
+			AccessTokenMw:             NewAccessTokenMw(),
+			ConvertAccessTokenMw:      NewConvertAccessTokenMw(mockAccessTokenConverter),
+			AuthorizeUserMw:           NewAuthorizeUserMw(auth.DefaultAuthorizer{}),
+		}
+
 		// initialize DefaultDatastore
 		ds, cleanup := datastoretest.NewDefaultDatastore(t, lgr)
 
@@ -728,17 +758,12 @@ func TestDefaultMovieHandlers_FindByID(t *testing.T) {
 		// initialize the DefaultSelector for the moviestore
 		selector := moviestore.NewDefaultSelector(ds)
 
-		// initialize mockAccessTokenConverter
-		mockAccessTokenConverter := authtest.NewMockAccessTokenConverter(t)
-
 		// initialize DefaultStringGenerator
 		randomStringGenerator := random.DefaultStringGenerator{}
 
 		// initialize DefaultMovieHandlers
 		dmh := DefaultMovieHandlers{
 			RandomStringGenerator: randomStringGenerator,
-			AccessTokenConverter:  mockAccessTokenConverter,
-			Authorizer:            authtest.NewMockAuthorizer(t),
 			Transactor:            transactor,
 			Selector:              selector,
 		}
@@ -792,7 +817,7 @@ func TestDefaultMovieHandlers_FindByID(t *testing.T) {
 		}
 
 		// retrieve createMovieHandler HTTP handler
-		findMovieByIDHandler := ProvideFindMovieByIDHandler(dmh)
+		findMovieByIDHandler := NewFindMovieByIDHandler(dmh)
 
 		// initialize ResponseRecorder to use with ServeHTTP as it
 		// satisfies ResponseWriter interface and records the response
@@ -803,9 +828,9 @@ func TestDefaultMovieHandlers_FindByID(t *testing.T) {
 		ac := alice.New()
 
 		// setup full handler chain needed for request
-		h := LoggerHandlerChain(lgr, ac).
-			Append(AccessTokenHandler).
-			Append(JSONContentTypeResponseHandler).
+		h := loggerHandlerChain(lgr, ac).
+			Extend(authChain(mw, ac)).
+			Append(mw.JSONContentTypeResponseMiddleware()).
 			Append(requestIDMiddleware).
 			Then(findMovieByIDHandler)
 
@@ -900,14 +925,21 @@ func TestDefaultMovieHandlers_FindAll(t *testing.T) {
 		// initialize a zerolog Logger
 		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
+		// initialize mockAccessTokenConverter
+		mockAccessTokenConverter := authtest.NewMockAccessTokenConverter(t)
+
+		mw := Middleware{
+			JSONContentTypeResponseMw: NewJSONContentTypeResponseMw(),
+			AccessTokenMw:             NewAccessTokenMw(),
+			ConvertAccessTokenMw:      NewConvertAccessTokenMw(mockAccessTokenConverter),
+			AuthorizeUserMw:           NewAuthorizeUserMw(auth.DefaultAuthorizer{}),
+		}
+
 		// initialize MockTransactor for the moviestore
 		mockTransactor := newMockTransactor(t)
 
 		// initialize MockSelector for the moviestore
 		mockSelector := newMockSelector(t)
-
-		// initialize mockAccessTokenConverter
-		mockAccessTokenConverter := authtest.NewMockAccessTokenConverter(t)
 
 		// initialize DefaultStringGenerator
 		randomStringGenerator := random.DefaultStringGenerator{}
@@ -915,8 +947,6 @@ func TestDefaultMovieHandlers_FindAll(t *testing.T) {
 		// initialize DefaultMovieHandlers
 		dmh := DefaultMovieHandlers{
 			RandomStringGenerator: randomStringGenerator,
-			AccessTokenConverter:  mockAccessTokenConverter,
-			Authorizer:            authtest.NewMockAuthorizer(t),
 			Transactor:            mockTransactor,
 			Selector:              mockSelector,
 		}
@@ -946,7 +976,7 @@ func TestDefaultMovieHandlers_FindAll(t *testing.T) {
 		}
 
 		// retrieve createMovieHandler HTTP handler
-		findAllMoviesHandler := ProvideFindAllMoviesHandler(dmh)
+		findAllMoviesHandler := NewFindAllMoviesHandler(dmh)
 
 		// initialize ResponseRecorder to use with ServeHTTP as it
 		// satisfies ResponseWriter interface and records the response
@@ -957,9 +987,9 @@ func TestDefaultMovieHandlers_FindAll(t *testing.T) {
 		ac := alice.New()
 
 		// setup full handler chain needed for request
-		h := LoggerHandlerChain(lgr, ac).
-			Append(AccessTokenHandler).
-			Append(JSONContentTypeResponseHandler).
+		h := loggerHandlerChain(lgr, ac).
+			Extend(authChain(mw, ac)).
+			Append(mw.JSONContentTypeResponseMiddleware()).
 			Append(requestIDMiddleware).
 			Then(findAllMoviesHandler)
 

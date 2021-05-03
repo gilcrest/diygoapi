@@ -20,6 +20,14 @@ import (
 // resource
 const BearerTokenType string = "Bearer"
 
+// NewAccessToken is an initializer for AccessToken
+func NewAccessToken(token, tokenType string) AccessToken {
+	return AccessToken{
+		Token:     token,
+		TokenType: tokenType,
+	}
+}
+
 // AccessToken represents an access token found in an
 // HTTP header, typically a Bearer token for Oauth2
 type AccessToken struct {
@@ -30,6 +38,27 @@ type AccessToken struct {
 // NewGoogleOauth2Token returns a Google Oauth2 token given an AccessToken
 func (at AccessToken) NewGoogleOauth2Token() *oauth2.Token {
 	return &oauth2.Token{AccessToken: at.Token, TokenType: at.TokenType}
+}
+
+type contextKey string
+
+const contextKeyAccessToken = contextKey("access-token")
+
+// AccessTokenFromRequest gets the access token from the request
+func AccessTokenFromRequest(r *http.Request) (AccessToken, error) {
+	at, ok := r.Context().Value(contextKeyAccessToken).(AccessToken)
+	if !ok {
+		return at, errs.E(errs.Unauthenticated, errors.New("Access Token not set properly to context"))
+	}
+	if at.Token == "" {
+		return at, errs.E(errs.Unauthenticated, errors.New("Access Token empty in context"))
+	}
+	return at, nil
+}
+
+// CtxWithAccessToken sets the Access Token to the given context
+func CtxWithAccessToken(ctx context.Context, at AccessToken) context.Context {
+	return context.WithValue(ctx, contextKeyAccessToken, at)
 }
 
 // AccessTokenConverter interface is used to convert an access token
@@ -87,36 +116,6 @@ func (a DefaultAuthorizer) Authorize(ctx context.Context, sub user.User, obj str
 	// If the user has gotten here, they have gotten through authentication
 	// but do have the right access, this they are Unauthorized
 	return errs.E(errs.Unauthorized, errors.New(fmt.Sprintf("user %s does not have %s permission for %s", sub.Email, act, obj)))
-}
-
-type contextKey string
-
-const contextKeyAccessToken = contextKey("access-token")
-
-// FromRequest gets the access token from the request
-func FromRequest(r *http.Request) (AccessToken, error) {
-	at := AccessToken{}
-	// retrieve the context from the http.Request
-	ctx := r.Context()
-
-	at, ok := ctx.Value(contextKeyAccessToken).(AccessToken)
-	if !ok {
-		return at, errs.E(errs.Unauthenticated, errors.New("Access Token not set properly to context"))
-	}
-	if at.Token == "" {
-		return at, errs.E(errs.Unauthenticated, errors.New("Access Token empty in context"))
-	}
-	return at, nil
-}
-
-// SetAccessToken2Context sets the Access Token to the given context
-func SetAccessToken2Context(ctx context.Context, token, tokenType string) context.Context {
-	at := AccessToken{
-		Token:     token,
-		TokenType: tokenType,
-	}
-
-	return context.WithValue(ctx, contextKeyAccessToken, at)
 }
 
 // AccessControlList (ACL) describes permissions for a given object

@@ -46,7 +46,7 @@ func TestAccessTokenHandler(t *testing.T) {
 		req.Header.Add("Authorization", auth.BearerTokenType+" abcdef123")
 
 		testAccessTokenHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			token, err := auth.FromRequest(r)
+			token, err := auth.AccessTokenFromRequest(r)
 			if err != nil {
 				t.Fatalf("auth.FromRequest() error = %v", err)
 			}

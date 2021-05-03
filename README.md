@@ -12,7 +12,7 @@ The following is an in-depth walkthrough of this project. This walkthrough has a
 
 ## Minimum Requirements
 
-You need to have Go and PostgreSQL installed in order to run these APIs. In addition, several database objects must be created (see [Database Setup](#database-setup) below)
+Go and PostgreSQL are required in order to run these APIs. In addition, several database objects must be created (see [Database Setup](#database-setup) below)
 
 ## Table of Contents
 
@@ -437,21 +437,20 @@ func outer() error {
 
 In the above example, the error is created in the `inner` function - `middle` and `outer` return the error as is typical in Go.
 
-At the top of the program flow for each service is the handler. I've structured my code so that handlers are relatively simple. We'll talk more about them later, but you'll notice in each handler, if any error occurs from any function/method calls, they are sent through the `errs.HTTPErrorResponse` function along with the `http.ResponseWriter` and a `zerolog.Logger`.
+At the top of the program flow for each service is the handler. In each handler, if any error occurs from any function/method calls, they are sent through the `errs.HTTPErrorResponse` function along with the `http.ResponseWriter` and a `zerolog.Logger`.
 
 For example:
 
 ```go
-// Send the request to the controller
-// Receive a response or error in return
-response, err := mc.CreateMovie(r)
+// Call the NewMovie method for struct initialization
+m, err := movie.NewMovie(uuid.New(), extlID, u)
 if err != nil {
     errs.HTTPErrorResponse(w, logger, err)
     return
 }
 ```
 
-`errs.HTTPErrorResponse` takes the custom `Error` created by `errs.E` and writes the HTTP response body as JSON as well as logs the error, including the error stacktrace. When the above error is returned to the client using the `errs.HTTPErrorResponse` function in the each of the handlers, the response body JSON looks like the following:
+`errs.HTTPErrorResponse` takes the custom `Error` created by `errs.E` and writes the HTTP response body as JSON as well as logs the error. If `zerolog.ErrorStackMarshaler` is set to log error stacks (more about this later), the logger will log the full error stack, which can be super helpful when trying to identify issues. When the above error is returned to the client using the `errs.HTTPErrorResponse` function in the each of the handlers, the response body JSON looks like the following:
 
 ```json
 {

@@ -78,9 +78,8 @@ func TestDefaultAuthorizer_Authorize(t *testing.T) {
 
 func TestSetAccessToken2Context(t *testing.T) {
 	type args struct {
-		ctx       context.Context
-		token     string
-		tokenType string
+		ctx   context.Context
+		token AccessToken
 	}
 	ctx := context.Background()
 	token := "abcdef123"
@@ -97,12 +96,12 @@ func TestSetAccessToken2Context(t *testing.T) {
 		args args
 		want context.Context
 	}{
-		{"typical", args{ctx, token, BearerTokenType}, wantCtx},
+		{"typical", args{ctx, at}, wantCtx},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := SetAccessToken2Context(tt.args.ctx, tt.args.token, tt.args.tokenType); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("SetAccessToken2Context() = %v, want %v", got, tt.want)
+			if got := CtxWithAccessToken(tt.args.ctx, tt.args.token); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("CtxWithAccessToken() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -123,8 +122,13 @@ func TestFromRequest(t *testing.T) {
 		TokenType: BearerTokenType,
 	}
 
+	emptyAT := AccessToken{
+		Token:     "",
+		TokenType: BearerTokenType,
+	}
+
 	ctx := context.Background()
-	ctx = SetAccessToken2Context(ctx, token, BearerTokenType)
+	ctx = CtxWithAccessToken(ctx, at)
 	r = r.WithContext(ctx)
 
 	noAccessTokenRequest, err := http.NewRequest(http.MethodGet, "/api/v1/movies", nil)
@@ -137,7 +141,7 @@ func TestFromRequest(t *testing.T) {
 		t.Fatalf("http.NewRequest() error = %v", err)
 	}
 	ctx2 := context.Background()
-	ctx2 = SetAccessToken2Context(ctx2, "", BearerTokenType)
+	ctx2 = CtxWithAccessToken(ctx2, emptyAT)
 	noTokenRequest = noTokenRequest.WithContext(ctx2)
 	at2 := AccessToken{
 		Token:     "",
@@ -156,7 +160,7 @@ func TestFromRequest(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := FromRequest(tt.args.r)
+			got, err := AccessTokenFromRequest(tt.args.r)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("FromRequest() error = %v, wantErr %v", err, tt.wantErr)
 				return

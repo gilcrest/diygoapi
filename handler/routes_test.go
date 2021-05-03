@@ -5,6 +5,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/gilcrest/go-api-basic/domain/auth"
+
 	qt "github.com/frankban/quicktest"
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
@@ -43,18 +45,16 @@ func TestNewMuxRouter(t *testing.T) {
 		// initialize DefaultMovieHandlers
 		defaultMovieHandlers := DefaultMovieHandlers{
 			RandomStringGenerator: randomStringGenerator,
-			AccessTokenConverter:  mockAccessTokenConverter,
-			Authorizer:            authtest.NewMockAuthorizer(t),
 			Transactor:            mockTransactor,
 			Selector:              mockSelector,
 		}
 
 		// setup handlers
-		createMovieHandler := ProvideCreateMovieHandler(defaultMovieHandlers)
-		findMovieByIDHandler := ProvideFindMovieByIDHandler(defaultMovieHandlers)
-		findAllMoviesHandler := ProvideFindAllMoviesHandler(defaultMovieHandlers)
-		updateMovieHandler := ProvideUpdateMovieHandler(defaultMovieHandlers)
-		deleteMovieHandler := ProvideDeleteMovieHandler(defaultMovieHandlers)
+		createMovieHandler := NewCreateMovieHandler(defaultMovieHandlers)
+		findMovieByIDHandler := NewFindMovieByIDHandler(defaultMovieHandlers)
+		findAllMoviesHandler := NewFindAllMoviesHandler(defaultMovieHandlers)
+		updateMovieHandler := NewUpdateMovieHandler(defaultMovieHandlers)
+		deleteMovieHandler := NewDeleteMovieHandler(defaultMovieHandlers)
 		defaultLoggerHandlers := DefaultLoggerHandlers{
 			AccessTokenConverter: mockAccessTokenConverter,
 			Authorizer:           authtest.NewMockAuthorizer(t),
@@ -65,7 +65,7 @@ func TestNewMuxRouter(t *testing.T) {
 		defaultPingHandler := DefaultPingHandler{
 			Pinger: defaultPinger,
 		}
-		pingHandler := ProvidePingHandler(defaultPingHandler)
+		pingHandler := NewPingHandler(defaultPingHandler)
 		handlers := Handlers{
 			CreateMovieHandler:   createMovieHandler,
 			FindMovieByIDHandler: findMovieByIDHandler,
@@ -77,8 +77,15 @@ func TestNewMuxRouter(t *testing.T) {
 			PingHandler:          pingHandler,
 		}
 
+		mw := Middleware{
+			JSONContentTypeResponseMw: NewJSONContentTypeResponseMw(),
+			AccessTokenMw:             NewAccessTokenMw(),
+			ConvertAccessTokenMw:      NewConvertAccessTokenMw(mockAccessTokenConverter),
+			AuthorizeUserMw:           NewAuthorizeUserMw(auth.DefaultAuthorizer{}),
+		}
+
 		// get a new router
-		router := NewMuxRouter(lgr, handlers)
+		router := NewMuxRouter(lgr, mw, handlers)
 
 		// r holds the path and http method to be tested
 		type r struct {
@@ -90,13 +97,13 @@ func TestNewMuxRouter(t *testing.T) {
 		// they are registered in NewMuxRouter
 		wantRoutes := []r{
 			{pathPrefix + moviesV1PathRoot, []string{http.MethodPost}},
-			{pathPrefix + moviesV1PathRoot + "/{extlID}", []string{http.MethodPut}},
-			{pathPrefix + moviesV1PathRoot + "/{extlID}", []string{http.MethodDelete}},
-			{pathPrefix + moviesV1PathRoot + "/{extlID}", []string{http.MethodGet}},
+			{pathPrefix + moviesV1PathRoot + extlIDPathDir, []string{http.MethodPut}},
+			{pathPrefix + moviesV1PathRoot + extlIDPathDir, []string{http.MethodDelete}},
+			{pathPrefix + moviesV1PathRoot + extlIDPathDir, []string{http.MethodGet}},
 			{pathPrefix + moviesV1PathRoot, []string{http.MethodGet}},
 			{pathPrefix + loggerV1PathRoot, []string{http.MethodGet}},
 			{pathPrefix + loggerV1PathRoot, []string{http.MethodPut}},
-			{pathPrefix + "/v1/ping", []string{http.MethodGet}},
+			{pathPrefix + pingV1PathRoot, []string{http.MethodGet}},
 		}
 
 		// make a slice of r for use in the Walk function

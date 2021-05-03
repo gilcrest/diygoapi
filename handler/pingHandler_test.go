@@ -58,10 +58,10 @@ func TestDefaultPingHandler_Ping(t *testing.T) {
 			})
 		}
 
-		pingHandler := ProvidePingHandler(dph)
+		pingHandler := NewPingHandler(dph)
 
 		ac := alice.New()
-		h := LoggerHandlerChain(lgr, ac).
+		h := loggerHandlerChain(lgr, ac).
 			Append(testMiddleware).
 			Append(JSONContentTypeResponseHandler).
 			Then(pingHandler)
@@ -112,10 +112,10 @@ func TestDefaultPingHandler_Ping(t *testing.T) {
 			})
 		}
 
-		pingHandler := ProvidePingHandler(dph)
+		pingHandler := NewPingHandler(dph)
 
 		ac := alice.New()
-		h := LoggerHandlerChain(lgr, ac).
+		h := loggerHandlerChain(lgr, ac).
 			Append(testMiddleware).
 			Append(JSONContentTypeResponseHandler).
 			Then(pingHandler)
