@@ -5,33 +5,25 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gilcrest/go-api-basic/domain/logger"
 	"github.com/rs/zerolog"
-
-	"github.com/gilcrest/go-api-basic/domain/auth"
-	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/rs/zerolog/hlog"
+
+	"github.com/gilcrest/go-api-basic/domain/errs"
+	"github.com/gilcrest/go-api-basic/domain/logger"
 )
 
 // NewReadLoggerHandler is a provider for ReadLoggerHandler
-func NewReadLoggerHandler(h DefaultLoggerHandlers) ReadLoggerHandler {
-	return http.HandlerFunc(h.ReadLogger)
+func NewReadLoggerHandler() ReadLoggerHandler {
+	return http.HandlerFunc(ReadLogger)
 }
 
 // NewUpdateLoggerHandler is a provider for UpdateLoggerHandler
-func NewUpdateLoggerHandler(h DefaultLoggerHandlers) UpdateLoggerHandler {
-	return http.HandlerFunc(h.UpdateLogger)
-}
-
-// DefaultLoggerHandlers are the default handlers for working with
-// the app logger. Each method on the struct is a separate handler.
-type DefaultLoggerHandlers struct {
-	AccessTokenConverter auth.AccessTokenConverter
-	Authorizer           auth.Authorizer
+func NewUpdateLoggerHandler() UpdateLoggerHandler {
+	return http.HandlerFunc(UpdateLogger)
 }
 
 // ReadLogger handles GET requests for the /logger endpoint
-func (h DefaultLoggerHandlers) ReadLogger(w http.ResponseWriter, r *http.Request) {
+func ReadLogger(w http.ResponseWriter, r *http.Request) {
 	// readLoggerResponse is the response struct for the current
 	// state of the app logger
 	type readLoggerResponse struct {
@@ -63,7 +55,7 @@ func (h DefaultLoggerHandlers) ReadLogger(w http.ResponseWriter, r *http.Request
 
 // UpdateLogger handles PUT requests for the /logger endpoint
 // and updates the given movie
-func (h DefaultLoggerHandlers) UpdateLogger(w http.ResponseWriter, r *http.Request) {
+func UpdateLogger(w http.ResponseWriter, r *http.Request) {
 	// updateLoggerRequest is the request struct for the app logger
 	type updateLoggerRequest struct {
 		GlobalLogLevel string `json:"global_log_level"`

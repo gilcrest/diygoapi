@@ -6,7 +6,6 @@
 package main
 
 import (
-	"context"
 	"database/sql"
 	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/gilcrest/go-api-basic/datastore/moviestore"
@@ -16,47 +15,25 @@ import (
 	"github.com/gilcrest/go-api-basic/gateway/authgateway"
 	"github.com/gilcrest/go-api-basic/handler"
 	"github.com/google/wire"
-	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
 	"go.opencensus.io/trace"
 	"gocloud.dev/server"
 	"gocloud.dev/server/driver"
 	"gocloud.dev/server/health"
 	"gocloud.dev/server/health/sqlhealth"
-	"net/http"
 )
 
-// Injectors from inject_main.go:
+// Injectors from wire.go:
 
-func newServer(ctx context.Context, logger zerolog.Logger, dsn datastore.PGDatasourceName) (*server.Server, func(), error) {
-	jsonContentTypeResponseMw := handler.NewJSONContentTypeResponseMw()
-	accessTokenMw := handler.NewAccessTokenMw()
-	googleAccessTokenConverter := authgateway.GoogleAccessTokenConverter{}
-	convertAccessTokenMw := handler.NewConvertAccessTokenMw(googleAccessTokenConverter)
-	defaultAuthorizer := auth.DefaultAuthorizer{}
-	authorizeUserMw := handler.NewAuthorizeUserMw(defaultAuthorizer)
-	middleware := handler.Middleware{
-		JSONContentTypeResponseMw: jsonContentTypeResponseMw,
-		AccessTokenMw:             accessTokenMw,
-		ConvertAccessTokenMw:      convertAccessTokenMw,
-		AuthorizeUserMw:           authorizeUserMw,
-	}
-	db, cleanup, err := datastore.NewDB(dsn, logger)
-	if err != nil {
-		return nil, nil, err
-	}
+func newHandlers(db *sql.DB) (handler.Handlers, error) {
 	defaultDatastore := datastore.NewDefaultDatastore(db)
 	defaultPinger := pingstore.NewDefaultPinger(defaultDatastore)
 	defaultPingHandler := handler.DefaultPingHandler{
 		Pinger: defaultPinger,
 	}
 	pingHandler := handler.NewPingHandler(defaultPingHandler)
-	defaultLoggerHandlers := handler.DefaultLoggerHandlers{
-		AccessTokenConverter: googleAccessTokenConverter,
-		Authorizer:           defaultAuthorizer,
-	}
-	readLoggerHandler := handler.NewReadLoggerHandler(defaultLoggerHandlers)
-	updateLoggerHandler := handler.NewUpdateLoggerHandler(defaultLoggerHandlers)
+	readLoggerHandler := handler.NewReadLoggerHandler()
+	updateLoggerHandler := handler.NewUpdateLoggerHandler()
 	defaultStringGenerator := random.DefaultStringGenerator{}
 	defaultTransactor := moviestore.NewDefaultTransactor(defaultDatastore)
 	defaultSelector := moviestore.NewDefaultSelector(defaultDatastore)
@@ -80,8 +57,22 @@ func newServer(ctx context.Context, logger zerolog.Logger, dsn datastore.PGDatas
 		UpdateMovieHandler:   updateMovieHandler,
 		DeleteMovieHandler:   deleteMovieHandler,
 	}
-	router := handler.NewMuxRouter(logger, middleware, handlers)
-	v, cleanup2 := appHealthChecks(db)
+	return handlers, nil
+}
+
+func newMiddleware(lgr zerolog.Logger) handler.Middleware {
+	googleAccessTokenConverter := authgateway.GoogleAccessTokenConverter{}
+	defaultAuthorizer := auth.DefaultAuthorizer{}
+	middleware := handler.Middleware{
+		Logger:               lgr,
+		AccessTokenConverter: googleAccessTokenConverter,
+		Authorizer:           defaultAuthorizer,
+	}
+	return middleware
+}
+
+func newServerOptions(db *sql.DB) (*server.Options, func()) {
+	v, cleanup := appHealthChecks(db)
 	exporter := _wireExporterValue
 	sampler := trace.AlwaysSample()
 	defaultDriver := server.NewDefaultDriver()
@@ -91,33 +82,29 @@ func newServer(ctx context.Context, logger zerolog.Logger, dsn datastore.PGDatas
 		DefaultSamplingPolicy: sampler,
 		Driver:                defaultDriver,
 	}
-	serverServer := server.New(router, options)
-	return serverServer, func() {
-		cleanup2()
+	return options, func() {
 		cleanup()
-	}, nil
+	}
 }
 
 var (
 	_wireExporterValue = trace.Exporter(nil)
 )
 
-// inject_main.go:
+// wire.go:
 
 var pingHandlerSet = wire.NewSet(pingstore.NewDefaultPinger, wire.Bind(new(pingstore.Pinger), new(pingstore.DefaultPinger)), wire.Struct(new(handler.DefaultPingHandler), "*"), handler.NewPingHandler)
 
-var middlewareSet = wire.NewSet(wire.Struct(new(authgateway.GoogleAccessTokenConverter), "*"), wire.Bind(new(auth.AccessTokenConverter), new(authgateway.GoogleAccessTokenConverter)), wire.Struct(new(auth.DefaultAuthorizer), "*"), wire.Bind(new(auth.Authorizer), new(auth.DefaultAuthorizer)), handler.NewAccessTokenMw, handler.NewConvertAccessTokenMw, handler.NewAuthorizeUserMw, handler.NewJSONContentTypeResponseMw, wire.Struct(new(handler.Middleware), "*"))
+var middlewareSet = wire.NewSet(wire.Struct(new(authgateway.GoogleAccessTokenConverter), "*"), wire.Bind(new(auth.AccessTokenConverter), new(authgateway.GoogleAccessTokenConverter)), wire.Struct(new(auth.DefaultAuthorizer), "*"), wire.Bind(new(auth.Authorizer), new(auth.DefaultAuthorizer)), wire.Struct(new(handler.Middleware), "*"))
 
 var movieHandlerSet = wire.NewSet(wire.Struct(new(random.DefaultStringGenerator), "*"), wire.Bind(new(random.StringGenerator), new(random.DefaultStringGenerator)), moviestore.NewDefaultTransactor, wire.Bind(new(moviestore.Transactor), new(moviestore.DefaultTransactor)), moviestore.NewDefaultSelector, wire.Bind(new(moviestore.Selector), new(moviestore.DefaultSelector)), wire.Struct(new(handler.DefaultMovieHandlers), "*"), handler.NewCreateMovieHandler, handler.NewFindMovieByIDHandler, handler.NewFindAllMoviesHandler, handler.NewUpdateMovieHandler, handler.NewDeleteMovieHandler)
 
-var loggerHandlerSet = wire.NewSet(wire.Struct(new(handler.DefaultLoggerHandlers), "*"), handler.NewReadLoggerHandler, handler.NewUpdateLoggerHandler)
+var loggerHandlerSet = wire.NewSet(handler.NewReadLoggerHandler, handler.NewUpdateLoggerHandler)
 
-var datastoreSet = wire.NewSet(datastore.NewDB, datastore.NewDefaultDatastore, wire.Bind(new(datastore.Datastorer), new(datastore.DefaultDatastore)))
+var datastoreSet = wire.NewSet(datastore.NewDefaultDatastore, wire.Bind(new(datastore.Datastorer), new(datastore.DefaultDatastore)))
 
 // goCloudServerSet
-var goCloudServerSet = wire.NewSet(trace.AlwaysSample, server.New, server.NewDefaultDriver, wire.Bind(new(driver.Server), new(*server.DefaultDriver)))
-
-var routerSet = wire.NewSet(handler.NewMuxRouter, wire.Bind(new(http.Handler), new(*mux.Router)))
+var goCloudOptionSet = wire.NewSet(trace.AlwaysSample, server.NewDefaultDriver, wire.Bind(new(driver.Server), new(*server.DefaultDriver)), wire.InterfaceValue(new(trace.Exporter), trace.Exporter(nil)), appHealthChecks, wire.Struct(new(server.Options), "HealthChecks", "TraceExporter", "DefaultSamplingPolicy", "Driver"))
 
 // appHealthChecks returns a health check for the database. This will signal
 // to Kubernetes or other orchestrators that the server should not receive

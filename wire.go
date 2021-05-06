@@ -3,21 +3,18 @@
 package main
 
 import (
-	"context"
 	"database/sql"
-	"net/http"
 
+	"github.com/rs/zerolog"
+
+	"github.com/gilcrest/go-api-basic/datastore/moviestore"
+	"github.com/gilcrest/go-api-basic/datastore/pingstore"
 	"github.com/gilcrest/go-api-basic/domain/auth"
 	"github.com/gilcrest/go-api-basic/domain/random"
 	"github.com/gilcrest/go-api-basic/gateway/authgateway"
 
-	"github.com/gilcrest/go-api-basic/datastore/moviestore"
-	"github.com/gilcrest/go-api-basic/datastore/pingstore"
-
 	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/gilcrest/go-api-basic/handler"
-	"github.com/gorilla/mux"
-	"github.com/rs/zerolog"
 	"go.opencensus.io/trace"
 
 	"github.com/google/wire"
@@ -39,10 +36,6 @@ var middlewareSet = wire.NewSet(
 	wire.Bind(new(auth.AccessTokenConverter), new(authgateway.GoogleAccessTokenConverter)),
 	wire.Struct(new(auth.DefaultAuthorizer), "*"),
 	wire.Bind(new(auth.Authorizer), new(auth.DefaultAuthorizer)),
-	handler.NewAccessTokenMw,
-	handler.NewConvertAccessTokenMw,
-	handler.NewAuthorizeUserMw,
-	handler.NewJSONContentTypeResponseMw,
 	wire.Struct(new(handler.Middleware), "*"),
 )
 
@@ -62,49 +55,46 @@ var movieHandlerSet = wire.NewSet(
 )
 
 var loggerHandlerSet = wire.NewSet(
-	wire.Struct(new(handler.DefaultLoggerHandlers), "*"),
 	handler.NewReadLoggerHandler,
 	handler.NewUpdateLoggerHandler,
 )
 
 var datastoreSet = wire.NewSet(
-	datastore.NewDB,
 	datastore.NewDefaultDatastore,
 	wire.Bind(new(datastore.Datastorer), new(datastore.DefaultDatastore)),
 )
 
 // goCloudServerSet
-var goCloudServerSet = wire.NewSet(
+var goCloudOptionSet = wire.NewSet(
 	trace.AlwaysSample,
-	server.New,
 	server.NewDefaultDriver,
 	wire.Bind(new(driver.Server), new(*server.DefaultDriver)),
+	wire.InterfaceValue(new(trace.Exporter), trace.Exporter(nil)),
+	appHealthChecks,
+	wire.Struct(new(server.Options), "HealthChecks", "TraceExporter", "DefaultSamplingPolicy", "Driver"),
 )
 
-var routerSet = wire.NewSet(
-	handler.NewMuxRouter,
-	wire.Bind(new(http.Handler), new(*mux.Router)),
-)
-
-// newServer is a Wire injector function that sets up the
-// application using a PostgreSQL implementation
-func newServer(ctx context.Context, logger zerolog.Logger, dsn datastore.PGDatasourceName) (*server.Server, func(), error) {
-	// This will be filled in by Wire with providers from the provider sets in
-	// wire.Build.
+func newHandlers(db *sql.DB) (handler.Handlers, error) {
 	wire.Build(
-		wire.InterfaceValue(new(trace.Exporter), trace.Exporter(nil)),
-		goCloudServerSet,
-		appHealthChecks,
-		wire.Struct(new(server.Options), "HealthChecks", "TraceExporter", "DefaultSamplingPolicy", "Driver"),
 		datastoreSet,
-		middlewareSet,
 		movieHandlerSet,
 		loggerHandlerSet,
 		pingHandlerSet,
 		wire.Struct(new(handler.Handlers), "*"),
-		routerSet,
 	)
-	return nil, nil, nil
+	return handler.Handlers{}, nil
+}
+
+func newMiddleware(lgr zerolog.Logger) handler.Middleware {
+	wire.Build(middlewareSet)
+
+	return handler.Middleware{}
+}
+
+func newServerOptions(db *sql.DB) (*server.Options, func()) {
+	wire.Build(goCloudOptionSet)
+
+	return nil, nil
 }
 
 // appHealthChecks returns a health check for the database. This will signal

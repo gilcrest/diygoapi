@@ -17,8 +17,6 @@ import (
 
 	qt "github.com/frankban/quicktest"
 
-	"github.com/justinas/alice"
-
 	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/gilcrest/go-api-basic/datastore/datastoretest"
 	"github.com/gilcrest/go-api-basic/domain/logger"
@@ -60,10 +58,11 @@ func TestDefaultPingHandler_Ping(t *testing.T) {
 
 		pingHandler := NewPingHandler(dph)
 
-		ac := alice.New()
-		h := loggerHandlerChain(lgr, ac).
+		mw := Middleware{Logger: lgr}
+
+		h := mw.LoggerChain().
 			Append(testMiddleware).
-			Append(JSONContentTypeResponseHandler).
+			Append(mw.JSONContentTypeResponseHandler).
 			Then(pingHandler)
 		h.ServeHTTP(rr, req)
 
@@ -114,10 +113,11 @@ func TestDefaultPingHandler_Ping(t *testing.T) {
 
 		pingHandler := NewPingHandler(dph)
 
-		ac := alice.New()
-		h := loggerHandlerChain(lgr, ac).
+		mw := Middleware{Logger: lgr}
+
+		h := mw.LoggerChain().
 			Append(testMiddleware).
-			Append(JSONContentTypeResponseHandler).
+			Append(mw.JSONContentTypeResponseHandler).
 			Then(pingHandler)
 		h.ServeHTTP(rr, req)
 

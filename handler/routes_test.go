@@ -36,9 +36,6 @@ func TestNewMuxRouter(t *testing.T) {
 		// initialize MockSelector for the moviestore
 		mockSelector := newMockSelector(t)
 
-		// initialize mockAccessTokenConverter
-		mockAccessTokenConverter := authtest.NewMockAccessTokenConverter(t)
-
 		// initialize DefaultStringGenerator
 		randomStringGenerator := random.DefaultStringGenerator{}
 
@@ -55,12 +52,8 @@ func TestNewMuxRouter(t *testing.T) {
 		findAllMoviesHandler := NewFindAllMoviesHandler(defaultMovieHandlers)
 		updateMovieHandler := NewUpdateMovieHandler(defaultMovieHandlers)
 		deleteMovieHandler := NewDeleteMovieHandler(defaultMovieHandlers)
-		defaultLoggerHandlers := DefaultLoggerHandlers{
-			AccessTokenConverter: mockAccessTokenConverter,
-			Authorizer:           authtest.NewMockAuthorizer(t),
-		}
-		readLoggerHandler := NewReadLoggerHandler(defaultLoggerHandlers)
-		updateLoggerHandler := NewUpdateLoggerHandler(defaultLoggerHandlers)
+		readLoggerHandler := NewReadLoggerHandler()
+		updateLoggerHandler := NewUpdateLoggerHandler()
 		defaultPinger := pingstore.NewDefaultPinger(defaultDatastore)
 		defaultPingHandler := DefaultPingHandler{
 			Pinger: defaultPinger,
@@ -78,14 +71,14 @@ func TestNewMuxRouter(t *testing.T) {
 		}
 
 		mw := Middleware{
-			JSONContentTypeResponseMw: NewJSONContentTypeResponseMw(),
-			AccessTokenMw:             NewAccessTokenMw(),
-			ConvertAccessTokenMw:      NewConvertAccessTokenMw(mockAccessTokenConverter),
-			AuthorizeUserMw:           NewAuthorizeUserMw(auth.DefaultAuthorizer{}),
+			Logger:               lgr,
+			AccessTokenConverter: authtest.NewMockAccessTokenConverter(t),
+			Authorizer:           auth.DefaultAuthorizer{},
 		}
 
-		// get a new router
-		router := NewMuxRouter(lgr, mw, handlers)
+		rtr := NewMuxRouterWithSubroutes()
+
+		Routes(rtr, mw, handlers)
 
 		// r holds the path and http method to be tested
 		type r struct {
@@ -111,7 +104,7 @@ func TestNewMuxRouter(t *testing.T) {
 
 		// use gorilla/mux Walk function to walk the registered routes
 		// routes will be added in order registered
-		err := router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+		err := rtr.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
 			pathTemplate, err := route.GetPathTemplate()
 			// check for errors from GetPathTemplate()
 			c.Assert(err, qt.IsNil)

@@ -1,10 +1,11 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"os"
+
+	"gocloud.dev/server"
 
 	"github.com/peterbourgon/ff/v3"
 	"github.com/pkg/errors"
@@ -13,6 +14,7 @@ import (
 	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/logger"
+	"github.com/gilcrest/go-api-basic/handler"
 )
 
 const (
@@ -41,7 +43,7 @@ const (
 
 func main() {
 	if err := run(os.Args); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "%s\n", err)
+		fmt.Fprintf(os.Stderr, "error from main.run(): %s\n", err)
 		os.Exit(exitFail)
 	}
 }
@@ -96,21 +98,33 @@ func run(args []string) error {
 	//get struct holding PostgreSQL datasource name details
 	dsn := datastore.NewPGDatasourceName(flgs.dbhost, flgs.dbname, flgs.dbuser, flgs.dbpassword, flgs.dbport)
 
-	// initialize a non-nil, empty context
-	ctx := context.Background()
-
-	// newServer function returns a pointer to a gocloud server, a
-	// cleanup function and an error
-	srv, cleanup, err := newServer(ctx, lgr, dsn)
+	// initialize PostgreSQL database
+	db, cleanup, err := datastore.NewDB(dsn, lgr)
 	if err != nil {
-		lgr.Fatal().Err(err).Msg("Error returned from newServer")
+		lgr.Fatal().Err(err).Msg("Error from datastore.NewDB")
 	}
 	defer cleanup()
 
-	// Listen and serve HTTP
-	lgr.Fatal().Err(srv.ListenAndServe(fmt.Sprintf(":%d", flgs.port))).Msg("Fatal Server Error")
+	// initialize all app Handlers
+	handlers, err := newHandlers(db)
+	if err != nil {
+		lgr.Fatal().Err(err).Msg("Error from newHandlers")
+	}
 
-	return nil
+	// initialize Gorilla mux router with /api subroute
+	rtr := handler.NewMuxRouterWithSubroutes()
+
+	// register routes/middleware/handlers to the router
+	handler.Routes(rtr, newMiddleware(lgr), handlers)
+
+	// initialize go-cloud server options
+	opts, cleanup2 := newServerOptions(db)
+	defer cleanup2()
+
+	// returns a pointer to a gocloud server
+	srv := server.New(rtr, opts)
+
+	return srv.ListenAndServe(fmt.Sprintf(":%d", flgs.port))
 }
 
 type flags struct {

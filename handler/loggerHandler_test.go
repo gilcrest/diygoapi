@@ -14,7 +14,6 @@ import (
 
 	qt "github.com/frankban/quicktest"
 	"github.com/gorilla/mux"
-	"github.com/justinas/alice"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/hlog"
 )
@@ -33,16 +32,10 @@ func TestDefaultLoggerHandlers_ReadLogger(t *testing.T) {
 		// set Error stack trace to true
 		logger.WriteErrorStackGlobal(true)
 
-		// initialize mockAccessTokenConverter
-		mockAccessTokenConverter := authtest.NewMockAccessTokenConverter(t)
-
-		// use default authorizer
-		defaultAuthorizer := auth.DefaultAuthorizer{}
-
-		// initialize DefaultMovieHandlers
-		dlh := DefaultLoggerHandlers{
-			AccessTokenConverter: mockAccessTokenConverter,
-			Authorizer:           defaultAuthorizer,
+		mw := Middleware{
+			Logger:               lgr,
+			AccessTokenConverter: authtest.NewMockAccessTokenConverter(t),
+			Authorizer:           auth.DefaultAuthorizer{},
 		}
 
 		// setup path
@@ -70,20 +63,17 @@ func TestDefaultLoggerHandlers_ReadLogger(t *testing.T) {
 		}
 
 		// retrieve ReadLoggerHandler HTTP handler
-		readLoggerHandler := NewReadLoggerHandler(dlh)
+		readLoggerHandler := NewReadLoggerHandler()
 
 		// initialize ResponseRecorder to use with ServeHTTP as it
 		// satisfies ResponseWriter interface and records the response
 		// for testing
 		rr := httptest.NewRecorder()
 
-		// initialize alice Chain to chain middleware
-		ac := alice.New()
-
 		// setup full handler chain needed for request
-		h := loggerHandlerChain(lgr, ac).
-			Append(AccessTokenHandler).
-			Append(JSONContentTypeResponseHandler).
+		h := mw.LoggerChain().Extend(mw.CtxWithUserChain()).
+			Append(mw.AuthorizeUserHandler).
+			Append(mw.JSONContentTypeResponseHandler).
 			Append(requestIDMiddleware).
 			Then(readLoggerHandler)
 
@@ -154,16 +144,10 @@ func TestDefaultLoggerHandlers_UpdateLogger(t *testing.T) {
 		}
 		t.Logf("Initial Write Error Stack global set to %t", logErrorStack)
 
-		// initialize mockAccessTokenConverter
-		mockAccessTokenConverter := authtest.NewMockAccessTokenConverter(t)
-
-		// use default authorizer
-		defaultAuthorizer := auth.DefaultAuthorizer{}
-
-		// initialize DefaultMovieHandlers
-		dlh := DefaultLoggerHandlers{
-			AccessTokenConverter: mockAccessTokenConverter,
-			Authorizer:           defaultAuthorizer,
+		mw := Middleware{
+			Logger:               lgr,
+			AccessTokenConverter: authtest.NewMockAccessTokenConverter(t),
+			Authorizer:           auth.DefaultAuthorizer{},
 		}
 
 		// setup request body using anonymous struct
@@ -207,20 +191,17 @@ func TestDefaultLoggerHandlers_UpdateLogger(t *testing.T) {
 		}
 
 		// retrieve ReadLoggerHandler HTTP handler
-		updateLoggerHandler := NewUpdateLoggerHandler(dlh)
+		updateLoggerHandler := NewUpdateLoggerHandler()
 
 		// initialize ResponseRecorder to use with ServeHTTP as it
 		// satisfies ResponseWriter interface and records the response
 		// for testing
 		rr := httptest.NewRecorder()
 
-		// initialize alice Chain to chain middleware
-		ac := alice.New()
-
 		// setup full handler chain needed for request
-		h := loggerHandlerChain(lgr, ac).
-			Append(AccessTokenHandler).
-			Append(JSONContentTypeResponseHandler).
+		h := mw.LoggerChain().Extend(mw.CtxWithUserChain()).
+			Append(mw.AuthorizeUserHandler).
+			Append(mw.JSONContentTypeResponseHandler).
 			Append(requestIDMiddleware).
 			Then(updateLoggerHandler)
 
