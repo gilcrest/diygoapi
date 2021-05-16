@@ -54,7 +54,7 @@ func ReadLogger(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateLogger handles PUT requests for the /logger endpoint
-// and updates the given movie
+// and updates the logger globals
 func UpdateLogger(w http.ResponseWriter, r *http.Request) {
 	// updateLoggerRequest is the request struct for the app logger
 	type updateLoggerRequest struct {

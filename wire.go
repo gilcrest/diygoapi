@@ -64,7 +64,6 @@ var datastoreSet = wire.NewSet(
 	wire.Bind(new(datastore.Datastorer), new(datastore.DefaultDatastore)),
 )
 
-// goCloudServerSet
 var goCloudOptionSet = wire.NewSet(
 	trace.AlwaysSample,
 	server.NewDefaultDriver,
