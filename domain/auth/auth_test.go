@@ -3,8 +3,12 @@ package auth
 import (
 	"context"
 	"net/http"
+	"os"
 	"reflect"
 	"testing"
+
+	"github.com/gilcrest/go-api-basic/domain/logger"
+	"github.com/rs/zerolog"
 
 	"github.com/gilcrest/go-api-basic/domain/user/usertest"
 
@@ -46,13 +50,13 @@ func TestAccessToken_NewGoogleOauth2Token(t *testing.T) {
 
 func TestDefaultAuthorizer_Authorize(t *testing.T) {
 	type args struct {
-		ctx context.Context
+		lgr zerolog.Logger
 		sub user.User
 		obj string
 		act string
 	}
 
-	ctx := context.Background()
+	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 	u := usertest.NewUser(t)
 	invalidUser := user.User{Email: "badactor@gmail.com"}
 	obj := "/api/v1/movies"
@@ -63,20 +67,20 @@ func TestDefaultAuthorizer_Authorize(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		{"typical", args{ctx, u, obj, act}, false},
-		{"typical", args{ctx, invalidUser, obj, act}, true},
+		{"typical", args{lgr, u, obj, act}, false},
+		{"invalid user", args{lgr, invalidUser, obj, act}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			a := DefaultAuthorizer{}
-			if err := a.Authorize(tt.args.ctx, tt.args.sub, tt.args.obj, tt.args.act); (err != nil) != tt.wantErr {
+			if err := a.Authorize(tt.args.lgr, tt.args.sub, tt.args.obj, tt.args.act); (err != nil) != tt.wantErr {
 				t.Errorf("Authorize() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
 }
 
-func TestSetAccessToken2Context(t *testing.T) {
+func TestCtxWithAccessToken(t *testing.T) {
 	type args struct {
 		ctx   context.Context
 		token AccessToken

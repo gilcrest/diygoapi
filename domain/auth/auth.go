@@ -16,8 +16,7 @@ import (
 	"github.com/gilcrest/go-api-basic/domain/user"
 )
 
-// BearerTokenType is used in authorization to access a
-// resource
+// BearerTokenType is used in authorization to access a resource
 const BearerTokenType string = "Bearer"
 
 // NewAccessToken is an initializer for AccessToken
@@ -70,7 +69,7 @@ type AccessTokenConverter interface {
 // Authorizer interface authorizes access to a resource given
 // a user and action
 type Authorizer interface {
-	Authorize(ctx context.Context, sub user.User, obj string, act string) error
+	Authorize(lgr zerolog.Logger, sub user.User, obj string, act string) error
 }
 
 // DefaultAuthorizer struct satisfies the Authorizer interface.
@@ -85,8 +84,7 @@ type DefaultAuthorizer struct{}
 // action on an object. e.g. gilcrest can read (GET) the resource
 // at the /ping path. This is obviously completely bogus right now,
 // eventually need to look into something like Casbin for ACL/RBAC
-func (a DefaultAuthorizer) Authorize(ctx context.Context, sub user.User, obj string, act string) error {
-	lgr := *zerolog.Ctx(ctx)
+func (a DefaultAuthorizer) Authorize(lgr zerolog.Logger, sub user.User, obj string, act string) error {
 
 	const (
 		moviesPath string = "/api/v1/movies"
@@ -103,11 +101,11 @@ func (a DefaultAuthorizer) Authorize(ctx context.Context, sub user.User, obj str
 	}
 
 	if authorized {
-		lgr.Info().Str("sub", sub.Email).Str("obj", obj).Str("act", act).Msgf("Authorization Granted")
+		lgr.Debug().Str("sub", sub.Email).Str("obj", obj).Str("act", act).Msgf("Authorized (sub: %s, obj: %s, act: %s)", sub.Email, obj, act)
 		return nil
 	}
 
-	lgr.Info().Str("sub", sub.Email).Str("obj", obj).Str("act", act).Msgf("Authorization Denied")
+	lgr.Info().Str("sub", sub.Email).Str("obj", obj).Str("act", act).Msgf("Unauthorized (sub: %s, obj: %s, act: %s)", sub.Email, obj, act)
 
 	// "In summary, a 401 Unauthorized response should be used for missing or
 	// bad authentication, and a 403 Forbidden response should be used afterwards,

@@ -120,7 +120,7 @@ func (mw Middleware) AuthorizeUserHandler(h http.Handler) http.Handler {
 		}
 
 		// convert access token to User
-		err = mw.Authorizer.Authorize(r.Context(), u, r.URL.Path, r.Method)
+		err = mw.Authorizer.Authorize(lgr, u, r.URL.Path, r.Method)
 		if err != nil {
 			errs.HTTPErrorResponse(w, lgr, err)
 			return
