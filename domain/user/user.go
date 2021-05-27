@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/gilcrest/go-api-basic/domain/errs"
-	"github.com/pkg/errors"
 )
 
 // User holds details of a User from Google
@@ -59,10 +58,10 @@ const contextKeyUser = contextKey("user")
 func FromRequest(r *http.Request) (User, error) {
 	u, ok := r.Context().Value(contextKeyUser).(User)
 	if !ok {
-		return u, errs.E(errs.Unauthenticated, errors.New("User not set properly to context"))
+		return u, errs.E(errs.Internal, "User not set properly to context")
 	}
 	if !u.IsValid() {
-		return u, errs.E(errs.Unauthenticated, errors.New("User empty in context"))
+		return u, errs.E(errs.Internal, "User empty in context")
 	}
 	return u, nil
 }

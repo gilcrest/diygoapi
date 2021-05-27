@@ -43,9 +43,9 @@ func TestAccessTokenHandler(t *testing.T) {
 		req.Header.Add("Authorization", auth.BearerTokenType+" abcdef123")
 
 		testAccessTokenHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			token, err := auth.AccessTokenFromRequest(r)
-			if err != nil {
-				t.Fatalf("auth.FromRequest() error = %v", err)
+			token, ok := auth.AccessTokenFromRequest(r)
+			if !ok {
+				t.Fatal("auth.AccessTokenFromRequest() !ok")
 			}
 			wantToken := auth.AccessToken{
 				Token:     "abcdef123",
@@ -58,7 +58,7 @@ func TestAccessTokenHandler(t *testing.T) {
 
 		mw := Middleware{}
 
-		handlers := mw.AccessTokenHandler(testAccessTokenHandler)
+		handlers := mw.AccessTokenHandler(mw.DefaultRealmHandler(testAccessTokenHandler))
 		handlers.ServeHTTP(rr, req)
 
 		// If there is any issues with the Access Token, the body

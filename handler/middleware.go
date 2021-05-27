@@ -34,6 +34,21 @@ func (mw Middleware) JSONContentTypeResponseHandler(h http.Handler) http.Handler
 		})
 }
 
+// DefaultRealmHandler middleware is used to set a default Realm to
+// the request context
+func (mw Middleware) DefaultRealmHandler(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// retrieve the context from the http.Request
+		ctx := r.Context()
+
+		// add realm to context
+		ctx = auth.CtxWithRealm(ctx, auth.DefaultRealm)
+
+		// call original, adding realm token to request context
+		h.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
 // AccessTokenHandler middleware is used to pull the Bearer token
 // from the Authorization header and set it to the request context
 // as an auth.AccessToken
@@ -58,16 +73,7 @@ func (mw Middleware) AccessTokenHandler(h http.Handler) http.Handler {
 
 		// If the token is empty...
 		if token == "" {
-			// For Unauthenticated and Unauthorized errors,
-			// the response body should be empty. Use logger
-			// to log the error and then just send
-			// http.StatusUnauthorized (401) or http.StatusForbidden (403)
-			// depending on the circumstances. "In summary, a
-			// 401 Unauthorized response should be used for missing or bad authentication,
-			// and a 403 Forbidden response should be used afterwards, when the user is
-			// authenticated but isn’t authorized to perform the requested operation on
-			// the given resource."
-			errs.HTTPErrorResponse(w, lgr, errs.E(errs.Unauthenticated, errors.New("Unauthenticated - empty Bearer token")))
+			errs.HTTPErrorResponse(w, lgr, errs.Unauthenticated("go-api-basic", errors.New("unauthenticated: empty Bearer token")))
 			return
 		}
 
@@ -86,10 +92,12 @@ func (mw Middleware) ConvertAccessTokenHandler(h http.Handler) http.Handler {
 		lgr := *hlog.FromRequest(r)
 
 		// retrieve access token from Context
-		accessToken, err := auth.AccessTokenFromRequest(r)
-		if err != nil {
-			errs.HTTPErrorResponse(w, lgr, err)
-			return
+		accessToken, ok := auth.AccessTokenFromRequest(r)
+		if !ok {
+			errs.HTTPErrorResponse(w, lgr, errs.E("Access Token not set properly to context"))
+		}
+		if accessToken.Token == "" {
+			errs.HTTPErrorResponse(w, lgr, errs.E("Access Token empty in context"))
 		}
 
 		// convert access token to User
@@ -156,10 +164,11 @@ func (mw Middleware) LoggerChain() alice.Chain {
 	return ac
 }
 
-// CtxWithUserChain chains handlers together to set the User
-// to the Context
+// CtxWithUserChain chains handlers together to set the Realm, Access
+// Token and User to the Context
 func (mw Middleware) CtxWithUserChain() alice.Chain {
 	ac := alice.New(
+		mw.DefaultRealmHandler,
 		mw.AccessTokenHandler,
 		mw.ConvertAccessTokenHandler,
 	)

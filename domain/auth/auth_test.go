@@ -132,6 +132,7 @@ func TestFromRequest(t *testing.T) {
 	}
 
 	ctx := context.Background()
+	ctx = CtxWithRealm(ctx, "DeepInTheRealm")
 	ctx = CtxWithAccessToken(ctx, at)
 	r = r.WithContext(ctx)
 
@@ -145,6 +146,7 @@ func TestFromRequest(t *testing.T) {
 		t.Fatalf("http.NewRequest() error = %v", err)
 	}
 	ctx2 := context.Background()
+	ctx2 = CtxWithRealm(ctx2, "DeepInTheRealm")
 	ctx2 = CtxWithAccessToken(ctx2, emptyAT)
 	noTokenRequest = noTokenRequest.WithContext(ctx2)
 	at2 := AccessToken{
@@ -153,24 +155,24 @@ func TestFromRequest(t *testing.T) {
 	}
 
 	tests := []struct {
-		name    string
-		args    args
-		want    AccessToken
-		wantErr bool
+		name   string
+		args   args
+		want   AccessToken
+		wantOK bool
 	}{
-		{"typical", args{r: r}, at, false},
-		{"no AccessToken", args{r: noAccessTokenRequest}, AccessToken{}, true},
+		{"typical", args{r: r}, at, true},
+		{"no AccessToken", args{r: noAccessTokenRequest}, AccessToken{}, false},
 		{"no token", args{r: noTokenRequest}, at2, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := AccessTokenFromRequest(tt.args.r)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("FromRequest() error = %v, wantErr %v", err, tt.wantErr)
+			got, ok := AccessTokenFromRequest(tt.args.r)
+			if ok != tt.wantOK {
+				t.Errorf("AccessTokenFromRequest() ok = %v, wantOK %v", ok, tt.wantOK)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("FromRequest() got = %v, want %v", got, tt.want)
+				t.Errorf("AccessTokenFromRequest() got = %v, want %v", got, tt.want)
 			}
 		})
 	}

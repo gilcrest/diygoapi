@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -22,19 +23,12 @@ func Test_httpErrorStatusCode(t *testing.T) {
 		args args
 		want int
 	}{
-		{"Unauthenticated", args{k: Unauthenticated}, http.StatusUnauthorized},
-		{"Unauthorized", args{k: Unauthorized}, http.StatusForbidden},
-		{"Permission", args{k: Permission}, http.StatusForbidden},
 		{"Exist", args{k: Exist}, http.StatusBadRequest},
-		{"Invalid", args{k: Invalid}, http.StatusBadRequest},
 		{"NotExist", args{k: NotExist}, http.StatusBadRequest},
+		{"Invalid", args{k: Invalid}, http.StatusBadRequest},
 		{"Private", args{k: Private}, http.StatusBadRequest},
 		{"BrokenLink", args{k: BrokenLink}, http.StatusBadRequest},
 		{"Validation", args{k: Validation}, http.StatusBadRequest},
-		{"InvalidRequest", args{k: InvalidRequest}, http.StatusBadRequest},
-		{"InvalidRequest", args{k: InvalidRequest}, http.StatusBadRequest},
-		{"InvalidRequest", args{k: InvalidRequest}, http.StatusBadRequest},
-		{"InvalidRequest", args{k: InvalidRequest}, http.StatusBadRequest},
 		{"InvalidRequest", args{k: InvalidRequest}, http.StatusBadRequest},
 		{"Other", args{k: Other}, http.StatusInternalServerError},
 		{"IO", args{k: IO}, http.StatusInternalServerError},
@@ -60,16 +54,22 @@ func TestHTTPErrorResponse_StatusCode(t *testing.T) {
 		err error
 	}
 
-	var b bytes.Buffer
-	l := logger.NewLogger(&b, zerolog.DebugLevel, false)
+	l := logger.NewLogger(os.Stdout, zerolog.DebugLevel, false)
+
+	gErr := E("some authentication error from google")
+	aErr := E("some authorization error")
+	unauthenticatedErr := &UnauthenticatedError{WWWAuthenticateRealm: "DeepInTheRealm", Err: gErr}
+	unauthorizedErr := &UnauthorizedError{Err: aErr}
 
 	tests := []struct {
 		name string
 		args args
 		want int
 	}{
-		{"empty", args{httptest.NewRecorder(), l, &Error{}}, http.StatusInternalServerError},
-		{"unauthenticated", args{httptest.NewRecorder(), l, E(Unauthenticated)}, http.StatusUnauthorized},
+		{"nil error", args{httptest.NewRecorder(), l, nil}, http.StatusInternalServerError},
+		{"empty *Error", args{httptest.NewRecorder(), l, &Error{}}, http.StatusInternalServerError},
+		{"unauthenticated", args{httptest.NewRecorder(), l, unauthenticatedErr}, http.StatusUnauthorized},
+		{"unauthorized", args{httptest.NewRecorder(), l, unauthorizedErr}, http.StatusForbidden},
 	}
 
 	for _, tt := range tests {
@@ -93,14 +93,19 @@ func TestHTTPErrorResponse_Body(t *testing.T) {
 	var b bytes.Buffer
 	l := logger.NewLogger(&b, zerolog.DebugLevel, false)
 
+	gErr := E("some authentication error from google")
+	aErr := E("some authorization error")
+	unauthenticatedErr := &UnauthenticatedError{WWWAuthenticateRealm: "DeepInTheRealm", Err: gErr}
+	unauthorizedErr := &UnauthorizedError{Err: aErr}
+
 	tests := []struct {
 		name string
 		args args
 		want string
 	}{
-		{"empty", args{httptest.NewRecorder(), l, &Error{}}, ""},
-		{"unauthenticated", args{httptest.NewRecorder(), l, E(Unauthenticated)}, ""},
-		{"unauthorized", args{httptest.NewRecorder(), l, E(Unauthorized)}, ""},
+		{"empty Error", args{httptest.NewRecorder(), l, &Error{}}, ""},
+		{"unauthenticated", args{httptest.NewRecorder(), l, unauthenticatedErr}, ""},
+		{"unauthorized", args{httptest.NewRecorder(), l, unauthorizedErr}, ""},
 		{"normal", args{httptest.NewRecorder(), l, E(Exist, Parameter("some_param"), Code("some_code"), errors.New("some error"))}, `{"error":{"kind":"item_already_exists","code":"some_code","param":"some_param","message":"some error"}}`},
 		{"not via E", args{httptest.NewRecorder(), l, errors.New("some error")}, "{\"error\":{\"kind\":\"unanticipated_error\",\"code\":\"Unanticipated\",\"message\":\"Unexpected error - contact support\"}}"},
 		{"nil error", args{httptest.NewRecorder(), l, nil}, ""},

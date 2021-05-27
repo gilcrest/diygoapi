@@ -8,6 +8,7 @@ import (
 	"github.com/gilcrest/go-api-basic/domain/auth"
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/user"
+	"github.com/pkg/errors"
 
 	"golang.org/x/oauth2"
 	googleoauth "google.golang.org/api/oauth2/v2"
@@ -33,6 +34,16 @@ func (c GoogleAccessTokenConverter) Convert(ctx context.Context, token auth.Acce
 // Oauth2 v2 api and returns a Userinfo struct which has most
 // profile data elements you typically need
 func userInfo(ctx context.Context, token *oauth2.Token) (*googleoauth.Userinfo, error) {
+	// The realm must be set to the request context in order to
+	// properly send the WWW-Authenticate error in case of unauthorized
+	// access attempts
+	realm, ok := auth.RealmFromCtx(ctx)
+	if !ok {
+		return nil, errs.E(errs.Internal, "Realm not set properly to context")
+	}
+	if realm == "" {
+		return nil, errs.E(errs.Internal, "Realm empty in context")
+	}
 
 	oauthService, err := googleoauth.NewService(ctx, option.WithTokenSource(oauth2.StaticTokenSource(token)))
 	if err != nil {
@@ -47,7 +58,7 @@ func userInfo(ctx context.Context, token *oauth2.Token) (*googleoauth.Userinfo, 
 		// requested operation on the given resource."
 		// In this case, we are getting a bad response from Google service, assume
 		// they are not able to authenticate properly
-		return nil, errs.E(errs.Unauthenticated, err)
+		return nil, errs.Unauthenticated(string(realm), errors.WithStack(err))
 	}
 
 	return userInfo, nil

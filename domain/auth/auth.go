@@ -16,6 +16,36 @@ import (
 	"github.com/gilcrest/go-api-basic/domain/user"
 )
 
+type contextKey string
+
+// WWWAuthenticateRealm is a description of a protected area, used
+// in the WWW-Authenticate header
+type WWWAuthenticateRealm string
+
+// DefaultRealm is the realm used when one is not given explicitly
+const DefaultRealm WWWAuthenticateRealm = "go-api-basic"
+
+const contextKeyRealm = contextKey("realm")
+
+// RealmFromRequest gets the realm from the request, if any
+func RealmFromRequest(r *http.Request) (realm WWWAuthenticateRealm, ok bool) {
+	if r == nil {
+		return
+	}
+	return RealmFromCtx(r.Context())
+}
+
+// RealmFromCtx returns the realm from the context
+func RealmFromCtx(ctx context.Context) (realm WWWAuthenticateRealm, ok bool) {
+	realm, ok = ctx.Value(contextKeyRealm).(WWWAuthenticateRealm)
+	return
+}
+
+// CtxWithRealm sets the Realm to the given context
+func CtxWithRealm(ctx context.Context, realm WWWAuthenticateRealm) context.Context {
+	return context.WithValue(ctx, contextKeyRealm, realm)
+}
+
 // BearerTokenType is used in authorization to access a resource
 const BearerTokenType string = "Bearer"
 
@@ -39,20 +69,20 @@ func (at AccessToken) NewGoogleOauth2Token() *oauth2.Token {
 	return &oauth2.Token{AccessToken: at.Token, TokenType: at.TokenType}
 }
 
-type contextKey string
-
 const contextKeyAccessToken = contextKey("access-token")
 
-// AccessTokenFromRequest gets the access token from the request
-func AccessTokenFromRequest(r *http.Request) (AccessToken, error) {
-	at, ok := r.Context().Value(contextKeyAccessToken).(AccessToken)
-	if !ok {
-		return at, errs.E(errs.Unauthenticated, errors.New("Access Token not set properly to context"))
+// AccessTokenFromRequest returns the access token from the request, if any
+func AccessTokenFromRequest(r *http.Request) (at AccessToken, ok bool) {
+	if r == nil {
+		return
 	}
-	if at.Token == "" {
-		return at, errs.E(errs.Unauthenticated, errors.New("Access Token empty in context"))
-	}
-	return at, nil
+	return AccessTokenFromCtx(r.Context())
+}
+
+// AccessTokenFromCtx returns the access token from the context, if any
+func AccessTokenFromCtx(ctx context.Context) (at AccessToken, ok bool) {
+	at, ok = ctx.Value(contextKeyAccessToken).(AccessToken)
+	return
 }
 
 // CtxWithAccessToken sets the Access Token to the given context
@@ -113,7 +143,7 @@ func (a DefaultAuthorizer) Authorize(lgr zerolog.Logger, sub user.User, obj stri
 	// requested operation on the given resource."
 	// If the user has gotten here, they have gotten through authentication
 	// but do have the right access, this they are Unauthorized
-	return errs.E(errs.Unauthorized, errors.New(fmt.Sprintf("user %s does not have %s permission for %s", sub.Email, act, obj)))
+	return errs.Unauthorized(errors.New(fmt.Sprintf("user %s does not have %s permission for %s", sub.Email, act, obj)))
 }
 
 // AccessControlList (ACL) describes permissions for a given object

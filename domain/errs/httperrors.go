@@ -2,6 +2,7 @@ package errs
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -30,125 +31,150 @@ type ServiceError struct {
 // is still formed and sent to the client, however, the Kind and
 // Code will be Unanticipated. Logging of error is also done using
 // https://github.com/rs/zerolog
-func HTTPErrorResponse(w http.ResponseWriter, logger zerolog.Logger, err error) {
-
-	var httpStatusCode int
-
-	if err != nil {
-		// perform a "type switch" https://tour.golang.org/methods/16
-		// to determine the interface value type
-		switch e := err.(type) {
-		// If the interface value is of type Error (not a typical error, but
-		// the Error interface defined above), then
-		case *Error:
-			httpStatusCode = httpErrorStatusCode(e.Kind)
-			// We can retrieve the status here and write out a specific
-			// HTTP status code. If the error is empty, just
-			// send the HTTP Status Code as response
-			if e.isZero() {
-				logger.Error().Stack().Int("http_statuscode", httpStatusCode).Msg("empty error")
-				sendError(w, "", httpStatusCode)
-			} else if e.Kind == Unauthenticated {
-				// For Unauthenticated and Unauthorized errors,
-				// the response body should be empty. Use logger
-				// to log the error and then just send
-				// http.StatusUnauthorized (401) or http.StatusForbidden (403)
-				// depending on the circumstances. "In summary, a
-				// 401 Unauthorized response should be used for missing or bad authentication,
-				// and a 403 Forbidden response should be used afterwards, when the user is
-				// authenticated but isn’t authorized to perform the requested operation on
-				// the given resource."
-				logger.Error().Stack().Err(e.Err).
-					Int("http_statuscode", http.StatusUnauthorized).
-					Msg("Unauthenticated Request")
-				sendError(w, "", httpStatusCode)
-			} else if e.Kind == Unauthorized {
-				logger.Error().Stack().Err(e.Err).
-					Int("http_statuscode", http.StatusForbidden).
-					Msg("Unauthorized Request")
-				sendError(w, "", httpStatusCode)
-			} else {
-				// log the error with stacktrace
-				logger.Error().Stack().Err(e.Err).
-					Int("http_statuscode", httpStatusCode).
-					Str("Kind", e.Kind.String()).
-					Str("Parameter", string(e.Param)).
-					Str("Code", string(e.Code)).
-					Msg("Response Error Sent")
-
-				// setup ErrResponse
-				er := ErrResponse{
-					Error: ServiceError{
-						Kind:    e.Kind.String(),
-						Code:    string(e.Code),
-						Param:   string(e.Param),
-						Message: e.Error(),
-					},
-				}
-
-				// Marshal errResponse struct to JSON for the response body
-				errJSON, _ := json.Marshal(er)
-
-				sendError(w, string(errJSON), httpStatusCode)
-			}
-
-		default:
-			// Any error types we don't specifically look out for default
-			// to serving a HTTP 500
-			cd := http.StatusInternalServerError
-			er := ErrResponse{
-				Error: ServiceError{
-					Kind:    Unanticipated.String(),
-					Code:    "Unanticipated",
-					Message: "Unexpected error - contact support",
-				},
-			}
-
-			logger.Error().Msgf("Unknown Error - HTTP %d - %s", cd, err.Error())
-
-			// Marshal errResponse struct to JSON for the response body
-			errJSON, _ := json.Marshal(er)
-
-			sendError(w, string(errJSON), cd)
-		}
-	} else {
-		httpStatusCode = httpErrorStatusCode(Other)
-		// if a nil error is passed, do not write a response body,
-		// just send the HTTP Status Code
-		logger.Error().Int("HTTP Error StatusCode", httpStatusCode).Msg("nil error - no response body sent")
-		sendError(w, "", httpStatusCode)
+func HTTPErrorResponse(w http.ResponseWriter, lgr zerolog.Logger, err error) {
+	if err == nil {
+		nilErrorResponse(w, lgr)
+		return
 	}
+
+	var unauthenticatedErr *UnauthenticatedError
+	if errors.As(err, &unauthenticatedErr) {
+		unauthenticatedErrorResponse(w, lgr, unauthenticatedErr)
+		return
+	}
+
+	var unauthorizedErr *UnauthorizedError
+	if errors.As(err, &unauthorizedErr) {
+		unauthorizedErrorResponse(w, lgr, unauthorizedErr)
+		return
+	}
+
+	var typicalErr *Error
+	if errors.As(err, &typicalErr) {
+		typicalErrorResponse(w, lgr, typicalErr)
+		return
+	}
+
+	otherErrorResponse(w, lgr, err)
 }
 
-// Taken from standard library, but changed to send application/json as header
-// Error replies to the request with the specified error message and HTTP code.
-// It does not otherwise end the request; the caller should ensure no further
-// writes are done to w.
-// The error message should be json.
-func sendError(w http.ResponseWriter, errStr string, httpStatusCode int) {
-	if errStr != "" {
-		w.Header().Set("Content-Type", "application/json")
+// typicalErrorResponse replies to the request with the specified error
+// message and HTTP code. It does not otherwise end the request; the
+// caller should ensure no further writes are done to w.
+//
+// Taken from standard library and modified.
+// https://golang.org/pkg/net/http/#Error
+func typicalErrorResponse(w http.ResponseWriter, lgr zerolog.Logger, e *Error) {
+
+	httpStatusCode := httpErrorStatusCode(e.Kind)
+
+	// We can retrieve the status here and write out a specific
+	// HTTP status code. If the error is empty, just send the HTTP
+	// Status Code as response. Error should not be empty, but it's
+	// theoretically possible, so this is just in case...
+	if e.isZero() {
+		lgr.Error().Stack().Int("http_statuscode", httpStatusCode).Msg("empty error")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
+
+	// typical errors
+
+	// log the error with stacktrace
+	lgr.Error().Stack().Err(e.Err).
+		Int("http_statuscode", httpStatusCode).
+		Str("Kind", e.Kind.String()).
+		Str("Parameter", string(e.Param)).
+		Str("Code", string(e.Code)).
+		Msg("Error Response Sent")
+
+	// setup ErrResponse
+	er := ErrResponse{
+		Error: ServiceError{
+			Kind:    e.Kind.String(),
+			Code:    string(e.Code),
+			Param:   string(e.Param),
+			Message: e.Error(),
+		},
+	}
+
+	// Marshal errResponse struct to JSON for the response body
+	errJSON, _ := json.Marshal(er)
+	ejson := string(errJSON)
+
+	// Write Content-Type headers
+	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	// TODO - refactor this package to allow for WWW-Authenticate header on 401/403
-	//if httpStatusCode == 401 || httpStatusCode == 403 {
-	//	br := fmt.Sprintf(`Bearer realm="%s"`, realm)
-	//	w.Header().Set("WWW-Authenticate", br)
-	//}
+	// Write HTTP Statuscode
 	w.WriteHeader(httpStatusCode)
-	// Only write response body if there is an error string populated
-	if errStr != "" {
-		_, _ = fmt.Fprintln(w, errStr)
+
+	// Write response body (json)
+	fmt.Fprintln(w, ejson)
+}
+
+// unauthenticatedErrorResponse responds with an http status code set
+// to 401 (Unauthorized / Unauthenticated), an empty response body and
+// a WWW-Authenticate header.
+func unauthenticatedErrorResponse(w http.ResponseWriter, lgr zerolog.Logger, err *UnauthenticatedError) {
+	lgr.Error().Stack().Err(err.Err).
+		Int("http_statuscode", http.StatusUnauthorized).
+		Str("realm", string(err.Realm())).
+		Msg("Unauthenticated Request")
+
+	w.Header().Set("WWW-Authenticate", fmt.Sprintf(`Bearer realm="%s"`, err.Realm()))
+	w.WriteHeader(http.StatusUnauthorized)
+}
+
+// unauthorizedErrorResponse responds with an http status code set to 403 (Forbidden)
+// and an empty response body
+func unauthorizedErrorResponse(w http.ResponseWriter, lgr zerolog.Logger, err *UnauthorizedError) {
+	lgr.Error().Stack().Err(err.Err).
+		Int("http_statuscode", http.StatusForbidden).
+		Msg("Unauthorized Request")
+
+	w.WriteHeader(http.StatusForbidden)
+}
+
+// nilErrorResponse responds with an http status code set to 500 (Internal Server Error)
+// and an empty response body. nil error should never be sent, but in case it is...
+func nilErrorResponse(w http.ResponseWriter, lgr zerolog.Logger) {
+	lgr.Error().Stack().
+		Int("HTTP Error StatusCode", http.StatusInternalServerError).
+		Msg("nil error - no response body sent")
+
+	w.WriteHeader(http.StatusInternalServerError)
+}
+
+// otherErrorResponse responds with an http status code set to 500 (Internal Server Error)
+// and a json response body with unanticipated_error kind
+func otherErrorResponse(w http.ResponseWriter, lgr zerolog.Logger, err error) {
+	er := ErrResponse{
+		Error: ServiceError{
+			Kind:    Unanticipated.String(),
+			Code:    "Unanticipated",
+			Message: "Unexpected error - contact support",
+		},
 	}
+
+	lgr.Error().Err(err).Msg("Unknown Error")
+
+	// Marshal errResponse struct to JSON for the response body
+	errJSON, _ := json.Marshal(er)
+	ejson := string(errJSON)
+
+	// Write Content-Type headers
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	// Write HTTP Statuscode
+	w.WriteHeader(http.StatusInternalServerError)
+
+	// Write response body (json)
+	fmt.Fprintln(w, ejson)
 }
 
 // httpErrorStatusCode maps an error Kind to an HTTP Status Code
 func httpErrorStatusCode(k Kind) int {
 	switch k {
-	case Unauthenticated:
-		return http.StatusUnauthorized
-	case Unauthorized, Permission:
-		return http.StatusForbidden
 	case Invalid, Exist, NotExist, Private, BrokenLink, Validation, InvalidRequest:
 		return http.StatusBadRequest
 	// the zero value of Kind is Other, so if no Kind is present
@@ -160,4 +186,81 @@ func httpErrorStatusCode(k Kind) int {
 	default:
 		return http.StatusInternalServerError
 	}
+}
+
+// Unauthenticated is an initializer for UnauthenticatedError
+func Unauthenticated(realm string, err error) *UnauthenticatedError {
+	return &UnauthenticatedError{WWWAuthenticateRealm: realm, Err: err}
+}
+
+// UnauthenticatedError implements the error interface and is used
+// when a request lacks valid authentication credentials.
+//
+// For Unauthenticated and Unauthorized errors, the response body
+// should be empty. Use logger to log the error and then just send
+// http.StatusUnauthorized (401).
+//
+// From stack overflow - https://stackoverflow.com/questions/3297048/403-forbidden-vs-401-unauthorized-http-responses
+// "In summary, a 401 Unauthorized response should be used for missing or bad
+// authentication, and a 403 Forbidden response should be used afterwards, when
+// the user is authenticated but isn’t authorized to perform the requested
+// operation on the given resource."
+type UnauthenticatedError struct {
+	// WWWAuthenticateRealm is a description of the protected area.
+	// If no realm is specified, "DefaultRealm" will be used as realm
+	WWWAuthenticateRealm string
+
+	// The underlying error that triggered this one, if any.
+	Err error
+}
+
+// Unwrap method allows for unwrapping errors using errors.As
+func (e UnauthenticatedError) Unwrap() error {
+	return e.Err
+}
+
+func (e UnauthenticatedError) Error() string {
+	return e.Err.Error()
+}
+
+//
+func (e UnauthenticatedError) Realm() string {
+	realm := e.WWWAuthenticateRealm
+	if realm == "" {
+		realm = "DefaultRealm"
+	}
+
+	return realm
+}
+
+// Unauthorized is an initializer for UnauthorizedError
+func Unauthorized(err error) *UnauthorizedError {
+	return &UnauthorizedError{Err: err}
+}
+
+// UnauthorizedError implements the error interface and is used
+// when a user is authenticated, but is not authorized to access the
+// resource.
+//
+// For Unauthenticated and Unauthorized errors, the response body
+// should be empty. Use logger to log the error and then just send
+// http.StatusUnauthorized (401).
+//
+// From stack overflow - https://stackoverflow.com/questions/3297048/403-forbidden-vs-401-unauthorized-http-responses
+// "In summary, a 401 Unauthorized response should be used for missing or bad
+// authentication, and a 403 Forbidden response should be used afterwards, when
+// the user is authenticated but isn’t authorized to perform the requested
+// operation on the given resource."
+type UnauthorizedError struct {
+	// The underlying error that triggered this one, if any.
+	Err error
+}
+
+// Unwrap method allows for unwrapping errors using errors.As
+func (e UnauthorizedError) Unwrap() error {
+	return e.Err
+}
+
+func (e UnauthorizedError) Error() string {
+	return e.Err.Error()
 }

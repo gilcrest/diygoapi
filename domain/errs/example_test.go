@@ -44,7 +44,7 @@ func ExampleMatch() {
 	expect := errs.E(user, errs.IO, err)
 	fmt.Println("Match:", errs.Match(expect, got))
 	// Now one that's incorrect - wrong Kind.
-	got = errs.E(user, errs.Permission, err)
+	got = errs.E(user, errs.Database, err)
 	fmt.Println("Mismatch:", errs.Match(expect, got))
 	// Output:
 	//
@@ -63,7 +63,7 @@ func ExampleHTTPErrorResponse() {
 	fmt.Println(w.Body)
 	// Output:
 	//
-	// {"level":"error","error":"Actual error message","http_statuscode":400,"Kind":"input_validation_error","Parameter":"testParam","Code":"0212","severity":"ERROR","message":"Response Error Sent"}
+	// {"level":"error","error":"Actual error message","http_statuscode":400,"Kind":"input_validation_error","Parameter":"testParam","Code":"0212","severity":"ERROR","message":"Error Response Sent"}
 	// {"error":{"kind":"input_validation_error","code":"0212","param":"testParam","message":"Actual error message"}}
 }
 
