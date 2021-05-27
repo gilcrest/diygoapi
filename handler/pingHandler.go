@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/pkg/errors"
+
 	"github.com/gilcrest/go-api-basic/datastore/pingstore"
 
 	"github.com/gilcrest/go-api-basic/domain/errs"
@@ -38,8 +40,9 @@ func (h DefaultPingHandler) Ping(w http.ResponseWriter, r *http.Request) {
 	dbok := true
 	err := h.Pinger.PingDB(ctx)
 	if err != nil {
+		pingErr := errors.WithStack(err)
 		// if error from PingDB, log the error, set dbok to false
-		logger.Error().Err(err).Msg("PingDB error")
+		logger.Error().Stack().Err(pingErr).Msg("PingDB error")
 		dbok = false
 	}
 
