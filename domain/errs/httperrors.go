@@ -223,7 +223,8 @@ func (e UnauthenticatedError) Error() string {
 	return e.Err.Error()
 }
 
-//
+// Realm returns the WWWAuthenticateRealm of the error, if empty,
+// Realm returns "DefaultRealm"
 func (e UnauthenticatedError) Realm() string {
 	realm := e.WWWAuthenticateRealm
 	if realm == "" {
@@ -263,4 +264,37 @@ func (e UnauthorizedError) Unwrap() error {
 
 func (e UnauthorizedError) Error() string {
 	return e.Err.Error()
+}
+
+// MatchUnauthenticated compares its two error arguments. It can be
+// used to check for expected errors in tests. Both arguments must
+// have underlying type *UnauthenticatedError or MatchUnauthenticated
+// will return false. Otherwise it returns true
+// if every non-zero element of the first error is equal to the
+// corresponding element of the second.
+// If the Err field is a *UnauthenticatedError, MatchUnauthenticated
+// recurs on that field; otherwise it compares the strings returned
+// by the Error methods. Elements that are in the second argument but
+// not present in the first are ignored.
+func MatchUnauthenticated(err1, err2 error) bool {
+	e1, ok := err1.(*UnauthenticatedError)
+	if !ok {
+		return false
+	}
+	e2, ok := err2.(*UnauthenticatedError)
+	if !ok {
+		return false
+	}
+	if e1.WWWAuthenticateRealm != "" && e2.WWWAuthenticateRealm != e1.WWWAuthenticateRealm {
+		return false
+	}
+	if e1.Err != nil {
+		if _, ok := e1.Err.(*UnauthorizedError); ok {
+			return MatchUnauthenticated(e1.Err, e2.Err)
+		}
+		if e2.Err == nil || e2.Err.Error() != e1.Err.Error() {
+			return false
+		}
+	}
+	return true
 }

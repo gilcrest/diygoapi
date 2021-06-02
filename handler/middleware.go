@@ -5,11 +5,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/rs/zerolog"
 
 	"github.com/justinas/alice"
 
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/hlog"
 
 	"github.com/gilcrest/go-api-basic/domain/auth"
@@ -56,26 +57,27 @@ func (mw Middleware) AccessTokenHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		lgr := *hlog.FromRequest(r)
 
-		var token string
+		// The realm must be set to the request context in order to
+		// properly send the WWW-Authenticate error in case of unauthorized
+		// access attempts
+		realm, ok := auth.RealmFromRequest(r)
+		if !ok {
+			errs.HTTPErrorResponse(w, lgr, errs.E(errs.Internal, "Realm not set properly to context"))
+			return
+		}
+		if realm == "" {
+			errs.HTTPErrorResponse(w, lgr, errs.E(errs.Internal, "Realm empty in context"))
+			return
+		}
+
+		token, err := authHeader(realm, r.Header)
+		if err != nil {
+			errs.HTTPErrorResponse(w, lgr, err)
+			return
+		}
 
 		// retrieve the context from the http.Request
 		ctx := r.Context()
-
-		// Pull the token from the Authorization header
-		// by retrieving the value from the Header map with
-		// "Authorization" as the key
-		// format: Authorization: Bearer
-		headerValue, ok := r.Header["Authorization"]
-		if ok && len(headerValue) >= 1 {
-			token = headerValue[0]
-			token = strings.TrimPrefix(token, auth.BearerTokenType+" ")
-		}
-
-		// If the token is empty...
-		if token == "" {
-			errs.HTTPErrorResponse(w, lgr, errs.Unauthenticated("go-api-basic", errors.New("unauthenticated: empty Bearer token")))
-			return
-		}
 
 		// add access token to context
 		ctx = auth.CtxWithAccessToken(ctx, auth.NewAccessToken(token, auth.BearerTokenType))
@@ -83,6 +85,45 @@ func (mw Middleware) AccessTokenHandler(h http.Handler) http.Handler {
 		// call original, adding access token to request context
 		h.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+// authHeader parses and validates the Authorization header
+func authHeader(realm auth.WWWAuthenticateRealm, header http.Header) (token string, err error) {
+	// Pull the token from the Authorization header by retrieving the
+	// value from the Header map with "Authorization" as the key
+	//
+	// format: Authorization: Bearer
+	headerValue, ok := header["Authorization"]
+	if !ok {
+		return "", errs.Unauthenticated(string(realm), errors.New("unauthenticated: no Authorization header sent"))
+	}
+
+	// too many values sent - spec allows for only one token
+	if len(headerValue) > 1 {
+		return "", errs.Unauthenticated(string(realm), errors.New("header value > 1"))
+	}
+
+	// retrieve token from map
+	token = headerValue[0]
+
+	// Oauth2 should have "Bearer " as the prefix as the authentication scheme
+	hasBearer := strings.HasPrefix(token, auth.BearerTokenType+" ")
+	if !hasBearer {
+		return "", errs.Unauthenticated(string(realm), errors.New("unauthenticated: Bearer authentication scheme not found"))
+	}
+
+	// remove "Bearer " authentication scheme from header value
+	token = strings.TrimPrefix(token, auth.BearerTokenType+" ")
+
+	// remove all leading/trailing white space
+	token = strings.TrimSpace(token)
+
+	// token should not be empty
+	if token == "" {
+		return "", errs.Unauthenticated(string(realm), errors.New("unauthenticated: Authorization header sent with Bearer scheme, but no token found"))
+	}
+
+	return
 }
 
 // ConvertAccessTokenHandler middleware is used to convert an

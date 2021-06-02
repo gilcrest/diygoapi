@@ -6,6 +6,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/gilcrest/go-api-basic/domain/errs"
+	"github.com/google/go-cmp/cmp"
+	"github.com/pkg/errors"
+
 	qt "github.com/frankban/quicktest"
 
 	"github.com/gilcrest/go-api-basic/domain/auth"
@@ -58,7 +62,7 @@ func TestAccessTokenHandler(t *testing.T) {
 
 		mw := Middleware{}
 
-		handlers := mw.AccessTokenHandler(mw.DefaultRealmHandler(testAccessTokenHandler))
+		handlers := mw.DefaultRealmHandler(mw.AccessTokenHandler(testAccessTokenHandler))
 		handlers.ServeHTTP(rr, req)
 
 		// If there is any issues with the Access Token, the body
@@ -66,7 +70,8 @@ func TestAccessTokenHandler(t *testing.T) {
 		c.Assert(rr.Code, qt.Equals, http.StatusOK)
 	})
 
-	t.Run("no token", func(t *testing.T) {
+	// Authorization header is not added at all
+	t.Run("no auth header", func(t *testing.T) {
 		c := qt.New(t)
 
 		req, err := http.NewRequest("GET", "/ping", nil)
@@ -82,7 +87,7 @@ func TestAccessTokenHandler(t *testing.T) {
 
 		mw := Middleware{}
 
-		handlers := mw.AccessTokenHandler(testAccessTokenHandler)
+		handlers := mw.DefaultRealmHandler(mw.AccessTokenHandler(testAccessTokenHandler))
 		handlers.ServeHTTP(rr, req)
 
 		body, err := ioutil.ReadAll(rr.Body)
@@ -95,4 +100,53 @@ func TestAccessTokenHandler(t *testing.T) {
 		c.Assert(rr.Code, qt.Equals, http.StatusUnauthorized)
 		c.Assert(string(body), qt.Equals, "")
 	})
+}
+
+func Test_authHeader(t *testing.T) {
+	c := qt.New(t)
+
+	const realm auth.WWWAuthenticateRealm = "DeepInTheRealm"
+	const reqHeader string = "Authorization"
+
+	type args struct {
+		realm  auth.WWWAuthenticateRealm
+		header http.Header
+	}
+
+	hdr := http.Header{}
+	hdr.Add(reqHeader, "Bearer booyah")
+
+	emptyHdr := http.Header{}
+	emptyHdrErr := errs.Unauthenticated(string(realm), errors.New("unauthenticated: no Authorization header sent"))
+
+	noBearer := http.Header{}
+	noBearer.Add(reqHeader, "xyz")
+	noBearerErr := errs.Unauthenticated(string(realm), errors.New("unauthenticated: Bearer authentication scheme not found"))
+
+	hdrSpacesBearer := http.Header{}
+	hdrSpacesBearer.Add("Authorization", "Bearer  ")
+	spacesHdrErr := errs.Unauthenticated(string(realm), errors.New("unauthenticated: Authorization header sent with Bearer scheme, but no token found"))
+
+	tests := []struct {
+		name      string
+		args      args
+		wantToken string
+		wantErr   error
+	}{
+		{"typical", args{realm: realm, header: hdr}, "booyah", nil},
+		{"no authorization header", args{realm: realm, header: emptyHdr}, "", emptyHdrErr},
+		{"no bearer scheme", args{realm: realm, header: noBearer}, "", noBearerErr},
+		{"spaces as token", args{realm: realm, header: hdrSpacesBearer}, "", spacesHdrErr},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotToken, err := authHeader(tt.args.realm, tt.args.header)
+			if (err != nil) && (tt.wantErr == nil) {
+				t.Errorf("authHeader() error = %v, nil expected", err)
+				return
+			}
+			c.Assert(err, qt.CmpEquals(cmp.Comparer(errs.MatchUnauthenticated)), tt.wantErr)
+			c.Assert(gotToken, qt.Equals, tt.wantToken)
+		})
+	}
 }
