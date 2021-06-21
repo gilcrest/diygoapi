@@ -117,15 +117,15 @@ func Test_authHeader(t *testing.T) {
 	hdr.Add(reqHeader, "Bearer booyah")
 
 	emptyHdr := http.Header{}
-	emptyHdrErr := errs.Unauthenticated(string(realm), errors.New("unauthenticated: no Authorization header sent"))
+	emptyHdrErr := errs.NewUnauthenticatedError(string(realm), errors.New("unauthenticated: no Authorization header sent"))
 
 	noBearer := http.Header{}
 	noBearer.Add(reqHeader, "xyz")
-	noBearerErr := errs.Unauthenticated(string(realm), errors.New("unauthenticated: Bearer authentication scheme not found"))
+	noBearerErr := errs.NewUnauthenticatedError(string(realm), errors.New("unauthenticated: Bearer authentication scheme not found"))
 
 	hdrSpacesBearer := http.Header{}
 	hdrSpacesBearer.Add("Authorization", "Bearer  ")
-	spacesHdrErr := errs.Unauthenticated(string(realm), errors.New("unauthenticated: Authorization header sent with Bearer scheme, but no token found"))
+	spacesHdrErr := errs.NewUnauthenticatedError(string(realm), errors.New("unauthenticated: Authorization header sent with Bearer scheme, but no token found"))
 
 	tests := []struct {
 		name      string

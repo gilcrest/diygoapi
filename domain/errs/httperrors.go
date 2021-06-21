@@ -88,15 +88,8 @@ func typicalErrorResponse(w http.ResponseWriter, lgr zerolog.Logger, e *Error) {
 		Str("Code", string(e.Code)).
 		Msg("Error Response Sent")
 
-	// setup ErrResponse
-	er := ErrResponse{
-		Error: ServiceError{
-			Kind:    e.Kind.String(),
-			Code:    string(e.Code),
-			Param:   string(e.Param),
-			Message: e.Error(),
-		},
-	}
+	// get ErrResponse
+	er := newErrResponse(e)
 
 	// Marshal errResponse struct to JSON for the response body
 	errJSON, _ := json.Marshal(er)
@@ -110,6 +103,29 @@ func typicalErrorResponse(w http.ResponseWriter, lgr zerolog.Logger, e *Error) {
 
 	// Write response body (json)
 	fmt.Fprintln(w, ejson)
+}
+
+func newErrResponse(err *Error) ErrResponse {
+	const msg string = "internal server error - please contact support"
+
+	switch err.Kind {
+	case Internal, Database:
+		return ErrResponse{
+			Error: ServiceError{
+				Kind:    Internal.String(),
+				Message: msg,
+			},
+		}
+	default:
+		return ErrResponse{
+			Error: ServiceError{
+				Kind:    err.Kind.String(),
+				Code:    string(err.Code),
+				Param:   string(err.Param),
+				Message: err.Error(),
+			},
+		}
+	}
 }
 
 // unauthenticatedErrorResponse responds with an http status code set
@@ -188,8 +204,8 @@ func httpErrorStatusCode(k Kind) int {
 	}
 }
 
-// Unauthenticated is an initializer for UnauthenticatedError
-func Unauthenticated(realm string, err error) *UnauthenticatedError {
+// NewUnauthenticatedError is an initializer for UnauthenticatedError
+func NewUnauthenticatedError(realm string, err error) *UnauthenticatedError {
 	return &UnauthenticatedError{WWWAuthenticateRealm: realm, Err: err}
 }
 
@@ -234,8 +250,8 @@ func (e UnauthenticatedError) Realm() string {
 	return realm
 }
 
-// Unauthorized is an initializer for UnauthorizedError
-func Unauthorized(err error) *UnauthorizedError {
+// NewUnauthorizedError is an initializer for UnauthorizedError
+func NewUnauthorizedError(err error) *UnauthorizedError {
 	return &UnauthorizedError{Err: err}
 }
 

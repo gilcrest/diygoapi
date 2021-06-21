@@ -85,7 +85,7 @@ func (h DefaultMovieHandlers) CreateMovie(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Declare requestBody as an instance of createMovieRequestBody
+	// Declare request body (rb) as an instance of createMovieRequestBody
 	rb := new(createMovieRequestBody)
 
 	// Decode JSON HTTP request body into a Decoder type

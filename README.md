@@ -12,7 +12,7 @@ The following is an in-depth walkthrough of this project. This walkthrough has a
 
 ## Minimum Requirements
 
-Go and PostgreSQL are required in order to run these APIs. In addition, several database objects must be created (see [Database Setup](#database-setup) below)
+Go and PostgreSQL are required in order to run these APIs. In addition, several database objects must be created (see [Database Objects Setup](#database-objects-setup) below)
 
 ## Table of Contents
 
@@ -154,7 +154,7 @@ go build -o server
 
 ### Command Line Flags
 
-When running the program binary, a number flags can be passed. Peter Bourgon's [ff](https://github.com/peterbourgon/ff) library is used to parse the flags. If your preference is to set configuration with [environment variables](https://en.wikipedia.org/wiki/Environment_variable), that is possible as well. Flags take precedence, so if a flag is passed, that will be used. A PostgreSQL database connection is required. If there is no flag set, then the program checks for a matching environment variable. If neither are found, the flag's default value will be used and, depending on the flag, may result in a database connection error.
+When running the program binary, a number flags can be passed. The [ff](https://github.com/peterbourgon/ff) library from [Peter Bourgon](https://peter.bourgon.org) is used to parse the flags. If your preference is to set configuration with [environment variables](https://en.wikipedia.org/wiki/Environment_variable), that is possible as well. Flags take precedence, so if a flag is passed, that will be used. A PostgreSQL database connection is required. If there is no flag set, then the program checks for a matching environment variable. If neither are found, the flag's default value will be used and, depending on the flag, may result in a database connection error.
 
 | Flag Name       | Description | Environment Variable | Default |
 | --------------- | ----------- | -------------------- | ------- |
@@ -218,7 +218,7 @@ $ ./server -log-level=debug
 
 ## Ping
 
-With the server up and running, the easiest service to interact with is the `ping` service. The idea of the service is a simple health check that returns a series of flags denoting health of the system (queue depths, database up boolean, etc.). For right now, the only thing it checks is if the database is up and pingable. I have left this service unauthenticated so there's at least one service that you can get to without having to have an authentication token, but in actuality, I would typically have every service behind a security token.
+With the server up and running, the easiest service to interact with is the `ping` service. This service is a simple health check that returns a series of flags denoting health of the system (queue depths, database up boolean, etc.). For right now, the only thing it checks is if the database is up and pingable. I have left this service unauthenticated so there's at least one service that you can get to without having to have an authentication token, but in actuality, I would typically have every service behind a security token.
 
 Use cURL GET request to call `ping`:
 
@@ -240,7 +240,7 @@ The response looks like:
 
 ## Authentication and Authorization
 
-The remainder of requests require authentication. I have chosen to use [Google's Oauth2 solution](https://developers.google.com/identity/protocols/oauth2/web-server) for these APIs. In order to use Google's Oauth2, you need to setup a Client ID and Client Secret and obtain an access token. The instructions [here](https://developers.google.com/identity/protocols/oauth2) are great. I recommend the [Google Oauth2 Playground](https://developers.google.com/oauthplayground/) once you get setup to be able to easily get fresh access tokens for testing.
+The remainder of requests require authentication. I have chosen to use [Google's Oauth2 solution](https://developers.google.com/identity/protocols/oauth2/web-server) for these APIs. To use this, you need to setup a Client ID and Client Secret and obtain an access token. The instructions [here](https://developers.google.com/identity/protocols/oauth2) are great. I recommend the [Google Oauth2 Playground](https://developers.google.com/oauthplayground/) once you get setup to be able to easily get fresh access tokens for testing.
 
 Once a user has authenticated through this flow, all calls to services (other than `ping`) require that the Google access token be sent as a `Bearer` token in the `Authorization` header.
 
@@ -257,7 +257,7 @@ So long as you've got a valid token and are properly setup in the authorization 
 ```bash
 curl -v --location --request POST 'http://127.0.0.1:8080/api/v1/movies' \
 --header 'Content-Type: application/json' \
---header 'Authorization: Bearer ya29.a0AfH6SMCLdKNT34kqZt3RhMAm4movdW4jbnb1qk8s1yOhTW6IT6r6TfddWtrYWDGrQcgSUhBiH4NOGviBE-ZBDVGb-zfDsfApOSe5tGhq_vx_v-pjKUo5g-vfALt9l5TkkXQpZ18lD47U5HhQcmM7SpRE4VwVOw4JNbFfWAYGWuCjj5KxHti9xQ' \
+--header 'Authorization: Bearer <REPLACE WITH ACCESS TOKEN>' \
 --data-raw '{
     "title": "Repo Man",
     "rated": "R",
@@ -272,7 +272,7 @@ curl -v --location --request POST 'http://127.0.0.1:8080/api/v1/movies' \
 
 ```bash
 curl -v --location --request GET 'http://127.0.0.1:8080/api/v1/movies' \
---header 'Authorization: Bearer ya29.a0AfH6SMCLdKNT34kqZt3RhMAm4movdW4jbnb1qk8s1yOhTW6IT6r6TfddWtrYWDGrQcgSUhBiH4NOGviBE-ZBDVGb-zfDsfApOSe5tGhq_vx_v-pjKUo5g-vfALt9l5TkkXQpZ18lD47U5HhQcmM7SpRE4VwVOw4JNbFfWAYGWuCjj5KxHti9xQ' \
+--header 'Authorization: Bearer <REPLACE WITH ACCESS TOKEN>' \
 --data-raw ''
 ```
 
@@ -280,7 +280,7 @@ curl -v --location --request GET 'http://127.0.0.1:8080/api/v1/movies' \
 
 ```bash
 curl -v --location --request GET 'http://127.0.0.1:8080/api/v1/movies/BDylwy3BnPazC4Casn5M' \
---header 'Authorization: Bearer ya29.a0AfH6SMCLdKNT34kqZt3RhMAm4movdW4jbnb1qk8s1yOhTW6IT6r6TfddWtrYWDGrQcgSUhBiH4NOGviBE-ZBDVGb-zfDsfApOSe5tGhq_vx_v-pjKUo5g-vfALt9l5TkkXQpZ18lD47U5HhQcmM7SpRE4VwVOw4JNbFfWAYGWuCjj5KxHti9xQ' \
+--header 'Authorization: Bearer <REPLACE WITH ACCESS TOKEN>' \
 --data-raw ''
 ```
 
@@ -289,7 +289,7 @@ curl -v --location --request GET 'http://127.0.0.1:8080/api/v1/movies/BDylwy3BnP
 ```bash
 curl --location --request PUT 'http://127.0.0.1:8080/api/v1/movies/BDylwy3BnPazC4Casn5M' \
 --header 'Content-Type: application/json' \
---header 'Authorization: Bearer ya29.a0AfH6SMCLdKNT34kqZt3RhMAm4movdW4jbnb1qk8s1yOhTW6IT6r6TfddWtrYWDGrQcgSUhBiH4NOGviBE-ZBDVGb-zfDsfApOSe5tGhq_vx_v-pjKUo5g-vfALt9l5TkkXQpZ18lD47U5HhQcmM7SpRE4VwVOw4JNbFfWAYGWuCjj5KxHti9xQ' \
+--header 'Authorization: Bearer <REPLACE WITH ACCESS TOKEN>' \
 --data-raw '{
     "title": "Repo Man",
     "rated": "R",
@@ -304,7 +304,7 @@ curl --location --request PUT 'http://127.0.0.1:8080/api/v1/movies/BDylwy3BnPazC
 
 ```bash
 curl --location --request DELETE 'http://127.0.0.1:8080/api/v1/movies/BDylwy3BnPazC4Casn5M' \
---header 'Authorization: Bearer ya29.a0AfH6SMCLdKNT34kqZt3RhMAm4movdW4jbnb1qk8s1yOhTW6IT6r6TfddWtrYWDGrQcgSUhBiH4NOGviBE-ZBDVGb-zfDsfApOSe5tGhq_vx_v-pjKUo5g-vfALt9l5TkkXQpZ18lD47U5HhQcmM7SpRE4VwVOw4JNbFfWAYGWuCjj5KxHti9xQ'
+--header 'Authorization: Bearer <REPLACE WITH ACCESS TOKEN>'
 ```
 
 ## Project Walkthrough
@@ -313,12 +313,46 @@ curl --location --request DELETE 'http://127.0.0.1:8080/api/v1/movies/BDylwy3BnP
 
 Handling errors is really important in Go. Errors are first class citizens and there are many different approaches for handling them. Initially I started off basing my error handling almost entirely on a [blog post from Rob Pike](https://commandcenter.blogspot.com/2017/12/error-handling-in-upspin.html) and created a carve-out from his code to meet my needs. It served me well for a long time, but found over time I wanted a way to easily get a stacktrace of the error, which led me to Dave Cheney's [https://github.com/pkg/errors](https://github.com/pkg/errors) package. I now use a combination of the two.
 
- Error handling throughout `go-api-basic` always creates an error using the `E` function from the `errs` package as seen below. `errs.E`, is derived from Rob Pike's package (but has been changed a lot). The `errs.E` function call is [variadic](https://en.wikipedia.org/wiki/Variadic) and can take several different types to form the custom `Error`struct.
+## Requirements
+
+My requirements for REST API error handling are the following:
+
+- Requests for users who are *not* properly ***authenticated*** should return a `401 Unauthorized` error with a `WWW-Authenticate` response header and an empty response body.
+- Requests for users who are authenticated, but do not have permission to access the resource, should return a `403 Forbidden` error with an empty response body.
+- All requests which are due to a client error (invalid data, malformed JSON, etc.) should return a `400 Bad Request` and a response body which looks similar to the following:
+
+```json
+{
+    "error": {
+        "kind": "input_validation_error",
+        "param": "director",
+        "message": "director is required"
+    }
+}
+```
+
+- All requests which incur errors as a result of an internal server or database error should return a `500 Internal Server Error` and not leak any information about the database or internal systems to the client. These errors should return a response body which looks like the following:
+
+```json
+{
+    "error": {
+        "kind": "internal_error",
+        "message": "internal server error - please contact support"
+    }
+}
+```
+
+All errors should return a `Request-Id` response header with a unique request id that can be used for debugging to find the corresponding error in logs.
+
+## Implementation
+
+All errors should be raised using custom errors from the [domain/errs](https://github.com/gilcrest/go-api-basic/tree/main/domain/errs) package. The three custom errors correspond directly to the requirements above.
+
+### Typical Errors
+
+Typical errors raised throughout `go-api-basic` are the custom `errs.Error`, which look like:
 
  ```go
-// Error is the type that implements the error interface.
-// It contains a number of fields, each of different type.
-// An Error value may leave some values unset.
 type Error struct {
     // User is the username of the user attempting the operation.
     User UserName
@@ -334,15 +368,17 @@ type Error struct {
 }
 ```
 
-Here is a simple example of creating an `error`:
+This custom error type is raised using the `E` function from the [domain/errs](https://github.com/gilcrest/go-api-basic/tree/main/domain/errs) package. `errs.E` is taken from Rob Pike's [upspin errors package](https://github.com/upspin/upspin/tree/master/errors) (but has been changed based on my requirements). The `errs.E` function call is [variadic](https://en.wikipedia.org/wiki/Variadic) and can take several different types to form the custom `errs.Error` struct.
+
+Here is a simple example of creating an `error` using `errs.E`:
 
 ```go
 err := errs.E("seems we have an error here")
 ```
 
- When a string is sent, an error will be created using the `errors.New` function from `github.com/pkg/errors` and added to the `Err` element of the struct, which allows a stacktrace to be generated later on if need be. In the above example, `User`, `Kind`, `Param` and `Code` would all remain unset.
+When a string is sent, an error will be created using the `errors.New` function from `github.com/pkg/errors` and added to the `Err` element of the struct, which allows retrieval of the error stacktrace later on. In the above example, `User`, `Kind`, `Param` and `Code` would all remain unset.
 
-You can, of course, choose to set any of the custom error values that you like, for example:
+You can set any of these custom `errs.Error` fields that you like, for example:
 
 ```go
 func (m *Movie) SetReleased(r string) (*Movie, error) {
@@ -358,19 +394,12 @@ func (m *Movie) SetReleased(r string) (*Movie, error) {
 }
 ```
 
-Above, we used `errs.Validation` to set the `errs.Kind` as Validation. Valid error `Kind` are:
+Above, we used `errs.Validation` to set the `errs.Kind` as `Validation`. Valid error `Kind` are:
 
 ```go
-// Kinds of errors.
-//
-// The values of the error kinds are common between both
-// clients and servers. Do not reorder this list or remove
-// any items since that will change their values.
-// New items must be added only to the end.
 const (
     Other           Kind = iota // Unclassified error. This value is not printed in the error message.
     Invalid                     // Invalid operation for this type of item.
-    Permission                  // Permission denied.
     IO                          // External I/O error such as network failure.
     Exist                       // Item already exists.
     NotExist                    // Item does not exist.
@@ -381,8 +410,6 @@ const (
     Validation                  // Input validation error.
     Unanticipated               // Unanticipated error.
     InvalidRequest              // Invalid Request
-    Unauthenticated             // User did not properly authenticate
-    Unauthorized                // User is not authorized for the resource
 )
 ```
 
@@ -390,7 +417,7 @@ const (
 
 `errs.Parameter` represents the parameter that is being validated or has problems, etc.
 
-In addition, instead of passing a string and creating a new error inside the `errs.E` function, I am just passing in the error received from the `time.Parse` function and inside `errs.E` the error is added to `Err` using `errors.WithStack` from the `github.com/pkg/errors` package so that the stacktrace can be obtained later if needed.
+> Note in the above example, instead of passing a string and creating a new error inside the `errs.E` function, I am directly passing the error returned by the `time.Parse` function to `errs.E`. The error is then added to the `Err` field using `errors.WithStack` from the `github.com/pkg/errors` package, which enables stacktrace retrieval later.
 
 There are a few helpers in the `errs` package as well, namely the `errs.MissingField` function which can be used when validating missing input on a field. This idea comes from [this Mat Ryer post](https://medium.com/@matryer/patterns-for-decoding-and-validating-input-in-go-data-apis-152291ac7372) and is pretty handy.
 
@@ -408,9 +435,9 @@ The error message for the above would read **title is required**
 
 There is also `errs.InputUnwanted` which is meant to be used when a field is populated with a value when it is not supposed to be.
 
-#### Error Flow
+### Typical Error Flow
 
-Errors at their initial point of failure should always start with `errs.E`, but as they move up the call stack, `errs.E` does not need to be used. Errors should just be passed on up, like the following:
+As errors created with `errs.E` move up the call stack, they can just be returned, like the following:
 
 ```go
 func inner() error {
@@ -435,9 +462,13 @@ func outer() error {
 
 ```
 
-In the above example, the error is created in the `inner` function - `middle` and `outer` return the error as is typical in Go.
+> In the above example, the error is created in the `inner` function - `middle` and `outer` return the error as is typical in Go.
 
-At the top of the program flow for each service is the handler. In each handler, if any error occurs from any function/method calls, they are sent through the `errs.HTTPErrorResponse` function along with the `http.ResponseWriter` and a `zerolog.Logger`.
+You can add additional context fields (`errs.Code`, `errs.Parameter`, `errs.Kind`) as the error moves up the stack, however, I try to add as much context as possible at the point of error origin and only do this in rare cases.
+
+### Handler Flow
+
+At the top of the program flow for each service is the app service handler (for example, [DefaultMovieHandlers.CreateMovie](https://github.com/gilcrest/go-api-basic/blob/main/handler/movieHandler.go)). In the app service handler, any error returned from any function or method is sent through the `errs.HTTPErrorResponse` function along with the `http.ResponseWriter` and a `zerolog.Logger`.
 
 For example:
 
@@ -450,7 +481,31 @@ if err != nil {
 }
 ```
 
-`errs.HTTPErrorResponse` takes the custom `Error` created by `errs.E` and writes the HTTP response body as JSON as well as logs the error. If `zerolog.ErrorStackMarshaler` is set to log error stacks (more about this later), the logger will log the full error stack, which can be super helpful when trying to identify issues. When the above error is returned to the client using the `errs.HTTPErrorResponse` function in the each of the handlers, the response body JSON looks like the following:
+`errs.HTTPErrorResponse` takes the custom error (`errs.Error`, `errs.Unauthenticated` or `errs.UnauthorizedError`), writes the response to the given `http.ResponseWriter` and logs the error using the given `zerolog.Logger`.
+
+> `return` must be called immediately after `errs.HTTPErrorResponse` to return the error to the client.
+
+#### Typical Error Response
+
+For the `errs.Error` type, `errs.HTTPErrorResponse` writes the HTTP response body as JSON using the `errs.ErrResponse` struct.
+
+```go
+// ErrResponse is used as the Response Body
+type ErrResponse struct {
+    Error ServiceError `json:"error"`
+}
+
+// ServiceError has fields for Service errors. All fields with no data will
+// be omitted
+type ServiceError struct {
+    Kind    string `json:"kind,omitempty"`
+    Code    string `json:"code,omitempty"`
+    Param   string `json:"param,omitempty"`
+    Message string `json:"message,omitempty"`
+}
+```
+
+When the error is returned to the client, the response body JSON looks like the following:
 
 ```json
 {
@@ -463,7 +518,9 @@ if err != nil {
 }
 ```
 
-and the error log looks like (I cut off parts of the stack for brevity):
+In addition, the error is logged. If `zerolog.ErrorStackMarshaler` is set to log error stacks (more about this in a later post), the logger will log the full error stack, which can be super helpful when trying to identify issues.
+
+The error log will look like the following (*I cut off parts of the stack for brevity*):
 
 ```json
 {
@@ -497,12 +554,94 @@ and the error log looks like (I cut off parts of the stack for brevity):
 }
 ```
 
-> Note: `E` will often be at the top of the stack as it is where the `errors.New` or `errors.WithStack` functions are being called. If you prefer not to see this, you can call `errors.New` or `errors.WithStack` as part of the `errs.E` call, for example:
+> Note: `E` will usually be at the top of the stack as it is where the `errors.New` or `errors.WithStack` functions are being called.
 
-```go
-err := errs.E(errors.New("seems we have an error here"))
+#### Internal or Database Error Response
+
+There is logic within `errs.HTTPErrorResponse` to return a different response body if the `errs.Kind` is `Internal` or `Database`. As per the requirements, we should not leak the error message or any internal stack, etc. when an internal or database error occurs. If an error comes through and is an `errs.Error` with either of these error `Kind` or is unknown error type in any way, the response will look like the following:
+
+```json
+{
+    "error": {
+        "kind": "internal_error",
+        "message": "internal server error - please contact support"
+    }
+}
 ```
 
-## 4/7/2021 - README under construction
+---
 
-I have finally finished adding all tests and refactoring as a result. I will be making a lot of progress on this README shortly.
+### Unauthenticated Errors
+
+```go
+type UnauthenticatedError struct {
+    // WWWAuthenticateRealm is a description of the protected area.
+    // If no realm is specified, "DefaultRealm" will be used as realm
+    WWWAuthenticateRealm string
+
+    // The underlying error that triggered this one, if any.
+    Err error
+}
+```
+
+The [spec](https://tools.ietf.org/html/rfc7235#section-3.1) for `401 Unauthorized` calls for a `WWW-Authenticate` response header along with a `realm`. The realm should be set when creating an Unauthenticated error. The `errs.NewUnauthenticatedError` function initializes an `UnauthenticatedError`.
+
+> I generally like to follow the Go idiom for brevity in all things as much as possible, but for `Unauthenticated` vs. `Unauthorized` errors, it's confusing enough as it is already, I don't take any shortcuts.
+
+```go
+func NewUnauthenticatedError(realm string, err error) *UnauthenticatedError {
+    return &UnauthenticatedError{WWWAuthenticateRealm: realm, Err: err}
+}
+```
+
+#### Unauthenticated Error Flow
+
+The `errs.Unauthenticated` error should only be raised at points of authentication. I will get into application flow in detail in later posts, but authentication for [go-api-basic](https://github.com/gilcrest/go-api-basic) happens in middleware handlers prior to calling the app handler for the given route.
+
+- The `WWW-Authenticate` *realm* is set to the request context using the `DefaultRealmHandler` middleware in the [handlers package](https://github.com/gilcrest/go-api-basic/blob/main/handler/middleware.go) prior to attempting authentication.
+- Next, the Oauth2 access token is retrieved from the `Authorization` http header using the `AccessTokenHandler` middleware. There are several access token validations in this middleware, if any are not successful, the `errs.Unauthenticated` error is returned using the realm set to the request context.
+- Finally, if the access token is successfully retrieved, it is then converted to a `User` via the `GoogleAccessTokenConverter.Convert` method in the `gateway/authgateway` package. This method sends an outbound request to Google using their API; if any errors are returned, an `errs.Unauthenticated` error is returned.
+
+> In general, I do not like to use `context.Context`, however, it is used in [go-api-basic](https://github.com/gilcrest/go-api-basic) to pass values between middlewares. The `WWW-Authenticate` *realm*, the Oauth2 access token and the calling user after authentication, all of which are `request-scoped` values, are all set to the request `context.Context`.
+
+#### Unauthenticated Error Response
+
+Per requirements, [go-api-basic](https://github.com/gilcrest/go-api-basic) does not return a response body when returning an **Unauthenticated** error. The error response from [cURL](https://curl.se/) looks like the following:
+
+```bash
+HTTP/1.1 401 Unauthorized
+Request-Id: c30hkvua0brkj8qhk3e0
+Www-Authenticate: Bearer realm="go-api-basic"
+Date: Wed, 09 Jun 2021 19:46:07 GMT
+Content-Length: 0
+```
+
+---
+
+### Unauthorized Errors
+
+```go
+type UnauthorizedError struct {
+    // The underlying error that triggered this one, if any.
+    Err error
+}
+```
+
+The `errs.NewUnauthorizedError` function initializes an `UnauthorizedError`.
+
+#### Unauthorized Error Flow
+
+The `errs.Unauthorized` error is raised when there is a permission issue for a user when attempting to access a resource. Currently, [go-api-basic](https://github.com/gilcrest/go-api-basic)'s placeholder authorization implementation `DefaultAuthorizer.Authorize` in the [domain/auth](https://github.com/gilcrest/go-api-basic/blob/main/domain/auth/auth.go) package performs rudimentary checks that a user has access to a resource. If the user does not have access, the `errs.Unauthorized` error is returned.
+
+Per requirements, [go-api-basic](https://github.com/gilcrest/go-api-basic) does not return a response body when returning an **Unauthorized** error. The error response from [cURL](https://curl.se/) looks like the following:
+
+```bash
+HTTP/1.1 403 Forbidden
+Request-Id: c30hp2ma0brkj8qhk3f0
+Date: Wed, 09 Jun 2021 19:54:50 GMT
+Content-Length: 0
+```
+
+## 6/21/2021 - README under construction
+
+Errors is completed for now. Logging will be next.

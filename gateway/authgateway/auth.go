@@ -58,7 +58,7 @@ func userInfo(ctx context.Context, token *oauth2.Token) (*googleoauth.Userinfo, 
 		// requested operation on the given resource."
 		// In this case, we are getting a bad response from Google service, assume
 		// they are not able to authenticate properly
-		return nil, errs.Unauthenticated(string(realm), errors.WithStack(err))
+		return nil, errs.NewUnauthenticatedError(string(realm), errors.WithStack(err))
 	}
 
 	return userInfo, nil

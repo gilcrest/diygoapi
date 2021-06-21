@@ -15,11 +15,11 @@ import (
 func NewMovie(id uuid.UUID, extlID string, u user.User) (*Movie, error) {
 	switch {
 	case id == uuid.Nil:
-		return nil, errs.E(errs.Validation, errs.Parameter("ID"), errors.New(errs.MissingField("ID").Error()))
+		return nil, errs.E(errs.Validation, errs.Parameter("ID"), errs.MissingField("ID"))
 	case extlID == "":
-		return nil, errs.E(errs.Validation, errs.Parameter("extlID"), errors.New(errs.MissingField("extlID").Error()))
+		return nil, errs.E(errs.Validation, errs.Parameter("extlID"), errs.MissingField("extlID"))
 	case !u.IsValid():
-		return nil, errs.E(errs.Validation, errs.Parameter("User"), errors.New("User is invalid"))
+		return nil, errs.E(errs.Validation, errs.Parameter("User"), "User is invalid")
 	}
 
 	now := time.Now().UTC()

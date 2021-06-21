@@ -45,7 +45,7 @@ func (mw Middleware) DefaultRealmHandler(h http.Handler) http.Handler {
 		// add realm to context
 		ctx = auth.CtxWithRealm(ctx, auth.DefaultRealm)
 
-		// call original, adding realm token to request context
+		// call original, adding realm to request context
 		h.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -95,12 +95,12 @@ func authHeader(realm auth.WWWAuthenticateRealm, header http.Header) (token stri
 	// format: Authorization: Bearer
 	headerValue, ok := header["Authorization"]
 	if !ok {
-		return "", errs.Unauthenticated(string(realm), errors.New("unauthenticated: no Authorization header sent"))
+		return "", errs.NewUnauthenticatedError(string(realm), errors.New("unauthenticated: no Authorization header sent"))
 	}
 
 	// too many values sent - spec allows for only one token
 	if len(headerValue) > 1 {
-		return "", errs.Unauthenticated(string(realm), errors.New("header value > 1"))
+		return "", errs.NewUnauthenticatedError(string(realm), errors.New("header value > 1"))
 	}
 
 	// retrieve token from map
@@ -109,7 +109,7 @@ func authHeader(realm auth.WWWAuthenticateRealm, header http.Header) (token stri
 	// Oauth2 should have "Bearer " as the prefix as the authentication scheme
 	hasBearer := strings.HasPrefix(token, auth.BearerTokenType+" ")
 	if !hasBearer {
-		return "", errs.Unauthenticated(string(realm), errors.New("unauthenticated: Bearer authentication scheme not found"))
+		return "", errs.NewUnauthenticatedError(string(realm), errors.New("unauthenticated: Bearer authentication scheme not found"))
 	}
 
 	// remove "Bearer " authentication scheme from header value
@@ -120,7 +120,7 @@ func authHeader(realm auth.WWWAuthenticateRealm, header http.Header) (token stri
 
 	// token should not be empty
 	if token == "" {
-		return "", errs.Unauthenticated(string(realm), errors.New("unauthenticated: Authorization header sent with Bearer scheme, but no token found"))
+		return "", errs.NewUnauthenticatedError(string(realm), errors.New("unauthenticated: Authorization header sent with Bearer scheme, but no token found"))
 	}
 
 	return
@@ -161,14 +161,14 @@ func (mw Middleware) AuthorizeUserHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		lgr := *hlog.FromRequest(r)
 
-		// retrieve user from Context
+		// retrieve user from request context
 		u, err := user.FromRequest(r)
 		if err != nil {
 			errs.HTTPErrorResponse(w, lgr, err)
 			return
 		}
 
-		// convert access token to User
+		// authorize user can access the path/method
 		err = mw.Authorizer.Authorize(lgr, u, r.URL.Path, r.Method)
 		if err != nil {
 			errs.HTTPErrorResponse(w, lgr, err)

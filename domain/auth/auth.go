@@ -143,7 +143,7 @@ func (a DefaultAuthorizer) Authorize(lgr zerolog.Logger, sub user.User, obj stri
 	// requested operation on the given resource."
 	// If the user has gotten here, they have gotten through authentication
 	// but do have the right access, this they are Unauthorized
-	return errs.Unauthorized(errors.New(fmt.Sprintf("user %s does not have %s permission for %s", sub.Email, act, obj)))
+	return errs.NewUnauthorizedError(errors.New(fmt.Sprintf("user %s does not have %s permission for %s", sub.Email, act, obj)))
 }
 
 // AccessControlList (ACL) describes permissions for a given object
