@@ -596,17 +596,17 @@ func NewUnauthenticatedError(realm string, err error) *UnauthenticatedError {
 
 #### Unauthenticated Error Flow
 
-The `errs.Unauthenticated` error should only be raised at points of authentication. I will get into application flow in detail in later posts, but authentication for [go-api-basic](https://github.com/gilcrest/go-api-basic) happens in middleware handlers prior to calling the app handler for the given route.
+The `errs.Unauthenticated` error should only be raised at points of authentication. I will get into application flow in detail in later posts, but authentication for `go-api-basic` happens in middleware handlers prior to calling the app handler for the given route.
 
 - The `WWW-Authenticate` *realm* is set to the request context using the `DefaultRealmHandler` middleware in the [handlers package](https://github.com/gilcrest/go-api-basic/blob/main/handler/middleware.go) prior to attempting authentication.
 - Next, the Oauth2 access token is retrieved from the `Authorization` http header using the `AccessTokenHandler` middleware. There are several access token validations in this middleware, if any are not successful, the `errs.Unauthenticated` error is returned using the realm set to the request context.
 - Finally, if the access token is successfully retrieved, it is then converted to a `User` via the `GoogleAccessTokenConverter.Convert` method in the `gateway/authgateway` package. This method sends an outbound request to Google using their API; if any errors are returned, an `errs.Unauthenticated` error is returned.
 
-> In general, I do not like to use `context.Context`, however, it is used in [go-api-basic](https://github.com/gilcrest/go-api-basic) to pass values between middlewares. The `WWW-Authenticate` *realm*, the Oauth2 access token and the calling user after authentication, all of which are `request-scoped` values, are all set to the request `context.Context`.
+> In general, I do not like to use `context.Context`, however, it is used in `go-api-basic` to pass values between middlewares. The `WWW-Authenticate` *realm*, the Oauth2 access token and the calling user after authentication, all of which are `request-scoped` values, are all set to the request `context.Context`.
 
 #### Unauthenticated Error Response
 
-Per requirements, [go-api-basic](https://github.com/gilcrest/go-api-basic) does not return a response body when returning an **Unauthenticated** error. The error response from [cURL](https://curl.se/) looks like the following:
+Per requirements, `go-api-basic` does not return a response body when returning an **Unauthenticated** error. The error response from [cURL](https://curl.se/) looks like the following:
 
 ```bash
 HTTP/1.1 401 Unauthorized
@@ -631,9 +631,9 @@ The `errs.NewUnauthorizedError` function initializes an `UnauthorizedError`.
 
 #### Unauthorized Error Flow
 
-The `errs.Unauthorized` error is raised when there is a permission issue for a user when attempting to access a resource. Currently, [go-api-basic](https://github.com/gilcrest/go-api-basic)'s placeholder authorization implementation `DefaultAuthorizer.Authorize` in the [domain/auth](https://github.com/gilcrest/go-api-basic/blob/main/domain/auth/auth.go) package performs rudimentary checks that a user has access to a resource. If the user does not have access, the `errs.Unauthorized` error is returned.
+The `errs.Unauthorized` error is raised when there is a permission issue for a user when attempting to access a resource. Currently, `go-api-basic`'s placeholder authorization implementation `DefaultAuthorizer.Authorize` in the [domain/auth](https://github.com/gilcrest/go-api-basic/blob/main/domain/auth/auth.go) package performs rudimentary checks that a user has access to a resource. If the user does not have access, the `errs.Unauthorized` error is returned.
 
-Per requirements, [go-api-basic](https://github.com/gilcrest/go-api-basic) does not return a response body when returning an **Unauthorized** error. The error response from [cURL](https://curl.se/) looks like the following:
+Per requirements, `go-api-basic` does not return a response body when returning an **Unauthorized** error. The error response from [cURL](https://curl.se/) looks like the following:
 
 ```bash
 HTTP/1.1 403 Forbidden
