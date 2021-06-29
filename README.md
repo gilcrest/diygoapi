@@ -35,7 +35,7 @@ Go and PostgreSQL are required in order to run these APIs. In addition, several 
 
 ### Database Objects Setup
 
-Assuming PostgreSQL is installed locally, the [demo_ddl.sql](https://github.com/gilcrest/go-api-basic/blob/master/demo.ddl) script (*DDL = **D**ata **D**efinition **L**anguage*) located in the root directory needs to be run, however, there are some things to know. At the highest level, PostgreSQL has the concept of databases, separate from schemas. A database is a container of other objects (tables, views, functions, indexes, etc.). There is no limit no the number of databases inside a PostgreSQL server.
+Assuming PostgreSQL is installed locally, the [demo_ddl.sql](https://github.com/gilcrest/go-api-basic/blob/master/demo.ddl) script (*DDL = **D**ata **D**efinition **L**anguage*) located in the `/scripts/ddl` directory needs to be run, however, there are some things to know. At the highest level, PostgreSQL has the concept of databases, separate from schemas. A database is a container of other objects (tables, views, functions, indexes, etc.). There is no limit no the number of databases inside a PostgreSQL server.
 
 In the DDL script, the first statement creates a database called `go_api_basic`:
 
