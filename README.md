@@ -722,6 +722,85 @@ and the response will look something like:
 
 The `PUT` response is the same as the `GET` response, but with updated values. In the examples above, I used a scenario where the logger state started with the global logging level (`global_log_level`) at error and error stack tracing (`log_error_stack`) set to false. The `PUT` request then updates the logger state, setting the global logging level to `debug` and the error stack tracing. You might do something like this if you are debugging an issue and need to see debug logs or error stacks to help with that.
 
+## Logger Setup in Handlers
+
+After `zerolog.Logger` is initialized in `main.go`, it is injected into a `handler.Middleware` struct.
+
+```go
+// Middleware are the collection of app middleware handlers
+type Middleware struct {
+    Logger               zerolog.Logger
+    AccessTokenConverter auth.AccessTokenConverter
+    Authorizer           auth.Authorizer
+}
+```
+
+ The `handler.Middleware` struct is then injected into the `handler.Routes` function (along with the app handlers and gorilla Mux router), which is responsible for registering routes and corresponding middleware/handlers to the given gorilla/mux router.
+
+For each route registered to the handler, upon execution, the `zerolog.Logger` is then added to the request context through the `Middleware.LoggerChain` method for subsequent use with pre-populated fields, including the request method, url, status, size, duration, remote IP, user agent, referer. A unique `Request ID` is also added to the logger, context and response headers.
+
+```go
+func (mw Middleware) LoggerChain() alice.Chain {
+    ac := alice.New(hlog.NewHandler(mw.Logger),
+        hlog.AccessHandler(func(r *http.Request, status, size int, duration time.Duration) {
+            hlog.FromRequest(r).Info().
+                Str("method", r.Method).
+                Stringer("url", r.URL).
+                Int("status", status).
+                Int("size", size).
+                Dur("duration", duration).
+                Msg("request logged")
+        }),
+        hlog.RemoteAddrHandler("remote_ip"),
+        hlog.UserAgentHandler("user_agent"),
+        hlog.RefererHandler("referer"),
+        hlog.RequestIDHandler("request_id", "Request-Id"),
+    )
+
+    return ac
+}
+```
+
+For every request, you'll get a request log that looks something like the following:
+
+```json
+{
+    "level": "info",
+    "remote_ip": "127.0.0.1",
+    "user_agent": "PostmanRuntime/7.28.0",
+    "request_id": "c3npn8ea0brt0m3scvq0",
+    "method": "POST",
+    "url": "/api/v1/movies",
+    "status": 401,
+    "size": 0,
+    "duration": 392.254496,
+    "time": 1626315682,
+    "severity": "INFO",
+    "message": "request logged"
+}
+```
+
+All error logs will have the same request metadata, including `request_id`. The `Request-Id` is also sent back as part of the error response as a response header, allowing you to link the two. An error log will look somethiing like the following:
+
+```json
+{
+    "level": "error",
+    "remote_ip": "127.0.0.1",
+    "user_agent": "PostmanRuntime/7.28.0",
+    "request_id": "c3nppj6a0brt1dho9e2g",
+    "error": "googleapi: Error 401: Request is missing required authentication credential. Expected OAuth 2 access token, login cookie or other valid authentication credential. See https://developers.google.com/identity/sign-in/web/devconsole-project., unauthorized",
+    "http_statuscode": 401,
+    "realm": "go-api-basic",
+    "time": 1626315981,
+    "severity": "ERROR",
+    "message": "Unauthenticated Request"
+}
+```
+
+> The above error log demonstrates a log for an error with stack trace turned off.
+
+If the logger is to be used beyond the scope of the handler, I always pull the logger from the request context in the handler and send it as a parameter to inner calls. The Logger is added only to the request context to capture request related fields with the Logger and be able to pass the initialized logger and middleware handlers easier to the app/route handler. Additional use of the logger should be directly called out in function/method signatures so there are no surprises. All logs from the logger passed down get the benefit of the request metadata though, which is great IMHO!
+
 ## 7/13/2021 - README under construction
 
 Logging completed. TBD next.
