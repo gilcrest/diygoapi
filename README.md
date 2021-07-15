@@ -799,7 +799,7 @@ All error logs will have the same request metadata, including `request_id`. The 
 
 > The above error log demonstrates a log for an error with stack trace turned off.
 
-If the logger is to be used beyond the scope of the handler, I always pull the logger from the request context in the handler and send it as a parameter to any inner calls. The Logger is added only to the request context to capture request related fields with the Logger and be able to pass the initialized logger and middleware handlers easier to the app/route handler. Additional use of the logger should be directly called out in function/method signatures so there are no surprises. All logs from the logger passed down get the benefit of the request metadata though, which is great IMHO!
+If the logger is to be used beyond the scope of the handler, it should be pulled from the request context in the handler and sent as a parameter to any inner calls. The Logger is added only to the request context to capture request related fields with the Logger and be able to pass the initialized logger and middleware handlers easier to the app/route handler. Additional use of the logger should be directly called out in function/method signatures so there are no surprises. All logs from the logger passed down get the benefit of the request metadata though, which is great!
 
 ## 7/13/2021 - README under construction
 
