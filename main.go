@@ -5,16 +5,19 @@ import (
 	"fmt"
 	"os"
 
-	"gocloud.dev/server"
-
 	"github.com/peterbourgon/ff/v3"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
+	"github.com/gilcrest/go-api-basic/app"
 	"github.com/gilcrest/go-api-basic/datastore"
+	"github.com/gilcrest/go-api-basic/datastore/moviestore"
+	"github.com/gilcrest/go-api-basic/datastore/pingstore"
+	"github.com/gilcrest/go-api-basic/domain/auth"
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/logger"
-	"github.com/gilcrest/go-api-basic/handler"
+	"github.com/gilcrest/go-api-basic/domain/random"
+	"github.com/gilcrest/go-api-basic/gateway/authgateway"
+	"github.com/gilcrest/go-api-basic/service"
 )
 
 const (
@@ -40,92 +43,6 @@ const (
 	// database user password environment variable name
 	dbPasswordEnv string = "DB_PASSWORD"
 )
-
-func main() {
-	if err := run(os.Args); err != nil {
-		fmt.Fprintf(os.Stderr, "error from main.run(): %s\n", err)
-		os.Exit(exitFail)
-	}
-}
-
-func run(args []string) error {
-
-	flgs, err := newFlags(args)
-	if err != nil {
-		return err
-	}
-
-	// determine minimum logging level based on flag input
-	minlvl, err := zerolog.ParseLevel(flgs.logLvlMin)
-	if err != nil {
-		return err
-	}
-
-	// determine logging level based on flag input
-	lvl, err := zerolog.ParseLevel(flgs.loglvl)
-	if err != nil {
-		return err
-	}
-
-	// setup logger with appropriate defaults
-	lgr := logger.NewLogger(os.Stdout, minlvl, true)
-
-	// logs will be written at the level set in NewLogger (which is
-	// also the minimum level). If the logs are to be written at a
-	// different level than the minimum, use SetGlobalLevel to set
-	// the global logging level to that. Minimum rules will still
-	// apply.
-	if minlvl != lvl {
-		zerolog.SetGlobalLevel(lvl)
-	}
-
-	// set global logging time field format to Unix timestamp
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-
-	lgr.Info().Msgf("minimum accepted logging level set to %s", minlvl)
-	lgr.Info().Msgf("logging level set to %s", lvl)
-
-	// set global to log errors with stack (or not) based on flag
-	logger.WriteErrorStackGlobal(flgs.logErrorStack)
-	lgr.Info().Msgf("log error stack global set to %t", flgs.logErrorStack)
-
-	// validate port in acceptable range
-	err = portRange(flgs.port)
-	if err != nil {
-		lgr.Fatal().Err(err).Msg("portRange() error")
-	}
-
-	//get struct holding PostgreSQL datasource name details
-	dsn := datastore.NewPGDatasourceName(flgs.dbhost, flgs.dbname, flgs.dbuser, flgs.dbpassword, flgs.dbport)
-
-	// initialize PostgreSQL database
-	db, cleanup, err := datastore.NewDB(dsn, lgr)
-	if err != nil {
-		lgr.Fatal().Err(err).Msg("Error from datastore.NewDB")
-	}
-	defer cleanup()
-
-	// initialize all app Handlers
-	handlers, err := newHandlers(db)
-	if err != nil {
-		lgr.Fatal().Err(err).Msg("Error from newHandlers")
-	}
-
-	// initialize Gorilla mux router with /api subroute
-	rtr := handler.NewMuxRouterWithSubroutes()
-
-	// register routes/middleware/handlers to the router
-	handler.Routes(rtr, newMiddleware(lgr), handlers)
-
-	// initialize go-cloud server options
-	opts, cleanup2 := newServerOptions(db)
-	defer cleanup2()
-
-	// returns a pointer to a gocloud server
-	srv := server.New(rtr, opts)
-
-	return srv.ListenAndServe(fmt.Sprintf(":%d", flgs.port))
-}
 
 type flags struct {
 	// log-level flag allows for setting logging level, e.g. to run the server
@@ -202,10 +119,118 @@ func newFlags(args []string) (flgs flags, err error) {
 	}, nil
 }
 
+func main() {
+	if err := run(os.Args); err != nil {
+		fmt.Fprintf(os.Stderr, "error from main.run(): %s\n", err)
+		os.Exit(exitFail)
+	}
+}
+
+func run(args []string) error {
+
+	flgs, err := newFlags(args)
+	if err != nil {
+		return err
+	}
+
+	// determine minimum logging level based on flag input
+	minlvl, err := zerolog.ParseLevel(flgs.logLvlMin)
+	if err != nil {
+		return err
+	}
+
+	// determine logging level based on flag input
+	lvl, err := zerolog.ParseLevel(flgs.loglvl)
+	if err != nil {
+		return err
+	}
+
+	// setup logger with appropriate defaults
+	lgr := logger.NewLogger(os.Stdout, minlvl, true)
+
+	// logs will be written at the level set in NewLogger (which is
+	// also the minimum level). If the logs are to be written at a
+	// different level than the minimum, use SetGlobalLevel to set
+	// the global logging level to that. Minimum rules will still
+	// apply.
+	if minlvl != lvl {
+		zerolog.SetGlobalLevel(lvl)
+	}
+
+	// set global logging time field format to Unix timestamp
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+
+	lgr.Info().Msgf("minimum accepted logging level set to %s", minlvl)
+	lgr.Info().Msgf("logging level set to %s", lvl)
+
+	// set global to log errors with stack (or not) based on flag
+	logger.WriteErrorStackGlobal(flgs.logErrorStack)
+	lgr.Info().Msgf("log error stack global set to %t", flgs.logErrorStack)
+
+	// validate port in acceptable range
+	err = portRange(flgs.port)
+	if err != nil {
+		lgr.Fatal().Err(err).Msg("portRange() error")
+	}
+
+	// initialize Gorilla mux router with /api subroute
+	mr := app.NewMuxRouter()
+
+	// initialize server driver
+	serverDriver := app.NewDriver()
+
+	// initialize server configuration parameters
+	params := app.NewServerParams(lgr, serverDriver)
+
+	// initialize Server
+	s, err := app.NewServer(mr, params)
+	if err != nil {
+		lgr.Fatal().Err(err).Msg("Error from app.NewServer")
+	}
+
+	// set listener address
+	s.Addr = fmt.Sprintf(":%d", flgs.port)
+
+	// initialize auth structs
+	s.AccessTokenConverter = authgateway.GoogleAccessTokenConverter{}
+	s.Authorizer = auth.DefaultAuthorizer{}
+
+	// initialize struct with PostgreSQL datasource name details
+	dsn := datastore.NewPGDatasourceName(flgs.dbhost, flgs.dbname, flgs.dbuser, flgs.dbpassword, flgs.dbport)
+
+	// initialize PostgreSQL database
+	db, cleanup, err := datastore.NewDB(dsn, lgr)
+	if err != nil {
+		lgr.Fatal().Err(err).Msg("Error from datastore.NewDB")
+	}
+	defer cleanup()
+
+	// initialize Datastore
+	pgDatastore := datastore.NewDefaultDatastore(db)
+
+	// initialize services
+
+	pinger := pingstore.NewPinger(pgDatastore)
+	s.PingService = service.NewPingService(pinger)
+
+	s.LoggerService = service.NewLoggerService(lgr)
+
+	randomStringGenerator := random.StringGenerator{}
+	movieTransactor := moviestore.NewTransactor(pgDatastore)
+	movieSelector := moviestore.NewSelector(pgDatastore)
+
+	s.CreateMovieService = service.NewCreateMovieService(randomStringGenerator, movieTransactor)
+	s.UpdateMovieService = service.NewUpdateMovieService(movieTransactor)
+	s.DeleteMovieService = service.NewDeleteMovieService(movieSelector, movieTransactor)
+	s.FindMovieService = service.NewFindMovieService(movieSelector)
+
+	return s.ListenAndServe()
+}
+
 // portRange validates the port be in an acceptable range
 func portRange(port int) error {
 	if port < 0 || port > 65535 {
-		return errs.E(errors.New(fmt.Sprintf("port %d is not within valid port range (0 to 65535)", port)))
+		return errs.E(fmt.Sprintf("port %d is not within valid port range (0 to 65535)", port))
 	}
 	return nil
 }
