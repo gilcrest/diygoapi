@@ -1,4 +1,4 @@
-package handler
+package app
 
 import (
 	"io/ioutil"
@@ -11,11 +11,13 @@ import (
 	"github.com/pkg/errors"
 
 	qt "github.com/frankban/quicktest"
-
 	"github.com/gilcrest/go-api-basic/domain/auth"
 )
 
 func TestJSONContentTypeResponseHandler(t *testing.T) {
+
+	s := Server{}
+
 	req, err := http.NewRequest("GET", "/ping", nil)
 	if err != nil {
 		t.Fatalf("http.NewRequest() error = %v", err)
@@ -30,9 +32,7 @@ func TestJSONContentTypeResponseHandler(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 
-	mw := Middleware{}
-
-	handlers := mw.JSONContentTypeResponseHandler(testJSONContentTypeResponseHandler)
+	handlers := s.JSONContentTypeResponseHandler(testJSONContentTypeResponseHandler)
 	handlers.ServeHTTP(rr, req)
 }
 
@@ -60,9 +60,9 @@ func TestAccessTokenHandler(t *testing.T) {
 
 		rr := httptest.NewRecorder()
 
-		mw := Middleware{}
+		s := Server{}
 
-		handlers := mw.DefaultRealmHandler(mw.AccessTokenHandler(testAccessTokenHandler))
+		handlers := s.DefaultRealmHandler(s.AccessTokenHandler(testAccessTokenHandler))
 		handlers.ServeHTTP(rr, req)
 
 		// If there is any issues with the Access Token, the body
@@ -85,9 +85,9 @@ func TestAccessTokenHandler(t *testing.T) {
 
 		rr := httptest.NewRecorder()
 
-		mw := Middleware{}
+		s := Server{}
 
-		handlers := mw.DefaultRealmHandler(mw.AccessTokenHandler(testAccessTokenHandler))
+		handlers := s.DefaultRealmHandler(s.AccessTokenHandler(testAccessTokenHandler))
 		handlers.ServeHTTP(rr, req)
 
 		body, err := ioutil.ReadAll(rr.Body)
@@ -114,7 +114,7 @@ func Test_authHeader(t *testing.T) {
 	}
 
 	hdr := http.Header{}
-	hdr.Add(reqHeader, "Bearer booyah")
+	hdr.Add(reqHeader, "Bearer foobarbbq")
 
 	emptyHdr := http.Header{}
 	emptyHdrErr := errs.NewUnauthenticatedError(string(realm), errors.New("unauthenticated: no Authorization header sent"))
@@ -133,7 +133,7 @@ func Test_authHeader(t *testing.T) {
 		wantToken string
 		wantErr   error
 	}{
-		{"typical", args{realm: realm, header: hdr}, "booyah", nil},
+		{"typical", args{realm: realm, header: hdr}, "foobarbbq", nil},
 		{"no authorization header", args{realm: realm, header: emptyHdr}, "", emptyHdrErr},
 		{"no bearer scheme", args{realm: realm, header: noBearer}, "", noBearerErr},
 		{"spaces as token", args{realm: realm, header: hdrSpacesBearer}, "", spacesHdrErr},

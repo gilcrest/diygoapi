@@ -19,15 +19,15 @@ func NewMovieDBHelper(ctx context.Context, t *testing.T, ds datastore.Datastorer
 
 	m = newMovie(t)
 
-	defaultTransactor := NewDefaultTransactor(ds)
+	movieTransactor := NewTransactor(ds)
 
-	err := defaultTransactor.Create(ctx, m)
+	err := movieTransactor.Create(ctx, m)
 	if err != nil {
 		t.Fatalf("defaultTransactor.Create error = %v", err)
 	}
 
 	cleanup = func() {
-		err := defaultTransactor.Delete(ctx, m)
+		err := movieTransactor.Delete(ctx, m)
 		if err != nil {
 			t.Fatalf("t.Cleanup defaultTransactor.Delete error = %v", err)
 		}
@@ -40,7 +40,7 @@ func newMovie(t *testing.T) *movie.Movie {
 	t.Helper()
 
 	id := uuid.New()
-	rsg := random.DefaultStringGenerator{}
+	rsg := random.StringGenerator{}
 	extlID, err := rsg.CryptoString(15)
 	if err != nil {
 		t.Fatalf("random.CryptoString() error = %v", err)

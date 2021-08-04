@@ -19,7 +19,7 @@ import (
 	"github.com/gilcrest/go-api-basic/domain/logger"
 )
 
-func TestNewDefaultSelector(t *testing.T) {
+func TestNewSelector(t *testing.T) {
 	type args struct {
 		ds datastore.Datastorer
 	}
@@ -29,26 +29,26 @@ func TestNewDefaultSelector(t *testing.T) {
 	defaultDatastore, cleanup := datastoretest.NewDefaultDatastore(t, lgr)
 	t.Cleanup(cleanup)
 
-	defaultSelector := DefaultSelector{defaultDatastore}
+	selector := Selector{defaultDatastore}
 
 	tests := []struct {
 		name string
 		args args
-		want DefaultSelector
+		want Selector
 	}{
-		{"default datastore", args{ds: defaultDatastore}, defaultSelector},
+		{"default datastore", args{ds: defaultDatastore}, selector},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := NewDefaultSelector(tt.args.ds)
+			got := NewSelector(tt.args.ds)
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewDefaultSelector() got = %v, want %v", got, tt.want)
+				t.Errorf("NewSelector() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestDefaultSelector_FindAll(t *testing.T) {
+func TestSelector_FindAll(t *testing.T) {
 	type fields struct {
 		Datastorer datastore.Datastorer
 	}
@@ -79,7 +79,7 @@ func TestDefaultSelector_FindAll(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := &DefaultSelector{
+			d := &Selector{
 				Datastorer: tt.fields.Datastorer,
 			}
 			got, err := d.FindAll(tt.args.ctx)
@@ -92,7 +92,7 @@ func TestDefaultSelector_FindAll(t *testing.T) {
 	}
 }
 
-func TestDefaultSelector_FindByID(t *testing.T) {
+func TestSelector_FindByID(t *testing.T) {
 	c := qt.New(t)
 
 	type fields struct {
@@ -124,12 +124,12 @@ func TestDefaultSelector_FindByID(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := &DefaultSelector{
+			d := &Selector{
 				Datastorer: tt.fields.Datastorer,
 			}
 			got, err := d.FindByID(tt.args.ctx, tt.args.extlID)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("FindByID() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("FindMovieByID() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			ignoreFields := cmpopts.IgnoreFields(movie.Movie{},

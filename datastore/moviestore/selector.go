@@ -12,25 +12,19 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Selector reads records from the db
-type Selector interface {
-	FindByID(context.Context, string) (*movie.Movie, error)
-	FindAll(context.Context) ([]*movie.Movie, error)
-}
-
-// NewDefaultSelector is an initializer for DefaultSelector
-func NewDefaultSelector(ds datastore.Datastorer) DefaultSelector {
-	return DefaultSelector{ds}
-}
-
-// DefaultSelector is the database implementation for READ operations for a movie
-type DefaultSelector struct {
+// Selector is the database implementation for READ operations for a movie
+type Selector struct {
 	datastore.Datastorer
 }
 
+// NewSelector is an initializer for Selector
+func NewSelector(ds datastore.Datastorer) Selector {
+	return Selector{ds}
+}
+
 // FindByID returns a Movie struct to populate the response
-func (d DefaultSelector) FindByID(ctx context.Context, extlID string) (*movie.Movie, error) {
-	db := d.Datastorer.DB()
+func (s Selector) FindByID(ctx context.Context, extlID string) (*movie.Movie, error) {
+	db := s.Datastorer.DB()
 
 	// Prepare the sql statement using bind variables
 	row := db.QueryRowContext(ctx,
@@ -74,8 +68,8 @@ func (d DefaultSelector) FindByID(ctx context.Context, extlID string) (*movie.Mo
 }
 
 // FindAll returns a slice of Movie structs to populate the response
-func (d DefaultSelector) FindAll(ctx context.Context) ([]*movie.Movie, error) {
-	db := d.Datastorer.DB()
+func (s Selector) FindAll(ctx context.Context) ([]*movie.Movie, error) {
+	db := s.Datastorer.DB()
 
 	// use QueryContext to get back sql.Rows
 	rows, err := db.QueryContext(ctx,
@@ -98,7 +92,7 @@ func (d DefaultSelector) FindAll(ctx context.Context) ([]*movie.Movie, error) {
 	defer rows.Close()
 	// declare a slice of pointers to movie.Movie
 	// var s []*movie.Movie
-	s := make([]*movie.Movie, 0)
+	movies := make([]*movie.Movie, 0)
 
 	// iterate through each row and scan the results into
 	// a movie.Movie. Append movie.Movie to the slice
@@ -123,7 +117,7 @@ func (d DefaultSelector) FindAll(ctx context.Context) ([]*movie.Movie, error) {
 			return nil, errs.E(errs.Database, err)
 		}
 
-		s = append(s, m)
+		movies = append(movies, m)
 	}
 
 	// If the database is being written to ensure to check for Close
@@ -142,10 +136,10 @@ func (d DefaultSelector) FindAll(ctx context.Context) ([]*movie.Movie, error) {
 
 	// Determine if slice has not been populated. In this case, return
 	// an error as we should receive rows
-	if len(s) == 0 {
+	if len(movies) == 0 {
 		return nil, errs.E(errs.Validation, errors.New("No rows returned"))
 	}
 
 	// return the slice
-	return s, nil
+	return movies, nil
 }

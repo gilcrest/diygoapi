@@ -11,26 +11,19 @@ import (
 	"github.com/gilcrest/go-api-basic/domain/movie"
 )
 
-// Transactor performs DML actions against the DB
-type Transactor interface {
-	Create(ctx context.Context, m *movie.Movie) error
-	Update(ctx context.Context, m *movie.Movie) error
-	Delete(ctx context.Context, m *movie.Movie) error
-}
-
-// NewDefaultTransactor is an initializer for DefaultTransactor
-func NewDefaultTransactor(ds datastore.Datastorer) DefaultTransactor {
-	return DefaultTransactor{ds}
-}
-
-// DefaultTransactor is the default database implementation
+// Transactor is the default database implementation
 // for DML operations for a movie
-type DefaultTransactor struct {
+type Transactor struct {
 	datastorer datastore.Datastorer
 }
 
+// NewTransactor is an initializer for Transactor
+func NewTransactor(ds datastore.Datastorer) Transactor {
+	return Transactor{ds}
+}
+
 // Create inserts a record in the user table using a stored function
-func (dt DefaultTransactor) Create(ctx context.Context, m *movie.Movie) error {
+func (dt Transactor) Create(ctx context.Context, m *movie.Movie) error {
 	tx, err := dt.datastorer.BeginTx(ctx)
 	if err != nil {
 		return err
@@ -103,7 +96,7 @@ func (dt DefaultTransactor) Create(ctx context.Context, m *movie.Movie) error {
 
 // Update updates a record in the database using the external ID of
 // the Movie
-func (dt DefaultTransactor) Update(ctx context.Context, m *movie.Movie) error {
+func (dt Transactor) Update(ctx context.Context, m *movie.Movie) error {
 	tx, err := dt.datastorer.BeginTx(ctx)
 	if err != nil {
 		return err
@@ -180,7 +173,7 @@ returning movie_id, create_username, create_timestamp`)
 }
 
 // Delete removes the Movie record from the table
-func (dt DefaultTransactor) Delete(ctx context.Context, m *movie.Movie) error {
+func (dt Transactor) Delete(ctx context.Context, m *movie.Movie) error {
 	tx, err := dt.datastorer.BeginTx(ctx)
 	if err != nil {
 		return err

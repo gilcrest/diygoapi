@@ -1,4 +1,4 @@
-package handler
+package app
 
 import (
 	"bytes"
@@ -10,1023 +10,36 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rs/zerolog"
+	"github.com/gilcrest/go-api-basic/domain/movie"
+	"github.com/gilcrest/go-api-basic/domain/user/usertest"
+	"github.com/google/uuid"
+
+	"github.com/gilcrest/go-api-basic/domain/random"
+
+	"github.com/gilcrest/go-api-basic/datastore/moviestore"
+	"github.com/google/go-cmp/cmp/cmpopts"
+
+	"github.com/gilcrest/go-api-basic/datastore"
+	"github.com/gilcrest/go-api-basic/datastore/datastoretest"
+	"github.com/gilcrest/go-api-basic/datastore/pingstore"
+	"github.com/gilcrest/go-api-basic/service"
 
 	qt "github.com/frankban/quicktest"
-	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/google/uuid"
-	"github.com/gorilla/mux"
-	"github.com/rs/zerolog/hlog"
-
-	"github.com/gilcrest/go-api-basic/datastore/datastoretest"
-	"github.com/gilcrest/go-api-basic/datastore/moviestore"
 	"github.com/gilcrest/go-api-basic/domain/auth"
 	"github.com/gilcrest/go-api-basic/domain/auth/authtest"
 	"github.com/gilcrest/go-api-basic/domain/logger"
-	"github.com/gilcrest/go-api-basic/domain/movie"
-	"github.com/gilcrest/go-api-basic/domain/random"
-	"github.com/gilcrest/go-api-basic/domain/random/randomtest"
-	"github.com/gilcrest/go-api-basic/domain/user/usertest"
+	"github.com/rs/zerolog"
 )
-
-func TestDefaultMovieHandlers_CreateMovie(t *testing.T) {
-	t.Run("typical", func(t *testing.T) {
-		// set environment variable NO_DB to true if you don't
-		// have database connectivity and this test will be skipped
-		if os.Getenv("NO_DB") == "true" {
-			t.Skip("skipping db dependent test")
-		}
-
-		// initialize quickest checker
-		c := qt.New(t)
-
-		// initialize a zerolog Logger
-		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
-
-		mw := Middleware{
-			Logger:               lgr,
-			AccessTokenConverter: authtest.NewMockAccessTokenConverter(t),
-			Authorizer:           auth.DefaultAuthorizer{},
-		}
-
-		// initialize DefaultDatastore
-		ds, cleanup := datastoretest.NewDefaultDatastore(t, lgr)
-
-		// defer cleanup of the database until after the test is completed
-		t.Cleanup(cleanup)
-
-		// initialize the DefaultTransactor for the moviestore
-		transactor := moviestore.NewDefaultTransactor(ds)
-
-		// initialize the DefaultSelector for the moviestore
-		selector := moviestore.NewDefaultSelector(ds)
-
-		// initialize DefaultStringGenerator
-		randomStringGenerator := random.DefaultStringGenerator{}
-
-		// initialize DefaultMovieHandlers
-		dmh := DefaultMovieHandlers{
-			RandomStringGenerator: randomStringGenerator,
-			Transactor:            transactor,
-			Selector:              selector,
-		}
-
-		// setup request body using anonymous struct
-		requestBody := struct {
-			Title    string `json:"title"`
-			Rated    string `json:"rated"`
-			Released string `json:"release_date"`
-			RunTime  int    `json:"run_time"`
-			Director string `json:"director"`
-			Writer   string `json:"writer"`
-		}{
-			Title:    "Repo Man",
-			Rated:    "R",
-			Released: "1984-03-02T00:00:00Z",
-			RunTime:  92,
-			Director: "Alex Cox",
-			Writer:   "Alex Cox",
-		}
-
-		// encode request body into buffer variable
-		var buf bytes.Buffer
-		err := json.NewEncoder(&buf).Encode(requestBody)
-		if err != nil {
-			t.Fatalf("Encode() error = %v", err)
-		}
-
-		// setup path
-		path := pathPrefix + moviesV1PathRoot
-
-		// form request using httptest
-		req := httptest.NewRequest(http.MethodPost, path, &buf)
-
-		// add test access token
-		req.Header.Add("Authorization", auth.BearerTokenType+" abc123def1")
-
-		// create middleware to extract the request ID from
-		// the request context for testing comparison
-		var requestID string
-		requestIDMiddleware := func(h http.Handler) http.Handler {
-			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				rID, ok := hlog.IDFromRequest(r)
-				if !ok {
-					t.Fatal("Request ID not set to request context")
-				}
-				requestID = rID.String()
-
-				h.ServeHTTP(w, r)
-			})
-		}
-
-		// retrieve createMovieHandler HTTP handler
-		createMovieHandler := NewCreateMovieHandler(dmh)
-
-		// initialize ResponseRecorder to use with ServeHTTP as it
-		// satisfies ResponseWriter interface and records the response
-		// for testing
-		rr := httptest.NewRecorder()
-
-		// setup full handler chain needed for request
-		h := mw.LoggerChain().Extend(mw.CtxWithUserChain()).
-			Append(mw.AuthorizeUserHandler).
-			Append(mw.JSONContentTypeResponseHandler).
-			Append(requestIDMiddleware).
-			Then(createMovieHandler)
-
-		// call the handler ServeHTTP method to execute the request
-		// and record the response
-		h.ServeHTTP(rr, req)
-
-		// Assert that Response Status Code equals 200 (StatusOK)
-		c.Assert(rr.Code, qt.Equals, http.StatusOK)
-
-		// Assert that the request ID has been added to the response header
-		c.Assert(rr.Header().Get("Request-Id"), qt.Equals, requestID)
-
-		// createMovieResponse is the response struct for a Movie
-		// the response struct is tucked inside the handler, so we
-		// have to recreate it here
-		type createMovieResponse struct {
-			ExternalID      string `json:"external_id"`
-			Title           string `json:"title"`
-			Rated           string `json:"rated"`
-			Released        string `json:"release_date"`
-			RunTime         int    `json:"run_time"`
-			Director        string `json:"director"`
-			Writer          string `json:"writer"`
-			CreateUsername  string `json:"create_username"`
-			CreateTimestamp string `json:"create_timestamp"`
-			UpdateUsername  string `json:"update_username"`
-			UpdateTimestamp string `json:"update_timestamp"`
-		}
-
-		// retrieve the mock User that is used for testing
-		u, _ := mw.AccessTokenConverter.Convert(req.Context(), authtest.NewAccessToken(t))
-
-		// setup the expected response data
-		wantBody := createMovieResponse{
-			ExternalID:      "superRandomString",
-			Title:           "Repo Man",
-			Rated:           "R",
-			Released:        "1984-03-02T00:00:00Z",
-			RunTime:         92,
-			Director:        "Alex Cox",
-			Writer:          "Alex Cox",
-			CreateUsername:  u.Email,
-			CreateTimestamp: "",
-			UpdateUsername:  u.Email,
-			UpdateTimestamp: "",
-		}
-
-		// initialize createMovieResponse
-		gotBody := createMovieResponse{}
-
-		// decode the response body into gotBody
-		err = DecoderErr(json.NewDecoder(rr.Result().Body).Decode(&gotBody))
-		defer rr.Result().Body.Close()
-
-		// Assert that there is no error after decoding the response body
-		c.Assert(err, qt.IsNil)
-
-		// quicktest uses Google's cmp library for DeepEqual comparisons. It
-		// has some great options included with it. Below is an example of
-		// ignoring certain fields...
-		ignoreFields := cmpopts.IgnoreFields(createMovieResponse{},
-			"ExternalID", "CreateTimestamp", "UpdateTimestamp")
-
-		// Assert that the response body (gotBody) is as expected (wantBody).
-		// The External ID needs to be unique as the database unique index
-		// requires it. As a result, the ExternalID field is ignored as part
-		// of the comparison. The Create/Update timestamps are ignored as
-		// well, as they are always unique.
-		// I could put another interface into the domain logic to solve
-		// for the timestamps and may do so later, but it's probably not
-		// necessary
-		c.Assert(gotBody, qt.CmpEquals(ignoreFields), wantBody)
-	})
-
-	t.Run("mock DB", func(t *testing.T) {
-		// initialize quickest checker
-		c := qt.New(t)
-
-		// initialize a zerolog Logger
-		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
-
-		// initialize MockTransactor for the moviestore
-		mockTransactor := newMockTransactor(t)
-
-		// initialize MockSelector for the moviestore
-		mockSelector := newMockSelector(t)
-
-		mw := Middleware{
-			Logger:               lgr,
-			AccessTokenConverter: authtest.NewMockAccessTokenConverter(t),
-			Authorizer:           auth.DefaultAuthorizer{},
-		}
-
-		// initialize DefaultMovieHandlers
-		dmh := DefaultMovieHandlers{
-			RandomStringGenerator: randomtest.NewMockStringGenerator(t),
-			Transactor:            mockTransactor,
-			Selector:              mockSelector,
-		}
-
-		// setup request body using anonymous struct
-		requestBody := struct {
-			Title    string `json:"title"`
-			Rated    string `json:"rated"`
-			Released string `json:"release_date"`
-			RunTime  int    `json:"run_time"`
-			Director string `json:"director"`
-			Writer   string `json:"writer"`
-		}{
-			Title:    "Repo Man",
-			Rated:    "R",
-			Released: "1984-03-02T00:00:00Z",
-			RunTime:  92,
-			Director: "Alex Cox",
-			Writer:   "Alex Cox",
-		}
-
-		// encode request body into buffer variable
-		var buf bytes.Buffer
-		err := json.NewEncoder(&buf).Encode(requestBody)
-		if err != nil {
-			t.Fatalf("Encode() error = %v", err)
-		}
-
-		// setup path
-		path := pathPrefix + moviesV1PathRoot
-
-		// form request using httptest
-		req := httptest.NewRequest(http.MethodPost, path, &buf)
-
-		// add test access token
-		req.Header.Add("Authorization", auth.BearerTokenType+" abc123def1")
-
-		// create middleware to extract the request ID from
-		// the request context for testing comparison
-		var requestID string
-		requestIDMiddleware := func(h http.Handler) http.Handler {
-			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				rID, ok := hlog.IDFromRequest(r)
-				if !ok {
-					t.Fatal("Request ID not set to request context")
-				}
-				requestID = rID.String()
-
-				h.ServeHTTP(w, r)
-			})
-		}
-
-		// retrieve createMovieHandler HTTP handler
-		createMovieHandler := NewCreateMovieHandler(dmh)
-
-		// initialize ResponseRecorder to use with ServeHTTP as it
-		// satisfies ResponseWriter interface and records the response
-		// for testing
-		rr := httptest.NewRecorder()
-
-		h := mw.LoggerChain().Extend(mw.CtxWithUserChain()).
-			Append(mw.AuthorizeUserHandler).
-			Append(mw.JSONContentTypeResponseHandler).
-			Append(requestIDMiddleware).
-			Then(createMovieHandler)
-
-		// call the handler ServeHTTP method to execute the request
-		// and record the response
-		h.ServeHTTP(rr, req)
-
-		// Assert that Response Status Code equals 200 (StatusOK)
-		c.Assert(rr.Code, qt.Equals, http.StatusOK)
-
-		// Assert that the request ID has been added to the response header
-		c.Assert(rr.Header().Get("Request-Id"), qt.Equals, requestID)
-
-		// createMovieResponse is the response struct for a Movie
-		// the response struct is tucked inside the handler, so we
-		// have to recreate it here
-		type createMovieResponse struct {
-			ExternalID      string `json:"external_id"`
-			Title           string `json:"title"`
-			Rated           string `json:"rated"`
-			Released        string `json:"release_date"`
-			RunTime         int    `json:"run_time"`
-			Director        string `json:"director"`
-			Writer          string `json:"writer"`
-			CreateUsername  string `json:"create_username"`
-			CreateTimestamp string `json:"create_timestamp"`
-			UpdateUsername  string `json:"update_username"`
-			UpdateTimestamp string `json:"update_timestamp"`
-		}
-
-		// retrieve the mock User that is used for testing
-		u, _ := mw.AccessTokenConverter.Convert(req.Context(), authtest.NewAccessToken(t))
-
-		// setup the expected response data
-		wantBody := createMovieResponse{
-			ExternalID:      "superRandomString",
-			Title:           "Repo Man",
-			Rated:           "R",
-			Released:        "1984-03-02T00:00:00Z",
-			RunTime:         92,
-			Director:        "Alex Cox",
-			Writer:          "Alex Cox",
-			CreateUsername:  u.Email,
-			CreateTimestamp: time.Date(2008, 1, 8, 06, 54, 0, 0, time.UTC).String(),
-			UpdateUsername:  u.Email,
-			UpdateTimestamp: time.Date(2008, 1, 8, 06, 54, 0, 0, time.UTC).String(),
-		}
-
-		// initialize createMovieResponse
-		gotBody := createMovieResponse{}
-
-		// decode the response body into gotBody
-		err = DecoderErr(json.NewDecoder(rr.Result().Body).Decode(&gotBody))
-		defer rr.Result().Body.Close()
-
-		// Assert that there is no error after decoding the response body
-		c.Assert(err, qt.IsNil)
-
-		// quicktest uses Google's cmp library for DeepEqual comparisons. It
-		// has some great options included with it. Below is an example of
-		// ignoring certain fields...
-		ignoreFields := cmpopts.IgnoreFields(createMovieResponse{},
-			"CreateTimestamp", "UpdateTimestamp")
-
-		// Assert that the response body (gotBody) is as expected (wantBody).
-		// The Create/Update timestamps are ignored as they are always unique.
-		// I could put another interface into the domain logic to solve
-		// for this and may do so later.
-		c.Assert(gotBody, qt.CmpEquals(ignoreFields), wantBody)
-	})
-}
-
-func TestDefaultMovieHandlers_UpdateMovie(t *testing.T) {
-	t.Run("typical", func(t *testing.T) {
-		// set environment variable NO_DB to skip database
-		// dependent tests
-		if os.Getenv("NO_DB") == "true" {
-			t.Skip("skipping db dependent test")
-		}
-
-		// initialize quickest checker
-		c := qt.New(t)
-
-		// initialize a zerolog Logger
-		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
-
-		mw := Middleware{
-			Logger:               lgr,
-			AccessTokenConverter: authtest.NewMockAccessTokenConverter(t),
-			Authorizer:           auth.DefaultAuthorizer{},
-		}
-
-		// initialize DefaultDatastore
-		ds, cleanup := datastoretest.NewDefaultDatastore(t, lgr)
-
-		// defer cleanup of the database until after the test is completed
-		t.Cleanup(cleanup)
-
-		// create a test movie in the database
-		m, movieCleanup := moviestore.NewMovieDBHelper(context.Background(), t, ds)
-
-		// defer cleanup of movie record until after the test is completed
-		t.Cleanup(movieCleanup)
-
-		// initialize the DefaultTransactor for the moviestore
-		transactor := moviestore.NewDefaultTransactor(ds)
-
-		// initialize the DefaultSelector for the moviestore
-		selector := moviestore.NewDefaultSelector(ds)
-
-		// initialize DefaultStringGenerator
-		randomStringGenerator := random.DefaultStringGenerator{}
-
-		// initialize DefaultMovieHandlers
-		dmh := DefaultMovieHandlers{
-			RandomStringGenerator: randomStringGenerator,
-			Transactor:            transactor,
-			Selector:              selector,
-		}
-
-		// setup request body using anonymous struct
-		requestBody := struct {
-			Title    string `json:"title"`
-			Rated    string `json:"rated"`
-			Released string `json:"release_date"`
-			RunTime  int    `json:"run_time"`
-			Director string `json:"director"`
-			Writer   string `json:"writer"`
-		}{
-			Title:    "Repo Man",
-			Rated:    "R",
-			Released: "1984-03-02T00:00:00Z",
-			RunTime:  92,
-			Director: "Alex Cox",
-			Writer:   "Alex Cox",
-		}
-
-		// encode request body into buffer variable
-		var buf bytes.Buffer
-		err := json.NewEncoder(&buf).Encode(requestBody)
-		if err != nil {
-			t.Fatalf("Encode() error = %v", err)
-		}
-
-		// setup path
-		path := pathPrefix + moviesV1PathRoot + "/" + m.ExternalID
-
-		// form request using httptest
-		req := httptest.NewRequest(http.MethodPost, path, &buf)
-
-		// add test access token
-		req.Header.Add("Authorization", auth.BearerTokenType+" abc123def1")
-
-		// create middleware to extract the request ID from
-		// the request context for testing comparison
-		var requestID string
-		requestIDMiddleware := func(h http.Handler) http.Handler {
-			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				rID, ok := hlog.IDFromRequest(r)
-				if !ok {
-					t.Fatal("Request ID not set to request context")
-				}
-				requestID = rID.String()
-
-				h.ServeHTTP(w, r)
-			})
-		}
-
-		// retrieve createMovieHandler HTTP handler
-		updateMovieHandler := NewUpdateMovieHandler(dmh)
-
-		// initialize ResponseRecorder to use with ServeHTTP as it
-		// satisfies ResponseWriter interface and records the response
-		// for testing
-		rr := httptest.NewRecorder()
-
-		h := mw.LoggerChain().Extend(mw.CtxWithUserChain()).
-			Append(mw.AuthorizeUserHandler).
-			Append(mw.JSONContentTypeResponseHandler).
-			Append(requestIDMiddleware).
-			Then(updateMovieHandler)
-
-		// handler needs path variable, so we need to use mux router
-		router := mux.NewRouter()
-		// setup the expected path and route variable
-		router.Handle(pathPrefix+moviesV1PathRoot+"/{extlID}", h)
-		// call the router ServeHTTP method to execute the request
-		// and record the response
-		router.ServeHTTP(rr, req)
-
-		// Assert that Response Status Code equals 200 (StatusOK)
-		c.Assert(rr.Code, qt.Equals, http.StatusOK)
-
-		// Assert that the request ID has been added to the response header
-		c.Assert(rr.Header().Get("Request-Id"), qt.Equals, requestID)
-
-		// updateMovieResponse is the response struct for updating a
-		// Movie. The response struct is tucked inside the handler,
-		// so we have to recreate it here
-		type updateMovieResponse struct {
-			ExternalID      string `json:"external_id"`
-			Title           string `json:"title"`
-			Rated           string `json:"rated"`
-			Released        string `json:"release_date"`
-			RunTime         int    `json:"run_time"`
-			Director        string `json:"director"`
-			Writer          string `json:"writer"`
-			CreateUsername  string `json:"create_username"`
-			CreateTimestamp string `json:"create_timestamp"`
-			UpdateUsername  string `json:"update_username"`
-			UpdateTimestamp string `json:"update_timestamp"`
-		}
-
-		// retrieve the mock User that is used for testing
-		u, _ := mw.AccessTokenConverter.Convert(req.Context(), authtest.NewAccessToken(t))
-
-		// setup the expected response data
-		wantBody := updateMovieResponse{
-			//ExternalID:      "superRandomString",
-			Title:          "Repo Man",
-			Rated:          "R",
-			Released:       "1984-03-02T00:00:00Z",
-			RunTime:        92,
-			Director:       "Alex Cox",
-			Writer:         "Alex Cox",
-			CreateUsername: u.Email,
-			//CreateTimestamp: "",
-			UpdateUsername: u.Email,
-			//UpdateTimestamp: "",
-		}
-
-		// initialize updateMovieResponse
-		gotBody := updateMovieResponse{}
-
-		// decode the response body into gotBody
-		err = DecoderErr(json.NewDecoder(rr.Result().Body).Decode(&gotBody))
-		defer rr.Result().Body.Close()
-
-		// Assert that there is no error after decoding the response body
-		c.Assert(err, qt.IsNil)
-
-		// quicktest uses Google's cmp library for DeepEqual comparisons. It
-		// has some great options included with it. Below is an example of
-		// ignoring certain fields...
-		ignoreFields := cmpopts.IgnoreFields(updateMovieResponse{},
-			"ExternalID", "CreateTimestamp", "UpdateTimestamp")
-
-		// Assert that the response body (gotBody) is as expected (wantBody).
-		// The External ID needs to be unique as the database unique index
-		// requires it. As a result, the ExternalID field is ignored as part
-		// of the comparison. The Create/Update timestamps are ignored as
-		// well, as they are always unique.
-		// I could put another interface into the domain logic to solve
-		// for the timestamps and may do so later, but it's probably not
-		// necessary
-		c.Assert(gotBody, qt.CmpEquals(ignoreFields), wantBody)
-	})
-}
-
-func TestDefaultMovieHandlers_DeleteMovie(t *testing.T) {
-	t.Run("typical", func(t *testing.T) {
-		// set environment variable NO_DB to skip database
-		// dependent tests
-		if os.Getenv("NO_DB") == "true" {
-			t.Skip("skipping db dependent test")
-		}
-
-		// initialize quickest checker
-		c := qt.New(t)
-
-		// initialize a zerolog Logger
-		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
-
-		mw := Middleware{
-			Logger:               lgr,
-			AccessTokenConverter: authtest.NewMockAccessTokenConverter(t),
-			Authorizer:           auth.DefaultAuthorizer{},
-		}
-
-		// initialize DefaultDatastore
-		ds, cleanup := datastoretest.NewDefaultDatastore(t, lgr)
-
-		// defer cleanup of the database until after the test is completed
-		t.Cleanup(cleanup)
-
-		// create a test movie in the database, do not use cleanup
-		// function as this test should delete the movie
-		m, _ := moviestore.NewMovieDBHelper(context.Background(), t, ds)
-
-		// initialize the DefaultTransactor for the moviestore
-		transactor := moviestore.NewDefaultTransactor(ds)
-
-		// initialize the DefaultSelector for the moviestore
-		selector := moviestore.NewDefaultSelector(ds)
-
-		// initialize DefaultStringGenerator
-		randomStringGenerator := random.DefaultStringGenerator{}
-
-		// initialize DefaultMovieHandlers
-		dmh := DefaultMovieHandlers{
-			RandomStringGenerator: randomStringGenerator,
-			Transactor:            transactor,
-			Selector:              selector,
-		}
-
-		// setup path
-		path := pathPrefix + moviesV1PathRoot + "/" + m.ExternalID
-
-		// form request using httptest
-		req := httptest.NewRequest(http.MethodPost, path, nil)
-
-		// add test access token
-		req.Header.Add("Authorization", auth.BearerTokenType+" abc123def1")
-
-		// create middleware to extract the request ID from
-		// the request context for testing comparison
-		var requestID string
-		requestIDMiddleware := func(h http.Handler) http.Handler {
-			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				rID, ok := hlog.IDFromRequest(r)
-				if !ok {
-					t.Fatal("Request ID not set to request context")
-				}
-				requestID = rID.String()
-
-				h.ServeHTTP(w, r)
-			})
-		}
-
-		// retrieve createMovieHandler HTTP handler
-		deleteMovieHandler := NewDeleteMovieHandler(dmh)
-
-		// initialize ResponseRecorder to use with ServeHTTP as it
-		// satisfies ResponseWriter interface and records the response
-		// for testing
-		rr := httptest.NewRecorder()
-
-		h := mw.LoggerChain().Extend(mw.CtxWithUserChain()).
-			Append(mw.AuthorizeUserHandler).
-			Append(mw.JSONContentTypeResponseHandler).
-			Append(requestIDMiddleware).
-			Then(deleteMovieHandler)
-
-		// handler needs path variable, so we need to use mux router
-		router := mux.NewRouter()
-		// setup the expected path and route variable
-		router.Handle(pathPrefix+moviesV1PathRoot+"/{extlID}", h)
-		// call the router ServeHTTP method to execute the request
-		// and record the response
-		router.ServeHTTP(rr, req)
-
-		// Assert that Response Status Code equals 200 (StatusOK)
-		c.Assert(rr.Code, qt.Equals, http.StatusOK)
-
-		// Assert that the request ID has been added to the response header
-		c.Assert(rr.Header().Get("Request-Id"), qt.Equals, requestID)
-
-		// deleteMovieResponse is the response struct for deleting a
-		// Movie. The response struct is tucked inside the handler,
-		// so we have to recreate it here
-		type deleteMovieResponse struct {
-			ExternalID string `json:"extl_id"`
-			Deleted    bool   `json:"deleted"`
-		}
-
-		// setup the expected response data
-		wantBody := deleteMovieResponse{
-			ExternalID: m.ExternalID,
-			Deleted:    true,
-		}
-
-		// initialize deleteMovieResponse
-		gotBody := deleteMovieResponse{}
-
-		// decode the response body into gotBody
-		err := DecoderErr(json.NewDecoder(rr.Result().Body).Decode(&gotBody))
-		defer rr.Result().Body.Close()
-
-		// Assert that there is no error after decoding the response body
-		c.Assert(err, qt.IsNil)
-
-		// Assert that the response body (gotBody) is as expected (wantBody).
-		// The External ID needs to be unique as the database unique index
-		// requires it. As a result, the ExternalID field is ignored as part
-		// of the comparison. The Create/Update timestamps are ignored as
-		// well, as they are always unique.
-		// I could put another interface into the domain logic to solve
-		// for the timestamps and may do so later, but it's probably not
-		// necessary
-		c.Assert(gotBody, qt.Equals, wantBody)
-	})
-}
-
-func TestDefaultMovieHandlers_FindByID(t *testing.T) {
-	t.Run("typical", func(t *testing.T) {
-		// set environment variable NO_DB to skip database
-		// dependent tests
-		if os.Getenv("NO_DB") == "true" {
-			t.Skip("skipping db dependent test")
-		}
-
-		// initialize quickest checker
-		c := qt.New(t)
-
-		// initialize a zerolog Logger
-		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
-
-		mw := Middleware{
-			Logger:               lgr,
-			AccessTokenConverter: authtest.NewMockAccessTokenConverter(t),
-			Authorizer:           auth.DefaultAuthorizer{},
-		}
-
-		// initialize DefaultDatastore
-		ds, cleanup := datastoretest.NewDefaultDatastore(t, lgr)
-
-		// defer cleanup of the database until after the test is completed
-		t.Cleanup(cleanup)
-
-		// create a test movie in the database
-		m, movieCleanup := moviestore.NewMovieDBHelper(context.Background(), t, ds)
-
-		// defer cleanup of movie record until after the test is completed
-		t.Cleanup(movieCleanup)
-
-		// initialize the DefaultTransactor for the moviestore
-		transactor := moviestore.NewDefaultTransactor(ds)
-
-		// initialize the DefaultSelector for the moviestore
-		selector := moviestore.NewDefaultSelector(ds)
-
-		// initialize DefaultStringGenerator
-		randomStringGenerator := random.DefaultStringGenerator{}
-
-		// initialize DefaultMovieHandlers
-		dmh := DefaultMovieHandlers{
-			RandomStringGenerator: randomStringGenerator,
-			Transactor:            transactor,
-			Selector:              selector,
-		}
-
-		// setup request body using anonymous struct
-		requestBody := struct {
-			Title    string `json:"title"`
-			Rated    string `json:"rated"`
-			Released string `json:"release_date"`
-			RunTime  int    `json:"run_time"`
-			Director string `json:"director"`
-			Writer   string `json:"writer"`
-		}{
-			Title:    "Repo Man",
-			Rated:    "R",
-			Released: "1984-03-02T00:00:00Z",
-			RunTime:  92,
-			Director: "Alex Cox",
-			Writer:   "Alex Cox",
-		}
-
-		// encode request body into buffer variable
-		var buf bytes.Buffer
-		err := json.NewEncoder(&buf).Encode(requestBody)
-		if err != nil {
-			t.Fatalf("Encode() error = %v", err)
-		}
-
-		// setup path
-		path := pathPrefix + moviesV1PathRoot + "/" + m.ExternalID
-
-		// form request using httptest
-		req := httptest.NewRequest(http.MethodPost, path, &buf)
-
-		// add test access token
-		req.Header.Add("Authorization", auth.BearerTokenType+" abc123def1")
-
-		// create middleware to extract the request ID from
-		// the request context for testing comparison
-		var requestID string
-		requestIDMiddleware := func(h http.Handler) http.Handler {
-			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				rID, ok := hlog.IDFromRequest(r)
-				if !ok {
-					t.Fatal("Request ID not set to request context")
-				}
-				requestID = rID.String()
-
-				h.ServeHTTP(w, r)
-			})
-		}
-
-		// retrieve createMovieHandler HTTP handler
-		findMovieByIDHandler := NewFindMovieByIDHandler(dmh)
-
-		// initialize ResponseRecorder to use with ServeHTTP as it
-		// satisfies ResponseWriter interface and records the response
-		// for testing
-		rr := httptest.NewRecorder()
-
-		h := mw.LoggerChain().Extend(mw.CtxWithUserChain()).
-			Append(mw.AuthorizeUserHandler).
-			Append(mw.JSONContentTypeResponseHandler).
-			Append(requestIDMiddleware).
-			Then(findMovieByIDHandler)
-
-		// handler needs path variable, so we need to use mux router
-		router := mux.NewRouter()
-		// setup the expected path and route variable
-		router.Handle(pathPrefix+moviesV1PathRoot+"/{extlID}", h)
-		// call the router ServeHTTP method to execute the request
-		// and record the response
-		router.ServeHTTP(rr, req)
-
-		// Assert that Response Status Code equals 200 (StatusOK)
-		c.Assert(rr.Code, qt.Equals, http.StatusOK)
-
-		// Assert that the request ID has been added to the response header
-		c.Assert(rr.Header().Get("Request-Id"), qt.Equals, requestID)
-
-		// movieResponse is the response struct for a
-		// Movie. The response struct is tucked inside the handler,
-		// so we have to recreate it here
-		type movieResponse struct {
-			ExternalID      string `json:"external_id"`
-			Title           string `json:"title"`
-			Rated           string `json:"rated"`
-			Released        string `json:"release_date"`
-			RunTime         int    `json:"run_time"`
-			Director        string `json:"director"`
-			Writer          string `json:"writer"`
-			CreateUsername  string `json:"create_username"`
-			CreateTimestamp string `json:"create_timestamp"`
-			UpdateUsername  string `json:"update_username"`
-			UpdateTimestamp string `json:"update_timestamp"`
-		}
-
-		// retrieve the mock User that is used for testing
-		u, _ := mw.AccessTokenConverter.Convert(req.Context(), authtest.NewAccessToken(t))
-
-		// setup the expected response data
-		wantBody := movieResponse{
-			ExternalID:     m.ExternalID,
-			Title:          "Repo Man",
-			Rated:          "R",
-			Released:       "1984-03-02T00:00:00Z",
-			RunTime:        92,
-			Director:       "Alex Cox",
-			Writer:         "Alex Cox",
-			CreateUsername: u.Email,
-			//CreateTimestamp: "",
-			UpdateUsername: u.Email,
-			//UpdateTimestamp: "",
-		}
-
-		// initialize movieResponse
-		gotBody := movieResponse{}
-
-		// decode the response body into gotBody
-		err = DecoderErr(json.NewDecoder(rr.Result().Body).Decode(&gotBody))
-		defer rr.Result().Body.Close()
-
-		// Assert that there is no error after decoding the response body
-		c.Assert(err, qt.IsNil)
-
-		// quicktest uses Google's cmp library for DeepEqual comparisons. It
-		// has some great options included with it. Below is an example of
-		// ignoring certain fields...
-		ignoreFields := cmpopts.IgnoreFields(movieResponse{},
-			"CreateTimestamp", "UpdateTimestamp")
-
-		// Assert that the response body (gotBody) is as expected (wantBody).
-		// The External ID needs to be unique as the database unique index
-		// requires it. As a result, the ExternalID field is ignored as part
-		// of the comparison. The Create/Update timestamps are ignored as
-		// well, as they are always unique.
-		// I could put another interface into the domain logic to solve
-		// for the timestamps and may do so later, but it's probably not
-		// necessary
-		c.Assert(gotBody, qt.CmpEquals(ignoreFields), wantBody)
-	})
-}
-
-func TestDefaultMovieHandlers_FindAll(t *testing.T) {
-	t.Run("typical", func(t *testing.T) {
-		// set environment variable NO_DB to skip database
-		// dependent tests
-		if os.Getenv("NO_DB") == "true" {
-			t.Skip("skipping db dependent test")
-		}
-
-		// initialize quickest checker
-		c := qt.New(t)
-
-		// initialize a zerolog Logger
-		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
-
-		mw := Middleware{
-			Logger:               lgr,
-			AccessTokenConverter: authtest.NewMockAccessTokenConverter(t),
-			Authorizer:           auth.DefaultAuthorizer{},
-		}
-
-		// initialize MockTransactor for the moviestore
-		mockTransactor := newMockTransactor(t)
-
-		// initialize MockSelector for the moviestore
-		mockSelector := newMockSelector(t)
-
-		// initialize DefaultStringGenerator
-		randomStringGenerator := random.DefaultStringGenerator{}
-
-		// initialize DefaultMovieHandlers
-		dmh := DefaultMovieHandlers{
-			RandomStringGenerator: randomStringGenerator,
-			Transactor:            mockTransactor,
-			Selector:              mockSelector,
-		}
-
-		// setup path
-		path := pathPrefix + moviesV1PathRoot
-
-		// form request using httptest
-		req := httptest.NewRequest(http.MethodPost, path, nil)
-
-		// add test access token
-		req.Header.Add("Authorization", auth.BearerTokenType+" abc123def1")
-
-		// create middleware to extract the request ID from
-		// the request context for testing comparison
-		var requestID string
-		requestIDMiddleware := func(h http.Handler) http.Handler {
-			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				rID, ok := hlog.IDFromRequest(r)
-				if !ok {
-					t.Fatal("Request ID not set to request context")
-				}
-				requestID = rID.String()
-
-				h.ServeHTTP(w, r)
-			})
-		}
-
-		// retrieve createMovieHandler HTTP handler
-		findAllMoviesHandler := NewFindAllMoviesHandler(dmh)
-
-		// initialize ResponseRecorder to use with ServeHTTP as it
-		// satisfies ResponseWriter interface and records the response
-		// for testing
-		rr := httptest.NewRecorder()
-
-		h := mw.LoggerChain().Extend(mw.CtxWithUserChain()).
-			Append(mw.AuthorizeUserHandler).
-			Append(mw.JSONContentTypeResponseHandler).
-			Append(requestIDMiddleware).
-			Then(findAllMoviesHandler)
-
-		// handler needs path variable, so we need to use mux router
-		router := mux.NewRouter()
-		// setup the expected path and route variable
-		router.Handle(pathPrefix+moviesV1PathRoot, h)
-		// call the router ServeHTTP method to execute the request
-		// and record the response
-		router.ServeHTTP(rr, req)
-
-		// Assert that Response Status Code equals 200 (StatusOK)
-		c.Assert(rr.Code, qt.Equals, http.StatusOK)
-
-		// Assert that the request ID has been added to the response header
-		c.Assert(rr.Header().Get("Request-Id"), qt.Equals, requestID)
-
-		// movieResponse is the response struct for a
-		// Movie. The response struct is tucked inside the handler,
-		// so we have to recreate it here
-		type movieResponse struct {
-			ExternalID      string `json:"external_id"`
-			Title           string `json:"title"`
-			Rated           string `json:"rated"`
-			Released        string `json:"release_date"`
-			RunTime         int    `json:"run_time"`
-			Director        string `json:"director"`
-			Writer          string `json:"writer"`
-			CreateUsername  string `json:"create_username"`
-			CreateTimestamp string `json:"create_timestamp"`
-			UpdateUsername  string `json:"update_username"`
-			UpdateTimestamp string `json:"update_timestamp"`
-		}
-
-		// get mocked slice of movies that should be returned
-		movies, err := mockSelector.FindAll(req.Context())
-		if err != nil {
-			t.Fatalf("mockSelector.FindAll error = %v", err)
-		}
-
-		var smr []movieResponse
-		for _, m := range movies {
-			mr := movieResponse{
-				ExternalID:      m.ExternalID,
-				Title:           m.Title,
-				Rated:           m.Rated,
-				Released:        m.Released.Format(time.RFC3339),
-				RunTime:         m.RunTime,
-				Director:        m.Director,
-				Writer:          m.Writer,
-				CreateUsername:  m.CreateUser.Email,
-				CreateTimestamp: m.CreateTime.Format(time.RFC3339),
-				UpdateUsername:  m.UpdateUser.Email,
-				UpdateTimestamp: m.UpdateTime.Format(time.RFC3339),
-			}
-			smr = append(smr, mr)
-		}
-
-		// setup the expected response data
-		wantBody := smr
-
-		// initialize a slice of movieResponse{}
-		gotBody := []movieResponse{}
-
-		// decode the response body into gotBody
-		err = DecoderErr(json.NewDecoder(rr.Result().Body).Decode(&gotBody))
-		defer rr.Result().Body.Close()
-
-		// Assert that there is no error after decoding the response body
-		c.Assert(err, qt.IsNil)
-
-		// Assert that the response body (gotBody) is as expected (wantBody).
-		c.Assert(gotBody, qt.DeepEquals, wantBody)
-	})
-}
-
-// NewMockTransactor is an initializer for MockTransactor
-func newMockTransactor(t *testing.T) mockTransactor {
-	return mockTransactor{t: t}
-}
 
 // MockTransactor is a mock which satisfies the moviestore.Transactor
 // interface
 type mockTransactor struct {
 	t *testing.T
+}
+
+// NewMockTransactor is an initializer for MockTransactor
+func newMockTransactor(t *testing.T) mockTransactor {
+	return mockTransactor{t: t}
 }
 
 func (mt mockTransactor) Create(ctx context.Context, m *movie.Movie) error {
@@ -1041,15 +54,15 @@ func (mt mockTransactor) Delete(ctx context.Context, m *movie.Movie) error {
 	return nil
 }
 
-// NewMockSelector is an initializer for MockSelector
-func newMockSelector(t *testing.T) mockSelector {
-	return mockSelector{t: t}
-}
-
 // MockSelector is a mock which satisfies the moviestore.Selector
 // interface
 type mockSelector struct {
 	t *testing.T
+}
+
+// NewMockSelector is an initializer for MockSelector
+func newMockSelector(t *testing.T) mockSelector {
+	return mockSelector{t: t}
 }
 
 // FindByID mocks finding a movie by External ID
@@ -1116,4 +129,991 @@ func (ms mockSelector) FindAll(ctx context.Context) ([]*movie.Movie, error) {
 	}
 
 	return []*movie.Movie{m1, m2}, nil
+}
+
+func TestHandleMovieCreate(t *testing.T) {
+	t.Run("typical", func(t *testing.T) {
+		// set environment variable NO_DB to true if you don't
+		// have database connectivity and this test will be skipped
+		if os.Getenv("NO_DB") == "true" {
+			t.Skip("skipping db dependent test")
+		}
+
+		// initialize quickest checker
+		c := qt.New(t)
+
+		// setup Server
+		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+		rtr := NewMuxRouter()
+		driver := NewDriver()
+		params := NewServerParams(lgr, driver)
+		s, err := NewServer(rtr, params)
+		c.Assert(err, qt.IsNil)
+		s.AccessTokenConverter = authtest.NewMockAccessTokenConverter(t)
+		s.Authorizer = auth.DefaultAuthorizer{}
+
+		// initialize DefaultDatastore
+		ds, cleanup := datastoretest.NewDefaultDatastore(t, lgr)
+
+		// defer cleanup of the database until after the test is completed
+		t.Cleanup(cleanup)
+
+		// initialize the DefaultTransactor for the moviestore
+		movieTransactor := moviestore.NewTransactor(ds)
+
+		// initialize DefaultStringGenerator
+		randomStringGenerator := random.StringGenerator{}
+		s.CreateMovieService = service.NewCreateMovieService(randomStringGenerator, movieTransactor)
+
+		// setup request body using anonymous struct
+		requestBody := struct {
+			Title    string `json:"title"`
+			Rated    string `json:"rated"`
+			Released string `json:"release_date"`
+			RunTime  int    `json:"run_time"`
+			Director string `json:"director"`
+			Writer   string `json:"writer"`
+		}{
+			Title:    "Repo Man",
+			Rated:    "R",
+			Released: "1984-03-02T00:00:00Z",
+			RunTime:  92,
+			Director: "Alex Cox",
+			Writer:   "Alex Cox",
+		}
+
+		// encode request body into buffer variable
+		var buf bytes.Buffer
+		err = json.NewEncoder(&buf).Encode(requestBody)
+		if err != nil {
+			t.Fatalf("Encode() error = %v", err)
+		}
+
+		// setup path
+		path := pathPrefix + moviesV1PathRoot
+
+		// form request using httptest
+		req := httptest.NewRequest(http.MethodPost, path, &buf)
+
+		// add test access token
+		req.Header.Add("Authorization", auth.BearerTokenType+" abc123def1")
+
+		// add application/JSON header to request
+		req.Header.Add(contentTypeHeaderKey, appJSONContentTypeHeaderVal)
+
+		// initialize ResponseRecorder to use with ServeHTTP as it
+		// satisfies ResponseWriter interface and records the response
+		// for testing
+		rr := httptest.NewRecorder()
+
+		// call the router ServeHTTP method to execute the request
+		// and record the response
+		s.router.ServeHTTP(rr, req)
+
+		// Assert that Response Status Code equals 200 (StatusOK)
+		c.Assert(rr.Code, qt.Equals, http.StatusOK)
+
+		// createMovieResponse is the response struct for a Movie
+		// the response struct is tucked inside the handler, so we
+		// have to recreate it here
+		type createMovieResponse struct {
+			ExternalID      string `json:"external_id"`
+			Title           string `json:"title"`
+			Rated           string `json:"rated"`
+			Released        string `json:"release_date"`
+			RunTime         int    `json:"run_time"`
+			Director        string `json:"director"`
+			Writer          string `json:"writer"`
+			CreateUsername  string `json:"create_username"`
+			CreateTimestamp string `json:"create_timestamp"`
+			UpdateUsername  string `json:"update_username"`
+			UpdateTimestamp string `json:"update_timestamp"`
+		}
+
+		// retrieve the mock User that is used for testing
+		u, _ := s.AccessTokenConverter.Convert(req.Context(), authtest.NewAccessToken(t))
+
+		// setup the expected response data
+		wantBody := createMovieResponse{
+			ExternalID:      "superRandomString",
+			Title:           "Repo Man",
+			Rated:           "R",
+			Released:        "1984-03-02T00:00:00Z",
+			RunTime:         92,
+			Director:        "Alex Cox",
+			Writer:          "Alex Cox",
+			CreateUsername:  u.Email,
+			CreateTimestamp: "",
+			UpdateUsername:  u.Email,
+			UpdateTimestamp: "",
+		}
+
+		// initialize createMovieResponse
+		gotBody := createMovieResponse{}
+
+		// decode the response body into gotBody
+		err = decoderErr(json.NewDecoder(rr.Result().Body).Decode(&gotBody))
+		defer rr.Result().Body.Close()
+
+		// Assert that there is no error after decoding the response body
+		c.Assert(err, qt.IsNil)
+
+		// quicktest uses Google's cmp library for DeepEqual comparisons. It
+		// has some great options included with it. Below is an example of
+		// ignoring certain fields...
+		ignoreFields := cmpopts.IgnoreFields(createMovieResponse{},
+			"ExternalID", "CreateTimestamp", "UpdateTimestamp")
+
+		// Assert that the response body (gotBody) is as expected (wantBody).
+		// The External ID needs to be unique as the database unique index
+		// requires it. As a result, the ExternalID field is ignored as part
+		// of the comparison. The Create/Update timestamps are ignored as
+		// well, as they are always unique.
+		// I could put another interface into the domain logic to solve
+		// for the timestamps and may do so later, but it's probably not
+		// necessary
+		c.Assert(gotBody, qt.CmpEquals(ignoreFields), wantBody)
+	})
+
+	t.Run("mock DB", func(t *testing.T) {
+		// initialize quickest checker
+		c := qt.New(t)
+
+		// setup Server
+		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+		rtr := NewMuxRouter()
+		driver := NewDriver()
+		params := NewServerParams(lgr, driver)
+		s, err := NewServer(rtr, params)
+		c.Assert(err, qt.IsNil)
+		s.AccessTokenConverter = authtest.NewMockAccessTokenConverter(t)
+		s.Authorizer = auth.DefaultAuthorizer{}
+
+		// initialize a mock Transactor
+		movieTransactor := newMockTransactor(t)
+
+		// initialize DefaultStringGenerator
+		randomStringGenerator := random.StringGenerator{}
+		s.CreateMovieService = service.NewCreateMovieService(randomStringGenerator, movieTransactor)
+
+		// setup request body using anonymous struct
+		requestBody := struct {
+			Title    string `json:"title"`
+			Rated    string `json:"rated"`
+			Released string `json:"release_date"`
+			RunTime  int    `json:"run_time"`
+			Director string `json:"director"`
+			Writer   string `json:"writer"`
+		}{
+			Title:    "Repo Man",
+			Rated:    "R",
+			Released: "1984-03-02T00:00:00Z",
+			RunTime:  92,
+			Director: "Alex Cox",
+			Writer:   "Alex Cox",
+		}
+
+		// encode request body into buffer variable
+		var buf bytes.Buffer
+		err = json.NewEncoder(&buf).Encode(requestBody)
+		if err != nil {
+			t.Fatalf("Encode() error = %v", err)
+		}
+
+		// setup path
+		path := pathPrefix + moviesV1PathRoot
+
+		// form request using httptest
+		req := httptest.NewRequest(http.MethodPost, path, &buf)
+
+		// add test access token
+		req.Header.Add("Authorization", auth.BearerTokenType+" abc123def1")
+
+		// add application/JSON header to request
+		req.Header.Add(contentTypeHeaderKey, appJSONContentTypeHeaderVal)
+
+		// initialize ResponseRecorder to use with ServeHTTP as it
+		// satisfies ResponseWriter interface and records the response
+		// for testing
+		rr := httptest.NewRecorder()
+
+		// call the router ServeHTTP method to execute the request
+		// and record the response
+		s.router.ServeHTTP(rr, req)
+
+		// Assert that Response Status Code equals 200 (StatusOK)
+		c.Assert(rr.Code, qt.Equals, http.StatusOK)
+
+		// createMovieResponse is the response struct for a Movie
+		// the response struct is tucked inside the handler, so we
+		// have to recreate it here
+		type createMovieResponse struct {
+			ExternalID      string `json:"external_id"`
+			Title           string `json:"title"`
+			Rated           string `json:"rated"`
+			Released        string `json:"release_date"`
+			RunTime         int    `json:"run_time"`
+			Director        string `json:"director"`
+			Writer          string `json:"writer"`
+			CreateUsername  string `json:"create_username"`
+			CreateTimestamp string `json:"create_timestamp"`
+			UpdateUsername  string `json:"update_username"`
+			UpdateTimestamp string `json:"update_timestamp"`
+		}
+
+		// retrieve the mock User that is used for testing
+		u, _ := s.AccessTokenConverter.Convert(req.Context(), authtest.NewAccessToken(t))
+
+		// setup the expected response data
+		wantBody := createMovieResponse{
+			ExternalID:      "superRandomString",
+			Title:           "Repo Man",
+			Rated:           "R",
+			Released:        "1984-03-02T00:00:00Z",
+			RunTime:         92,
+			Director:        "Alex Cox",
+			Writer:          "Alex Cox",
+			CreateUsername:  u.Email,
+			CreateTimestamp: "",
+			UpdateUsername:  u.Email,
+			UpdateTimestamp: "",
+		}
+
+		// initialize createMovieResponse
+		gotBody := createMovieResponse{}
+
+		// decode the response body into gotBody
+		err = decoderErr(json.NewDecoder(rr.Result().Body).Decode(&gotBody))
+		defer rr.Result().Body.Close()
+
+		// Assert that there is no error after decoding the response body
+		c.Assert(err, qt.IsNil)
+
+		// quicktest uses Google's cmp library for DeepEqual comparisons. It
+		// has some great options included with it. Below is an example of
+		// ignoring certain fields...
+		ignoreFields := cmpopts.IgnoreFields(createMovieResponse{},
+			"ExternalID", "CreateTimestamp", "UpdateTimestamp")
+
+		// Assert that the response body (gotBody) is as expected (wantBody).
+		// The External ID needs to be unique as the database unique index
+		// requires it. As a result, the ExternalID field is ignored as part
+		// of the comparison. The Create/Update timestamps are ignored as
+		// well, as they are always unique.
+		// I could put another interface into the domain logic to solve
+		// for the timestamps and may do so later, but it's probably not
+		// necessary
+		c.Assert(gotBody, qt.CmpEquals(ignoreFields), wantBody)
+	})
+}
+
+func TestHandleMovieUpdate(t *testing.T) {
+	t.Run("typical", func(t *testing.T) {
+		// set environment variable NO_DB to skip database
+		// dependent tests
+		if os.Getenv("NO_DB") == "true" {
+			t.Skip("skipping db dependent test")
+		}
+
+		// initialize quickest checker
+		c := qt.New(t)
+
+		// setup Server
+		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+		rtr := NewMuxRouter()
+		driver := NewDriver()
+		params := NewServerParams(lgr, driver)
+		s, err := NewServer(rtr, params)
+		c.Assert(err, qt.IsNil)
+		s.AccessTokenConverter = authtest.NewMockAccessTokenConverter(t)
+		s.Authorizer = auth.DefaultAuthorizer{}
+
+		// initialize DefaultDatastore
+		ds, cleanup := datastoretest.NewDefaultDatastore(t, lgr)
+
+		// defer cleanup of the database until after the test is completed
+		t.Cleanup(cleanup)
+
+		// create a test movie in the database
+		m, movieCleanup := moviestore.NewMovieDBHelper(context.Background(), t, ds)
+
+		// defer cleanup of movie record until after the test is completed
+		t.Cleanup(movieCleanup)
+
+		// initialize the DefaultTransactor for the moviestore
+		transactor := moviestore.NewTransactor(ds)
+
+		s.UpdateMovieService = service.NewUpdateMovieService(transactor)
+
+		// setup request body using anonymous struct
+		requestBody := struct {
+			Title    string `json:"title"`
+			Rated    string `json:"rated"`
+			Released string `json:"release_date"`
+			RunTime  int    `json:"run_time"`
+			Director string `json:"director"`
+			Writer   string `json:"writer"`
+		}{
+			Title:    "Repo Man",
+			Rated:    "R",
+			Released: "1984-03-02T00:00:00Z",
+			RunTime:  92,
+			Director: "Alex Cox",
+			Writer:   "Alex Cox",
+		}
+
+		// encode request body into buffer variable
+		var buf bytes.Buffer
+		err = json.NewEncoder(&buf).Encode(requestBody)
+		if err != nil {
+			t.Fatalf("Encode() error = %v", err)
+		}
+
+		// setup path
+		path := pathPrefix + moviesV1PathRoot + "/" + m.ExternalID
+
+		// form request using httptest
+		req := httptest.NewRequest(http.MethodPut, path, &buf)
+
+		// add test access token
+		req.Header.Add("Authorization", auth.BearerTokenType+" abc123def1")
+
+		// add application/JSON header to request
+		req.Header.Add(contentTypeHeaderKey, appJSONContentTypeHeaderVal)
+
+		// initialize ResponseRecorder to use with ServeHTTP as it
+		// satisfies ResponseWriter interface and records the response
+		// for testing
+		rr := httptest.NewRecorder()
+
+		// call the router ServeHTTP method to execute the request
+		// and record the response
+		s.router.ServeHTTP(rr, req)
+
+		// Assert that Response Status Code equals 200 (StatusOK)
+		c.Assert(rr.Code, qt.Equals, http.StatusOK)
+
+		// retrieve the mock User that is used for testing
+		u, _ := s.AccessTokenConverter.Convert(req.Context(), authtest.NewAccessToken(t))
+
+		// setup the expected response data
+		wantBody := service.MovieResponse{
+			//ExternalID:      "superRandomString",
+			Title:          "Repo Man",
+			Rated:          "R",
+			Released:       "1984-03-02T00:00:00Z",
+			RunTime:        92,
+			Director:       "Alex Cox",
+			Writer:         "Alex Cox",
+			CreateUsername: u.Email,
+			//CreateTimestamp: "",
+			UpdateUsername: u.Email,
+			//UpdateTimestamp: "",
+		}
+
+		// initialize updateMovieResponse
+		gotBody := service.MovieResponse{}
+
+		// decode the response body into gotBody
+		err = decoderErr(json.NewDecoder(rr.Result().Body).Decode(&gotBody))
+		defer rr.Result().Body.Close()
+
+		// Assert that there is no error after decoding the response body
+		c.Assert(err, qt.IsNil)
+
+		// quicktest uses Google's cmp library for DeepEqual comparisons. It
+		// has some great options included with it. Below is an example of
+		// ignoring certain fields...
+		ignoreFields := cmpopts.IgnoreFields(service.MovieResponse{},
+			"ExternalID", "CreateTimestamp", "UpdateTimestamp")
+
+		// Assert that the response body (gotBody) is as expected (wantBody).
+		// The External ID needs to be unique as the database unique index
+		// requires it. As a result, the ExternalID field is ignored as part
+		// of the comparison. The Create/Update timestamps are ignored as
+		// well, as they are always unique.
+		// I could put another interface into the domain logic to solve
+		// for the timestamps and may do so later, but it's probably not
+		// necessary
+		c.Assert(gotBody, qt.CmpEquals(ignoreFields), wantBody)
+	})
+}
+
+func TestHandleMovieDelete(t *testing.T) {
+	t.Run("typical", func(t *testing.T) {
+		// set environment variable NO_DB to skip database
+		// dependent tests
+		if os.Getenv("NO_DB") == "true" {
+			t.Skip("skipping db dependent test")
+		}
+
+		// initialize quickest checker
+		c := qt.New(t)
+
+		// setup Server
+		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+		rtr := NewMuxRouter()
+		driver := NewDriver()
+		params := NewServerParams(lgr, driver)
+		s, err := NewServer(rtr, params)
+		c.Assert(err, qt.IsNil)
+		s.AccessTokenConverter = authtest.NewMockAccessTokenConverter(t)
+		s.Authorizer = auth.DefaultAuthorizer{}
+
+		// initialize DefaultDatastore
+		ds, cleanup := datastoretest.NewDefaultDatastore(t, lgr)
+
+		// defer cleanup of the database until after the test is completed
+		t.Cleanup(cleanup)
+
+		// create a test movie in the database, do not use cleanup
+		// function as this test should delete the movie
+		m, _ := moviestore.NewMovieDBHelper(context.Background(), t, ds)
+
+		// initialize the DefaultTransactor for the moviestore
+		transactor := moviestore.NewTransactor(ds)
+
+		// initialize the DefaultSelector for the moviestore
+		selector := moviestore.NewSelector(ds)
+
+		s.DeleteMovieService = service.NewDeleteMovieService(selector, transactor)
+
+		// setup path
+		path := pathPrefix + moviesV1PathRoot + "/" + m.ExternalID
+
+		// form request using httptest
+		req := httptest.NewRequest(http.MethodDelete, path, nil)
+
+		// add test access token
+		req.Header.Add("Authorization", auth.BearerTokenType+" abc123def1")
+
+		// initialize ResponseRecorder to use with ServeHTTP as it
+		// satisfies ResponseWriter interface and records the response
+		// for testing
+		rr := httptest.NewRecorder()
+
+		// call the router ServeHTTP method to execute the request
+		// and record the response
+		s.router.ServeHTTP(rr, req)
+
+		// Assert that Response Status Code equals 200 (StatusOK)
+		c.Assert(rr.Code, qt.Equals, http.StatusOK)
+
+		// setup the expected response data
+		wantBody := service.DeleteMovieResponse{
+			ExternalID: m.ExternalID,
+			Deleted:    true,
+		}
+
+		// initialize deleteMovieResponse
+		gotBody := service.DeleteMovieResponse{}
+
+		// decode the response body into gotBody
+		err = decoderErr(json.NewDecoder(rr.Result().Body).Decode(&gotBody))
+		defer rr.Result().Body.Close()
+
+		// Assert that there is no error after decoding the response body
+		c.Assert(err, qt.IsNil)
+
+		// Assert that the response body (gotBody) is as expected (wantBody).
+		// The External ID needs to be unique as the database unique index
+		// requires it. As a result, the ExternalID field is ignored as part
+		// of the comparison. The Create/Update timestamps are ignored as
+		// well, as they are always unique.
+		// I could put another interface into the domain logic to solve
+		// for the timestamps and may do so later, but it's probably not
+		// necessary
+		c.Assert(gotBody, qt.Equals, wantBody)
+	})
+}
+
+func TestHandleFindMovieByID(t *testing.T) {
+	t.Run("typical", func(t *testing.T) {
+		// set environment variable NO_DB to skip database
+		// dependent tests
+		if os.Getenv("NO_DB") == "true" {
+			t.Skip("skipping db dependent test")
+		}
+
+		// initialize quickest checker
+		c := qt.New(t)
+
+		// setup Server
+		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+		rtr := NewMuxRouter()
+		driver := NewDriver()
+		params := NewServerParams(lgr, driver)
+		s, err := NewServer(rtr, params)
+		c.Assert(err, qt.IsNil)
+		s.AccessTokenConverter = authtest.NewMockAccessTokenConverter(t)
+		s.Authorizer = auth.DefaultAuthorizer{}
+
+		// initialize DefaultDatastore
+		ds, cleanup := datastoretest.NewDefaultDatastore(t, lgr)
+
+		// defer cleanup of the database until after the test is completed
+		t.Cleanup(cleanup)
+
+		// create a test movie in the database
+		m, movieCleanup := moviestore.NewMovieDBHelper(context.Background(), t, ds)
+
+		// defer cleanup of movie record until after the test is completed
+		t.Cleanup(movieCleanup)
+
+		// initialize the DefaultSelector for the moviestore
+		selector := moviestore.NewSelector(ds)
+
+		s.FindMovieService = service.NewFindMovieService(selector)
+
+		// setup request body using anonymous struct
+		requestBody := struct {
+			Title    string `json:"title"`
+			Rated    string `json:"rated"`
+			Released string `json:"release_date"`
+			RunTime  int    `json:"run_time"`
+			Director string `json:"director"`
+			Writer   string `json:"writer"`
+		}{
+			Title:    "Repo Man",
+			Rated:    "R",
+			Released: "1984-03-02T00:00:00Z",
+			RunTime:  92,
+			Director: "Alex Cox",
+			Writer:   "Alex Cox",
+		}
+
+		// encode request body into buffer variable
+		var buf bytes.Buffer
+		err = json.NewEncoder(&buf).Encode(requestBody)
+		if err != nil {
+			t.Fatalf("Encode() error = %v", err)
+		}
+
+		// setup path
+		path := pathPrefix + moviesV1PathRoot + "/" + m.ExternalID
+
+		// form request using httptest
+		req := httptest.NewRequest(http.MethodGet, path, &buf)
+
+		// add test access token
+		req.Header.Add("Authorization", auth.BearerTokenType+" abc123def1")
+
+		// initialize ResponseRecorder to use with ServeHTTP as it
+		// satisfies ResponseWriter interface and records the response
+		// for testing
+		rr := httptest.NewRecorder()
+
+		// call the router ServeHTTP method to execute the request
+		// and record the response
+		s.router.ServeHTTP(rr, req)
+
+		// Assert that Response Status Code equals 200 (StatusOK)
+		c.Assert(rr.Code, qt.Equals, http.StatusOK)
+
+		// retrieve the mock User that is used for testing
+		u, _ := s.AccessTokenConverter.Convert(req.Context(), authtest.NewAccessToken(t))
+
+		// setup the expected response data
+		wantBody := service.MovieResponse{
+			ExternalID:     m.ExternalID,
+			Title:          "Repo Man",
+			Rated:          "R",
+			Released:       "1984-03-02T00:00:00Z",
+			RunTime:        92,
+			Director:       "Alex Cox",
+			Writer:         "Alex Cox",
+			CreateUsername: u.Email,
+			//CreateTimestamp: "",
+			UpdateUsername: u.Email,
+			//UpdateTimestamp: "",
+		}
+
+		// initialize movieResponse
+		gotBody := service.MovieResponse{}
+
+		// decode the response body into gotBody
+		err = decoderErr(json.NewDecoder(rr.Result().Body).Decode(&gotBody))
+		defer rr.Result().Body.Close()
+
+		// Assert that there is no error after decoding the response body
+		c.Assert(err, qt.IsNil)
+
+		// quicktest uses Google's cmp library for DeepEqual comparisons. It
+		// has some great options included with it. Below is an example of
+		// ignoring certain fields...
+		ignoreFields := cmpopts.IgnoreFields(service.MovieResponse{},
+			"CreateTimestamp", "UpdateTimestamp")
+
+		// Assert that the response body (gotBody) is as expected (wantBody).
+		// The External ID needs to be unique as the database unique index
+		// requires it. As a result, the ExternalID field is ignored as part
+		// of the comparison. The Create/Update timestamps are ignored as
+		// well, as they are always unique.
+		// I could put another interface into the domain logic to solve
+		// for the timestamps and may do so later, but it's probably not
+		// necessary
+		c.Assert(gotBody, qt.CmpEquals(ignoreFields), wantBody)
+	})
+}
+
+func TestHandleFindAllMovies(t *testing.T) {
+	t.Run("typical", func(t *testing.T) {
+		// set environment variable NO_DB to skip database
+		// dependent tests
+		if os.Getenv("NO_DB") == "true" {
+			t.Skip("skipping db dependent test")
+		}
+
+		// initialize quickest checker
+		c := qt.New(t)
+
+		// setup Server
+		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+		rtr := NewMuxRouter()
+		driver := NewDriver()
+		params := NewServerParams(lgr, driver)
+		s, err := NewServer(rtr, params)
+		c.Assert(err, qt.IsNil)
+		s.AccessTokenConverter = authtest.NewMockAccessTokenConverter(t)
+		s.Authorizer = auth.DefaultAuthorizer{}
+
+		// initialize MockSelector for the moviestore
+		mockSelector := newMockSelector(t)
+
+		s.FindMovieService = service.NewFindMovieService(mockSelector)
+
+		// setup path
+		path := pathPrefix + moviesV1PathRoot
+
+		// form request using httptest
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+
+		// add test access token
+		req.Header.Add("Authorization", auth.BearerTokenType+" abc123def1")
+
+		// initialize ResponseRecorder to use with ServeHTTP as it
+		// satisfies ResponseWriter interface and records the response
+		// for testing
+		rr := httptest.NewRecorder()
+
+		// call the router ServeHTTP method to execute the request
+		// and record the response
+		s.router.ServeHTTP(rr, req)
+
+		// Assert that Response Status Code equals 200 (StatusOK)
+		c.Assert(rr.Code, qt.Equals, http.StatusOK)
+
+		// get mocked slice of movies that should be returned
+		movies, err := mockSelector.FindAll(req.Context())
+		if err != nil {
+			t.Fatalf("mockSelector.FindAll error = %v", err)
+		}
+
+		var smr []service.MovieResponse
+		for _, m := range movies {
+			mr := service.MovieResponse{
+				ExternalID:      m.ExternalID,
+				Title:           m.Title,
+				Rated:           m.Rated,
+				Released:        m.Released.Format(time.RFC3339),
+				RunTime:         m.RunTime,
+				Director:        m.Director,
+				Writer:          m.Writer,
+				CreateUsername:  m.CreateUser.Email,
+				CreateTimestamp: m.CreateTime.Format(time.RFC3339),
+				UpdateUsername:  m.UpdateUser.Email,
+				UpdateTimestamp: m.UpdateTime.Format(time.RFC3339),
+			}
+			smr = append(smr, mr)
+		}
+
+		// setup the expected response data
+		wantBody := smr
+
+		// initialize a slice of movieResponse{}
+		gotBody := []service.MovieResponse{}
+
+		// decode the response body into gotBody
+		err = decoderErr(json.NewDecoder(rr.Result().Body).Decode(&gotBody))
+		defer rr.Result().Body.Close()
+
+		// Assert that there is no error after decoding the response body
+		c.Assert(err, qt.IsNil)
+
+		// Assert that the response body (gotBody) is as expected (wantBody).
+		c.Assert(gotBody, qt.DeepEquals, wantBody)
+	})
+}
+
+func TestHandleLoggerRead(t *testing.T) {
+	t.Run("typical", func(t *testing.T) {
+		// initialize quickest checker
+		c := qt.New(t)
+
+		// initialize a zerolog Logger
+		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+
+		// set global logging level to Info
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+
+		// set Error stack trace to true
+		logger.WriteErrorStackGlobal(true)
+
+		rtr := NewMuxRouter()
+		driver := NewDriver()
+		params := NewServerParams(lgr, driver)
+
+		s, err := NewServer(rtr, params)
+		c.Assert(err, qt.IsNil)
+
+		s.AccessTokenConverter = authtest.NewMockAccessTokenConverter(t)
+		s.Authorizer = auth.DefaultAuthorizer{}
+
+		s.LoggerService = service.NewLoggerService(lgr)
+
+		// setup path
+		path := pathPrefix + loggerV1PathRoot
+
+		// form request using httptest
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+
+		// add test access token
+		req.Header.Add("Authorization", auth.BearerTokenType+" abc123def1")
+
+		// initialize ResponseRecorder to use with ServeHTTP as it
+		// satisfies ResponseWriter interface and records the response
+		// for testing
+		rr := httptest.NewRecorder()
+
+		s.router.ServeHTTP(rr, req)
+
+		// Assert that Response Status Code equals 200 (StatusOK)
+		c.Assert(rr.Code, qt.Equals, http.StatusOK)
+
+		// setup the expected response data
+		wantBody := service.LoggerResponse{
+			LoggerMinimumLevel: zerolog.DebugLevel.String(),
+			GlobalLogLevel:     zerolog.InfoLevel.String(),
+			LogErrorStack:      true,
+		}
+
+		// initialize readLoggerResponse
+		gotBody := service.LoggerResponse{}
+
+		// decode the response body into gotBody
+		err = decoderErr(json.NewDecoder(rr.Result().Body).Decode(&gotBody))
+		defer rr.Result().Body.Close()
+
+		// Assert that there is no error after decoding the response body
+		c.Assert(err, qt.IsNil)
+
+		// Assert that the response body (gotBody) is as expected (wantBody).
+		c.Assert(gotBody, qt.DeepEquals, wantBody)
+	})
+}
+
+func TestHandleLoggerUpdate(t *testing.T) {
+	t.Run("typical", func(t *testing.T) {
+		// initialize quickest checker
+		c := qt.New(t)
+
+		// initialize a zerolog Logger
+		lgr := logger.NewLogger(os.Stdout, zerolog.TraceLevel, true)
+
+		// set global logging level to Info
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+
+		// set Error stack to true
+		logger.WriteErrorStackGlobal(false)
+
+		t.Logf("Minimum accepted log level set to %s", lgr.GetLevel().String())
+		t.Logf("Initial global log level set to %s", zerolog.GlobalLevel())
+		var logErrorStack bool
+		if zerolog.ErrorStackMarshaler != nil {
+			logErrorStack = true
+		}
+		t.Logf("Initial Write Error Stack global set to %t", logErrorStack)
+
+		rtr := NewMuxRouter()
+		driver := NewDriver()
+		params := NewServerParams(lgr, driver)
+
+		s, err := NewServer(rtr, params)
+		c.Assert(err, qt.IsNil)
+
+		s.AccessTokenConverter = authtest.NewMockAccessTokenConverter(t)
+		s.Authorizer = auth.DefaultAuthorizer{}
+
+		s.LoggerService = service.NewLoggerService(lgr)
+
+		// setup request body using anonymous struct
+		requestBody := struct {
+			GlobalLogLevel string `json:"global_log_level,omitempty"`
+			LogErrorStack  string `json:"log_error_stack,omitempty"`
+		}{
+			GlobalLogLevel: "debug",
+			LogErrorStack:  "true",
+		}
+
+		// encode request body into buffer variable
+		var buf bytes.Buffer
+		err = json.NewEncoder(&buf).Encode(requestBody)
+		if err != nil {
+			t.Fatalf("Encode() error = %v", err)
+		}
+
+		// setup path
+		path := pathPrefix + loggerV1PathRoot
+
+		// form request using httptest
+		req := httptest.NewRequest(http.MethodPut, path, &buf)
+
+		// add application/JSON header to request
+		req.Header.Add(contentTypeHeaderKey, appJSONContentTypeHeaderVal)
+
+		// add test access token
+		req.Header.Add("Authorization", auth.BearerTokenType+" abc123def1")
+
+		// initialize ResponseRecorder to use with ServeHTTP as it
+		// satisfies ResponseWriter interface and records the response
+		// for testing
+		rr := httptest.NewRecorder()
+
+		// call the router ServeHTTP method to execute the request
+		// and record the response
+		s.router.ServeHTTP(rr, req)
+
+		// Assert that Response Status Code equals 200 (StatusOK)
+		c.Assert(rr.Code, qt.Equals, http.StatusOK)
+
+		// setup the expected response data
+		wantBody := service.LoggerResponse{
+			LoggerMinimumLevel: zerolog.TraceLevel.String(),
+			GlobalLogLevel:     zerolog.DebugLevel.String(),
+			LogErrorStack:      true,
+		}
+
+		// initialize readLoggerResponse
+		gotBody := service.LoggerResponse{}
+
+		// decode the response body into gotBody
+		err = decoderErr(json.NewDecoder(rr.Result().Body).Decode(&gotBody))
+		defer rr.Result().Body.Close()
+
+		// Assert that there is no error after decoding the response body
+		c.Assert(err, qt.IsNil)
+
+		// Assert that the response body (gotBody) is as expected (wantBody).
+		c.Assert(gotBody, qt.DeepEquals, wantBody)
+	})
+}
+
+func TestHandlePing(t *testing.T) {
+	t.Run("typical", func(t *testing.T) {
+
+		c := qt.New(t)
+		var emptyBody []byte
+
+		// initialize a zerolog Logger
+		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+
+		// set global logging level to Info
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+
+		// set Error stack trace to true
+		logger.WriteErrorStackGlobal(true)
+
+		rtr := NewMuxRouter()
+		driver := NewDriver()
+		params := NewServerParams(lgr, driver)
+
+		s, err := NewServer(rtr, params)
+		c.Assert(err, qt.IsNil)
+
+		s.AccessTokenConverter = authtest.NewMockAccessTokenConverter(t)
+		s.Authorizer = auth.DefaultAuthorizer{}
+
+		db, cleanup := datastoretest.NewDB(t)
+		defer cleanup()
+		ds := datastore.NewDefaultDatastore(db)
+		pinger := pingstore.NewPinger(ds)
+		s.PingService = service.NewPingService(pinger)
+
+		path := "/api/v1/ping"
+		req := httptest.NewRequest(http.MethodGet, path, bytes.NewBuffer(emptyBody))
+		rr := httptest.NewRecorder()
+
+		// call the router ServeHTTP method to execute the request
+		// and record the response
+		s.router.ServeHTTP(rr, req)
+
+		wantBody := service.PingResponse{DBUp: true}
+
+		gotBody := service.PingResponse{}
+		err = decoderErr(json.NewDecoder(rr.Result().Body).Decode(&gotBody))
+		defer rr.Result().Body.Close()
+		c.Assert(err, qt.IsNil)
+
+		// Response Status Code should be 200
+		c.Assert(rr.Code, qt.Equals, http.StatusOK)
+
+		// Assert that the response body equals the body we want
+		c.Assert(gotBody, qt.DeepEquals, wantBody)
+	})
+
+	t.Run("mock", func(t *testing.T) {
+		c := qt.New(t)
+		var emptyBody []byte
+
+		// initialize a zerolog Logger
+		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+
+		// set global logging level to Info
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+
+		// set Error stack trace to true
+		logger.WriteErrorStackGlobal(true)
+
+		rtr := NewMuxRouter()
+		driver := NewDriver()
+		params := NewServerParams(lgr, driver)
+
+		s, err := NewServer(rtr, params)
+		c.Assert(err, qt.IsNil)
+
+		s.AccessTokenConverter = authtest.NewMockAccessTokenConverter(t)
+		s.Authorizer = auth.DefaultAuthorizer{}
+
+		// use mockPinger instead of a real db
+		pinger := mockPinger{}
+		s.PingService = service.NewPingService(pinger)
+
+		path := "/api/v1/ping"
+		req := httptest.NewRequest(http.MethodGet, path, bytes.NewBuffer(emptyBody))
+		rr := httptest.NewRecorder()
+
+		// call the router ServeHTTP method to execute the request
+		// and record the response
+		s.router.ServeHTTP(rr, req)
+
+		wantBody := service.PingResponse{DBUp: true}
+
+		gotBody := service.PingResponse{}
+		err = decoderErr(json.NewDecoder(rr.Result().Body).Decode(&gotBody))
+		defer rr.Result().Body.Close()
+		c.Assert(err, qt.IsNil)
+
+		// Response Status Code should be 200
+		c.Assert(rr.Code, qt.Equals, http.StatusOK)
+
+		// Assert that the response body equals the body we want
+		c.Assert(gotBody, qt.DeepEquals, wantBody)
+	})
+
+}
+
+type mockPinger struct{}
+
+func (m mockPinger) PingDB(ctx context.Context) error {
+	return nil
 }

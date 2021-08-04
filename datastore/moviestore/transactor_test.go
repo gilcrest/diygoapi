@@ -15,7 +15,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func TestNewDefaultTransactor(t *testing.T) {
+func TestNewTransactor(t *testing.T) {
 	type args struct {
 		ds datastore.Datastorer
 	}
@@ -23,25 +23,25 @@ func TestNewDefaultTransactor(t *testing.T) {
 
 	defaultDatastore, cleanup := datastoretest.NewDefaultDatastore(t, lgr)
 	t.Cleanup(cleanup)
-	defaultTransactor := DefaultTransactor{defaultDatastore}
+	transactor := Transactor{defaultDatastore}
 
 	tests := []struct {
 		name string
 		args args
-		want DefaultTransactor
+		want Transactor
 	}{
-		{"typical", args{ds: defaultDatastore}, defaultTransactor},
+		{"typical", args{ds: defaultDatastore}, transactor},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewDefaultTransactor(tt.args.ds); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewDefaultTransactor() = %v, want %v", got, tt.want)
+			if got := NewTransactor(tt.args.ds); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("NewTransactor() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestDefaultTransactor_Create(t *testing.T) {
+func TestTransactor_Create(t *testing.T) {
 	type fields struct {
 		datastorer datastore.Datastorer
 	}
@@ -55,13 +55,13 @@ func TestDefaultTransactor_Create(t *testing.T) {
 	// returned as I need the DB to stay open for the test
 	// t.Cleanup function
 	defaultDatastore, _ := datastoretest.NewDefaultDatastore(t, lgr)
-	defaultTransactor := NewDefaultTransactor(defaultDatastore)
+	transactor := NewTransactor(defaultDatastore)
 	ctx := context.Background()
 	m := newMovie(t)
 	t.Cleanup(func() {
-		err := defaultTransactor.Delete(ctx, m)
+		err := transactor.Delete(ctx, m)
 		if err != nil {
-			t.Fatalf("defaultTransactor.Delete error = %v", err)
+			t.Fatalf("transactor.Delete error = %v", err)
 		}
 	})
 
@@ -75,17 +75,17 @@ func TestDefaultTransactor_Create(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			dt := DefaultTransactor{
+			dt := Transactor{
 				datastorer: tt.fields.datastorer,
 			}
 			if err := dt.Create(tt.args.ctx, tt.args.m); (err != nil) != tt.wantErr {
-				t.Errorf("DefaultTransactor.Create() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("transactor.Create() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
 }
 
-func TestDefaultTransactor_Update(t *testing.T) {
+func TestTransactor_Update(t *testing.T) {
 	type fields struct {
 		datastorer datastore.Datastorer
 	}
@@ -99,7 +99,7 @@ func TestDefaultTransactor_Update(t *testing.T) {
 	// returned as I need the DB to stay open for the test
 	// t.Cleanup function
 	defaultDatastore, _ := datastoretest.NewDefaultDatastore(t, lgr)
-	// defaultTransactor := NewDefaultTransactor(defaultDatastore)
+
 	ctx := context.Background()
 	// create a movie with the helper to ensure that at least one row
 	// is returned
@@ -123,17 +123,17 @@ func TestDefaultTransactor_Update(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			dt := DefaultTransactor{
+			dt := Transactor{
 				datastorer: tt.fields.datastorer,
 			}
 			if err := dt.Update(tt.args.ctx, tt.args.m); (err != nil) != tt.wantErr {
-				t.Errorf("DefaultTransactor.Update() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("transactor.Update() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
 }
 
-func TestDefaultTransactor_Delete(t *testing.T) {
+func TestTransactor_Delete(t *testing.T) {
 	type fields struct {
 		datastorer datastore.Datastorer
 	}
@@ -147,7 +147,7 @@ func TestDefaultTransactor_Delete(t *testing.T) {
 	// returned as I need the DB to stay open for the test
 	// t.Cleanup function
 	defaultDatastore, _ := datastoretest.NewDefaultDatastore(t, lgr)
-	// defaultTransactor := NewDefaultTransactor(defaultDatastore)
+
 	ctx := context.Background()
 	// create a movie with the helper to ensure that at least one row
 	// is returned
@@ -166,12 +166,12 @@ func TestDefaultTransactor_Delete(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			dt := DefaultTransactor{
+			dt := Transactor{
 				datastorer: tt.fields.datastorer,
 			}
 			if err := dt.Delete(tt.args.ctx, tt.args.m); (err != nil) != tt.wantErr {
 				t.Logf("%s yieled dt.Delete error = %v", tt.name, err)
-				t.Errorf("DefaultTransactor.Delete() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("transactor.Delete() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

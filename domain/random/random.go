@@ -8,11 +8,6 @@ import (
 	"github.com/gilcrest/go-api-basic/domain/errs"
 )
 
-// StringGenerator generates random strings
-type StringGenerator interface {
-	CryptoString(n int) (string, error)
-}
-
 // GenerateRandomBytes returns securely generated random bytes.
 // It will return an error if the system's secure random
 // number generator fails to function correctly, in which
@@ -29,8 +24,8 @@ func GenerateRandomBytes(n int) ([]byte, error) {
 	return b, nil
 }
 
-// DefaultStringGenerator generates random strings
-type DefaultStringGenerator struct{}
+// StringGenerator generates random strings
+type StringGenerator struct{}
 
 // CryptoString returns a URL-safe, base64 encoded
 // securely generated random string.
@@ -39,7 +34,7 @@ type DefaultStringGenerator struct{}
 // case the caller should not continue. This should be used
 // when there are concerns about security and need something
 // cryptographically secure.
-func (g DefaultStringGenerator) CryptoString(n int) (string, error) {
+func (sg StringGenerator) CryptoString(n int) (string, error) {
 	b, err := GenerateRandomBytes(n)
 	if err != nil {
 		return "", err

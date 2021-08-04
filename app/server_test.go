@@ -1,15 +1,24 @@
-package handler
+package app
 
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"net/http"
+	"os"
 	"testing"
 
-	"github.com/gilcrest/go-api-basic/domain/errs"
-	"github.com/pkg/errors"
+	"github.com/google/go-cmp/cmp/cmpopts"
+
+	"github.com/google/go-cmp/cmp"
+
+	"github.com/gilcrest/go-api-basic/domain/logger"
+	"github.com/rs/zerolog"
+
+	"github.com/gorilla/mux"
 
 	qt "github.com/frankban/quicktest"
+	"github.com/gilcrest/go-api-basic/domain/errs"
 )
 
 func TestDecoderErr(t *testing.T) {
@@ -36,7 +45,7 @@ func TestDecoderErr(t *testing.T) {
 		// wraps errors from Decode when body is nil, json is malformed
 		// or any other error
 		wantBody := new(testBody)
-		err = DecoderErr(json.NewDecoder(r.Body).Decode(&wantBody))
+		err = decoderErr(json.NewDecoder(r.Body).Decode(&wantBody))
 		defer r.Body.Close()
 		c.Assert(err, qt.IsNil)
 	})
@@ -64,7 +73,7 @@ func TestDecoderErr(t *testing.T) {
 		// wraps errors from Decode when body is nil, JSON is malformed
 		// or any other error
 		wantBody := new(testBody)
-		err = DecoderErr(json.NewDecoder(r.Body).Decode(&wantBody))
+		err = decoderErr(json.NewDecoder(r.Body).Decode(&wantBody))
 		defer r.Body.Close()
 
 		wantErr := errs.E(errs.InvalidRequest, errors.New("Malformed JSON"))
@@ -92,7 +101,7 @@ func TestDecoderErr(t *testing.T) {
 		// wraps errors from Decode when body is nil, JSON is malformed
 		// or any other error
 		wantBody := new(testBody)
-		err = DecoderErr(json.NewDecoder(r.Body).Decode(&wantBody))
+		err = decoderErr(json.NewDecoder(r.Body).Decode(&wantBody))
 		defer r.Body.Close()
 
 		wantErr := errs.E(errs.InvalidRequest, errors.New("Request Body cannot be empty"))
@@ -123,10 +132,57 @@ func TestDecoderErr(t *testing.T) {
 		wantBody := new(testBody)
 		decoder := json.NewDecoder(r.Body)
 		decoder.DisallowUnknownFields()
-		err = DecoderErr(decoder.Decode(&wantBody))
+		err = decoderErr(decoder.Decode(&wantBody))
 		defer r.Body.Close()
 
 		// check to make sure I have an error
 		c.Assert(err != nil, qt.Equals, true)
 	})
+}
+
+func TestNewServer(t *testing.T) {
+	c := qt.New(t)
+
+	type args struct {
+		r      *mux.Router
+		params *ServerParams
+	}
+
+	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+
+	badlgr := logger.NewLogger(os.Stderr, zerolog.DebugLevel, true)
+
+	driver := NewDriver()
+
+	r := NewMuxRouter()
+	p := NewServerParams(lgr, driver)
+	p2 := NewServerParams(lgr, nil)
+
+	typServer := &Server{
+		router: r,
+		driver: driver,
+		logger: badlgr,
+	}
+
+	tests := []struct {
+		name    string
+		args    args
+		want    *Server
+		wantErr error
+	}{
+		{"typical", args{r: r, params: p}, typServer, nil},
+		{"nil params", args{r: r, params: nil}, nil, errs.E("params must not be nil")},
+		{"nil params.Driver", args{r: r, params: p2}, nil, errs.E("params.Driver must not be nil")},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := NewServer(tt.args.r, tt.args.params)
+			if (err != nil) && (tt.wantErr == nil) {
+				t.Errorf("NewServer() error = %v, nil expected", err)
+				return
+			}
+			c.Assert(err, qt.CmpEquals(cmp.Comparer(errs.Match)), tt.wantErr)
+			c.Assert(got, qt.CmpEquals(cmpopts.IgnoreUnexported(Server{})), tt.want)
+		})
+	}
 }
