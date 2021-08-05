@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 
-	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/movie"
 )
@@ -14,11 +13,11 @@ import (
 // Transactor is the default database implementation
 // for DML operations for a movie
 type Transactor struct {
-	datastorer datastore.Datastorer
+	datastorer Datastorer
 }
 
 // NewTransactor is an initializer for Transactor
-func NewTransactor(ds datastore.Datastorer) Transactor {
+func NewTransactor(ds Datastorer) Transactor {
 	return Transactor{ds}
 }
 

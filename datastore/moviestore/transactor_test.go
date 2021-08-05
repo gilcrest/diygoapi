@@ -2,35 +2,29 @@ package moviestore
 
 import (
 	"context"
-	"os"
 	"reflect"
 	"testing"
 
-	"github.com/rs/zerolog"
-
-	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/gilcrest/go-api-basic/datastore/datastoretest"
-	"github.com/gilcrest/go-api-basic/domain/logger"
 	"github.com/gilcrest/go-api-basic/domain/movie"
 	"github.com/google/uuid"
 )
 
 func TestNewTransactor(t *testing.T) {
 	type args struct {
-		ds datastore.Datastorer
+		ds Datastorer
 	}
-	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
-	defaultDatastore, cleanup := datastoretest.NewDefaultDatastore(t, lgr)
+	datastore, cleanup := datastoretest.NewDatastore(t)
 	t.Cleanup(cleanup)
-	transactor := Transactor{defaultDatastore}
+	transactor := Transactor{datastore}
 
 	tests := []struct {
 		name string
 		args args
 		want Transactor
 	}{
-		{"typical", args{ds: defaultDatastore}, transactor},
+		{"typical", args{ds: datastore}, transactor},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -43,19 +37,18 @@ func TestNewTransactor(t *testing.T) {
 
 func TestTransactor_Create(t *testing.T) {
 	type fields struct {
-		datastorer datastore.Datastorer
+		datastorer Datastorer
 	}
 	type args struct {
 		ctx context.Context
 		m   *movie.Movie
 	}
-	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
 	// I am intentionally not using the cleanup function that is
 	// returned as I need the DB to stay open for the test
 	// t.Cleanup function
-	defaultDatastore, _ := datastoretest.NewDefaultDatastore(t, lgr)
-	transactor := NewTransactor(defaultDatastore)
+	datastore, _ := datastoretest.NewDatastore(t)
+	transactor := NewTransactor(datastore)
 	ctx := context.Background()
 	m := newMovie(t)
 	t.Cleanup(func() {
@@ -71,7 +64,7 @@ func TestTransactor_Create(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		{"typical", fields{datastorer: defaultDatastore}, args{ctx, m}, false},
+		{"typical", fields{datastorer: datastore}, args{ctx, m}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -87,23 +80,22 @@ func TestTransactor_Create(t *testing.T) {
 
 func TestTransactor_Update(t *testing.T) {
 	type fields struct {
-		datastorer datastore.Datastorer
+		datastorer Datastorer
 	}
 	type args struct {
 		ctx context.Context
 		m   *movie.Movie
 	}
-	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
 	// I am intentionally not using the cleanup function that is
 	// returned as I need the DB to stay open for the test
 	// t.Cleanup function
-	defaultDatastore, _ := datastoretest.NewDefaultDatastore(t, lgr)
+	datastore, _ := datastoretest.NewDatastore(t)
 
 	ctx := context.Background()
 	// create a movie with the helper to ensure that at least one row
 	// is returned
-	m, mCleanup := NewMovieDBHelper(ctx, t, defaultDatastore)
+	m, mCleanup := NewMovieDBHelper(ctx, t, datastore)
 	t.Cleanup(mCleanup)
 	// The ID would not be set on an update, as only the external ID
 	// is known to the client
@@ -118,8 +110,8 @@ func TestTransactor_Update(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		{"typical", fields{datastorer: defaultDatastore}, args{ctx, m}, false},
-		{"no rows updated", fields{datastorer: defaultDatastore}, args{ctx, m2}, true},
+		{"typical", fields{datastorer: datastore}, args{ctx, m}, false},
+		{"no rows updated", fields{datastorer: datastore}, args{ctx, m2}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -135,23 +127,22 @@ func TestTransactor_Update(t *testing.T) {
 
 func TestTransactor_Delete(t *testing.T) {
 	type fields struct {
-		datastorer datastore.Datastorer
+		datastorer Datastorer
 	}
 	type args struct {
 		ctx context.Context
 		m   *movie.Movie
 	}
-	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
 	// I am intentionally not using the cleanup function that is
 	// returned as I need the DB to stay open for the test
 	// t.Cleanup function
-	defaultDatastore, _ := datastoretest.NewDefaultDatastore(t, lgr)
+	datastore, _ := datastoretest.NewDatastore(t)
 
 	ctx := context.Background()
 	// create a movie with the helper to ensure that at least one row
 	// is returned
-	m, _ := NewMovieDBHelper(ctx, t, defaultDatastore)
+	m, _ := NewMovieDBHelper(ctx, t, datastore)
 
 	m2 := &movie.Movie{}
 
@@ -161,8 +152,8 @@ func TestTransactor_Delete(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		{"typical", fields{datastorer: defaultDatastore}, args{ctx, m}, false},
-		{"no rows deleted", fields{datastorer: defaultDatastore}, args{ctx, m2}, true},
+		{"typical", fields{datastorer: datastore}, args{ctx, m}, false},
+		{"no rows deleted", fields{datastorer: datastore}, args{ctx, m2}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
