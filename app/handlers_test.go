@@ -19,7 +19,6 @@ import (
 	"github.com/gilcrest/go-api-basic/datastore/moviestore"
 	"github.com/google/go-cmp/cmp/cmpopts"
 
-	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/gilcrest/go-api-basic/datastore/datastoretest"
 	"github.com/gilcrest/go-api-basic/datastore/pingstore"
 	"github.com/gilcrest/go-api-basic/service"
@@ -150,18 +149,18 @@ func TestHandleMovieCreate(t *testing.T) {
 		s, err := NewServer(rtr, params)
 		c.Assert(err, qt.IsNil)
 		s.AccessTokenConverter = authtest.NewMockAccessTokenConverter(t)
-		s.Authorizer = auth.DefaultAuthorizer{}
+		s.Authorizer = auth.Authorizer{}
 
-		// initialize DefaultDatastore
-		ds, cleanup := datastoretest.NewDefaultDatastore(t, lgr)
+		// initialize Datastore
+		ds, cleanup := datastoretest.NewDatastore(t)
 
 		// defer cleanup of the database until after the test is completed
 		t.Cleanup(cleanup)
 
-		// initialize the DefaultTransactor for the moviestore
+		// initialize the Transactor for the moviestore
 		movieTransactor := moviestore.NewTransactor(ds)
 
-		// initialize DefaultStringGenerator
+		// initialize random.StringGenerator
 		randomStringGenerator := random.StringGenerator{}
 		s.CreateMovieService = service.NewCreateMovieService(randomStringGenerator, movieTransactor)
 
@@ -287,12 +286,12 @@ func TestHandleMovieCreate(t *testing.T) {
 		s, err := NewServer(rtr, params)
 		c.Assert(err, qt.IsNil)
 		s.AccessTokenConverter = authtest.NewMockAccessTokenConverter(t)
-		s.Authorizer = auth.DefaultAuthorizer{}
+		s.Authorizer = auth.Authorizer{}
 
 		// initialize a mock Transactor
 		movieTransactor := newMockTransactor(t)
 
-		// initialize DefaultStringGenerator
+		// initialize random.StringGenerator
 		randomStringGenerator := random.StringGenerator{}
 		s.CreateMovieService = service.NewCreateMovieService(randomStringGenerator, movieTransactor)
 
@@ -426,10 +425,10 @@ func TestHandleMovieUpdate(t *testing.T) {
 		s, err := NewServer(rtr, params)
 		c.Assert(err, qt.IsNil)
 		s.AccessTokenConverter = authtest.NewMockAccessTokenConverter(t)
-		s.Authorizer = auth.DefaultAuthorizer{}
+		s.Authorizer = auth.Authorizer{}
 
-		// initialize DefaultDatastore
-		ds, cleanup := datastoretest.NewDefaultDatastore(t, lgr)
+		// initialize Datastore
+		ds, cleanup := datastoretest.NewDatastore(t)
 
 		// defer cleanup of the database until after the test is completed
 		t.Cleanup(cleanup)
@@ -440,7 +439,7 @@ func TestHandleMovieUpdate(t *testing.T) {
 		// defer cleanup of movie record until after the test is completed
 		t.Cleanup(movieCleanup)
 
-		// initialize the DefaultTransactor for the moviestore
+		// initialize the Transactor for the moviestore
 		transactor := moviestore.NewTransactor(ds)
 
 		s.UpdateMovieService = service.NewUpdateMovieService(transactor)
@@ -558,10 +557,10 @@ func TestHandleMovieDelete(t *testing.T) {
 		s, err := NewServer(rtr, params)
 		c.Assert(err, qt.IsNil)
 		s.AccessTokenConverter = authtest.NewMockAccessTokenConverter(t)
-		s.Authorizer = auth.DefaultAuthorizer{}
+		s.Authorizer = auth.Authorizer{}
 
-		// initialize DefaultDatastore
-		ds, cleanup := datastoretest.NewDefaultDatastore(t, lgr)
+		// initialize Datastore
+		ds, cleanup := datastoretest.NewDatastore(t)
 
 		// defer cleanup of the database until after the test is completed
 		t.Cleanup(cleanup)
@@ -570,10 +569,10 @@ func TestHandleMovieDelete(t *testing.T) {
 		// function as this test should delete the movie
 		m, _ := moviestore.NewMovieDBHelper(context.Background(), t, ds)
 
-		// initialize the DefaultTransactor for the moviestore
+		// initialize the Transactor for the moviestore
 		transactor := moviestore.NewTransactor(ds)
 
-		// initialize the DefaultSelector for the moviestore
+		// initialize the Selector for the moviestore
 		selector := moviestore.NewSelector(ds)
 
 		s.DeleteMovieService = service.NewDeleteMovieService(selector, transactor)
@@ -646,10 +645,10 @@ func TestHandleFindMovieByID(t *testing.T) {
 		s, err := NewServer(rtr, params)
 		c.Assert(err, qt.IsNil)
 		s.AccessTokenConverter = authtest.NewMockAccessTokenConverter(t)
-		s.Authorizer = auth.DefaultAuthorizer{}
+		s.Authorizer = auth.Authorizer{}
 
-		// initialize DefaultDatastore
-		ds, cleanup := datastoretest.NewDefaultDatastore(t, lgr)
+		// initialize Datastore
+		ds, cleanup := datastoretest.NewDatastore(t)
 
 		// defer cleanup of the database until after the test is completed
 		t.Cleanup(cleanup)
@@ -660,7 +659,7 @@ func TestHandleFindMovieByID(t *testing.T) {
 		// defer cleanup of movie record until after the test is completed
 		t.Cleanup(movieCleanup)
 
-		// initialize the DefaultSelector for the moviestore
+		// initialize the Selector for the moviestore
 		selector := moviestore.NewSelector(ds)
 
 		s.FindMovieService = service.NewFindMovieService(selector)
@@ -775,7 +774,7 @@ func TestHandleFindAllMovies(t *testing.T) {
 		s, err := NewServer(rtr, params)
 		c.Assert(err, qt.IsNil)
 		s.AccessTokenConverter = authtest.NewMockAccessTokenConverter(t)
-		s.Authorizer = auth.DefaultAuthorizer{}
+		s.Authorizer = auth.Authorizer{}
 
 		// initialize MockSelector for the moviestore
 		mockSelector := newMockSelector(t)
@@ -867,7 +866,7 @@ func TestHandleLoggerRead(t *testing.T) {
 		c.Assert(err, qt.IsNil)
 
 		s.AccessTokenConverter = authtest.NewMockAccessTokenConverter(t)
-		s.Authorizer = auth.DefaultAuthorizer{}
+		s.Authorizer = auth.Authorizer{}
 
 		s.LoggerService = service.NewLoggerService(lgr)
 
@@ -942,7 +941,7 @@ func TestHandleLoggerUpdate(t *testing.T) {
 		c.Assert(err, qt.IsNil)
 
 		s.AccessTokenConverter = authtest.NewMockAccessTokenConverter(t)
-		s.Authorizer = auth.DefaultAuthorizer{}
+		s.Authorizer = auth.Authorizer{}
 
 		s.LoggerService = service.NewLoggerService(lgr)
 
@@ -1031,11 +1030,14 @@ func TestHandlePing(t *testing.T) {
 		c.Assert(err, qt.IsNil)
 
 		s.AccessTokenConverter = authtest.NewMockAccessTokenConverter(t)
-		s.Authorizer = auth.DefaultAuthorizer{}
+		s.Authorizer = auth.Authorizer{}
 
-		db, cleanup := datastoretest.NewDB(t)
-		defer cleanup()
-		ds := datastore.NewDefaultDatastore(db)
+		// initialize Datastore
+		ds, cleanup := datastoretest.NewDatastore(t)
+
+		// defer cleanup of the database until after the test is completed
+		t.Cleanup(cleanup)
+
 		pinger := pingstore.NewPinger(ds)
 		s.PingService = service.NewPingService(pinger)
 
@@ -1082,7 +1084,7 @@ func TestHandlePing(t *testing.T) {
 		c.Assert(err, qt.IsNil)
 
 		s.AccessTokenConverter = authtest.NewMockAccessTokenConverter(t)
-		s.Authorizer = auth.DefaultAuthorizer{}
+		s.Authorizer = auth.Authorizer{}
 
 		// use mockPinger instead of a real db
 		pinger := mockPinger{}
