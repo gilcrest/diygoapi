@@ -5,18 +5,23 @@ package pingstore
 
 import (
 	"context"
-
-	"github.com/gilcrest/go-api-basic/datastore"
+	"database/sql"
 )
 
-// NewPinger is an initializer for DefaultPinger
-func NewPinger(ds datastore.Datastorer) Pinger {
-	return Pinger{ds}
+// Datastorer is an interface for working with the Database
+type Datastorer interface {
+	// DB returns a sql.DB
+	DB() *sql.DB
 }
 
 // Pinger is the default implementation for pinging the db
 type Pinger struct {
-	datastore.Datastorer
+	Datastorer
+}
+
+// NewPinger is an initializer for DefaultPinger
+func NewPinger(ds Datastorer) Pinger {
+	return Pinger{ds}
 }
 
 // PingDB pings the DB

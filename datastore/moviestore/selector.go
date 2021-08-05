@@ -5,20 +5,29 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/movie"
-
-	"github.com/pkg/errors"
 )
+
+// Datastorer is an interface for working with the Database
+type Datastorer interface {
+	// DB returns a sql.DB
+	DB() *sql.DB
+	// BeginTx starts a sql.Tx using the input context
+	BeginTx(context.Context) (*sql.Tx, error)
+	// RollbackTx rolls back the input sql.Tx
+	RollbackTx(*sql.Tx, error) error
+	// CommitTx commits the Tx
+	CommitTx(*sql.Tx) error
+}
 
 // Selector is the database implementation for READ operations for a movie
 type Selector struct {
-	datastore.Datastorer
+	Datastorer
 }
 
 // NewSelector is an initializer for Selector
-func NewSelector(ds datastore.Datastorer) Selector {
+func NewSelector(ds Datastorer) Selector {
 	return Selector{ds}
 }
 
@@ -137,7 +146,7 @@ func (s Selector) FindAll(ctx context.Context) ([]*movie.Movie, error) {
 	// Determine if slice has not been populated. In this case, return
 	// an error as we should receive rows
 	if len(movies) == 0 {
-		return nil, errs.E(errs.Validation, errors.New("No rows returned"))
+		return nil, errs.E(errs.Validation, "No rows returned")
 	}
 
 	// return the slice

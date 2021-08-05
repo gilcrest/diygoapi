@@ -2,11 +2,8 @@ package moviestore
 
 import (
 	"context"
-	"os"
 	"reflect"
 	"testing"
-
-	"github.com/rs/zerolog"
 
 	"github.com/google/go-cmp/cmp/cmpopts"
 
@@ -14,29 +11,25 @@ import (
 
 	"github.com/gilcrest/go-api-basic/domain/movie"
 
-	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/gilcrest/go-api-basic/datastore/datastoretest"
-	"github.com/gilcrest/go-api-basic/domain/logger"
 )
 
 func TestNewSelector(t *testing.T) {
 	type args struct {
-		ds datastore.Datastorer
+		ds Datastorer
 	}
 
-	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
-
-	defaultDatastore, cleanup := datastoretest.NewDefaultDatastore(t, lgr)
+	datastore, cleanup := datastoretest.NewDatastore(t)
 	t.Cleanup(cleanup)
 
-	selector := Selector{defaultDatastore}
+	selector := Selector{datastore}
 
 	tests := []struct {
 		name string
 		args args
 		want Selector
 	}{
-		{"default datastore", args{ds: defaultDatastore}, selector},
+		{"typical", args{ds: datastore}, selector},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -50,18 +43,16 @@ func TestNewSelector(t *testing.T) {
 
 func TestSelector_FindAll(t *testing.T) {
 	type fields struct {
-		Datastorer datastore.Datastorer
+		Datastorer Datastorer
 	}
 	type args struct {
 		ctx context.Context
 	}
 
-	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
-
 	// I am intentionally not using the cleanup function that is
 	// returned as I need the DB to stay open for the test
 	// t.Cleanup function
-	ds, _ := datastoretest.NewDefaultDatastore(t, lgr)
+	ds, _ := datastoretest.NewDatastore(t)
 	ctx := context.Background()
 
 	// create a movie with the helper to ensure that at least one row
@@ -96,19 +87,17 @@ func TestSelector_FindByID(t *testing.T) {
 	c := qt.New(t)
 
 	type fields struct {
-		Datastorer datastore.Datastorer
+		Datastorer Datastorer
 	}
 	type args struct {
 		ctx    context.Context
 		extlID string
 	}
 
-	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
-
 	// I am intentionally not using the cleanup function that is
 	// returned as I need the DB to stay open for the test
 	// t.Cleanup function
-	ds, _ := datastoretest.NewDefaultDatastore(t, lgr)
+	ds, _ := datastoretest.NewDatastore(t)
 	ctx := context.Background()
 
 	m, _ := NewMovieDBHelper(ctx, t, ds)
