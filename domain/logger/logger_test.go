@@ -10,8 +10,6 @@ import (
 	"testing"
 
 	"github.com/gilcrest/go-api-basic/domain/errs"
-	"github.com/pkg/errors"
-
 	"github.com/rs/zerolog"
 )
 
@@ -98,7 +96,7 @@ func TestWriteErrorStackGlobal(t *testing.T) {
 		out := &bytes.Buffer{}
 		logger := zerolog.New(out)
 
-		err := errs.E(errors.New("some error"))
+		err := errs.E("some error")
 		e := err.(*errs.Error)
 		logger.Log().Stack().Err(e.Err).Msg("")
 
@@ -114,7 +112,7 @@ func TestWriteErrorStackGlobal(t *testing.T) {
 		out := &bytes.Buffer{}
 		logger := zerolog.New(out)
 
-		err := errs.E(errors.New("some error"))
+		err := errs.E("some error")
 		e := err.(*errs.Error)
 		logger.Log().Stack().Err(e.Err).Msg("")
 

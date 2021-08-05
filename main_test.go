@@ -7,10 +7,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/gilcrest/go-api-basic/domain/errs"
-	"github.com/pkg/errors"
-
 	qt "github.com/frankban/quicktest"
+	"github.com/gilcrest/go-api-basic/domain/errs"
 )
 
 func Test_portRange(t *testing.T) {
@@ -26,7 +24,7 @@ func Test_portRange(t *testing.T) {
 		wantErr error
 	}{
 		{"valid port", args{port: 5432}, nil},
-		{"port < 0", args{port: -1}, errs.E(errors.New(fmt.Sprintf("port %d is not within valid port range (0 to 65535)", -1)))},
+		{"port < 0", args{port: -1}, errs.E(fmt.Sprintf("port %d is not within valid port range (0 to 65535)", -1))},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -8,7 +8,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/user"
@@ -51,9 +50,9 @@ func TestNewMovie(t *testing.T) {
 		wantErr error
 	}{
 		{"typical", args{id, extlID, usertest.NewUser(t)}, m, nil},
-		{"nil uuid", args{uuid.Nil, extlID, usertest.NewUser(t)}, nil, errs.E(errs.Validation, errs.Parameter("ID"), errors.New(errs.MissingField("ID").Error()))},
-		{"empty External ID", args{id, "", usertest.NewUser(t)}, nil, errs.E(errs.Validation, errs.Parameter("extlID"), errors.New(errs.MissingField("extlID").Error()))},
-		{"invalid User", args{id, extlID, usertest.NewInvalidUser(t)}, nil, errs.E(errs.Validation, errs.Parameter("User"), errors.New("User is invalid"))},
+		{"nil uuid", args{uuid.Nil, extlID, usertest.NewUser(t)}, nil, errs.E(errs.Validation, errs.Parameter("ID"), errs.MissingField("ID"))},
+		{"empty External ID", args{id, "", usertest.NewUser(t)}, nil, errs.E(errs.Validation, errs.Parameter("extlID"), errs.MissingField("extlID"))},
+		{"invalid User", args{id, extlID, usertest.NewInvalidUser(t)}, nil, errs.E(errs.Validation, errs.Parameter("User"), "User is invalid")},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -200,21 +199,6 @@ func TestSetUpdateTime(t *testing.T) {
 func TestMovie_IsValid(t *testing.T) {
 	c := qt.New(t)
 
-	type fields struct {
-		ID         uuid.UUID
-		ExternalID string
-		Title      string
-		Rated      string
-		Released   time.Time
-		RunTime    int
-		Director   string
-		Writer     string
-		CreateUser user.User
-		CreateTime time.Time
-		UpdateUser user.User
-		UpdateTime time.Time
-	}
-
 	rd, _ := time.Parse(time.RFC3339, "1985-08-16T00:00:00Z")
 
 	movieFunc := func() *Movie {
@@ -260,12 +244,12 @@ func TestMovie_IsValid(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.m.IsValid()
-			if (err != nil) && (tt.wantErr == nil) {
-				t.Errorf("IsValid() error = %v; nil expected", err)
+			isValidErr := tt.m.IsValid()
+			if (isValidErr != nil) && (tt.wantErr == nil) {
+				t.Errorf("IsValid() error = %v; nil expected", isValidErr)
 				return
 			}
-			c.Assert(err, qt.CmpEquals(cmp.Comparer(errs.Match)), tt.wantErr)
+			c.Assert(isValidErr, qt.CmpEquals(cmp.Comparer(errs.Match)), tt.wantErr)
 		})
 	}
 }

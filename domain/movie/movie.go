@@ -8,7 +8,6 @@ import (
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/user"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 )
 
 // NewMovie initializes a Movie struct for use in Movie creation
@@ -75,7 +74,7 @@ func (m *Movie) SetReleased(r string) (*Movie, error) {
 		return nil, errs.E(errs.Validation,
 			errs.Code("invalid_date_format"),
 			errs.Parameter("release_date"),
-			errors.WithStack(err))
+			err)
 	}
 	m.Released = t
 	return m, nil
