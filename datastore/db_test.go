@@ -11,13 +11,13 @@ import (
 
 func Test_NewDB(t *testing.T) {
 	type args struct {
-		pgds PGDatasourceName
+		pgds PostgreSQLDSN
 		l    zerolog.Logger
 	}
 
 	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
-	dsn := NewPGDatasourceName("localhost", "go_api_basic", "postgres", "", 5432)
-	baddsn := NewPGDatasourceName("badhost", "go_api_basic", "postgres", "", 5432)
+	dsn := NewPostgreSQLDSN("localhost", "go_api_basic", "postgres", "", 5432)
+	baddsn := NewPostgreSQLDSN("badhost", "go_api_basic", "postgres", "", 5432)
 
 	tests := []struct {
 		name    string
@@ -29,7 +29,7 @@ func Test_NewDB(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			db, cleanup, err := NewDB(tt.args.pgds, tt.args.l)
+			db, cleanup, err := NewPostgreSQLDB(tt.args.pgds, tt.args.l)
 			t.Cleanup(cleanup)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewDB() error = %v, wantErr %v", err, tt.wantErr)

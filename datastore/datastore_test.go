@@ -7,21 +7,19 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/rs/zerolog"
-
 	qt "github.com/frankban/quicktest"
-	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/logger"
 )
 
-func TestNewPGDatasourceName(t *testing.T) {
+func TestNewPostgreSQLDSN(t *testing.T) {
 	c := qt.New(t)
 
-	got := NewPGDatasourceName("localhost", "go_api_basic", "postgres", "", 5432)
+	got := NewPostgreSQLDSN("localhost", "go_api_basic", "postgres", "", 5432)
 
-	want := PGDatasourceName{
+	want := PostgreSQLDSN{
 		Host:     "localhost",
 		Port:     5432,
 		DBName:   "go_api_basic",
@@ -32,7 +30,7 @@ func TestNewPGDatasourceName(t *testing.T) {
 	c.Assert(got, qt.Equals, want)
 }
 
-func TestPGDatasourceName_String(t *testing.T) {
+func TestPostgreSQLDSN_String(t *testing.T) {
 	type fields struct {
 		Host     string
 		Port     int
@@ -50,7 +48,7 @@ func TestPGDatasourceName_String(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			dsn := PGDatasourceName{
+			dsn := PostgreSQLDSN{
 				Host:     tt.fields.Host,
 				Port:     tt.fields.Port,
 				DBName:   tt.fields.DBName,
@@ -69,12 +67,12 @@ func TestDatastore_DB(t *testing.T) {
 
 	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
-	ogdb, cleanup, err := NewDB(NewPGDatasourceName("localhost", "go_api_basic", "postgres", "", 5432), lgr)
+	ogdb, cleanup, err := NewPostgreSQLDB(NewPostgreSQLDSN("localhost", "go_api_basic", "postgres", "", 5432), lgr)
 	t.Cleanup(cleanup)
 	if err != nil {
 		t.Fatal(err)
 	}
-	ds := DefaultDatastore{db: ogdb}
+	ds := Datastore{db: ogdb}
 	db := ds.DB()
 
 	c.Assert(db, qt.Equals, ogdb)
@@ -85,14 +83,14 @@ func TestNewDatastore(t *testing.T) {
 
 	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
-	db, cleanup, err := NewDB(NewPGDatasourceName("localhost", "go_api_basic", "postgres", "", 5432), lgr)
+	db, cleanup, err := NewPostgreSQLDB(NewPostgreSQLDSN("localhost", "go_api_basic", "postgres", "", 5432), lgr)
 	t.Cleanup(cleanup)
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := NewDefaultDatastore(db)
+	got := NewDatastore(db)
 
-	want := DefaultDatastore{db: db}
+	want := Datastore{db: db}
 
 	c.Assert(got, qt.Equals, want)
 }
@@ -119,6 +117,7 @@ func TestNewNullInt64(t *testing.T) {
 }
 
 func TestDatastore_BeginTx(t *testing.T) {
+
 	type fields struct {
 		db      *sql.DB
 		cleanup func()
@@ -127,12 +126,12 @@ func TestDatastore_BeginTx(t *testing.T) {
 		ctx context.Context
 	}
 
-	dsn := NewPGDatasourceName("localhost", "go_api_basic", "postgres", "", 5432)
+	dsn := NewPostgreSQLDSN("localhost", "go_api_basic", "postgres", "", 5432)
 	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
-	db, cleanup, err := NewDB(dsn, lgr)
-	if err != nil {
-		t.Errorf("datastore.NewDB error = %v", err)
+	db, cleanup, dberr := NewPostgreSQLDB(dsn, lgr)
+	if dberr != nil {
+		t.Errorf("datastore.NewPostgreSQLDB error = %v", dberr)
 	}
 	ctx := context.Background()
 	tests := []struct {
@@ -147,7 +146,7 @@ func TestDatastore_BeginTx(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ds := &DefaultDatastore{
+			ds := &Datastore{
 				db: tt.fields.db,
 			}
 			if tt.wantErr == true {
@@ -176,13 +175,13 @@ func TestDatastore_RollbackTx(t *testing.T) {
 		err error
 	}
 
-	dsn := NewPGDatasourceName("localhost", "go_api_basic", "postgres", "", 5432)
+	dsn := NewPostgreSQLDSN("localhost", "go_api_basic", "postgres", "", 5432)
 	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
-	db, cleanup, err := NewDB(dsn, lgr)
+	db, cleanup, err := NewPostgreSQLDB(dsn, lgr)
 	t.Cleanup(cleanup)
 	if err != nil {
-		t.Errorf("datastore.NewDB error = %v", err)
+		t.Errorf("datastore.NewPostgreSQLDB error = %v", err)
 	}
 	ctx := context.Background()
 	tx, err := db.BeginTx(ctx, nil)
@@ -198,7 +197,7 @@ func TestDatastore_RollbackTx(t *testing.T) {
 		t.Errorf("tx2.Commit() error = %v", err)
 	}
 
-	err = errors.New("some error")
+	err = errs.E("some error")
 
 	tests := []struct {
 		name   string
@@ -212,12 +211,12 @@ func TestDatastore_RollbackTx(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Log(tt.name)
-			ds := &DefaultDatastore{
+			ds := &Datastore{
 				db: tt.fields.db,
 			}
-			err := ds.RollbackTx(tt.args.tx, tt.args.err)
+			rollbackErr := ds.RollbackTx(tt.args.tx, tt.args.err)
 			// RollbackTx only returns an *errs.Error
-			e, _ := err.(*errs.Error)
+			e, _ := rollbackErr.(*errs.Error)
 			t.Logf("error = %v", e)
 			if tt.args.tx == nil && e.Code != "nil_tx" {
 				t.Fatalf("ds.RollbackTx() tx was nil, but incorrect error returned = %v", e)
@@ -237,13 +236,13 @@ func TestDatastore_CommitTx(t *testing.T) {
 	type args struct {
 		tx *sql.Tx
 	}
-	dsn := NewPGDatasourceName("localhost", "go_api_basic", "postgres", "", 5432)
+	dsn := NewPostgreSQLDSN("localhost", "go_api_basic", "postgres", "", 5432)
 	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
-	db, cleanup, err := NewDB(dsn, lgr)
+	db, cleanup, err := NewPostgreSQLDB(dsn, lgr)
 	t.Cleanup(cleanup)
 	if err != nil {
-		t.Errorf("datastore.NewDB error = %v", err)
+		t.Errorf("datastore.NewPostgreSQLDB error = %v", err)
 	}
 	ctx := context.Background()
 	tx, err := db.BeginTx(ctx, nil)
@@ -279,11 +278,11 @@ func TestDatastore_CommitTx(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ds := &DefaultDatastore{
+			ds := &Datastore{
 				db: tt.fields.db,
 			}
-			if err := ds.CommitTx(tt.args.tx); (err != nil) != tt.wantErr {
-				t.Errorf("CommitTx() error = %v, wantErr %v", err, tt.wantErr)
+			if commitErr := ds.CommitTx(tt.args.tx); (commitErr != nil) != tt.wantErr {
+				t.Errorf("CommitTx() error = %v, wantErr %v", commitErr, tt.wantErr)
 			}
 		})
 	}

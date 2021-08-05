@@ -1,5 +1,5 @@
 // Package datastore is used to interact with a datastore. It has
-// functions to help setup a sql.DB as well as helpers for working
+// functions to help set up a sql.DB as well as helpers for working
 // with the sql.DB once it's initialized.
 package datastore
 
@@ -8,28 +8,23 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/gilcrest/go-api-basic/domain/errs"
-
 	_ "github.com/lib/pq" // pq driver calls for blank identifier
-	"github.com/pkg/errors"
+
+	"github.com/gilcrest/go-api-basic/domain/errs"
 )
 
-// Datastorer is an interface for working with the Database
-type Datastorer interface {
-	// DB returns a sql.DB
-	DB() *sql.DB
-	// BeginTx starts a sql.Tx using the input context
-	BeginTx(context.Context) (*sql.Tx, error)
-	// RollbackTx rolls back the input sql.Tx
-	RollbackTx(*sql.Tx, error) error
-	// CommitTx commits the Tx
-	CommitTx(*sql.Tx) error
+// PostgreSQLDSN is a PostgreSQL datasource name
+type PostgreSQLDSN struct {
+	Host     string
+	Port     int
+	DBName   string
+	User     string
+	Password string
 }
 
-// NewPGDatasourceName is an initializer for PGDatasourceName, which
-// is a struct that holds the PostgreSQL datasource name details.
-func NewPGDatasourceName(host, dbname, user, password string, port int) PGDatasourceName {
-	return PGDatasourceName{
+// NewPostgreSQLDSN is an initializer for PostgreSQLDSN
+func NewPostgreSQLDSN(host, dbname, user, password string, port int) PostgreSQLDSN {
+	return PostgreSQLDSN{
 		DBName:   dbname,
 		User:     user,
 		Password: password,
@@ -38,19 +33,10 @@ func NewPGDatasourceName(host, dbname, user, password string, port int) PGDataso
 	}
 }
 
-// PGDatasourceName is a Postgres datasource name
-type PGDatasourceName struct {
-	Host     string
-	Port     int
-	DBName   string
-	User     string
-	Password string
-}
-
 // String returns a formatted PostgreSQL datasource name. If you are
 // using a local db with no password, it removes the password from the
 // string, otherwise the connection will fail.
-func (dsn PGDatasourceName) String() string {
+func (dsn PostgreSQLDSN) String() string {
 	// Craft string for database connection
 	switch dsn.Password {
 	case "":
@@ -60,26 +46,26 @@ func (dsn PGDatasourceName) String() string {
 	}
 }
 
-// NewDefaultDatastore is an initializer for the default Datastore struct
-func NewDefaultDatastore(db *sql.DB) DefaultDatastore {
-	return DefaultDatastore{db: db}
-}
-
-// DefaultDatastore is a concrete implementation for a sql database
-type DefaultDatastore struct {
+// Datastore is a concrete implementation for a sql database
+type Datastore struct {
 	db *sql.DB
 }
 
+// NewDatastore is an initializer for the Datastore struct
+func NewDatastore(db *sql.DB) Datastore {
+	return Datastore{db: db}
+}
+
 // DB returns the sql.Db for the Datastore struct
-func (ds DefaultDatastore) DB() *sql.DB {
+func (ds Datastore) DB() *sql.DB {
 	return ds.db
 }
 
 // BeginTx is a wrapper for sql.DB.BeginTx in order to expose from
 // the Datastore interface
-func (ds DefaultDatastore) BeginTx(ctx context.Context) (*sql.Tx, error) {
+func (ds Datastore) BeginTx(ctx context.Context) (*sql.Tx, error) {
 	if ds.db == nil {
-		return nil, errs.E(errs.Database, errors.New("DB cannot be nil"))
+		return nil, errs.E(errs.Database, "DB cannot be nil")
 	}
 
 	tx, err := ds.db.BeginTx(ctx, nil)
@@ -92,14 +78,14 @@ func (ds DefaultDatastore) BeginTx(ctx context.Context) (*sql.Tx, error) {
 
 // RollbackTx is a wrapper for sql.Tx.Rollback in order to expose from
 // the Datastore interface. Proper error handling is also considered.
-func (ds DefaultDatastore) RollbackTx(tx *sql.Tx, err error) error {
+func (ds Datastore) RollbackTx(tx *sql.Tx, err error) error {
 	if tx == nil {
-		return errs.E(errs.Database, errs.Code("nil_tx"), errors.New(fmt.Sprintf("RollbackTx() error = tx cannot be nil: Original error = %s", err.Error())))
+		return errs.E(errs.Database, errs.Code("nil_tx"), fmt.Sprintf("RollbackTx() error = tx cannot be nil: Original error = %s", err.Error()))
 	}
 
 	// Attempt to rollback the transaction
 	if rollbackErr := tx.Rollback(); rollbackErr != nil {
-		return errs.E(errs.Database, errs.Code("rollback_err"), errors.New(fmt.Sprintf("RollbackTx() error = %v: Original error = %s", rollbackErr, err.Error())))
+		return errs.E(errs.Database, errs.Code("rollback_err"), fmt.Sprintf("RollbackTx() error = %v: Original error = %s", rollbackErr, err.Error()))
 	}
 
 	// If rollback was successful, send back original error
@@ -108,7 +94,7 @@ func (ds DefaultDatastore) RollbackTx(tx *sql.Tx, err error) error {
 
 // CommitTx is a wrapper for sql.Tx.Commit in order to expose from
 // the Datastore interface. Proper error handling is also considered.
-func (ds DefaultDatastore) CommitTx(tx *sql.Tx) error {
+func (ds Datastore) CommitTx(tx *sql.Tx) error {
 	if err := tx.Commit(); err != nil {
 		return errs.E(errs.Database, err)
 	}

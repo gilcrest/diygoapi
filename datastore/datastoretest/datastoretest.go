@@ -10,14 +10,12 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/rs/zerolog"
-
 	"github.com/gilcrest/go-api-basic/datastore"
 )
 
 // newPGDatasourceName is a test helper to get a PGDatasourceName
 // from environment variables
-func newPGDatasourceName(t *testing.T) datastore.PGDatasourceName {
+func newPGDatasourceName(t *testing.T) datastore.PostgreSQLDSN {
 	t.Helper()
 
 	// Constants for the PostgreSQL Database connection
@@ -68,7 +66,7 @@ func newPGDatasourceName(t *testing.T) datastore.PGDatasourceName {
 		t.Fatalf("No environment variable found for %s", pgDBPassword)
 	}
 
-	return datastore.NewPGDatasourceName(dbHost, dbName, dbUser, dbPassword, dbPort)
+	return datastore.NewPostgreSQLDSN(dbHost, dbName, dbUser, dbPassword, dbPort)
 }
 
 // NewDB provides a sql.DB and cleanup function for testing.
@@ -79,7 +77,7 @@ func newPGDatasourceName(t *testing.T) datastore.PGDatasourceName {
 //		DB Name     = DB_NAME
 //		DB User     = DB_USER
 //		DB Password = DB_PASSWORD
-func NewDB(t *testing.T) (db *sql.DB, cleanup func()) {
+func newDB(t *testing.T) (db *sql.DB, cleanup func()) {
 	t.Helper()
 
 	dsn := newPGDatasourceName(t)
@@ -101,7 +99,7 @@ func NewDB(t *testing.T) (db *sql.DB, cleanup func()) {
 	return db, cleanup
 }
 
-// NewDefaultDatastore provides a datastore.DefaultDatastore struct
+// NewDatastore provides a datastore.Datastore struct
 // initialized with a sql.DB and cleanup function for testing.
 // The following environment variables must be set to connect to the DB.
 //
@@ -110,10 +108,10 @@ func NewDB(t *testing.T) (db *sql.DB, cleanup func()) {
 //		DB Name     = DB_NAME
 //		DB User     = DB_USER
 //		DB Password = DB_PASSWORD
-func NewDefaultDatastore(t *testing.T, lgr zerolog.Logger) (datastore.DefaultDatastore, func()) {
+func NewDatastore(t *testing.T) (datastore.Datastore, func()) {
 	t.Helper()
 
-	db, cleanup := NewDB(t)
+	db, cleanup := newDB(t)
 
-	return datastore.NewDefaultDatastore(db), cleanup
+	return datastore.NewDatastore(db), cleanup
 }

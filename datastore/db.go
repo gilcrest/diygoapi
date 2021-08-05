@@ -3,14 +3,13 @@ package datastore
 import (
 	"database/sql"
 
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
 	"github.com/gilcrest/go-api-basic/domain/errs"
 )
 
-// NewDB returns an open database handle of 0 or more underlying PostgreSQL connections
-func NewDB(dsn PGDatasourceName, logger zerolog.Logger) (*sql.DB, func(), error) {
+// NewPostgreSQLDB returns an open database handle of 0 or more underlying PostgreSQL connections
+func NewPostgreSQLDB(dsn PostgreSQLDSN, logger zerolog.Logger) (*sql.DB, func(), error) {
 
 	f := func() {}
 
@@ -23,7 +22,7 @@ func NewDB(dsn PGDatasourceName, logger zerolog.Logger) (*sql.DB, func(), error)
 
 	logger.Info().Msgf("sql database opened for %s on port %d", dsn.Host, dsn.Port)
 
-	err = validateDB(db, logger)
+	err = validatePostgreSQLDB(db, logger)
 	if err != nil {
 		return nil, f, err
 	}
@@ -31,11 +30,11 @@ func NewDB(dsn PGDatasourceName, logger zerolog.Logger) (*sql.DB, func(), error)
 	return db, func() { db.Close() }, nil
 }
 
-// validateDB pings the database and logs the current user and database
-func validateDB(db *sql.DB, log zerolog.Logger) error {
+// validatePostgreSQLDB pings the database and logs the current user and database
+func validatePostgreSQLDB(db *sql.DB, log zerolog.Logger) error {
 	err := db.Ping()
 	if err != nil {
-		return errs.E(err)
+		return errs.E(errs.Database, err)
 	}
 	log.Info().Msg("sql database Ping returned successfully")
 
@@ -46,15 +45,17 @@ func validateDB(db *sql.DB, log zerolog.Logger) error {
 	)
 	sqlStatement := `select current_database(), current_user, version();`
 	row := db.QueryRow(sqlStatement)
-	switch err := row.Scan(&currentDatabase, &currentUser, &dbVersion); err {
-	case sql.ErrNoRows:
-		return errs.E(errors.New("no rows were returned"))
-	case nil:
+	err = row.Scan(&currentDatabase, &currentUser, &dbVersion)
+	switch {
+	case err == sql.ErrNoRows:
+		return errs.E(errs.Database, "no rows were returned")
+	case err != nil:
+		return errs.E(errs.Database, err)
+	default:
 		log.Info().Msgf("database version: %s", dbVersion)
 		log.Info().Msgf("current database user: %s", currentUser)
 		log.Info().Msgf("current database: %s", currentDatabase)
-	default:
-		return errs.E(err)
 	}
+
 	return nil
 }
