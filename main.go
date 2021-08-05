@@ -193,20 +193,20 @@ func run(args []string) error {
 
 	// initialize auth structs
 	s.AccessTokenConverter = authgateway.GoogleAccessTokenConverter{}
-	s.Authorizer = auth.DefaultAuthorizer{}
+	s.Authorizer = auth.Authorizer{}
 
 	// initialize struct with PostgreSQL datasource name details
-	dsn := datastore.NewPGDatasourceName(flgs.dbhost, flgs.dbname, flgs.dbuser, flgs.dbpassword, flgs.dbport)
+	dsn := datastore.NewPostgreSQLDSN(flgs.dbhost, flgs.dbname, flgs.dbuser, flgs.dbpassword, flgs.dbport)
 
 	// initialize PostgreSQL database
-	db, cleanup, err := datastore.NewDB(dsn, lgr)
+	db, cleanup, err := datastore.NewPostgreSQLDB(dsn, lgr)
 	if err != nil {
 		lgr.Fatal().Err(err).Msg("Error from datastore.NewDB")
 	}
 	defer cleanup()
 
 	// initialize Datastore
-	pgDatastore := datastore.NewDefaultDatastore(db)
+	pgDatastore := datastore.NewDatastore(db)
 
 	// initialize services
 
