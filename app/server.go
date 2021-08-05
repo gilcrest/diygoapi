@@ -48,8 +48,6 @@ import (
 
 const pathPrefix string = "/api"
 
-// TODO - remove auth interfaces from auth package
-
 // AccessTokenConverter interface converts an access token to a User
 type AccessTokenConverter interface {
 	Convert(ctx context.Context, token auth.AccessToken) (user.User, error)
