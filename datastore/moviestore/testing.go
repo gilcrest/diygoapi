@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/gilcrest/go-api-basic/domain/movie"
 	"github.com/gilcrest/go-api-basic/domain/random"
 	"github.com/gilcrest/go-api-basic/domain/user/usertest"
@@ -14,7 +13,7 @@ import (
 // NewMovieDBHelper creates/inserts a new movie in the db and optionally
 // registers a t.Cleanup function to delete it. The insert and
 // delete are both in separate database transactions
-func NewMovieDBHelper(ctx context.Context, t *testing.T, ds datastore.Datastorer) (m *movie.Movie, cleanup func()) {
+func NewMovieDBHelper(ctx context.Context, t *testing.T, ds Datastorer) (m *movie.Movie, cleanup func()) {
 	t.Helper()
 
 	m = newMovie(t)
@@ -23,13 +22,13 @@ func NewMovieDBHelper(ctx context.Context, t *testing.T, ds datastore.Datastorer
 
 	err := movieTransactor.Create(ctx, m)
 	if err != nil {
-		t.Fatalf("defaultTransactor.Create error = %v", err)
+		t.Fatalf("movieTransactor.Create error = %v", err)
 	}
 
 	cleanup = func() {
 		err := movieTransactor.Delete(ctx, m)
 		if err != nil {
-			t.Fatalf("t.Cleanup defaultTransactor.Delete error = %v", err)
+			t.Fatalf("t.Cleanup movieTransactor.Delete error = %v", err)
 		}
 	}
 
