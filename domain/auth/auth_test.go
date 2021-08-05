@@ -48,7 +48,7 @@ func TestAccessToken_NewGoogleOauth2Token(t *testing.T) {
 	}
 }
 
-func TestDefaultAuthorizer_Authorize(t *testing.T) {
+func TestAuthorizer_Authorize(t *testing.T) {
 	type args struct {
 		lgr zerolog.Logger
 		sub user.User
@@ -72,7 +72,7 @@ func TestDefaultAuthorizer_Authorize(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			a := DefaultAuthorizer{}
+			a := Authorizer{}
 			if err := a.Authorize(tt.args.lgr, tt.args.sub, tt.args.obj, tt.args.act); (err != nil) != tt.wantErr {
 				t.Errorf("Authorize() error = %v, wantErr %v", err, tt.wantErr)
 			}
