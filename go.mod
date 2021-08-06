@@ -10,7 +10,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/justinas/alice v1.2.0
 	github.com/lib/pq v1.10.0
-	github.com/peterbourgon/ff/v3 v3.0.0
+	github.com/peterbourgon/ff/v3 v3.1.0
 	github.com/pkg/errors v0.9.1
 	github.com/rs/xid v1.3.0 // indirect
 	github.com/rs/zerolog v1.21.1-0.20210413053206-582f0cf0e39b
