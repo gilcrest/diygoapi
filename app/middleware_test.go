@@ -32,7 +32,7 @@ func TestJSONContentTypeResponseHandler(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 
-	handlers := s.JSONContentTypeResponseHandler(testJSONContentTypeResponseHandler)
+	handlers := s.jsonContentTypeResponseHandler(testJSONContentTypeResponseHandler)
 	handlers.ServeHTTP(rr, req)
 }
 
@@ -62,7 +62,7 @@ func TestAccessTokenHandler(t *testing.T) {
 
 		s := Server{}
 
-		handlers := s.DefaultRealmHandler(s.AccessTokenHandler(testAccessTokenHandler))
+		handlers := s.defaultRealmHandler(s.accessTokenHandler(testAccessTokenHandler))
 		handlers.ServeHTTP(rr, req)
 
 		// If there is any issues with the Access Token, the body
@@ -87,7 +87,7 @@ func TestAccessTokenHandler(t *testing.T) {
 
 		s := Server{}
 
-		handlers := s.DefaultRealmHandler(s.AccessTokenHandler(testAccessTokenHandler))
+		handlers := s.defaultRealmHandler(s.accessTokenHandler(testAccessTokenHandler))
 		handlers.ServeHTTP(rr, req)
 
 		body, err := ioutil.ReadAll(rr.Body)
