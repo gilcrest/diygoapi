@@ -16,7 +16,7 @@ import (
 
 // JSONContentTypeResponseHandler middleware is used to add the
 // application/json Content-Type Header for responses
-func (s *Server) JSONContentTypeResponseHandler(h http.Handler) http.Handler {
+func (s *Server) jsonContentTypeResponseHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Add(contentTypeHeaderKey, appJSONContentTypeHeaderVal)
@@ -26,7 +26,7 @@ func (s *Server) JSONContentTypeResponseHandler(h http.Handler) http.Handler {
 
 // DefaultRealmHandler middleware is used to set a default Realm to
 // the request context
-func (s *Server) DefaultRealmHandler(h http.Handler) http.Handler {
+func (s *Server) defaultRealmHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// retrieve the context from the http.Request
 		ctx := r.Context()
@@ -42,7 +42,7 @@ func (s *Server) DefaultRealmHandler(h http.Handler) http.Handler {
 // AccessTokenHandler middleware is used to pull the Bearer token
 // from the Authorization header and set it to the request context
 // as an auth.AccessToken
-func (s *Server) AccessTokenHandler(h http.Handler) http.Handler {
+func (s *Server) accessTokenHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		lgr := *hlog.FromRequest(r)
 
@@ -117,7 +117,7 @@ func authHeader(realm auth.WWWAuthenticateRealm, header http.Header) (token stri
 
 // ConvertAccessTokenHandler middleware is used to convert an
 // AccessToken to a User and store the User to the request context
-func (s *Server) ConvertAccessTokenHandler(h http.Handler) http.Handler {
+func (s *Server) convertAccessTokenHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		lgr := *hlog.FromRequest(r)
 
@@ -146,7 +146,7 @@ func (s *Server) ConvertAccessTokenHandler(h http.Handler) http.Handler {
 }
 
 // AuthorizeUserHandler middleware is used authorize a User for a request path and http method
-func (s *Server) AuthorizeUserHandler(h http.Handler) http.Handler {
+func (s *Server) authorizeUserHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		lgr := *hlog.FromRequest(r)
 
@@ -174,7 +174,7 @@ func (s *Server) AuthorizeUserHandler(h http.Handler) http.Handler {
 // fields, including the request method, url, status, size, duration, remote IP,
 // user agent, referer. A unique Request ID is also added to the logger, context
 // and response headers.
-func (s *Server) LoggerChain() alice.Chain {
+func (s *Server) loggerChain() alice.Chain {
 	ac := alice.New(hlog.NewHandler(s.logger),
 		hlog.AccessHandler(func(r *http.Request, status, size int, duration time.Duration) {
 			hlog.FromRequest(r).Info().
@@ -196,11 +196,11 @@ func (s *Server) LoggerChain() alice.Chain {
 
 // CtxWithUserChain chains handlers together to set the Realm, Access
 // Token and User to the Context
-func (s *Server) CtxWithUserChain() alice.Chain {
+func (s *Server) ctxWithUserChain() alice.Chain {
 	ac := alice.New(
-		s.DefaultRealmHandler,
-		s.AccessTokenHandler,
-		s.ConvertAccessTokenHandler,
+		s.defaultRealmHandler,
+		s.accessTokenHandler,
+		s.convertAccessTokenHandler,
 	)
 
 	return ac
