@@ -2,7 +2,7 @@
 
 A RESTful API template (built with Go)
 
-The goal of this project is to be an example/template/boilerplate of a relational database-backed REST HTTP API that has characteristics needed to ensure success in a high volume environment. This is geared this towards beginners, as I struggled with a lot of this over the past few years and would like to help others getting started.
+The goal of this project is to be an example of a relational database-backed REST HTTP API that has characteristics needed to ensure success in a high volume environment. I struggled a lot with parsing all of the different ideas people have for package layouts over the past few years and would like to help others who may be having a similar struggle. I'd like to see Go as accessible as possible for everyone. If you have any questions or would like help, open an issue or send me a note - I'm happy to help! Also, if you have disagree or have suggestions about this repo, please do the same, I really enjoy getting both positive and negative feedback.
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/gilcrest/go-api-basic.svg)](https://pkg.go.dev/github.com/gilcrest/go-api-basic) [![Go Report Card](https://goreportcard.com/badge/github.com/gilcrest/go-api-basic)](https://goreportcard.com/report/github.com/gilcrest/go-api-basic)
 
@@ -171,7 +171,7 @@ When running the program binary, a number flags can be passed. The [ff](https://
 
 #### Environment Setup
 
-If you choose to use [environment variables](https://en.wikipedia.org/wiki/Environment_variable) instead of flags for connecting to the database, you can set these however you like (permanently in something like .`bash_profile` if on a mac, etc. - see some notes [here](https://gist.github.com/gilcrest/d5981b873d1e2fc9646602eedd384ba6#environment-variables), but my preferred way is to run a bash script to set the environment variables temporarily for the current shell environment. I have included an example script file (`setlocalEnvVars.sh`) in the `/scripts/ddl` directory. The below statements assume you're running the command from the project root directory.
+If you choose to use [environment variables](https://en.wikipedia.org/wiki/Environment_variable) instead of flags for connecting to the database, you can set these however you like (permanently in something like .`bash_profile` if on a mac, etc. - some notes [here](https://gist.github.com/gilcrest/d5981b873d1e2fc9646602eedd384ba6#environment-variables)), but my preferred way is to run a bash script to set environment variables temporarily for the current shell environment. I have included an example script file (`setlocalEnvVars.sh`) in the `/scripts/ddl` directory. The below statements assume you're running the command from the project root directory.
 
 In order to set the environment variables using this script, first, in the file, set the environment variable values to whatever is appropriate for your environment:
 
@@ -221,7 +221,7 @@ $ ./server -log-level=debug
 
 With the server up and running, the easiest service to interact with is the `ping` service. This service is a simple health check that returns a series of flags denoting health of the system (queue depths, database up boolean, etc.). For right now, the only thing it checks is if the database is up and pingable. I have left this service unauthenticated so there's at least one service that you can get to without having to have an authentication token, but in actuality, I would typically have every service behind a security token.
 
-Use cURL GET request to call `ping`:
+Use [cURL](https://curl.se/) GET request to call `ping`:
 
 ```bash
 curl -v --location --request GET 'http://127.0.0.1:8080/api/v1/ping'
@@ -241,13 +241,15 @@ The response looks like:
 
 ### Authentication and Authorization
 
-The remainder of requests require authentication. I have chosen to use [Google's Oauth2 solution](https://developers.google.com/identity/protocols/oauth2/web-server) for these APIs. To use this, you need to setup a Client ID and Client Secret and obtain an access token. The instructions [here](https://developers.google.com/identity/protocols/oauth2) are great. I recommend the [Google Oauth2 Playground](https://developers.google.com/oauthplayground/) once you get setup to be able to easily get fresh access tokens for testing.
+The remainder of requests require authentication. I have chosen to use [Google's Oauth2 solution](https://developers.google.com/identity/protocols/oauth2/web-server) for these APIs. To use this, you need to setup a Client ID and Client Secret and obtain an access token. The instructions [here](https://developers.google.com/identity/protocols/oauth2) are great.
+
+After Oauth2 setup with Google, I recommend the [Google Oauth2 Playground](https://developers.google.com/oauthplayground/) to obtain fresh access tokens for testing.
 
 Once a user has authenticated through this flow, all calls to services (other than `ping`) require that the Google access token be sent as a `Bearer` token in the `Authorization` header.
 
 - If there is no token present, an HTTP 401 (Unauthorized) response will be sent and the response body will be empty.
 - If a token is properly sent, the Google API is used to validate the token. If the token is invalid, an HTTP 401 (Unauthorized) response will be sent and the response body will be empty.
-- If the token is valid, Google will respond with information about the user. The user's email will be used as their username as well as for authorization that it has been granted access to the API. If the user is not authorized to use the API, an HTTP 403 (Forbidden) response will be sent and the response body will be empty. The authorization is currently hard-coded to allow for one email. Add your email at `/domain/auth/auth.go` in the Authorize function for testing. This is definitely not a production-ready way to do authorization. I will eventually switch to some [ACL](https://en.wikipedia.org/wiki/Access-control_list) or [RBAC](https://en.wikipedia.org/wiki/Role-based_access_control) library when I have time to research those, but for now, this works.
+- If the token is valid, Google will respond with information about the user. The user's email will be used as their username as well as for authorization that it has been granted access to the API. If the user is not authorized to use the API, an HTTP 403 (Forbidden) response will be sent and the response body will be empty. The authorization is currently hard-coded to allow for one email. Add your email at `/domain/auth/auth.go` in the `Authorize` method of the `Authorizer` struct for testing. This is definitely not a production-ready way to do authorization. I will eventually switch to some [ACL](https://en.wikipedia.org/wiki/Access-control_list) or [RBAC](https://en.wikipedia.org/wiki/Role-based_access_control) library when I have time to research those, but for now, this works.
 
 So long as you've got a valid token and are properly setup in the authorization function, you can then execute all four operations (create, read, update, delete) using cURL.
 
@@ -469,13 +471,12 @@ You can add additional context fields (`errs.Code`, `errs.Parameter`, `errs.Kind
 
 ##### Handler Flow
 
-At the top of the program flow for each service is the app service handler (for example, [DefaultMovieHandlers.CreateMovie](https://github.com/gilcrest/go-api-basic/blob/main/handler/movieHandler.go)). In the app service handler, any error returned from any function or method is sent through the `errs.HTTPErrorResponse` function along with the `http.ResponseWriter` and a `zerolog.Logger`.
+At the top of the program flow for each service is the app service handler (for example, [Server.handleMovieCreate](https://github.com/gilcrest/go-api-basic/blob/main/app/handlers.go)). In this handler, any error returned from any function or method is sent through the `errs.HTTPErrorResponse` function along with the `http.ResponseWriter` and a `zerolog.Logger`.
 
 For example:
 
 ```go
-// Call the NewMovie method for struct initialization
-m, err := movie.NewMovie(uuid.New(), extlID, u)
+response, err := s.CreateMovieService.Create(r.Context(), rb, u)
 if err != nil {
     errs.HTTPErrorResponse(w, logger, err)
     return
@@ -597,10 +598,10 @@ func NewUnauthenticatedError(realm string, err error) *UnauthenticatedError {
 
 ##### Unauthenticated Error Flow
 
-The `errs.Unauthenticated` error should only be raised at points of authentication. I will get into application flow in detail in later posts, but authentication for `go-api-basic` happens in middleware handlers prior to calling the app handler for the given route.
+The `errs.Unauthenticated` error should only be raised at points of authentication as part of a middleware handler. I will get into application flow in detail later, but authentication for `go-api-basic` happens in middleware handlers prior to calling the app handler for the given route.
 
-- The `WWW-Authenticate` *realm* is set to the request context using the `DefaultRealmHandler` middleware in the [handlers package](https://github.com/gilcrest/go-api-basic/blob/main/handler/middleware.go) prior to attempting authentication.
-- Next, the Oauth2 access token is retrieved from the `Authorization` http header using the `AccessTokenHandler` middleware. There are several access token validations in this middleware, if any are not successful, the `errs.Unauthenticated` error is returned using the realm set to the request context.
+- The `WWW-Authenticate` *realm* is set to the request context using the `defaultRealmHandler` middleware in the [app package](https://github.com/gilcrest/go-api-basic/blob/main/app/middleware.go) prior to attempting authentication.
+- Next, the Oauth2 access token is retrieved from the `Authorization` http header using the `accessTokenHandler` middleware. There are several access token validations in this middleware, if any are not successful, the `errs.Unauthenticated` error is returned using the realm set to the request context.
 - Finally, if the access token is successfully retrieved, it is then converted to a `User` via the `GoogleAccessTokenConverter.Convert` method in the `gateway/authgateway` package. This method sends an outbound request to Google using their API; if any errors are returned, an `errs.Unauthenticated` error is returned.
 
 > In general, I do not like to use `context.Context`, however, it is used in `go-api-basic` to pass values between middlewares. The `WWW-Authenticate` *realm*, the Oauth2 access token and the calling user after authentication, all of which are `request-scoped` values, are all set to the request `context.Context`.
@@ -632,7 +633,7 @@ The `errs.NewUnauthorizedError` function initializes an `UnauthorizedError`.
 
 ##### Unauthorized Error Flow
 
-The `errs.Unauthorized` error is raised when there is a permission issue for a user when attempting to access a resource. Currently, `go-api-basic`'s placeholder authorization implementation `DefaultAuthorizer.Authorize` in the [domain/auth](https://github.com/gilcrest/go-api-basic/blob/main/domain/auth/auth.go) package performs rudimentary checks that a user has access to a resource. If the user does not have access, the `errs.Unauthorized` error is returned.
+The `errs.Unauthorized` error is raised when there is a permission issue for a user when attempting to access a resource. Currently, `go-api-basic`'s placeholder authorization implementation `Authorizer.Authorize` in the [domain/auth](https://github.com/gilcrest/go-api-basic/blob/main/domain/auth/auth.go) package performs rudimentary checks that a user has access to a resource. If the user does not have access, the `errs.Unauthorized` error is returned.
 
 Per requirements, `go-api-basic` does not return a response body when returning an **Unauthorized** error. The error response from [cURL](https://curl.se/) looks like the following:
 
@@ -676,6 +677,111 @@ The `log-level` flag sets the Global logging level for your `zerolog.Logger`.
 The `log-level-min` flag sets the minimum accepted logging level, which means, for example, if you set the minimum level to error, the only logs that will be sent to your chosen output will be those that are greater than or equal to error (`error`, `fatal` and `panic`).
 
 The `log-error-stack` boolean flag tells whether to log stack traces for each error. If `true`, the `zerolog.ErrorStackMarshaler` will be set to `pkgerrors.MarshalStack` which means, for errors raised using the [github.com/pkg/errors](https://github.com/pkg/errors) package, the error stack trace will be captured and printed along with the log. All errors raised in `go-api-basic` are raised using `github.com/pkg/errors`.
+
+After parsing the command line flags, `zerolog.Logger` is initialized in `main.go`
+
+```go
+// setup logger with appropriate defaults
+lgr := logger.NewLogger(os.Stdout, minlvl, true)
+```
+
+and subsequently injected into the `app.Server` struct as a Server parameter.
+
+```go
+// initialize server configuration parameters
+params := app.NewServerParams(lgr, serverDriver)
+
+// initialize Server
+s, err := app.NewServer(mr, params)
+if err != nil {
+    lgr.Fatal().Err(err).Msg("Error from app.NewServer")
+}
+```
+
+#### Logger Setup in Handlers
+
+The `Server.routes` method is responsible for registering routes and corresponding middleware/handlers to the Server's `gorilla/mux` router. For each route registered to the handler, upon execution, the initialized `zerolog.Logger` struct is added to the request context through the `Server.loggerChain` method.
+
+```go
+// register routes/middleware/handlers to the Server router
+func (s *Server) routes() {
+
+    // Match only POST requests at /api/v1/movies
+    // with Content-Type header = application/json
+    s.router.Handle(moviesV1PathRoot,
+        s.loggerChain().Extend(s.ctxWithUserChain()).
+            Append(s.authorizeUserHandler).
+            Append(s.jsonContentTypeResponseHandler).
+            ThenFunc(s.handleMovieCreate)).
+        Methods(http.MethodPost).
+        Headers(contentTypeHeaderKey, appJSONContentTypeHeaderVal)
+
+...
+```
+
+ The `Server.loggerChain` method sets up the logger with pre-populated fields, including the request method, url, status, size, duration, remote IP, user agent, referer. A unique `Request ID` is also added to the logger, context and response headers.
+
+```go
+func (s *Server) loggerChain() alice.Chain {
+    ac := alice.New(hlog.NewHandler(s.logger),
+        hlog.AccessHandler(func(r *http.Request, status, size int, duration time.Duration) {
+        hlog.FromRequest(r).Info().
+            Str("method", r.Method).
+            Stringer("url", r.URL).
+            Int("status", status).
+            Int("size", size).
+            Dur("duration", duration).
+            Msg("request logged")
+        }),
+        hlog.RemoteAddrHandler("remote_ip"),
+        hlog.UserAgentHandler("user_agent"),
+        hlog.RefererHandler("referer"),
+        hlog.RequestIDHandler("request_id", "Request-Id"),
+    )
+
+    return ac
+}
+```
+
+For every request, you'll get a request log that looks something like the following:
+
+```json
+{
+    "level": "info",
+    "remote_ip": "127.0.0.1",
+    "user_agent": "PostmanRuntime/7.28.0",
+    "request_id": "c3npn8ea0brt0m3scvq0",
+    "method": "POST",
+    "url": "/api/v1/movies",
+    "status": 401,
+    "size": 0,
+    "duration": 392.254496,
+    "time": 1626315682,
+    "severity": "INFO",
+    "message": "request logged"
+}
+```
+
+All error logs will have the same request metadata, including `request_id`. The `Request-Id` is also sent back as part of the error response as a response header, allowing you to link the two. An error log will look something like the following:
+
+```json
+{
+    "level": "error",
+    "remote_ip": "127.0.0.1",
+    "user_agent": "PostmanRuntime/7.28.0",
+    "request_id": "c3nppj6a0brt1dho9e2g",
+    "error": "googleapi: Error 401: Request is missing required authentication credential. Expected OAuth 2 access token, login cookie or other valid authentication credential. See https://developers.google.com/identity/sign-in/web/devconsole-project., unauthorized",
+    "http_statuscode": 401,
+    "realm": "go-api-basic",
+    "time": 1626315981,
+    "severity": "ERROR",
+    "message": "Unauthenticated Request"
+}
+```
+
+> The above error log demonstrates a log for an error with stack trace turned off.
+
+If the Logger is to be used beyond the scope of the handler, it should be pulled from the request context in the handler and sent as a parameter to any inner calls. The Logger is added only to the request context to capture request related fields with the Logger and be able to pass the initialized logger and middleware handlers easier to the app/route handler. Additional use of the logger should be directly called out in function/method signatures so there are no surprises. All logs from the logger passed down get the benefit of the request metadata though, which is great!
 
 #### Reading and Modifying Logger State
 
@@ -721,85 +827,6 @@ and the response will look something like:
 ```
 
 The `PUT` response is the same as the `GET` response, but with updated values. In the examples above, I used a scenario where the logger state started with the global logging level (`global_log_level`) at error and error stack tracing (`log_error_stack`) set to false. The `PUT` request then updates the logger state, setting the global logging level to `debug` and the error stack tracing. You might do something like this if you are debugging an issue and need to see debug logs or error stacks to help with that.
-
-## Logger Setup in Handlers
-
-After `zerolog.Logger` is initialized in `main.go`, it is injected into a `handler.Middleware` struct.
-
-```go
-// Middleware are the collection of app middleware handlers
-type Middleware struct {
-    Logger               zerolog.Logger
-    AccessTokenConverter auth.AccessTokenConverter
-    Authorizer           auth.Authorizer
-}
-```
-
- The `handler.Middleware` struct is then injected into the `handler.Routes` function (along with the app handlers and gorilla Mux router), which is responsible for registering routes and corresponding middleware/handlers to the given gorilla/mux router.
-
-For each route registered to the handler, upon execution, the `zerolog.Logger` is then added to the request context through the `Middleware.LoggerChain` method for subsequent use with pre-populated fields, including the request method, url, status, size, duration, remote IP, user agent, referer. A unique `Request ID` is also added to the logger, context and response headers.
-
-```go
-func (mw Middleware) LoggerChain() alice.Chain {
-    ac := alice.New(hlog.NewHandler(mw.Logger),
-        hlog.AccessHandler(func(r *http.Request, status, size int, duration time.Duration) {
-            hlog.FromRequest(r).Info().
-                Str("method", r.Method).
-                Stringer("url", r.URL).
-                Int("status", status).
-                Int("size", size).
-                Dur("duration", duration).
-                Msg("request logged")
-        }),
-        hlog.RemoteAddrHandler("remote_ip"),
-        hlog.UserAgentHandler("user_agent"),
-        hlog.RefererHandler("referer"),
-        hlog.RequestIDHandler("request_id", "Request-Id"),
-    )
-
-    return ac
-}
-```
-
-For every request, you'll get a request log that looks something like the following:
-
-```json
-{
-    "level": "info",
-    "remote_ip": "127.0.0.1",
-    "user_agent": "PostmanRuntime/7.28.0",
-    "request_id": "c3npn8ea0brt0m3scvq0",
-    "method": "POST",
-    "url": "/api/v1/movies",
-    "status": 401,
-    "size": 0,
-    "duration": 392.254496,
-    "time": 1626315682,
-    "severity": "INFO",
-    "message": "request logged"
-}
-```
-
-All error logs will have the same request metadata, including `request_id`. The `Request-Id` is also sent back as part of the error response as a response header, allowing you to link the two. An error log will look somethiing like the following:
-
-```json
-{
-    "level": "error",
-    "remote_ip": "127.0.0.1",
-    "user_agent": "PostmanRuntime/7.28.0",
-    "request_id": "c3nppj6a0brt1dho9e2g",
-    "error": "googleapi: Error 401: Request is missing required authentication credential. Expected OAuth 2 access token, login cookie or other valid authentication credential. See https://developers.google.com/identity/sign-in/web/devconsole-project., unauthorized",
-    "http_statuscode": 401,
-    "realm": "go-api-basic",
-    "time": 1626315981,
-    "severity": "ERROR",
-    "message": "Unauthenticated Request"
-}
-```
-
-> The above error log demonstrates a log for an error with stack trace turned off.
-
-If the logger is to be used beyond the scope of the handler, it should be pulled from the request context in the handler and sent as a parameter to any inner calls. The Logger is added only to the request context to capture request related fields with the Logger and be able to pass the initialized logger and middleware handlers easier to the app/route handler. Additional use of the logger should be directly called out in function/method signatures so there are no surprises. All logs from the logger passed down get the benefit of the request metadata though, which is great!
 
 ## 7/13/2021 - README under construction
 
