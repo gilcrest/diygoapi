@@ -24,7 +24,7 @@ func (s *Server) jsonContentTypeResponseHandler(h http.Handler) http.Handler {
 		})
 }
 
-// DefaultRealmHandler middleware is used to set a default Realm to
+// defaultRealmHandler middleware is used to set a default Realm to
 // the request context
 func (s *Server) defaultRealmHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
