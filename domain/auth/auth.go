@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/casbin/casbin"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"golang.org/x/oauth2"
@@ -91,33 +92,38 @@ func CtxWithAccessToken(ctx context.Context, at AccessToken) context.Context {
 	return context.WithValue(ctx, contextKeyAccessToken, at)
 }
 
-// Authorizer and the Authorize method ensures a subject (user)
-// can perform a particular action on an object. e.g. gilcrest can
-// read (GET) the resource at the /ping path. This is obviously
-// completely bogus right now, eventually need to look into something
-// for ACL/RBAC
-type Authorizer struct{}
+// CasbinAuthorizer holds the casbin.Enforcer struct
+type CasbinAuthorizer  struct {
+	Enforcer *casbin.Enforcer
+}
 
-// Authorize authorizes a subject (user) can perform a particular
-// action on an object. e.g. gilcrest can read (GET) the resource
-// at the /ping path. This is obviously completely bogus right now,
-// eventually need to look into something like Casbin for ACL/RBAC
-func (a Authorizer) Authorize(lgr zerolog.Logger, sub user.User, obj string, act string) error {
+// Authorize ensures that a subject (user.User) can perform a
+// particular action on an object. e.g. subject otto.maddox711@gmail.com
+// can read (GET) the object (resource) at the /api/v1/movies path.
+// Casbin is setup to use an RBAC (Role-Based Access Control) model
+// Users with the admin role can *write* (GET, PUT, POST, DELETE).
+// Users with the user role can only *read* (GET)
+func (a CasbinAuthorizer) Authorize(lgr zerolog.Logger, sub user.User, obj string, act string) error {
 
 	const (
 		moviesPath string = "/api/v1/movies"
 		loggerPath string = "/api/v1/logger"
 	)
 
-	var authorized bool
-	switch (strings.HasPrefix(obj, moviesPath) || strings.HasPrefix(obj, loggerPath)) && (act == http.MethodPost || act == http.MethodPut || act == http.MethodDelete || act == http.MethodGet) {
-	case true:
-		switch sub.Email {
-		case "otto.maddox711@gmail.com":
-			authorized = true
-		}
+	if strings.HasPrefix(obj, moviesPath) {
+		obj = moviesPath
+	} else if strings.HasPrefix(obj, loggerPath) {
+		obj = loggerPath
+	} else {
+		return errs.NewUnauthorizedError(errors.New(fmt.Sprintf("user %s does not have %s permission for %s", sub.Email, act, obj)))
 	}
 
+	if (act == http.MethodGet) {
+		act = "read"
+	} else {
+		act = "write"
+	}
+	authorized := a.Enforcer.Enforce(sub.Email, obj, act)
 	if authorized {
 		lgr.Debug().Str("sub", sub.Email).Str("obj", obj).Str("act", act).Msgf("Authorized (sub: %s, obj: %s, act: %s)", sub.Email, obj, act)
 		return nil

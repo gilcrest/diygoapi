@@ -4,6 +4,7 @@ go 1.17
 
 require (
 	cloud.google.com/go v0.94.0 // indirect
+	github.com/casbin/casbin v1.9.1 // indirect
 	github.com/frankban/quicktest v1.13.1
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/google/go-cmp v0.5.6

@@ -1,0 +1,8 @@
+p, user, /api/v1/movies, read
+p, admin, /api/v1/movies, read
+p, admin, /api/v1/movies, write
+p, user, /api/v1/logger, read
+p, admin, /api/v1/logger, read
+p, admin, /api/v1/logger, write
+g, otto.maddox711@gmail.com, admin
+g, user_xyz@gmail.com, user
