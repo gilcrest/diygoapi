@@ -13,7 +13,7 @@ require (
 	github.com/lib/pq v1.10.2
 	github.com/peterbourgon/ff/v3 v3.1.0
 	github.com/pkg/errors v0.9.1
-	github.com/rs/zerolog v1.24.0
+	github.com/rs/zerolog v1.25.0
 	golang.org/x/net v0.0.0-20210825183410-e898025ed96a // indirect
 	golang.org/x/oauth2 v0.0.0-20210819190943-2bc19b11175f
 	golang.org/x/sys v0.0.0-20210831042530-f4d43177bf5e // indirect
