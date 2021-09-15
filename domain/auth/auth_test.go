@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/casbin/casbin"
 	"github.com/gilcrest/go-api-basic/domain/logger"
 	"github.com/rs/zerolog"
 
@@ -72,7 +73,7 @@ func TestAuthorizer_Authorize(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			a := Authorizer{}
+			a := CasbinAuthorizer{Enforcer: casbin.NewEnforcer("../../config/rbac_model.conf", "../../config/rbac_policy.csv")}
 			if err := a.Authorize(tt.args.lgr, tt.args.sub, tt.args.obj, tt.args.act); (err != nil) != tt.wantErr {
 				t.Errorf("Authorize() error = %v, wantErr %v", err, tt.wantErr)
 			}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/casbin/casbin"
 	"github.com/peterbourgon/ff/v3"
 	"github.com/rs/zerolog"
 
@@ -193,7 +194,7 @@ func run(args []string) error {
 
 	// initialize auth structs
 	s.AccessTokenConverter = authgateway.GoogleAccessTokenConverter{}
-	s.Authorizer = auth.Authorizer{}
+	s.Authorizer = auth.CasbinAuthorizer{Enforcer: casbin.NewEnforcer("config/rbac_model.conf", "config/rbac_policy.csv")}
 
 	// initialize struct with PostgreSQL datasource name details
 	dsn := datastore.NewPostgreSQLDSN(flgs.dbhost, flgs.dbname, flgs.dbuser, flgs.dbpassword, flgs.dbport)

@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/casbin/casbin"
 	"github.com/gilcrest/go-api-basic/domain/movie"
 	"github.com/gilcrest/go-api-basic/domain/user/usertest"
 	"github.com/google/uuid"
@@ -149,7 +150,7 @@ func TestHandleMovieCreate(t *testing.T) {
 		s, err := NewServer(rtr, params)
 		c.Assert(err, qt.IsNil)
 		s.AccessTokenConverter = authtest.NewMockAccessTokenConverter(t)
-		s.Authorizer = auth.Authorizer{}
+		s.Authorizer = auth.CasbinAuthorizer{Enforcer: casbin.NewEnforcer("../config/rbac_model.conf", "../config/rbac_policy.csv")}
 
 		// initialize Datastore
 		ds, cleanup := datastoretest.NewDatastore(t)
@@ -286,7 +287,7 @@ func TestHandleMovieCreate(t *testing.T) {
 		s, err := NewServer(rtr, params)
 		c.Assert(err, qt.IsNil)
 		s.AccessTokenConverter = authtest.NewMockAccessTokenConverter(t)
-		s.Authorizer = auth.Authorizer{}
+		s.Authorizer = auth.CasbinAuthorizer{Enforcer: casbin.NewEnforcer("../config/rbac_model.conf", "../config/rbac_policy.csv")}
 
 		// initialize a mock Transactor
 		movieTransactor := newMockTransactor(t)
@@ -425,7 +426,7 @@ func TestHandleMovieUpdate(t *testing.T) {
 		s, err := NewServer(rtr, params)
 		c.Assert(err, qt.IsNil)
 		s.AccessTokenConverter = authtest.NewMockAccessTokenConverter(t)
-		s.Authorizer = auth.Authorizer{}
+		s.Authorizer = auth.CasbinAuthorizer{Enforcer: casbin.NewEnforcer("../config/rbac_model.conf", "../config/rbac_policy.csv")}
 
 		// initialize Datastore
 		ds, cleanup := datastoretest.NewDatastore(t)
@@ -557,7 +558,7 @@ func TestHandleMovieDelete(t *testing.T) {
 		s, err := NewServer(rtr, params)
 		c.Assert(err, qt.IsNil)
 		s.AccessTokenConverter = authtest.NewMockAccessTokenConverter(t)
-		s.Authorizer = auth.Authorizer{}
+		s.Authorizer = auth.CasbinAuthorizer{Enforcer: casbin.NewEnforcer("../config/rbac_model.conf", "../config/rbac_policy.csv")}
 
 		// initialize Datastore
 		ds, cleanup := datastoretest.NewDatastore(t)
@@ -645,7 +646,7 @@ func TestHandleFindMovieByID(t *testing.T) {
 		s, err := NewServer(rtr, params)
 		c.Assert(err, qt.IsNil)
 		s.AccessTokenConverter = authtest.NewMockAccessTokenConverter(t)
-		s.Authorizer = auth.Authorizer{}
+		s.Authorizer = auth.CasbinAuthorizer{Enforcer: casbin.NewEnforcer("../config/rbac_model.conf", "../config/rbac_policy.csv")}
 
 		// initialize Datastore
 		ds, cleanup := datastoretest.NewDatastore(t)
@@ -774,7 +775,7 @@ func TestHandleFindAllMovies(t *testing.T) {
 		s, err := NewServer(rtr, params)
 		c.Assert(err, qt.IsNil)
 		s.AccessTokenConverter = authtest.NewMockAccessTokenConverter(t)
-		s.Authorizer = auth.Authorizer{}
+		s.Authorizer = auth.CasbinAuthorizer{Enforcer: casbin.NewEnforcer("../config/rbac_model.conf", "../config/rbac_policy.csv")}
 
 		// initialize MockSelector for the moviestore
 		mockSelector := newMockSelector(t)
@@ -866,7 +867,7 @@ func TestHandleLoggerRead(t *testing.T) {
 		c.Assert(err, qt.IsNil)
 
 		s.AccessTokenConverter = authtest.NewMockAccessTokenConverter(t)
-		s.Authorizer = auth.Authorizer{}
+		s.Authorizer = auth.CasbinAuthorizer{Enforcer: casbin.NewEnforcer("../config/rbac_model.conf", "../config/rbac_policy.csv")}
 
 		s.LoggerService = service.NewLoggerService(lgr)
 
@@ -941,7 +942,7 @@ func TestHandleLoggerUpdate(t *testing.T) {
 		c.Assert(err, qt.IsNil)
 
 		s.AccessTokenConverter = authtest.NewMockAccessTokenConverter(t)
-		s.Authorizer = auth.Authorizer{}
+		s.Authorizer = auth.CasbinAuthorizer{Enforcer: casbin.NewEnforcer("../config/rbac_model.conf", "../config/rbac_policy.csv")}
 
 		s.LoggerService = service.NewLoggerService(lgr)
 
@@ -1030,7 +1031,7 @@ func TestHandlePing(t *testing.T) {
 		c.Assert(err, qt.IsNil)
 
 		s.AccessTokenConverter = authtest.NewMockAccessTokenConverter(t)
-		s.Authorizer = auth.Authorizer{}
+		s.Authorizer = auth.CasbinAuthorizer{Enforcer: casbin.NewEnforcer("../config/rbac_model.conf", "../config/rbac_policy.csv")}
 
 		// initialize Datastore
 		ds, cleanup := datastoretest.NewDatastore(t)
@@ -1084,7 +1085,7 @@ func TestHandlePing(t *testing.T) {
 		c.Assert(err, qt.IsNil)
 
 		s.AccessTokenConverter = authtest.NewMockAccessTokenConverter(t)
-		s.Authorizer = auth.Authorizer{}
+		s.Authorizer = auth.CasbinAuthorizer{Enforcer: casbin.NewEnforcer("../config/rbac_model.conf", "../config/rbac_policy.csv")}
 
 		// use mockPinger instead of a real db
 		pinger := mockPinger{}
