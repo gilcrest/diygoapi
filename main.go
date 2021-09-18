@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime"
 
 	"github.com/casbin/casbin"
 	"github.com/peterbourgon/ff/v3"
@@ -161,6 +162,7 @@ func run(args []string) error {
 	// set global logging time field format to Unix timestamp
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 
+	lgr.Info().Msgf("go runtime version: %s", runtime.Version())
 	lgr.Info().Msgf("minimum accepted logging level set to %s", minlvl)
 	lgr.Info().Msgf("logging level set to %s", lvl)
 
