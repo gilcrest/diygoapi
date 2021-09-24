@@ -1,17 +1,18 @@
 // Package pingstore enables database health checks through the db
-// PingContext method. The Pinger interface allows mocking the Ping
+// Pool Ping method. The Pinger interface allows mocking the Ping
 // when testing with no db connectivity.
 package pingstore
 
 import (
 	"context"
-	"database/sql"
+
+	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 // Datastorer is an interface for working with the Database
 type Datastorer interface {
-	// DB returns a sql.DB
-	DB() *sql.DB
+	// Pool returns *pgxpool.Pool
+	Pool() *pgxpool.Pool
 }
 
 // Pinger is the default implementation for pinging the db
@@ -26,5 +27,5 @@ func NewPinger(ds Datastorer) Pinger {
 
 // PingDB pings the DB
 func (d Pinger) PingDB(ctx context.Context) error {
-	return d.DB().PingContext(ctx)
+	return d.Pool().Ping(ctx)
 }

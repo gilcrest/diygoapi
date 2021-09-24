@@ -7,7 +7,13 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
+
 	qt "github.com/frankban/quicktest"
+	"github.com/google/go-cmp/cmp"
+	"github.com/jackc/puddle"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
 	"github.com/gilcrest/go-api-basic/domain/errs"
@@ -62,137 +68,123 @@ func TestPostgreSQLDSN_String(t *testing.T) {
 	}
 }
 
-func TestDatastore_DB(t *testing.T) {
+func TestDatastore_Pool(t *testing.T) {
 	c := qt.New(t)
 
+	ctx := context.Background()
 	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
-	ogdb, cleanup, err := NewPostgreSQLDB(NewPostgreSQLDSN("localhost", "go_api_basic", "postgres", "", 5432), lgr)
+	ogpool, cleanup, err := NewPostgreSQLPool(ctx, NewPostgreSQLDSN("localhost", "go_api_basic", "postgres", "", 5432), lgr)
 	t.Cleanup(cleanup)
 	if err != nil {
 		t.Fatal(err)
 	}
-	ds := Datastore{db: ogdb}
-	db := ds.DB()
+	ds := Datastore{dbpool: ogpool}
+	dbpool := ds.Pool()
 
-	c.Assert(db, qt.Equals, ogdb)
+	c.Assert(dbpool, qt.Equals, ogpool)
 }
 
 func TestNewDatastore(t *testing.T) {
-	c := qt.New(t)
+	t.Run("numbers", func(t *testing.T) {
+		c := qt.New(t)
 
-	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+		ctx := context.Background()
+		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
-	db, cleanup, err := NewPostgreSQLDB(NewPostgreSQLDSN("localhost", "go_api_basic", "postgres", "", 5432), lgr)
-	t.Cleanup(cleanup)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got := NewDatastore(db)
+		dbpool, cleanup, err := NewPostgreSQLPool(ctx, NewPostgreSQLDSN("localhost", "go_api_basic", "postgres", "", 5432), lgr)
+		c.Assert(err, qt.IsNil)
+		t.Cleanup(cleanup)
 
-	want := Datastore{db: db}
+		got := NewDatastore(dbpool)
+		want := Datastore{dbpool: dbpool}
 
-	c.Assert(got, qt.Equals, want)
-}
-
-func TestNewNullInt64(t *testing.T) {
-	type args struct {
-		i int64
-	}
-	tests := []struct {
-		name string
-		args args
-		want sql.NullInt64
-	}{
-		{"has value", args{i: 23}, sql.NullInt64{Int64: 23, Valid: true}},
-		{"zero value", args{i: 0}, sql.NullInt64{Int64: 0, Valid: false}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := NewNullInt64(tt.args.i); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewNullInt64() = %v, want %v", got, tt.want)
-			}
-		})
-	}
+		c.Assert(got, qt.Equals, want)
+	})
 }
 
 func TestDatastore_BeginTx(t *testing.T) {
+	t.Run("typical", func(t *testing.T) {
+		c := qt.New(t)
 
-	type fields struct {
-		db      *sql.DB
-		cleanup func()
-	}
-	type args struct {
-		ctx context.Context
-	}
+		ctx := context.Background()
+		dsn := NewPostgreSQLDSN("localhost", "go_api_basic", "postgres", "", 5432)
+		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
-	dsn := NewPostgreSQLDSN("localhost", "go_api_basic", "postgres", "", 5432)
-	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+		dbpool, cleanup, err := NewPostgreSQLPool(ctx, dsn, lgr)
+		c.Assert(err, qt.IsNil)
+		t.Cleanup(cleanup)
 
-	db, cleanup, dberr := NewPostgreSQLDB(dsn, lgr)
-	if dberr != nil {
-		t.Errorf("datastore.NewPostgreSQLDB error = %v", dberr)
-	}
-	ctx := context.Background()
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
-	}{
-		{"typical", fields{db, cleanup}, args{ctx}, false},
-		{"closed db", fields{db, cleanup}, args{ctx}, true},
-		{"nil db", fields{nil, cleanup}, args{ctx}, true},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ds := &Datastore{
-				db: tt.fields.db,
-			}
-			if tt.wantErr == true {
-				tt.fields.cleanup()
-			}
-			got, err := ds.BeginTx(tt.args.ctx)
-			t.Logf("BeginTx error = %v", err)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("BeginTx() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if ((err != nil) != tt.wantErr) && got == nil {
-				t.Errorf("BeginTx() returned nil and should not")
-			}
-			tt.fields.cleanup()
-		})
-	}
+		ds := NewDatastore(dbpool)
+
+		tx, err := ds.BeginTx(ctx)
+		c.Assert(err, qt.IsNil)
+
+		// the cleanup function pgxpool.Pool.Close() blocks until all connections have been returned to the pool
+		// we have to finalize the transaction to close the pool (either commit or rollback)
+		err = tx.Rollback(ctx)
+		c.Assert(err, qt.IsNil)
+	})
+
+	t.Run("closed pool", func(t *testing.T) {
+		c := qt.New(t)
+
+		ctx := context.Background()
+		dsn := NewPostgreSQLDSN("localhost", "go_api_basic", "postgres", "", 5432)
+		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+
+		dbpool, cleanup, err := NewPostgreSQLPool(ctx, dsn, lgr)
+		c.Assert(err, qt.IsNil)
+		// cleanup closes the pool
+		cleanup()
+
+		ds := NewDatastore(dbpool)
+
+		_, err = ds.BeginTx(ctx)
+		c.Assert(errors.Is(err, puddle.ErrClosedPool), qt.IsTrue)
+	})
+
+	t.Run("nil pool", func(t *testing.T) {
+		c := qt.New(t)
+
+		ds := NewDatastore(nil)
+		ds.dbpool = nil
+
+		ctx := context.Background()
+		_, err := ds.BeginTx(ctx)
+		c.Assert(err, qt.CmpEquals(cmp.Comparer(errs.Match)), errs.E(errs.Database, "db pool cannot be nil"))
+	})
+
 }
 
 func TestDatastore_RollbackTx(t *testing.T) {
 	type fields struct {
-		db *sql.DB
+		dbpool *pgxpool.Pool
 	}
 	type args struct {
-		tx  *sql.Tx
+		ctx context.Context
+		tx  pgx.Tx
 		err error
 	}
 
+	ctx := context.Background()
 	dsn := NewPostgreSQLDSN("localhost", "go_api_basic", "postgres", "", 5432)
 	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
-	db, cleanup, err := NewPostgreSQLDB(dsn, lgr)
+	dbpool, cleanup, err := NewPostgreSQLPool(ctx, dsn, lgr)
 	t.Cleanup(cleanup)
 	if err != nil {
 		t.Errorf("datastore.NewPostgreSQLDB error = %v", err)
 	}
-	ctx := context.Background()
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := dbpool.Begin(ctx)
 	if err != nil {
-		t.Errorf("db.BeginTx error = %v", err)
+		t.Errorf("dbpool.Begin error = %v", err)
 	}
-	tx2, err := db.BeginTx(ctx, nil)
+	tx2, err := dbpool.Begin(ctx)
 	if err != nil {
-		t.Errorf("db.BeginTx error = %v", err)
+		t.Errorf("dbpool.Begin error = %v", err)
 	}
-	err = tx2.Commit()
+	err = tx2.Commit(ctx)
 	if err != nil {
 		t.Errorf("tx2.Commit() error = %v", err)
 	}
@@ -204,18 +196,18 @@ func TestDatastore_RollbackTx(t *testing.T) {
 		fields fields
 		args   args
 	}{
-		{"typical", fields{db}, args{tx, err}},
-		{"nil tx", fields{db}, args{nil, err}},
-		{"already committed tx", fields{db}, args{tx2, err}},
+		{"typical", fields{dbpool}, args{ctx, tx, err}},
+		{"nil tx", fields{dbpool}, args{ctx, nil, err}},
+		{"already committed tx", fields{dbpool}, args{ctx, tx2, err}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Log(tt.name)
 			ds := &Datastore{
-				db: tt.fields.db,
+				dbpool: tt.fields.dbpool,
 			}
-			rollbackErr := ds.RollbackTx(tt.args.tx, tt.args.err)
-			// RollbackTx only returns an *errs.Error
+			rollbackErr := ds.RollbackTx(tt.args.ctx, tt.args.tx, tt.args.err)
+			// I'm sending an *errs.Error, so RollbackTx will only return an *errs.Error
 			e, _ := rollbackErr.(*errs.Error)
 			t.Logf("error = %v", e)
 			if tt.args.tx == nil && e.Code != "nil_tx" {
@@ -231,37 +223,39 @@ func TestDatastore_RollbackTx(t *testing.T) {
 
 func TestDatastore_CommitTx(t *testing.T) {
 	type fields struct {
-		db *sql.DB
+		dbpool *pgxpool.Pool
 	}
 	type args struct {
-		tx *sql.Tx
+		ctx context.Context
+		tx  pgx.Tx
 	}
+
+	ctx := context.Background()
 	dsn := NewPostgreSQLDSN("localhost", "go_api_basic", "postgres", "", 5432)
 	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
-	db, cleanup, err := NewPostgreSQLDB(dsn, lgr)
+	dbpool, cleanup, err := NewPostgreSQLPool(ctx, dsn, lgr)
 	t.Cleanup(cleanup)
 	if err != nil {
-		t.Errorf("datastore.NewPostgreSQLDB error = %v", err)
+		t.Errorf("datastore.NewPostgreSQLPool error = %v", err)
 	}
-	ctx := context.Background()
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := dbpool.Begin(ctx)
 	if err != nil {
-		t.Errorf("db.BeginTx error = %v", err)
+		t.Errorf("dbpool.Begin error = %v", err)
 	}
-	tx2, err := db.BeginTx(ctx, nil)
+	tx2, err := dbpool.Begin(ctx)
 	if err != nil {
-		t.Errorf("db.BeginTx error = %v", err)
+		t.Errorf("dbpool.Begin error = %v", err)
 	}
-	err = tx2.Commit()
+	err = tx2.Commit(ctx)
 	if err != nil {
 		t.Errorf("tx2.Commit() error = %v", err)
 	}
-	tx3, err := db.BeginTx(ctx, nil)
+	tx3, err := dbpool.Begin(ctx)
 	if err != nil {
-		t.Errorf("db.BeginTx error = %v", err)
+		t.Errorf("dbpool.Begin error = %v", err)
 	}
-	err = tx3.Rollback()
+	err = tx3.Rollback(ctx)
 	if err != nil {
 		t.Errorf("tx2.Commit() error = %v", err)
 	}
@@ -272,16 +266,16 @@ func TestDatastore_CommitTx(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		{"typical", fields{db}, args{tx}, false},
-		{"already committed", fields{db}, args{tx2}, true},
-		{"already rolled back", fields{db}, args{tx3}, true},
+		{"typical", fields{dbpool}, args{ctx, tx}, false},
+		{"already committed", fields{dbpool}, args{ctx, tx2}, true},
+		{"already rolled back", fields{dbpool}, args{ctx, tx3}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ds := &Datastore{
-				db: tt.fields.db,
+				dbpool: tt.fields.dbpool,
 			}
-			if commitErr := ds.CommitTx(tt.args.tx); (commitErr != nil) != tt.wantErr {
+			if commitErr := ds.CommitTx(tt.args.ctx, tt.args.tx); (commitErr != nil) != tt.wantErr {
 				t.Errorf("CommitTx() error = %v, wantErr %v", commitErr, tt.wantErr)
 			}
 		})
@@ -308,6 +302,27 @@ func TestNewNullString(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := NewNullString(tt.args.s)
 			c.Assert(got, qt.Equals, tt.want)
+		})
+	}
+}
+
+func TestNewNullInt64(t *testing.T) {
+	type args struct {
+		i int64
+	}
+	tests := []struct {
+		name string
+		args args
+		want sql.NullInt64
+	}{
+		{"has value", args{i: 23}, sql.NullInt64{Int64: 23, Valid: true}},
+		{"zero value", args{i: 0}, sql.NullInt64{Int64: 0, Valid: false}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := NewNullInt64(tt.args.i); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("NewNullInt64() = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }

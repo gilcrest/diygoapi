@@ -8,7 +8,8 @@ import (
 	"database/sql"
 	"fmt"
 
-	_ "github.com/lib/pq" // pq driver calls for blank identifier
+	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 
 	"github.com/gilcrest/go-api-basic/domain/errs"
 )
@@ -48,27 +49,27 @@ func (dsn PostgreSQLDSN) String() string {
 
 // Datastore is a concrete implementation for a sql database
 type Datastore struct {
-	db *sql.DB
+	dbpool *pgxpool.Pool
 }
 
 // NewDatastore is an initializer for the Datastore struct
-func NewDatastore(db *sql.DB) Datastore {
-	return Datastore{db: db}
+func NewDatastore(dbpool *pgxpool.Pool) Datastore {
+	return Datastore{dbpool: dbpool}
 }
 
-// DB returns the sql.Db for the Datastore struct
-func (ds Datastore) DB() *sql.DB {
-	return ds.db
+// Pool returns *pgxpool.Pool from the Datastore struct
+func (ds Datastore) Pool() *pgxpool.Pool {
+	return ds.dbpool
 }
 
-// BeginTx is a wrapper for sql.DB.BeginTx in order to expose from
-// the Datastore interface
-func (ds Datastore) BeginTx(ctx context.Context) (*sql.Tx, error) {
-	if ds.db == nil {
-		return nil, errs.E(errs.Database, "DB cannot be nil")
+// BeginTx returns an acquired transaction from the db pool and
+// adds app specific error handling
+func (ds Datastore) BeginTx(ctx context.Context) (pgx.Tx, error) {
+	if ds.dbpool == nil {
+		return nil, errs.E(errs.Database, "db pool cannot be nil")
 	}
 
-	tx, err := ds.db.BeginTx(ctx, nil)
+	tx, err := ds.dbpool.Begin(ctx)
 	if err != nil {
 		return nil, errs.E(errs.Database, err)
 	}
@@ -78,13 +79,13 @@ func (ds Datastore) BeginTx(ctx context.Context) (*sql.Tx, error) {
 
 // RollbackTx is a wrapper for sql.Tx.Rollback in order to expose from
 // the Datastore interface. Proper error handling is also considered.
-func (ds Datastore) RollbackTx(tx *sql.Tx, err error) error {
+func (ds Datastore) RollbackTx(ctx context.Context, tx pgx.Tx, err error) error {
 	if tx == nil {
 		return errs.E(errs.Database, errs.Code("nil_tx"), fmt.Sprintf("RollbackTx() error = tx cannot be nil: Original error = %s", err.Error()))
 	}
 
 	// Attempt to rollback the transaction
-	if rollbackErr := tx.Rollback(); rollbackErr != nil {
+	if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
 		return errs.E(errs.Database, errs.Code("rollback_err"), fmt.Sprintf("RollbackTx() error = %v: Original error = %s", rollbackErr, err.Error()))
 	}
 
@@ -94,8 +95,8 @@ func (ds Datastore) RollbackTx(tx *sql.Tx, err error) error {
 
 // CommitTx is a wrapper for sql.Tx.Commit in order to expose from
 // the Datastore interface. Proper error handling is also considered.
-func (ds Datastore) CommitTx(tx *sql.Tx) error {
-	if err := tx.Commit(); err != nil {
+func (ds Datastore) CommitTx(ctx context.Context, tx pgx.Tx) error {
+	if err := tx.Commit(ctx); err != nil {
 		return errs.E(errs.Database, err)
 	}
 

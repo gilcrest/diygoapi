@@ -5,9 +5,10 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"github.com/gilcrest/go-api-basic/datastore/datastoretest"
 	"github.com/gilcrest/go-api-basic/domain/movie"
-	"github.com/google/uuid"
 )
 
 func TestNewTransactor(t *testing.T) {
@@ -44,10 +45,7 @@ func TestTransactor_Create(t *testing.T) {
 		m   *movie.Movie
 	}
 
-	// I am intentionally not using the cleanup function that is
-	// returned as I need the DB to stay open for the test
-	// t.Cleanup function
-	datastore, _ := datastoretest.NewDatastore(t)
+	datastore, cleanup := datastoretest.NewDatastore(t)
 	transactor := NewTransactor(datastore)
 	ctx := context.Background()
 	m := newMovie(t)
@@ -56,6 +54,7 @@ func TestTransactor_Create(t *testing.T) {
 		if err != nil {
 			t.Fatalf("transactor.Delete error = %v", err)
 		}
+		cleanup()
 	})
 
 	tests := []struct {

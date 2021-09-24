@@ -5,10 +5,12 @@
 package datastoretest
 
 import (
-	"database/sql"
+	"context"
 	"os"
 	"strconv"
 	"testing"
+
+	"github.com/jackc/pgx/v4/pgxpool"
 
 	"github.com/gilcrest/go-api-basic/datastore"
 )
@@ -69,7 +71,7 @@ func newPGDatasourceName(t *testing.T) datastore.PostgreSQLDSN {
 	return datastore.NewPostgreSQLDSN(dbHost, dbName, dbUser, dbPassword, dbPort)
 }
 
-// NewDB provides a sql.DB and cleanup function for testing.
+// NewDB provides a *pgxpool.Pool and cleanup function for testing.
 // The following environment variables must be set to connect to the DB.
 //
 // 		DB Host     = DB_HOST
@@ -77,26 +79,27 @@ func newPGDatasourceName(t *testing.T) datastore.PostgreSQLDSN {
 //		DB Name     = DB_NAME
 //		DB User     = DB_USER
 //		DB Password = DB_PASSWORD
-func newDB(t *testing.T) (db *sql.DB, cleanup func()) {
+func newDB(t *testing.T) (dbpool *pgxpool.Pool, cleanup func()) {
 	t.Helper()
 
+	ctx := context.Background()
 	dsn := newPGDatasourceName(t)
 
 	var err error
 	// Open the postgres database using the postgres driver (pq)
-	db, err = sql.Open("postgres", dsn.String())
+	dbpool, err = pgxpool.Connect(ctx, dsn.String())
 	if err != nil {
 		t.Fatalf("sql.Open() error = %v", err)
 	}
 
-	err = db.Ping()
+	err = dbpool.Ping(ctx)
 	if err != nil {
 		t.Fatalf("db.Ping() error = %v", err)
 	}
 
-	cleanup = func() { db.Close() }
+	cleanup = func() { dbpool.Close() }
 
-	return db, cleanup
+	return dbpool, cleanup
 }
 
 // NewDatastore provides a datastore.Datastore struct

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -201,15 +202,15 @@ func run(args []string) error {
 	// initialize struct with PostgreSQL datasource name details
 	dsn := datastore.NewPostgreSQLDSN(flgs.dbhost, flgs.dbname, flgs.dbuser, flgs.dbpassword, flgs.dbport)
 
-	// initialize PostgreSQL database
-	db, cleanup, err := datastore.NewPostgreSQLDB(dsn, lgr)
+	// initialize PostgreSQL database connection pool
+	dbpool, cleanup, err := datastore.NewPostgreSQLPool(context.Background(), dsn, lgr)
 	if err != nil {
 		lgr.Fatal().Err(err).Msg("Error from datastore.NewDB")
 	}
 	defer cleanup()
 
 	// initialize Datastore
-	pgDatastore := datastore.NewDatastore(db)
+	pgDatastore := datastore.NewDatastore(dbpool)
 
 	// initialize services
 
