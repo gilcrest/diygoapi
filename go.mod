@@ -13,7 +13,7 @@ require (
 	github.com/jackc/pgx/v4 v4.13.0
 	github.com/jackc/puddle v1.1.4
 	github.com/justinas/alice v1.2.0
-	github.com/peterbourgon/ff/v3 v3.1.0
+	github.com/peterbourgon/ff/v3 v3.1.1
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.25.0
 	golang.org/x/net v0.0.0-20210917221730-978cfadd31cf // indirect
