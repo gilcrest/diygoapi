@@ -11,7 +11,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/jackc/pgx/v4 v4.13.0
-	github.com/jackc/puddle v1.1.4
+	github.com/jackc/puddle v1.2.1
 	github.com/justinas/alice v1.2.0
 	github.com/peterbourgon/ff/v3 v3.1.0
 	github.com/pkg/errors v0.9.1
