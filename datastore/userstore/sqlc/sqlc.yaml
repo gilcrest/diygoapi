@@ -1,0 +1,12 @@
+version: 1
+packages:
+  - name: "userstore"
+    path: "../"
+    queries: "query.sql"
+    schema:
+      - "../../../scripts/ddl/app_user.sql"
+      - "../../../scripts/ddl/org.sql"
+      - "../../../scripts/ddl/person.sql"
+      - "../../../scripts/ddl/person_profile.sql"
+    engine: "postgresql"
+    sql_package: "pgx/v4"
