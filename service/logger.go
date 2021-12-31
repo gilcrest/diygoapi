@@ -28,11 +28,6 @@ type LoggerService struct {
 	Logger zerolog.Logger
 }
 
-// NewLoggerService is an initializer for LoggerService
-func NewLoggerService(logger zerolog.Logger) *LoggerService {
-	return &LoggerService{Logger: logger}
-}
-
 // ReadLogger handles GET requests for the /logger endpoint
 func (ls LoggerService) Read() LoggerResponse {
 
