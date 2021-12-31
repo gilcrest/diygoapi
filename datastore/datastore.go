@@ -7,7 +7,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net/url"
+	"strconv"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 
@@ -16,34 +19,85 @@ import (
 
 // PostgreSQLDSN is a PostgreSQL datasource name
 type PostgreSQLDSN struct {
-	Host     string
-	Port     int
-	DBName   string
-	User     string
-	Password string
+	Host       string
+	Port       int
+	DBName     string
+	SearchPath string
+	User       string
+	Password   string
 }
 
-// NewPostgreSQLDSN is an initializer for PostgreSQLDSN
-func NewPostgreSQLDSN(host, dbname, user, password string, port int) PostgreSQLDSN {
-	return PostgreSQLDSN{
-		DBName:   dbname,
-		User:     user,
-		Password: password,
-		Host:     host,
-		Port:     port,
+// ConnectionURI returns a formatted PostgreSQL datasource "Keyword/Value Connection String"
+// The general form for a connection URI is:
+// postgresql://[userspec@][hostspec][/dbname][?paramspec]
+// where userspec is
+//     user[:password]
+// and hostspec is:
+//     [host][:port][,...]
+// and paramspec is:
+//     name=value[&...]
+// The URI scheme designator can be either postgresql:// or postgres://.
+// Each of the remaining URI parts is optional.
+// The following examples illustrate valid URI syntax:
+//    postgresql://
+//    postgresql://localhost
+//    postgresql://localhost:5433
+//    postgresql://localhost/mydb
+//    postgresql://user@localhost
+//    postgresql://user:secret@localhost
+//    postgresql://other@localhost/otherdb?connect_timeout=10&application_name=myapp
+//    postgresql://host1:123,host2:456/somedb?target_session_attrs=any&application_name=myapp
+func (dsn PostgreSQLDSN) ConnectionURI() string {
+
+	const uriSchemeDesignator string = "postgresql"
+
+	var h string
+	h = dsn.Host
+	if dsn.Port != 0 {
+		h += ":" + strconv.Itoa(dsn.Port)
 	}
+
+	usr := url.User(dsn.User)
+	if dsn.Password != "" {
+		usr = url.UserPassword(dsn.User, dsn.Password)
+	}
+
+	u := url.URL{
+		Scheme: uriSchemeDesignator,
+		User:   usr,
+		Host:   h,
+		Path:   dsn.DBName,
+	}
+
+	if dsn.SearchPath != "" {
+		q := u.Query()
+		q.Set("options", fmt.Sprintf("-csearch_path=%s", dsn.SearchPath))
+		u.RawQuery = q.Encode()
+	}
+
+	return u.String()
 }
 
-// String returns a formatted PostgreSQL datasource name. If you are
-// using a local db with no password, it removes the password from the
-// string, otherwise the connection will fail.
-func (dsn PostgreSQLDSN) String() string {
-	// Craft string for database connection
+// KeywordValueConnectionString returns a formatted PostgreSQL datasource "Keyword/Value Connection String"
+func (dsn PostgreSQLDSN) KeywordValueConnectionString() string {
+
+	var s string
+
+	// if db connection does not have a password (should only be for local testing and preferably never),
+	// the password parameter must be removed from the string, otherwise the connection will fail.
 	switch dsn.Password {
 	case "":
-		return fmt.Sprintf("host=%s port=%d dbname=%s user=%s sslmode=disable", dsn.Host, dsn.Port, dsn.DBName, dsn.User)
+		s = fmt.Sprintf("host=%s port=%d dbname=%s user=%s sslmode=disable", dsn.Host, dsn.Port, dsn.DBName, dsn.User)
 	default:
-		return fmt.Sprintf("host=%s port=%d dbname=%s user=%s password=%s sslmode=disable", dsn.Host, dsn.Port, dsn.DBName, dsn.User, dsn.Password)
+		s = fmt.Sprintf("host=%s port=%d dbname=%s user=%s password=%s sslmode=disable", dsn.Host, dsn.Port, dsn.DBName, dsn.User, dsn.Password)
+	}
+
+	// if search path needs to be explicitly set, will be added to the end of the datasource string
+	switch dsn.SearchPath {
+	case "":
+		return s
+	default:
+		return s + " " + fmt.Sprintf("search_path=%s", dsn.SearchPath)
 	}
 }
 
@@ -123,6 +177,18 @@ func NewNullInt64(i int64) sql.NullInt64 {
 	}
 	return sql.NullInt64{
 		Int64: i,
+		Valid: true,
+	}
+}
+
+// NewNullUUID returns a null if id == uuid.Nil, otherwise it returns
+// the uuid.UUID which was input as an uuid.NullUUID type
+func NewNullUUID(id uuid.UUID) uuid.NullUUID {
+	if id == uuid.Nil {
+		return uuid.NullUUID{}
+	}
+	return uuid.NullUUID{
+		UUID:  id,
 		Valid: true,
 	}
 }
