@@ -7,11 +7,10 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
-
 	qt "github.com/frankban/quicktest"
 	"github.com/google/go-cmp/cmp"
+	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/jackc/puddle"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -20,23 +19,7 @@ import (
 	"github.com/gilcrest/go-api-basic/domain/logger"
 )
 
-func TestNewPostgreSQLDSN(t *testing.T) {
-	c := qt.New(t)
-
-	got := NewPostgreSQLDSN("localhost", "go_api_basic", "postgres", "", 5432)
-
-	want := PostgreSQLDSN{
-		Host:     "localhost",
-		Port:     5432,
-		DBName:   "go_api_basic",
-		User:     "postgres",
-		Password: "",
-	}
-
-	c.Assert(got, qt.Equals, want)
-}
-
-func TestPostgreSQLDSN_String(t *testing.T) {
+func TestPostgreSQLDSN_ConnectionKeywordValueString(t *testing.T) {
 	type fields struct {
 		Host     string
 		Port     int
@@ -61,7 +44,7 @@ func TestPostgreSQLDSN_String(t *testing.T) {
 				User:     tt.fields.User,
 				Password: tt.fields.Password,
 			}
-			if got := dsn.String(); got != tt.want {
+			if got := dsn.KeywordValueConnectionString(); got != tt.want {
 				t.Errorf("String() = %v, want %v", got, tt.want)
 			}
 		})
@@ -74,7 +57,14 @@ func TestDatastore_Pool(t *testing.T) {
 	ctx := context.Background()
 	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
-	ogpool, cleanup, err := NewPostgreSQLPool(ctx, NewPostgreSQLDSN("localhost", "go_api_basic", "postgres", "", 5432), lgr)
+	dsn := PostgreSQLDSN{
+		Host:   "localhost",
+		Port:   5432,
+		DBName: "go_api_basic",
+		User:   "postgres",
+	}
+
+	ogpool, cleanup, err := NewPostgreSQLPool(ctx, dsn, lgr)
 	t.Cleanup(cleanup)
 	if err != nil {
 		t.Fatal(err)
@@ -92,7 +82,14 @@ func TestNewDatastore(t *testing.T) {
 		ctx := context.Background()
 		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
-		dbpool, cleanup, err := NewPostgreSQLPool(ctx, NewPostgreSQLDSN("localhost", "go_api_basic", "postgres", "", 5432), lgr)
+		dsn := PostgreSQLDSN{
+			Host:   "localhost",
+			Port:   5432,
+			DBName: "go_api_basic",
+			User:   "postgres",
+		}
+
+		dbpool, cleanup, err := NewPostgreSQLPool(ctx, dsn, lgr)
 		c.Assert(err, qt.IsNil)
 		t.Cleanup(cleanup)
 
@@ -108,7 +105,12 @@ func TestDatastore_BeginTx(t *testing.T) {
 		c := qt.New(t)
 
 		ctx := context.Background()
-		dsn := NewPostgreSQLDSN("localhost", "go_api_basic", "postgres", "", 5432)
+		dsn := PostgreSQLDSN{
+			Host:   "localhost",
+			Port:   5432,
+			DBName: "go_api_basic",
+			User:   "postgres",
+		}
 		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
 		dbpool, cleanup, err := NewPostgreSQLPool(ctx, dsn, lgr)
@@ -130,7 +132,12 @@ func TestDatastore_BeginTx(t *testing.T) {
 		c := qt.New(t)
 
 		ctx := context.Background()
-		dsn := NewPostgreSQLDSN("localhost", "go_api_basic", "postgres", "", 5432)
+		dsn := PostgreSQLDSN{
+			Host:   "localhost",
+			Port:   5432,
+			DBName: "go_api_basic",
+			User:   "postgres",
+		}
 		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
 		dbpool, cleanup, err := NewPostgreSQLPool(ctx, dsn, lgr)
@@ -168,7 +175,12 @@ func TestDatastore_RollbackTx(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	dsn := NewPostgreSQLDSN("localhost", "go_api_basic", "postgres", "", 5432)
+	dsn := PostgreSQLDSN{
+		Host:   "localhost",
+		Port:   5432,
+		DBName: "go_api_basic",
+		User:   "postgres",
+	}
 	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
 	dbpool, cleanup, err := NewPostgreSQLPool(ctx, dsn, lgr)
@@ -231,7 +243,12 @@ func TestDatastore_CommitTx(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	dsn := NewPostgreSQLDSN("localhost", "go_api_basic", "postgres", "", 5432)
+	dsn := PostgreSQLDSN{
+		Host:   "localhost",
+		Port:   5432,
+		DBName: "go_api_basic",
+		User:   "postgres",
+	}
 	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
 	dbpool, cleanup, err := NewPostgreSQLPool(ctx, dsn, lgr)
