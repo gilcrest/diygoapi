@@ -7,15 +7,12 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/casbin/casbin"
-	"github.com/gilcrest/go-api-basic/domain/logger"
 	"github.com/rs/zerolog"
-
-	"github.com/gilcrest/go-api-basic/domain/user/usertest"
-
-	"github.com/gilcrest/go-api-basic/domain/user"
-
 	"golang.org/x/oauth2"
+
+	"github.com/gilcrest/go-api-basic/domain/logger"
+	"github.com/gilcrest/go-api-basic/domain/user"
+	"github.com/gilcrest/go-api-basic/domain/user/usertest"
 )
 
 func TestAccessToken_NewGoogleOauth2Token(t *testing.T) {
@@ -73,7 +70,7 @@ func TestAuthorizer_Authorize(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			a := CasbinAuthorizer{Enforcer: casbin.NewEnforcer("../../config/rbac_model.conf", "../../config/rbac_policy.csv")}
+			a := Authorizer{}
 			if err := a.Authorize(tt.args.lgr, tt.args.sub, tt.args.obj, tt.args.act); (err != nil) != tt.wantErr {
 				t.Errorf("Authorize() error = %v, wantErr %v", err, tt.wantErr)
 			}

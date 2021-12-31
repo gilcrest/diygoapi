@@ -6,10 +6,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/gilcrest/go-api-basic/domain/user/usertest"
-
 	"github.com/gilcrest/go-api-basic/domain/auth"
 	"github.com/gilcrest/go-api-basic/domain/user"
+	"github.com/gilcrest/go-api-basic/domain/user/usertest"
 )
 
 // NewMockAuthorizer is an initializer for MockAuthorizer
