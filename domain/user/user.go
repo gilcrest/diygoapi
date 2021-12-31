@@ -5,43 +5,36 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/google/uuid"
+
 	"github.com/gilcrest/go-api-basic/domain/errs"
+	"github.com/gilcrest/go-api-basic/domain/org"
+	"github.com/gilcrest/go-api-basic/domain/person"
 )
 
 // User holds details of a User from Google
 type User struct {
-	// Email: The user's email address.
-	Email string
+	// ID: unique identifier of the User
+	ID uuid.UUID
 
-	// LastName: The user's last name.
-	LastName string
+	// username: unique (within an Org) username of the User
+	Username string
 
-	// FirstName: The user's first name.
-	FirstName string
+	// org: Org user is associated with.
+	Org org.Org
 
-	// FullName: The user's full name.
-	FullName string
-
-	// HostedDomain: The hosted domain e.g. example.com if the user
-	// is Google apps user.
-	HostedDomain string
-
-	// PictureURL: URL of the user's picture image.
-	PictureURL string
-
-	// ProfileLink: URL of the profile page.
-	ProfileLink string
+	// profile: The profile of the user
+	Profile person.Profile
 }
 
-// IsValid determines whether or not the User has proper
-// data to be considered valid
+// IsValid determines whether the User has proper data to be considered valid
 func (u User) IsValid() bool {
 	switch {
-	case u.Email == "":
+	case u.Username == "":
 		return false
-	case u.FirstName == "":
+	case u.Profile.FirstName == "":
 		return false
-	case u.LastName == "":
+	case u.Profile.LastName == "":
 		return false
 	}
 	return true
