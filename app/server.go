@@ -36,86 +36,27 @@ import (
 	"net/http"
 	"time"
 
+	"golang.org/x/oauth2"
+
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
 
 	"github.com/gilcrest/go-api-basic/app/driver"
-	"github.com/gilcrest/go-api-basic/domain/auth"
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/user"
-	"github.com/gilcrest/go-api-basic/service"
 )
 
 const pathPrefix string = "/api"
 
-// AccessTokenConverter interface converts an access token to a User
-type AccessTokenConverter interface {
-	Convert(ctx context.Context, token auth.AccessToken) (user.User, error)
+// Oauth2TokenConverter interface converts an Oauth2 token to a User
+type Oauth2TokenConverter interface {
+	Convert(ctx context.Context, token oauth2.Token) (user.User, error)
 }
 
 // Authorizer interface authorizes access to a resource given
 // a user and action
 type Authorizer interface {
 	Authorize(lgr zerolog.Logger, sub user.User, obj string, act string) error
-}
-
-// CreateMovieService creates a Movie
-type CreateMovieService interface {
-	Create(ctx context.Context, r *service.CreateMovieRequest, u user.User) (service.MovieResponse, error)
-}
-
-// UpdateMovieService is a service for updating a Movie
-type UpdateMovieService interface {
-	Update(ctx context.Context, r *service.UpdateMovieRequest, u user.User) (service.MovieResponse, error)
-}
-
-// DeleteMovieService is a service for deleting a Movie
-type DeleteMovieService interface {
-	Delete(ctx context.Context, extlID string) (service.DeleteMovieResponse, error)
-}
-
-// FindMovieService interface reads a Movie form the database
-type FindMovieService interface {
-	FindMovieByID(ctx context.Context, extlID string) (service.MovieResponse, error)
-	FindAllMovies(ctx context.Context) ([]service.MovieResponse, error)
-}
-
-// LoggerService reads and updates the logger state
-type LoggerService interface {
-	Read() service.LoggerResponse
-	Update(r *service.LoggerRequest) (service.LoggerResponse, error)
-}
-
-// PingService pings the database and responds whether it is up or down
-type PingService interface {
-	Ping(ctx context.Context, logger zerolog.Logger) service.PingResponse
-}
-
-// Server represents an HTTP server.
-type Server struct {
-	router *mux.Router
-	driver driver.Server
-
-	// all logging is done with a zerolog.Logger
-	logger zerolog.Logger
-
-	// Addr optionally specifies the TCP address for the server to listen on,
-	// in the form "host:port". If empty, ":http" (port 80) is used.
-	// The service names are defined in RFC 6335 and assigned by IANA.
-	// See net.Dial for details of the address format.
-	Addr string
-
-	// Authorization
-	AccessTokenConverter AccessTokenConverter
-	Authorizer           Authorizer
-
-	// Services used by the various HTTP routes.
-	PingService        PingService
-	LoggerService      LoggerService
-	CreateMovieService CreateMovieService
-	UpdateMovieService UpdateMovieService
-	DeleteMovieService DeleteMovieService
-	FindMovieService   FindMovieService
 }
 
 // ServerParams is the set of configuration parameters for a Server
@@ -127,31 +68,38 @@ type ServerParams struct {
 	Driver driver.Server
 }
 
-// NewServerParams is an initializer for ServerParams
-func NewServerParams(lgr zerolog.Logger, d driver.Server) *ServerParams {
-	options := &ServerParams{
-		Logger: lgr,
-		Driver: d,
-	}
-	return options
+// Server represents an HTTP server.
+type Server struct {
+	router *mux.Router
+	Driver driver.Server
+
+	// all logging is done with a zerolog.Logger
+	Logger zerolog.Logger
+
+	// Addr optionally specifies the TCP address for the server to listen on,
+	// in the form "host:port". If empty, ":http" (port 80) is used.
+	// The service names are defined in RFC 6335 and assigned by IANA.
+	// See net.Dial for details of the address format.
+	Addr string
+
+	// Services used by middleware handlers
+	MiddlewareServices
+
+	// Services used by the various HTTP routes.
+	Services
 }
 
-// NewServer initializes a new Server and registers
+// New initializes a new Server and registers
 // routes to the given router
-func NewServer(r *mux.Router, params *ServerParams) (*Server, error) {
-	s := &Server{router: r}
-	if params == nil {
-		return nil, errs.E("params must not be nil")
-	}
-	s.logger = params.Logger
-	if params.Driver == nil {
-		return nil, errs.E("params.Driver must not be nil")
-	}
-	s.driver = params.Driver
+func New(rtr *mux.Router, params *ServerParams) *Server {
+	s := &Server{router: rtr}
+	s.Logger = params.Logger
+	s.Driver = params.Driver
 
-	s.routes()
+	// register routes to the router
+	s.registerRoutes()
 
-	return s, nil
+	return s
 }
 
 // ListenAndServe is a wrapper to use wherever http.ListenAndServe is used.
@@ -162,18 +110,15 @@ func (s *Server) ListenAndServe() error {
 	if s.router == nil {
 		return errs.E(errs.Internal, "Server router is nil")
 	}
-	if s.driver == nil {
+	if s.Driver == nil {
 		return errs.E(errs.Internal, "Server driver is nil")
 	}
-	return s.driver.ListenAndServe(s.Addr, s.router)
+	return s.Driver.ListenAndServe(s.Addr, s.router)
 }
 
 // Shutdown gracefully shuts down the server without interrupting any active connections.
 func (s *Server) Shutdown(ctx context.Context) error {
-	if s.driver == nil {
-		return nil
-	}
-	return s.driver.Shutdown(ctx)
+	return s.Driver.Shutdown(ctx)
 }
 
 // Driver implements the driver.Server interface. The zero value is a valid http.Server.
