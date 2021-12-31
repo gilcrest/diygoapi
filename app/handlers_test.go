@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/casbin/casbin"
+	"github.com/casbin/casbin/v2"
 	"github.com/gilcrest/go-api-basic/domain/movie"
 	"github.com/gilcrest/go-api-basic/domain/user/usertest"
 	"github.com/google/uuid"
