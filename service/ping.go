@@ -22,11 +22,6 @@ type PingService struct {
 	Pinger Pinger
 }
 
-// NewPingService is an initializer for PingService
-func NewPingService(p Pinger) *PingService {
-	return &PingService{Pinger: p}
-}
-
 // Ping method pings the database
 func (p PingService) Ping(ctx context.Context, logger zerolog.Logger) PingResponse {
 	dbok := true
