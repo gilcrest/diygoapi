@@ -71,7 +71,7 @@ func TestSelector_FindAll(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			d := &Selector{
-				Datastorer: tt.fields.Datastorer,
+				datastorer: tt.fields.Datastorer,
 			}
 			got, err := d.FindAll(tt.args.ctx)
 			if (err != nil) != tt.wantErr {
@@ -114,7 +114,7 @@ func TestSelector_FindByID(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			d := &Selector{
-				Datastorer: tt.fields.Datastorer,
+				datastorer: tt.fields.Datastorer,
 			}
 			got, err := d.FindByID(tt.args.ctx, tt.args.extlID)
 			if (err != nil) != tt.wantErr {

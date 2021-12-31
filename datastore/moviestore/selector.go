@@ -25,17 +25,17 @@ type Datastorer interface {
 
 // Selector is the database implementation for READ operations for a movie
 type Selector struct {
-	Datastorer
+	datastorer Datastorer
 }
 
 // NewSelector is an initializer for Selector
 func NewSelector(ds Datastorer) Selector {
-	return Selector{ds}
+	return Selector{datastorer: ds}
 }
 
 // FindByID returns a Movie struct to populate the response
 func (s Selector) FindByID(ctx context.Context, extlID string) (*movie.Movie, error) {
-	dbpool := s.Datastorer.Pool()
+	dbpool := s.datastorer.Pool()
 
 	// Prepare the sql statement using bind variables
 	row := dbpool.QueryRow(ctx,
@@ -80,7 +80,7 @@ func (s Selector) FindByID(ctx context.Context, extlID string) (*movie.Movie, er
 
 // FindAll returns a slice of Movie structs to populate the response
 func (s Selector) FindAll(ctx context.Context) ([]*movie.Movie, error) {
-	dbpool := s.Datastorer.Pool()
+	dbpool := s.datastorer.Pool()
 
 	// use QueryContext to get back sql.Rows
 	rows, err := dbpool.Query(ctx,
