@@ -1,5 +1,7 @@
 # go-API-basic
 
+OMG - v0.39.1 - everything is broken! I'm on a plane, my laptop is doing weird stuff. I'm committing everything and it's all going to be broken for a short time. I will fix it!
+
 A RESTful API template (built with Go)
 
 The goal of this project is to be an example of a relational database-backed REST HTTP API that has characteristics needed to ensure success in a high volume environment. I struggled a lot with parsing all of the different ideas people have for package layouts over the past few years and would like to help others who may be having a similar struggle. I'd like to see Go as accessible as possible for everyone. If you have any questions or would like help, open an issue or send me a note - I'm happy to help! Also, if you have disagree or have suggestions about this repo, please do the same, I really enjoy getting both positive and negative feedback.
