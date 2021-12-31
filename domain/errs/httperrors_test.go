@@ -104,6 +104,7 @@ func TestHTTPErrorResponse_Body(t *testing.T) {
 		want string
 	}{
 		{"empty Error", args{httptest.NewRecorder(), l, &Error{}}, ""},
+		{"unauthenticated (new)", args{httptest.NewRecorder(), l, E(Unauthenticated, "go fuck yourself")}, ""},
 		{"unauthenticated", args{httptest.NewRecorder(), l, unauthenticatedErr}, ""},
 		{"unauthorized", args{httptest.NewRecorder(), l, unauthorizedErr}, ""},
 		{"normal", args{httptest.NewRecorder(), l, E(Exist, Parameter("some_param"), Code("some_code"), errors.New("some error"))}, `{"error":{"kind":"item_already_exists","code":"some_code","param":"some_param","message":"some error"}}`},

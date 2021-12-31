@@ -29,6 +29,8 @@ type Error struct {
 	Param Parameter
 	// Code is a human-readable, short representation of the error
 	Code Code
+	// Realm is a description of a protected area, used in the WWW-Authenticate header.
+	Realm Realm
 	// The underlying error that triggered this one, if any.
 	Err error
 }
@@ -59,6 +61,11 @@ type Parameter string
 // Code is a human-readable, short representation of the error
 type Code string
 
+// Realm is a description of a protected area, used in the WWW-Authenticate header.
+// Realm should be set when error Kind is Unauthenticated. If left unset, Realm
+// will be set to the default set by the Default method
+type Realm string
+
 // Kinds of errors.
 //
 // The values of the error kinds are common between both
@@ -78,6 +85,17 @@ const (
 	Validation                 // Input validation error.
 	Unanticipated              // Unanticipated error.
 	InvalidRequest             // Invalid Request
+	// Unauthenticated is used when a request lacks valid authentication credentials.
+	//
+	// For Unauthenticated errors, the response body will be empty.
+	// The error is logged and http.StatusUnauthorized (401) is sent.
+	Unauthenticated // Unauthenticated Request
+	// Unauthorized is used when a user is authenticated, but is not authorized
+	// to access the resource.
+	//
+	// For Unauthorized errors, the response body should be empty.
+	// The error is logged and http.StatusForbidden (403) is sent.
+	Unauthorized
 )
 
 func (k Kind) String() string {
@@ -106,6 +124,10 @@ func (k Kind) String() string {
 		return "unanticipated_error"
 	case InvalidRequest:
 		return "invalid_request_error"
+	case Unauthenticated:
+		return "unauthenticated_request"
+	case Unauthorized:
+		return "unauthorized_request"
 	}
 	return "unknown_error_kind"
 }
@@ -132,7 +154,6 @@ func (k Kind) String() string {
 //
 // If Kind is not specified or Other, we set it to the Kind of
 // the underlying error.
-//
 func E(args ...interface{}) error {
 	type stackTracer interface {
 		StackTrace() errors.StackTrace
@@ -166,6 +187,8 @@ func E(args ...interface{}) error {
 			e.Code = arg
 		case Parameter:
 			e.Param = arg
+		case Realm:
+			e.Realm = arg
 		default:
 			_, file, line, _ := runtime.Caller(1)
 			return fmt.Errorf("errors.E: bad call from %s:%d: %v, unknown type %T, value %v in error call", file, line, args, arg, arg)
@@ -194,10 +217,19 @@ func E(args ...interface{}) error {
 	if prev.Param == e.Param {
 		prev.Param = ""
 	}
-	// If this error has Code == "", pull up the inner one.
+	// If this error has Param == "", pull up the inner one.
 	if e.Param == "" {
 		e.Param = prev.Param
 		prev.Param = ""
+	}
+
+	if prev.Realm == e.Realm {
+		prev.Realm = ""
+	}
+	// If this error has WWWAuthenticateRealm == "", pull up the inner one.
+	if e.Realm == "" {
+		e.Realm = prev.Realm
+		prev.Realm = ""
 	}
 
 	return e
