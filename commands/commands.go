@@ -135,6 +135,7 @@ func newFlags(args []string) (flags, error) {
 	}, nil
 }
 
+// Run parses command line flags and starts the server
 func Run(args []string) error {
 
 	flgs, err := newFlags(args)
