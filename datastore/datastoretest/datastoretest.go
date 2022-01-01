@@ -11,32 +11,36 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/rs/zerolog"
 
 	"github.com/gilcrest/go-api-basic/datastore"
+	"github.com/gilcrest/go-api-basic/domain/logger"
 )
 
 // newPGDatasourceName is a test helper to get a PGDatasourceName
 // from environment variables
-func newPGDatasourceName(t *testing.T) datastore.PostgreSQLDSN {
+func newPostgreSQLDSN(t *testing.T) datastore.PostgreSQLDSN {
 	t.Helper()
 
 	// Constants for the PostgreSQL Database connection
 	const (
-		pgDBHost     string = "DB_HOST"
-		pgDBPort     string = "DB_PORT"
-		pgDBName     string = "DB_NAME"
-		pgDBUser     string = "DB_USER"
-		pgDBPassword string = "DB_PASSWORD"
+		pgDBHost       string = "DB_HOST"
+		pgDBPort       string = "DB_PORT"
+		pgDBName       string = "DB_NAME"
+		pgDBUser       string = "DB_USER"
+		pgDBPassword   string = "DB_PASSWORD"
+		pgDBSearchPath string = "DB_SEARCH_PATH"
 	)
 
 	var (
-		dbHost     string
-		dbPort     int
-		dbName     string
-		dbUser     string
-		dbPassword string
-		ok         bool
-		err        error
+		dbHost       string
+		dbPort       int
+		dbName       string
+		dbUser       string
+		dbPassword   string
+		dbSearchPath string
+		ok           bool
+		err          error
 	)
 
 	dbHost, ok = os.LookupEnv(pgDBHost)
@@ -68,10 +72,22 @@ func newPGDatasourceName(t *testing.T) datastore.PostgreSQLDSN {
 		t.Fatalf("No environment variable found for %s", pgDBPassword)
 	}
 
-	return datastore.NewPostgreSQLDSN(dbHost, dbName, dbUser, dbPassword, dbPort)
+	dbSearchPath, ok = os.LookupEnv(pgDBSearchPath)
+	if !ok {
+		t.Fatalf("No environment variable found for %s", pgDBSearchPath)
+	}
+
+	return datastore.PostgreSQLDSN{
+		Host:       dbHost,
+		Port:       dbPort,
+		DBName:     dbName,
+		SearchPath: dbSearchPath,
+		User:       dbUser,
+		Password:   dbPassword,
+	}
 }
 
-// NewDB provides a *pgxpool.Pool and cleanup function for testing.
+// newDB provides a *pgxpool.Pool and cleanup function for testing.
 // The following environment variables must be set to connect to the DB.
 //
 // 		DB Host     = DB_HOST
@@ -83,18 +99,20 @@ func newDB(t *testing.T) (dbpool *pgxpool.Pool, cleanup func()) {
 	t.Helper()
 
 	ctx := context.Background()
-	dsn := newPGDatasourceName(t)
+	dsn := newPostgreSQLDSN(t)
 
 	var err error
 	// Open the postgres database using the postgres driver (pq)
-	dbpool, err = pgxpool.Connect(ctx, dsn.String())
+	dbpool, err = pgxpool.Connect(ctx, dsn.KeywordValueConnectionString())
 	if err != nil {
 		t.Fatalf("sql.Open() error = %v", err)
 	}
 
-	err = dbpool.Ping(ctx)
+	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+
+	err = datastore.ValidatePostgreSQLPool(ctx, dbpool, lgr)
 	if err != nil {
-		t.Fatalf("db.Ping() error = %v", err)
+		t.Fatalf("datastore.ValidatePostgreSQLPool() error = %v", err)
 	}
 
 	cleanup = func() { dbpool.Close() }
@@ -106,11 +124,12 @@ func newDB(t *testing.T) (dbpool *pgxpool.Pool, cleanup func()) {
 // initialized with a sql.DB and cleanup function for testing.
 // The following environment variables must be set to connect to the DB.
 //
-// 		DB Host     = DB_HOST
-//		Port        = DB_PORT
-//		DB Name     = DB_NAME
-//		DB User     = DB_USER
-//		DB Password = DB_PASSWORD
+// 		DB Host        = DB_HOST
+//		Port           = DB_PORT
+//		DB Name        = DB_NAME
+//		DB User        = DB_USER
+//		DB Password    = DB_PASSWORD
+//      DB Search Path = DB_SEARCH_PATH
 func NewDatastore(t *testing.T) (datastore.Datastore, func()) {
 	t.Helper()
 
