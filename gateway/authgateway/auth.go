@@ -58,11 +58,9 @@ type GoogleOauth2TokenConverter struct{}
 // Convert calls the Google Userinfo API with the access token and converts
 // the Userinfo struct to a User struct
 func (c GoogleOauth2TokenConverter) Convert(ctx context.Context, realm string, token oauth2.Token) (Userinfo, error) {
-	var emptyUser Userinfo
-
 	oauthService, err := googleoauth.NewService(ctx, option.WithTokenSource(oauth2.StaticTokenSource(&token)))
 	if err != nil {
-		return emptyUser, errs.E(err)
+		return Userinfo{}, errs.E(err)
 	}
 
 	uInfo, err := oauthService.Userinfo.Get().Do()
@@ -73,7 +71,7 @@ func (c GoogleOauth2TokenConverter) Convert(ctx context.Context, realm string, t
 		// requested operation on the given resource."
 		// In this case, we are getting a bad response from Google service, assume
 		// they are not able to authenticate properly
-		return emptyUser, errs.E(errs.Unauthenticated, errs.Realm(realm), err)
+		return Userinfo{}, errs.E(errs.Unauthenticated, errs.Realm(realm), err)
 	}
 
 	return newUserInfoFromGoogle(uInfo), nil

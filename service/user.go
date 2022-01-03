@@ -43,19 +43,18 @@ type FindUserService struct {
 // and then retrieves the associated registered user from the datastore
 func (fus FindUserService) FindUserByOauth2Token(ctx context.Context, params FindUserParams) (user.User, error) {
 	var (
-		emptyUser user.User
-		uInfo     authgateway.Userinfo
-		err       error
+		uInfo authgateway.Userinfo
+		err   error
 	)
 
 	if params.Provider == auth.Invalid {
-		return emptyUser, errs.E(errs.Unauthenticated, errs.Realm(params.Realm), "Provider not recognized")
+		return user.User{}, errs.E(errs.Unauthenticated, errs.Realm(params.Realm), "Provider not recognized")
 	}
 
 	if params.Provider == auth.Google {
 		uInfo, err = fus.GoogleOauth2TokenConverter.Convert(ctx, params.Realm, params.Token)
 		if err != nil {
-			return emptyUser, err
+			return user.User{}, err
 		}
 	}
 
@@ -67,9 +66,9 @@ func (fus FindUserService) FindUserByOauth2Token(ctx context.Context, params Fin
 	findUserByUsernameRow, err := userstore.New(fus.Datastorer.Pool()).FindUserByUsername(ctx, findUserByUsernameParams)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return emptyUser, errs.E(errs.Unauthenticated, errs.Realm(params.Realm), "No user registered in database")
+			return user.User{}, errs.E(errs.Unauthenticated, errs.Realm(params.Realm), "No user registered in database")
 		}
-		return emptyUser, errs.E(errs.Unauthenticated, errs.Realm(params.Realm), err)
+		return user.User{}, errs.E(errs.Unauthenticated, errs.Realm(params.Realm), err)
 	}
 
 	return hydrateUserFromDB(findUserByUsernameRow), nil
