@@ -95,6 +95,10 @@ func PSQLArgs(up bool) ([]string, error) {
 		return nil, err
 	}
 
+	if len(ddlFiles) == 0 {
+		return nil, fmt.Errorf("there are no DDL files to process in %s", dir)
+	}
+
 	flgs, err := newFlags([]string{"server"})
 	if err != nil {
 		return nil, err
