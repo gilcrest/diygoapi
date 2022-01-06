@@ -27,9 +27,6 @@ create table demo.app_user
 alter table demo.app_user
     owner to postgres;
 
-create unique index user_org_uindex
-    on demo.app_user (username, org_id);
-
 alter table demo.app
     add constraint app_user_fk1
         foreign key (create_user_id) references demo.app_user
@@ -39,4 +36,7 @@ alter table demo.app
     add constraint app_user_fk2
         foreign key (update_user_id) references demo.app_user
             deferrable initially deferred;
+
+create unique index user_org_uindex
+    on demo.app_user (username, org_id);
 
