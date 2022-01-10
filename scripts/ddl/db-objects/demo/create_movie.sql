@@ -51,5 +51,5 @@ END;
 
 $$;
 
-alter function create_movie(uuid, varchar, varchar, varchar, date, integer, varchar, varchar, uuid, varchar) owner to postgres;
+alter function create_movie(uuid, varchar, varchar, varchar, date, integer, varchar, varchar, uuid, varchar) owner to demo_user;
 

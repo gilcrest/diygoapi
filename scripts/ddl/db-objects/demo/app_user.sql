@@ -28,7 +28,7 @@ create table app_user
 );
 
 alter table app_user
-    owner to postgres;
+    owner to demo_user;
 
 create unique index user_org_uindex
     on app_user (username, org_id);

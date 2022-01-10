@@ -32,5 +32,5 @@ comment on column app_api_key.api_key is 'app_key is a hash of a key given to a 
 comment on column app_api_key.app_id is 'foreign key to app table';
 
 alter table app_api_key
-    owner to postgres;
+    owner to demo_user;
 

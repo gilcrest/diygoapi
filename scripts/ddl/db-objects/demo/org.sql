@@ -13,21 +13,21 @@ create table org
     update_timestamp timestamp with time zone not null,
     constraint org_pk
         primary key (org_id),
-    constraint org_create_app_fk
-        foreign key (create_app_id) references app
-            deferrable initially deferred,
     constraint org_create_user_fk
         foreign key (create_user_id) references app_user
             deferrable initially deferred,
-    constraint org_update_app_fk
-        foreign key (update_app_id) references app
-            deferrable initially deferred,
     constraint org_update_user_fk
         foreign key (update_user_id) references app_user
+            deferrable initially deferred,
+    constraint org_create_app_fk
+        foreign key (create_app_id) references app
+            deferrable initially deferred,
+    constraint org_update_app_fk
+        foreign key (update_app_id) references app
             deferrable initially deferred
 );
 
-comment on column org.org_id is 'Organization ID - Primary Key for table';
+comment on column org.org_id is 'Organization ID - Unique ID for table';
 
 comment on column org.org_extl_id is 'Organization Unique External ID to be given to outside callers.';
 
@@ -50,7 +50,7 @@ comment on column org.update_user_id is 'The user which performed the most recen
 comment on column org.update_timestamp is 'The timestamp representing when the record was updated most recently.';
 
 alter table org
-    owner to postgres;
+    owner to demo_user;
 
 create unique index org_org_id_uindex
     on org (org_id);

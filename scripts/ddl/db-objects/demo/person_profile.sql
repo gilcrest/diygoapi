@@ -42,5 +42,5 @@ create table person_profile
 );
 
 alter table person_profile
-    owner to postgres;
+    owner to demo_user;
 

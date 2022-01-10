@@ -25,5 +25,5 @@ create table person
 );
 
 alter table person
-    owner to postgres;
+    owner to demo_user;
 

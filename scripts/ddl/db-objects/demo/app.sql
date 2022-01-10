@@ -32,7 +32,7 @@ create table app
 comment on table app is 'app stores data about applications that interact with the system';
 
 alter table app
-    owner to postgres;
+    owner to demo_user;
 
 create unique index app_app_extl_id_uindex
     on app (app_extl_id);

@@ -17,7 +17,7 @@ create table movie
 );
 
 alter table movie
-    owner to postgres;
+    owner to demo_user;
 
 create unique index movie_extl_id_uindex
     on movie (extl_id);
