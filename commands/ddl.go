@@ -36,7 +36,7 @@ func (df ddlFile) String() string {
 }
 
 // readDDLFiles reads and returns sorted DDL files from the
-// ./scripts/ddl/deploy/up or ./scripts/ddl/deploy/down directory
+// ./scripts/ddl/db-deploy/up or ./scripts/ddl/db-deploy/down directory
 func readDDLFiles(dir string) ([]ddlFile, error) {
 
 	files, err := os.ReadDir(dir)
@@ -83,7 +83,7 @@ func (bfn byFileNumber) Less(i, j int) bool { return bfn[i].fileNumber < bfn[j].
 // -d flag sets the database connection using a Connection URI string.
 // -f flag is sent before each file to tell it to process the file
 func PSQLArgs(up bool) ([]string, error) {
-	dir := "./scripts/ddl/deploy"
+	dir := "./scripts/ddl/db-deploy"
 	if up {
 		dir += "/up"
 	} else {
@@ -104,7 +104,7 @@ func PSQLArgs(up bool) ([]string, error) {
 		return nil, err
 	}
 
-	args := []string{"-w", "-d", newPostgreSQLDSN(flgs).ConnectionURI()}
+	args := []string{"-w", "-d", newPostgreSQLDSN(flgs).ConnectionURI(), "-c", "select current_database(), current_user, version()"}
 
 	for _, file := range ddlFiles {
 		args = append(args, "-f")
