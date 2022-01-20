@@ -7,7 +7,7 @@ require (
 	github.com/casbin/casbin/v2 v2.40.6
 	github.com/frankban/quicktest v1.14.0
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/google/go-cmp v0.5.6
+	github.com/google/go-cmp v0.5.7
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/jackc/pgconn v1.10.1
