@@ -56,10 +56,8 @@ func TestHTTPErrorResponse_StatusCode(t *testing.T) {
 
 	l := logger.NewLogger(os.Stdout, zerolog.DebugLevel, false)
 
-	gErr := E("some authentication error from google")
-	aErr := E("some authorization error")
-	unauthenticatedErr := &UnauthenticatedError{WWWAuthenticateRealm: "DeepInTheRealm", Err: gErr}
-	unauthorizedErr := &UnauthorizedError{Err: aErr}
+	unauthenticatedErr := E(Unauthenticated, "some error from Google")
+	unauthorizedErr := E(Unauthorized, "some authorization error")
 
 	tests := []struct {
 		name string
@@ -91,32 +89,26 @@ func TestHTTPErrorResponse_Body(t *testing.T) {
 	}
 
 	var b bytes.Buffer
-	l := logger.NewLogger(&b, zerolog.DebugLevel, false)
-
-	gErr := E("some authentication error from google")
-	aErr := E("some authorization error")
-	unauthenticatedErr := &UnauthenticatedError{WWWAuthenticateRealm: "DeepInTheRealm", Err: gErr}
-	unauthorizedErr := &UnauthorizedError{Err: aErr}
+	lgr := logger.NewLogger(&b, zerolog.DebugLevel, false)
 
 	tests := []struct {
 		name string
 		args args
 		want string
 	}{
-		{"empty Error", args{httptest.NewRecorder(), l, &Error{}}, ""},
-		{"unauthenticated (new)", args{httptest.NewRecorder(), l, E(Unauthenticated, "go fuck yourself")}, ""},
-		{"unauthenticated", args{httptest.NewRecorder(), l, unauthenticatedErr}, ""},
-		{"unauthorized", args{httptest.NewRecorder(), l, unauthorizedErr}, ""},
-		{"normal", args{httptest.NewRecorder(), l, E(Exist, Parameter("some_param"), Code("some_code"), errors.New("some error"))}, `{"error":{"kind":"item_already_exists","code":"some_code","param":"some_param","message":"some error"}}`},
-		{"not via E", args{httptest.NewRecorder(), l, errors.New("some error")}, "{\"error\":{\"kind\":\"unanticipated_error\",\"code\":\"Unanticipated\",\"message\":\"Unexpected error - contact support\"}}"},
-		{"nil error", args{httptest.NewRecorder(), l, nil}, ""},
+		{"empty Error", args{httptest.NewRecorder(), lgr, &Error{}}, ""},
+		{"unauthenticated", args{httptest.NewRecorder(), lgr, E(Unauthenticated, "some error from Google")}, ""},
+		{"unauthorized", args{httptest.NewRecorder(), lgr, E(Unauthorized, "some authorization error")}, ""},
+		{"normal", args{httptest.NewRecorder(), lgr, E(Exist, Parameter("some_param"), Code("some_code"), errors.New("some error"))}, `{"error":{"kind":"item_already_exists","code":"some_code","param":"some_param","message":"some error"}}`},
+		{"not via E", args{httptest.NewRecorder(), lgr, errors.New("some error")}, "{\"error\":{\"kind\":\"unanticipated_error\",\"code\":\"Unanticipated\",\"message\":\"Unexpected error - contact support\"}}"},
+		{"nil error", args{httptest.NewRecorder(), lgr, nil}, ""},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			HTTPErrorResponse(tt.args.w, l, tt.args.err)
+			HTTPErrorResponse(tt.args.w, lgr, tt.args.err)
 			if got := strings.TrimSpace(tt.args.w.Body.String()); got != tt.want {
-				t.Errorf("httpErrorStatusCode() = %v, want %v", got, tt.want)
+				t.Errorf("httpErrorResponseBody() = %v, want %v", got, tt.want)
 			}
 		})
 	}

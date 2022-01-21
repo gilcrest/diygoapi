@@ -45,6 +45,7 @@ func HTTPErrorResponse(w http.ResponseWriter, lgr zerolog.Logger, err error) {
 			return
 		case Unauthorized:
 			unauthorizedErrorResponse(w, lgr, e)
+			return
 		default:
 			typicalErrorResponse(w, lgr, e)
 			return
