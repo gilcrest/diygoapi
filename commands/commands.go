@@ -14,14 +14,15 @@ import (
 	"github.com/peterbourgon/ff/v3"
 	"github.com/rs/zerolog"
 
-	"github.com/gilcrest/go-api-basic/app"
 	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/gilcrest/go-api-basic/datastore/pingstore"
 	"github.com/gilcrest/go-api-basic/domain/auth"
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/logger"
 	"github.com/gilcrest/go-api-basic/domain/secure"
+	"github.com/gilcrest/go-api-basic/domain/secure/random"
 	"github.com/gilcrest/go-api-basic/gateway/authgateway"
+	"github.com/gilcrest/go-api-basic/server"
 	"github.com/gilcrest/go-api-basic/service"
 )
 
@@ -184,19 +185,13 @@ func Run(args []string) error {
 	}
 
 	// initialize Gorilla mux router with /api subroute
-	rtr := app.NewMuxRouter()
+	rtr := server.NewMuxRouter()
 
 	// initialize server driver
-	serverDriver := app.NewDriver()
-
-	// initialize server configuration parameters
-	params := &app.ServerParams{
-		Logger: lgr,
-		Driver: serverDriver,
-	}
+	serverDriver := server.NewDriver()
 
 	// initialize Server
-	s := app.New(rtr, params)
+	s := server.New(rtr, lgr, serverDriver)
 
 	// set listener address
 	s.Addr = fmt.Sprintf(":%d", flgs.port)
@@ -227,16 +222,10 @@ func Run(args []string) error {
 		lgr.Fatal().Err(err).Msg("casbin.NewEnforcer error")
 	}
 
-	s.MiddlewareServices = app.MiddlewareServices{
-		FindAppService:   service.FindAppService{Datastorer: ds},
-		FindUserService:  service.FindUserService{GoogleOauth2TokenConverter: authgateway.GoogleOauth2TokenConverter{}, Datastorer: ds},
-		AuthorizeService: service.AuthorizeService{Authorizer: auth.CasbinAuthorizer{Enforcer: casbinEnforcer}},
-	}
-
-	s.Services = app.Services{
+	s.Services = server.Services{
 		SeedService: service.SeedService{
 			Datastorer:            ds,
-			CryptoRandomGenerator: secure.CryptoRandomGenerator{},
+			CryptoRandomGenerator: random.CryptoGenerator{},
 			EncryptionKey:         ek,
 		},
 		PingService:      service.PingService{Pinger: pingstore.Pinger{Datastorer: ds}},
@@ -244,7 +233,10 @@ func Run(args []string) error {
 		CreateOrgService: service.CreateOrgService{Datastorer: ds},
 		UpdateOrgService: service.UpdateOrgService{Datastorer: ds},
 		FindOrgService:   service.FindOrgService{Datastorer: ds},
-		CreateAppService: service.CreateAppService{Datastorer: ds, CryptoRandomGenerator: secure.CryptoRandomGenerator{}, EncryptionKey: ek},
+		CreateAppService: service.CreateAppService{Datastorer: ds, CryptoRandomGenerator: random.CryptoGenerator{}, EncryptionKey: ek},
+		FindAppService:   service.FindAppService{Datastorer: ds},
+		FindUserService:  service.FindUserService{GoogleOauth2TokenConverter: authgateway.GoogleOauth2TokenConverter{}, Datastorer: ds},
+		AuthorizeService: service.AuthorizeService{Authorizer: auth.CasbinAuthorizer{Enforcer: casbinEnforcer}},
 	}
 
 	return s.ListenAndServe()
