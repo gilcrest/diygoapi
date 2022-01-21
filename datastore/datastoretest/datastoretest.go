@@ -129,7 +129,7 @@ func newDB(t *testing.T) (dbpool *pgxpool.Pool, cleanup func()) {
 //		DB Name        = DB_NAME
 //		DB User        = DB_USER
 //		DB Password    = DB_PASSWORD
-//      DB Search Path = DB_SEARCH_PATH
+//		DB Search Path = DB_SEARCH_PATH
 func NewDatastore(t *testing.T) (datastore.Datastore, func()) {
 	t.Helper()
 
