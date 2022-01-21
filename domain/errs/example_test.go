@@ -8,9 +8,8 @@ import (
 	"net/http/httptest"
 	"os"
 
-	"github.com/rs/zerolog"
-
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/logger"
