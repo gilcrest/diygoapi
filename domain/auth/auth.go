@@ -2,7 +2,6 @@
 package auth
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -10,17 +9,13 @@ import (
 	"github.com/casbin/casbin/v2"
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
-	"golang.org/x/oauth2"
 
 	"github.com/gilcrest/go-api-basic/domain/audit"
 	"github.com/gilcrest/go-api-basic/domain/errs"
 )
 
-const (
-	// BearerTokenType is used in authorization to access a resource
-	BearerTokenType       string = "Bearer"
-	contextKeyAccessToken        = contextKey("access-token")
-)
+// BearerTokenType is used in authorization to access a resource
+const BearerTokenType string = "Bearer"
 
 // Provider defines the provider of authorization (Google, Apple, auth0, etc.)
 type Provider uint8
@@ -55,27 +50,6 @@ func NewProvider(s string) Provider {
 	return Invalid
 }
 
-type contextKey string
-
-// Oauth2TokenFromRequest returns the Oauth2 token from the request context, if any
-func Oauth2TokenFromRequest(r *http.Request) (ot oauth2.Token, ok bool) {
-	if r == nil {
-		return
-	}
-	return OAuth2TokenFromCtx(r.Context())
-}
-
-// OAuth2TokenFromCtx returns the Oauth2 token from the context, if any
-func OAuth2TokenFromCtx(ctx context.Context) (ot oauth2.Token, ok bool) {
-	ot, ok = ctx.Value(contextKeyAccessToken).(oauth2.Token)
-	return
-}
-
-// CtxWithOauth2Token sets the Oauth2 Token to the given context
-func CtxWithOauth2Token(ctx context.Context, ot oauth2.Token) context.Context {
-	return context.WithValue(ctx, contextKeyAccessToken, ot)
-}
-
 // CasbinAuthorizer holds the casbin.Enforcer struct
 type CasbinAuthorizer struct {
 	Enforcer *casbin.Enforcer
@@ -93,6 +67,13 @@ func (a CasbinAuthorizer) Authorize(lgr zerolog.Logger, r *http.Request, adt aud
 
 	// object: current route path
 	route := mux.CurrentRoute(r)
+
+	// CurrentRoute can return a nil if route not setup properly or
+	// is being called outside the handler of the matched route
+	if route == nil {
+		return errs.E(errs.Unauthorized, "nil route returned from mux.CurrentRoute")
+	}
+
 	obj, err := route.GetPathTemplate()
 	if err != nil {
 		return errs.E(errs.Unauthorized, err)
