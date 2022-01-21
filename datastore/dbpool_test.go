@@ -19,12 +19,7 @@ func Test_NewPostgreSQLPool(t *testing.T) {
 
 	ctx := context.Background()
 	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
-	dsn := PostgreSQLDSN{
-		Host:   "localhost",
-		Port:   5432,
-		DBName: "go_api_basic",
-		User:   "postgres",
-	}
+	dsn := newPostgreSQLDSN(t)
 	baddsn := PostgreSQLDSN{
 		Host:   "badhost",
 		Port:   5432,
