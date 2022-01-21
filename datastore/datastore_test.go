@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"os"
 	"reflect"
+	"strconv"
 	"testing"
 
 	qt "github.com/frankban/quicktest"
@@ -57,12 +58,7 @@ func TestDatastore_Pool(t *testing.T) {
 	ctx := context.Background()
 	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
-	dsn := PostgreSQLDSN{
-		Host:   "localhost",
-		Port:   5432,
-		DBName: "go_api_basic",
-		User:   "postgres",
-	}
+	dsn := newPostgreSQLDSN(t)
 
 	ogpool, cleanup, err := NewPostgreSQLPool(ctx, dsn, lgr)
 	t.Cleanup(cleanup)
@@ -82,12 +78,7 @@ func TestNewDatastore(t *testing.T) {
 		ctx := context.Background()
 		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
-		dsn := PostgreSQLDSN{
-			Host:   "localhost",
-			Port:   5432,
-			DBName: "go_api_basic",
-			User:   "postgres",
-		}
+		dsn := newPostgreSQLDSN(t)
 
 		dbpool, cleanup, err := NewPostgreSQLPool(ctx, dsn, lgr)
 		c.Assert(err, qt.IsNil)
@@ -105,12 +96,7 @@ func TestDatastore_BeginTx(t *testing.T) {
 		c := qt.New(t)
 
 		ctx := context.Background()
-		dsn := PostgreSQLDSN{
-			Host:   "localhost",
-			Port:   5432,
-			DBName: "go_api_basic",
-			User:   "postgres",
-		}
+		dsn := newPostgreSQLDSN(t)
 		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
 		dbpool, cleanup, err := NewPostgreSQLPool(ctx, dsn, lgr)
@@ -132,12 +118,7 @@ func TestDatastore_BeginTx(t *testing.T) {
 		c := qt.New(t)
 
 		ctx := context.Background()
-		dsn := PostgreSQLDSN{
-			Host:   "localhost",
-			Port:   5432,
-			DBName: "go_api_basic",
-			User:   "postgres",
-		}
+		dsn := newPostgreSQLDSN(t)
 		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
 		dbpool, cleanup, err := NewPostgreSQLPool(ctx, dsn, lgr)
@@ -175,12 +156,7 @@ func TestDatastore_RollbackTx(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	dsn := PostgreSQLDSN{
-		Host:   "localhost",
-		Port:   5432,
-		DBName: "go_api_basic",
-		User:   "postgres",
-	}
+	dsn := newPostgreSQLDSN(t)
 	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
 	dbpool, cleanup, err := NewPostgreSQLPool(ctx, dsn, lgr)
@@ -243,12 +219,7 @@ func TestDatastore_CommitTx(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	dsn := PostgreSQLDSN{
-		Host:   "localhost",
-		Port:   5432,
-		DBName: "go_api_basic",
-		User:   "postgres",
-	}
+	dsn := newPostgreSQLDSN(t)
 	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
 	dbpool, cleanup, err := NewPostgreSQLPool(ctx, dsn, lgr)
@@ -341,5 +312,75 @@ func TestNewNullInt64(t *testing.T) {
 				t.Errorf("NewNullInt64() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+// newPGDatasourceName is a test helper to get a PGDatasourceName
+// from environment variables
+func newPostgreSQLDSN(t *testing.T) PostgreSQLDSN {
+	t.Helper()
+
+	// Constants for the PostgreSQL Database connection
+	const (
+		pgDBHost       string = "DB_HOST"
+		pgDBPort       string = "DB_PORT"
+		pgDBName       string = "DB_NAME"
+		pgDBUser       string = "DB_USER"
+		pgDBPassword   string = "DB_PASSWORD"
+		pgDBSearchPath string = "DB_SEARCH_PATH"
+	)
+
+	var (
+		dbHost       string
+		dbPort       int
+		dbName       string
+		dbUser       string
+		dbPassword   string
+		dbSearchPath string
+		ok           bool
+		err          error
+	)
+
+	dbHost, ok = os.LookupEnv(pgDBHost)
+	if !ok {
+		t.Fatalf("No environment variable found for %s", pgDBHost)
+	}
+
+	p, ok := os.LookupEnv(pgDBPort)
+	if !ok {
+		t.Fatalf("No environment variable found for %s", pgDBPort)
+	}
+	dbPort, err = strconv.Atoi(p)
+	if err != nil {
+		t.Fatalf("Unable to convert db port %s to int", p)
+	}
+
+	dbName, ok = os.LookupEnv(pgDBName)
+	if !ok {
+		t.Fatalf("No environment variable found for %s", pgDBName)
+	}
+
+	dbUser, ok = os.LookupEnv(pgDBUser)
+	if !ok {
+		t.Fatalf("No environment variable found for %s", pgDBUser)
+	}
+
+	dbPassword, ok = os.LookupEnv(pgDBPassword)
+	if !ok {
+		t.Fatalf("No environment variable found for %s", pgDBPassword)
+	}
+
+	dbSearchPath, ok = os.LookupEnv(pgDBSearchPath)
+	if !ok {
+		t.Fatalf("No environment variable found for %s", pgDBSearchPath)
+	}
+
+	return PostgreSQLDSN{
+		Host:       dbHost,
+		Port:       dbPort,
+		DBName:     dbName,
+		SearchPath: dbSearchPath,
+		User:       dbUser,
+		Password:   dbPassword,
 	}
 }
