@@ -6,9 +6,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/gilcrest/go-api-basic/domain/auth"
 	"github.com/gilcrest/go-api-basic/domain/user"
-	"github.com/gilcrest/go-api-basic/domain/user/usertest"
 )
 
 // NewMockAuthorizer is an initializer for MockAuthorizer
@@ -29,28 +27,4 @@ func (ma MockAuthorizer) Authorize(ctx context.Context, sub user.User, obj strin
 	ma.t.Helper()
 
 	return nil
-}
-
-// NewAccessToken returns a mock auth.AccessToken
-func NewAccessToken(t *testing.T) auth.AccessToken {
-	t.Helper()
-
-	return auth.AccessToken{Token: "abc123def1", TokenType: auth.BearerTokenType}
-}
-
-// NewMockAccessTokenConverter is an initializer for a MockAccessTokenConverter
-func NewMockAccessTokenConverter(t *testing.T) MockAccessTokenConverter {
-	return MockAccessTokenConverter{t: t}
-}
-
-// MockAccessTokenConverter mocks converting an auth.AccessToken to a user.User
-type MockAccessTokenConverter struct {
-	t *testing.T
-}
-
-// Convert returns a static test user.User
-func (m MockAccessTokenConverter) Convert(ctx context.Context, token auth.AccessToken) (user.User, error) {
-	m.t.Helper()
-
-	return usertest.NewUser(m.t), nil
 }
