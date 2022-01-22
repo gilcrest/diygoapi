@@ -27,8 +27,8 @@
 //      I am using Google Cloud Run which handles TLS for me. To keep this as
 //      simple as possible, I am removing TLS for now
 
-// Package app provides a preconfigured HTTP server.
-package app
+// Package server provides a preconfigured HTTP server.
+package server
 
 import (
 	"context"
@@ -36,37 +36,14 @@ import (
 	"net/http"
 	"time"
 
-	"golang.org/x/oauth2"
-
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
 
-	"github.com/gilcrest/go-api-basic/app/driver"
 	"github.com/gilcrest/go-api-basic/domain/errs"
-	"github.com/gilcrest/go-api-basic/domain/user"
+	"github.com/gilcrest/go-api-basic/server/driver"
 )
 
 const pathPrefix string = "/api"
-
-// Oauth2TokenConverter interface converts an Oauth2 token to a User
-type Oauth2TokenConverter interface {
-	Convert(ctx context.Context, token oauth2.Token) (user.User, error)
-}
-
-// Authorizer interface authorizes access to a resource given
-// a user and action
-type Authorizer interface {
-	Authorize(lgr zerolog.Logger, sub user.User, obj string, act string) error
-}
-
-// ServerParams is the set of configuration parameters for a Server
-type ServerParams struct {
-	// Logger is used for app logging
-	Logger zerolog.Logger
-
-	// Driver serves HTTP requests.
-	Driver driver.Server
-}
 
 // Server represents an HTTP server.
 type Server struct {
@@ -82,19 +59,16 @@ type Server struct {
 	// See net.Dial for details of the address format.
 	Addr string
 
-	// Services used by middleware handlers
-	MiddlewareServices
-
-	// Services used by the various HTTP routes.
+	// Services used by the various HTTP routes and middleware.
 	Services
 }
 
 // New initializes a new Server and registers
 // routes to the given router
-func New(rtr *mux.Router, params *ServerParams) *Server {
+func New(rtr *mux.Router, lgr zerolog.Logger, serverDriver driver.Server) *Server {
 	s := &Server{router: rtr}
-	s.Logger = params.Logger
-	s.Driver = params.Driver
+	s.Logger = lgr
+	s.Driver = serverDriver
 
 	// register routes to the router
 	s.registerRoutes()
