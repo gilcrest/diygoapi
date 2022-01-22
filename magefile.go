@@ -4,8 +4,9 @@
 package main
 
 import (
-	"github.com/gilcrest/go-api-basic/commands"
 	"github.com/magefile/mage/sh"
+
+	"github.com/gilcrest/go-api-basic/commands"
 )
 
 // DBUp uses the psql command line interface to execute DDL scripts
@@ -61,6 +62,46 @@ func DBDown() error {
 	}
 
 	err = sh.Run("psql", args...)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// TestAll runs all tests for the app
+func TestAll() error {
+	err := commands.OverrideEnv()
+	if err != nil {
+		return err
+	}
+
+	err = sh.Run("go", "test", "./...")
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Build creates the binary executable with name srvr
+func Build() error {
+	err := sh.Run("go", "build", "-o", "srvr")
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Run runs the binary executable created with Build
+func Run() error {
+	err := commands.OverrideEnv()
+	if err != nil {
+		return err
+	}
+
+	err = sh.Run("./srvr")
 	if err != nil {
 		return err
 	}
