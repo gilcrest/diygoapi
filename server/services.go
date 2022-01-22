@@ -1,4 +1,4 @@
-package app
+package server
 
 import (
 	"context"
@@ -90,10 +90,6 @@ type SeedService interface {
 
 // Services are used by the application service handlers
 type Services struct {
-	//CreateMovieService CreateMovieService
-	//UpdateMovieService UpdateMovieService
-	//DeleteMovieService DeleteMovieService
-	//FindMovieService   FindMovieService
 	SeedService      SeedService
 	PingService      PingService
 	LoggerService    LoggerService
@@ -101,10 +97,6 @@ type Services struct {
 	UpdateOrgService UpdateOrgService
 	FindOrgService   FindOrgService
 	CreateAppService CreateAppService
-}
-
-// MiddlewareServices are used by middleware handlers
-type MiddlewareServices struct {
 	FindAppService   FindAppService
 	FindUserService  FindUserService
 	AuthorizeService AuthorizeService
