@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/gilcrest/go-api-basic/domain/secure"
-
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 	"golang.org/x/oauth2"
@@ -16,11 +14,12 @@ import (
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/org"
 	"github.com/gilcrest/go-api-basic/domain/person"
+	"github.com/gilcrest/go-api-basic/domain/secure"
 	"github.com/gilcrest/go-api-basic/domain/user"
 	"github.com/gilcrest/go-api-basic/gateway/authgateway"
 )
 
-// GoogleOauth2TokenConverter converts an Oauth2 token to a google Userinfo struct
+// GoogleOauth2TokenConverter converts an oauth2.Token to an authgateway.Userinfo struct
 type GoogleOauth2TokenConverter interface {
 	Convert(ctx context.Context, realm string, token oauth2.Token) (authgateway.Userinfo, error)
 }
@@ -48,7 +47,11 @@ func (fus FindUserService) FindUserByOauth2Token(ctx context.Context, params Fin
 	)
 
 	if params.Provider == auth.Invalid {
-		return user.User{}, errs.E(errs.Unauthenticated, errs.Realm(params.Realm), "Provider not recognized")
+		return user.User{}, errs.E(errs.Unauthenticated, errs.Realm(params.Realm), "provider not recognized")
+	}
+
+	if params.Provider == auth.Apple {
+		return user.User{}, errs.E(errs.Unauthenticated, errs.Realm(params.Realm), "apple authentication not yet implemented")
 	}
 
 	if params.Provider == auth.Google {
