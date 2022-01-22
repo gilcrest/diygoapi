@@ -27,7 +27,7 @@ const (
 	authProviderHeaderKey string = "X-AUTH-PROVIDER"
 )
 
-// JSONContentTypeResponseHandler middleware is used to add the
+// jsonContentTypeResponseHandler middleware is used to add the
 // application/json Content-Type Header for responses
 func (s *Server) jsonContentTypeResponseHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(
@@ -131,7 +131,7 @@ func (s *Server) userHandler(h http.Handler) http.Handler {
 	})
 }
 
-// AuthorizeUserHandler middleware is used authorize a User for a request path and http method
+// authorizeUserHandler middleware is used authorize a User for a request path and http method
 func (s *Server) authorizeUserHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		lgr := *hlog.FromRequest(r)
