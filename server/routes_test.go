@@ -1,4 +1,4 @@
-package app
+package server
 
 import (
 	"net/http"
@@ -9,7 +9,7 @@ import (
 )
 
 func TestNewMuxRouter(t *testing.T) {
-	t.Run("typical", func(t *testing.T) {
+	t.Run("all routes", func(t *testing.T) {
 
 		// initialize quickest checker
 		c := qt.New(t)
@@ -20,7 +20,7 @@ func TestNewMuxRouter(t *testing.T) {
 			router: rtr,
 		}
 
-		s.routes()
+		s.registerRoutes()
 
 		// r holds the path and http method to be tested
 		type r struct {
@@ -31,14 +31,15 @@ func TestNewMuxRouter(t *testing.T) {
 		// use a slice literal to create the routes in order of how
 		// they are registered in NewMuxRouter
 		wantRoutes := []r{
-			{pathPrefix + moviesV1PathRoot, []string{http.MethodPost}},
-			{pathPrefix + moviesV1PathRoot + extlIDPathDir, []string{http.MethodPut}},
-			{pathPrefix + moviesV1PathRoot + extlIDPathDir, []string{http.MethodDelete}},
-			{pathPrefix + moviesV1PathRoot + extlIDPathDir, []string{http.MethodGet}},
-			{pathPrefix + moviesV1PathRoot, []string{http.MethodGet}},
+			{pathPrefix + orgsV1PathRoot, []string{http.MethodGet}},
+			{pathPrefix + orgsV1PathRoot + extlIDPathDir, []string{http.MethodGet}},
+			{pathPrefix + orgsV1PathRoot, []string{http.MethodPost}},
+			{pathPrefix + orgsV1PathRoot + extlIDPathDir, []string{http.MethodPut}},
+			{pathPrefix + appsV1PathRoot, []string{http.MethodPost}},
 			{pathPrefix + loggerV1PathRoot, []string{http.MethodGet}},
 			{pathPrefix + loggerV1PathRoot, []string{http.MethodPut}},
 			{pathPrefix + pingV1PathRoot, []string{http.MethodGet}},
+			{pathPrefix + "/v1/seed", []string{http.MethodPost}},
 		}
 
 		// make a slice of r for use in the Walk function
