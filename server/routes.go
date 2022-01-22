@@ -1,19 +1,29 @@
-package app
+package server
 
 import (
 	"net/http"
 )
 
 const (
-	contentTypeHeaderKey        string = "Content-Type"
+	// Content Type header key
+	contentTypeHeaderKey string = "Content-Type"
+	// application/json header value for Content-Type header key
 	appJSONContentTypeHeaderVal string = "application/json"
-	defaultRealm                string = "go-api-basic"
-	moviesV1PathRoot            string = "/v1/movies"
-	orgsV1PathRoot              string = "/v1/orgs"
-	appsV1PathRoot              string = "/v1/apps"
-	extlIDPathDir               string = "/{extlID}"
-	loggerV1PathRoot            string = "/v1/logger"
-	pingV1PathRoot              string = "/v1/ping"
+	// Default Realm used as part of the WWW-Authenticate response
+	// header when returning a 401 Unauthorized response
+	defaultRealm string = "go-api-basic"
+	// extlID is used to represent an external id. This is a common
+	// enough pattern in these services, that I've chosen to make it
+	// a constant
+	extlIDPathDir string = "/{extlID}"
+	// organization V1 Path root
+	orgsV1PathRoot string = "/v1/orgs"
+	// app V1 Path root
+	appsV1PathRoot string = "/v1/apps"
+	// logger V1 Path root
+	loggerV1PathRoot string = "/v1/logger"
+	// ping V1 Path root
+	pingV1PathRoot string = "/v1/ping"
 )
 
 // register routes/middleware/handlers to the Server router
