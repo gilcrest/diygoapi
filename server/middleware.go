@@ -1,4 +1,4 @@
-package app
+package server
 
 import (
 	"fmt"
@@ -19,8 +19,11 @@ import (
 )
 
 const (
-	appIDHeaderKey        string = "X-APP-ID"
-	apiKeyHeaderKey       string = "X-API-KEY"
+	// App ID header key
+	appIDHeaderKey string = "X-APP-ID"
+	// API key header key
+	apiKeyHeaderKey string = "X-API-KEY"
+	// Authorization provider header key
 	authProviderHeaderKey string = "X-AUTH-PROVIDER"
 )
 
@@ -32,55 +35,6 @@ func (s *Server) jsonContentTypeResponseHandler(h http.Handler) http.Handler {
 			w.Header().Add(contentTypeHeaderKey, appJSONContentTypeHeaderVal)
 			h.ServeHTTP(w, r) // call original
 		})
-}
-
-// AuthorizeUserHandler middleware is used authorize a User for a request path and http method
-func (s *Server) authorizeUserHandler(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		lgr := *hlog.FromRequest(r)
-
-		// retrieve user from request context
-		adt, err := audit.FromRequest(r)
-		if err != nil {
-			errs.HTTPErrorResponse(w, lgr, err)
-			return
-		}
-
-		// authorize user can access the path/method
-		err = s.AuthorizeService.Authorize(lgr, r, adt)
-		if err != nil {
-			errs.HTTPErrorResponse(w, lgr, err)
-			return
-		}
-
-		h.ServeHTTP(w, r) // call original
-	})
-}
-
-// LoggerChain returns a middleware chain (via alice.Chain)
-// initialized with all the standard middleware handlers for logging. The logger
-// will be added to the request context for subsequent use with pre-populated
-// fields, including the request method, url, status, size, duration, remote IP,
-// user agent, referer. A unique Request ID is also added to the logger, context
-// and response headers.
-func (s *Server) loggerChain() alice.Chain {
-	ac := alice.New(hlog.NewHandler(s.Logger),
-		hlog.AccessHandler(func(r *http.Request, status, size int, duration time.Duration) {
-			hlog.FromRequest(r).Info().
-				Str("method", r.Method).
-				Stringer("url", r.URL).
-				Int("status", status).
-				Int("size", size).
-				Dur("duration", duration).
-				Msg("request logged")
-		}),
-		hlog.RemoteAddrHandler("remote_ip"),
-		hlog.UserAgentHandler("user_agent"),
-		hlog.RefererHandler("referer"),
-		hlog.RequestIDHandler("request_id", "Request-Id"),
-	)
-
-	return ac
 }
 
 // appHandler middleware is used to parse the request app id and api key
@@ -177,10 +131,59 @@ func (s *Server) userHandler(h http.Handler) http.Handler {
 	})
 }
 
-// xHeader parses and returns the various authorization header values given the key
+// AuthorizeUserHandler middleware is used authorize a User for a request path and http method
+func (s *Server) authorizeUserHandler(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		lgr := *hlog.FromRequest(r)
+
+		// retrieve user from request context
+		adt, err := audit.FromRequest(r)
+		if err != nil {
+			errs.HTTPErrorResponse(w, lgr, err)
+			return
+		}
+
+		// authorize user can access the path/method
+		err = s.AuthorizeService.Authorize(lgr, r, adt)
+		if err != nil {
+			errs.HTTPErrorResponse(w, lgr, err)
+			return
+		}
+
+		h.ServeHTTP(w, r) // call original
+	})
+}
+
+// LoggerChain returns a middleware chain (via alice.Chain)
+// initialized with all the standard middleware handlers for logging. The logger
+// will be added to the request context for subsequent use with pre-populated
+// fields, including the request method, url, status, size, duration, remote IP,
+// user agent, referer. A unique Request ID is also added to the logger, context
+// and response headers.
+func (s *Server) loggerChain() alice.Chain {
+	ac := alice.New(hlog.NewHandler(s.Logger),
+		hlog.AccessHandler(func(r *http.Request, status, size int, duration time.Duration) {
+			hlog.FromRequest(r).Info().
+				Str("method", r.Method).
+				Stringer("url", r.URL).
+				Int("status", status).
+				Int("size", size).
+				Dur("duration", duration).
+				Msg("request logged")
+		}),
+		hlog.RemoteAddrHandler("remote_ip"),
+		hlog.UserAgentHandler("user_agent"),
+		hlog.RefererHandler("referer"),
+		hlog.RequestIDHandler("request_id", "Request-Id"),
+	)
+
+	return ac
+}
+
+// xHeader parses and returns the header value given the key. It is
+// used to validate various header values as part of authentication
 func xHeader(realm string, header http.Header, key string) (v string, err error) {
-	// Pull the token from the Authorization header by retrieving the
-	// value from the Header map with the key
+	// Pull the header value from the Header map given the key
 	headerValue, ok := header[http.CanonicalHeaderKey(key)]
 	if !ok {
 		return "", errs.E(errs.Unauthenticated, errs.Realm(realm), fmt.Sprintf("unauthenticated: no %s header sent", key))
