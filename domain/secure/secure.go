@@ -8,42 +8,12 @@ import (
 	"encoding/hex"
 	"io"
 
+	"github.com/gilcrest/go-api-basic/domain/secure/random"
+
 	"github.com/gilcrest/go-api-basic/domain/errs"
 )
 
 const defaultIDByteLength int = 12
-
-// NewEncryptionKey generates a random 256-bit key. It will return an
-// error if the system's secure random number generator fails to
-// function correctly, in which case the caller should not continue.
-// Taken from https://github.com/gtank/cryptopasta/blob/master/encrypt.go
-func NewEncryptionKey() (*[32]byte, error) {
-	key := [32]byte{}
-	_, err := io.ReadFull(rand.Reader, key[:])
-	if err != nil {
-		return nil, errs.E(errs.Internal, err)
-	}
-	return &key, nil
-}
-
-// ParseEncryptionKey decodes the string representation of an encryption key
-// and returns its bytes
-func ParseEncryptionKey(s string) (*[32]byte, error) {
-	// get hex encoded encryption key from cloud secret
-	key, err := hex.DecodeString(s)
-	if err != nil {
-		return nil, errs.E(errs.Internal, err)
-	}
-	if len(key) != 32 {
-		return nil, errs.E(errs.Internal, "Encryption key byte length must be exactly 32 bytes")
-	}
-	// loop through each byte and add it to the 32 byte encryption key array (ek)
-	ek := [32]byte{}
-	for i, bite := range key {
-		ek[i] = bite
-	}
-	return &ek, nil
-}
 
 // Identifier is a way of identifying something
 type Identifier []byte
@@ -51,7 +21,7 @@ type Identifier []byte
 // NewIdentifier creates a new random Identifier of n bytes or
 // returns an error.
 func NewIdentifier(n int) (Identifier, error) {
-	id, err := CryptoRandomGenerator{}.RandomBytes(n)
+	id, err := random.CryptoGenerator{}.RandomBytes(n)
 	if err != nil {
 		return Identifier{}, err
 	}
@@ -59,7 +29,8 @@ func NewIdentifier(n int) (Identifier, error) {
 	return id, nil
 }
 
-// NewID is like NewIdentifier, but panics if the string cannot be parsed.
+// NewID is like NewIdentifier, but panics if the Identifier
+// cannot be initialized
 func NewID() Identifier {
 	id, err := NewIdentifier(defaultIDByteLength)
 	if err != nil {
@@ -93,35 +64,36 @@ func MustParseIdentifier(s string) Identifier {
 	return id
 }
 
-// CryptoRandomGenerator methods produce cryptographically secure random data
-type CryptoRandomGenerator struct{}
-
-// RandomBytes returns securely generated random bytes. It will return
-// an error if the system's secure random number generator fails to
+// NewEncryptionKey generates a random 256-bit key. It will return an
+// error if the system's secure random number generator fails to
 // function correctly, in which case the caller should not continue.
-// Taken from https://stackoverflow.com/questions/35781197/generating-a-random-fixed-length-byte-array-in-go
-func (g CryptoRandomGenerator) RandomBytes(n int) ([]byte, error) {
-	b := make([]byte, n)
-	_, err := rand.Read(b)
-	// Note that err == nil only if we read len(b) bytes.
+// Taken from https://github.com/gtank/cryptopasta/blob/master/encrypt.go
+func NewEncryptionKey() (*[32]byte, error) {
+	key := [32]byte{}
+	_, err := io.ReadFull(rand.Reader, key[:])
 	if err != nil {
 		return nil, errs.E(errs.Internal, err)
 	}
-
-	return b, nil
+	return &key, nil
 }
 
-// RandomString returns a URL-safe, base64 encoded, securely generated, random string.
-// It will return an error if the system's secure random number generator fails to
-// function correctly, in which case the caller should not continue. This should be
-// used when there are concerns about security and need something cryptographically
-// secure.
-func (g CryptoRandomGenerator) RandomString(n int) (string, error) {
-	b, err := g.RandomBytes(n)
+// ParseEncryptionKey decodes the string representation of an encryption key
+// and returns its bytes
+func ParseEncryptionKey(s string) (*[32]byte, error) {
+	// get hex encoded encryption key from cloud secret
+	key, err := hex.DecodeString(s)
 	if err != nil {
-		return "", err
+		return nil, errs.E(errs.Internal, err)
 	}
-	return base64.URLEncoding.EncodeToString(b), err
+	if len(key) != 32 {
+		return nil, errs.E(errs.Internal, "Encryption key byte length must be exactly 32 bytes")
+	}
+	// loop through each byte and add it to the 32 byte encryption key array (ek)
+	ek := [32]byte{}
+	for i, bite := range key {
+		ek[i] = bite
+	}
+	return &ek, nil
 }
 
 // Encrypt encrypts data using 256-bit AES-GCM.  This both hides the content of
