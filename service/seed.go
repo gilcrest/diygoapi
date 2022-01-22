@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/gilcrest/go-api-basic/datastore/appstore"
 	"github.com/gilcrest/go-api-basic/datastore/orgstore"
@@ -18,7 +20,6 @@ import (
 	"github.com/gilcrest/go-api-basic/domain/person"
 	"github.com/gilcrest/go-api-basic/domain/secure"
 	"github.com/gilcrest/go-api-basic/domain/user"
-	"github.com/google/uuid"
 )
 
 // SeedRequest is the request struct for seeding the database
