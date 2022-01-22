@@ -5,10 +5,16 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	qt "github.com/frankban/quicktest"
+	"github.com/google/uuid"
+
+	"github.com/gilcrest/go-api-basic/domain/org"
+	"github.com/gilcrest/go-api-basic/domain/person"
 )
 
+// TODO - these tests were built before I had the concept of Profiles, Orgs, etc. - need updating
 func TestUser_IsValid(t *testing.T) {
 	type fields struct {
 		Email        string
@@ -73,13 +79,29 @@ func TestUser_IsValid(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			u := User{
-				Email:        tt.fields.Email,
-				LastName:     tt.fields.LastName,
-				FirstName:    tt.fields.FirstName,
-				FullName:     tt.fields.FullName,
-				HostedDomain: tt.fields.HostedDomain,
-				PictureURL:   tt.fields.PictureURL,
-				ProfileLink:  tt.fields.ProfileLink,
+				ID:       uuid.New(),
+				Username: tt.fields.Email,
+				Org:      org.Org{},
+				Profile: person.Profile{
+					ID:                uuid.New(),
+					Person:            person.Person{},
+					NamePrefix:        "",
+					FirstName:         tt.fields.FirstName,
+					MiddleName:        "",
+					LastName:          tt.fields.LastName,
+					FullName:          tt.fields.FullName,
+					NameSuffix:        "",
+					Nickname:          "",
+					CompanyName:       "",
+					CompanyDepartment: "",
+					JobTitle:          "",
+					BirthDate:         time.Date(2008, 1, 17, 0, 0, 0, 0, time.UTC),
+					LanguageID:        uuid.Nil,
+					HostedDomain:      tt.fields.HostedDomain,
+					PictureURL:        tt.fields.PictureURL,
+					ProfileLink:       tt.fields.ProfileLink,
+					ProfileSource:     "",
+				},
 			}
 			if got := u.IsValid(); got != tt.want {
 				t.Errorf("IsValid() = %v, want %v", got, tt.want)
@@ -97,31 +119,23 @@ func TestFromRequest(t *testing.T) {
 
 	r := httptest.NewRequest(http.MethodGet, "/api/v1/movies", nil)
 
-	otto := User{
-		Email:        "otto.maddox@helpinghandacceptanceco.com",
-		LastName:     "Maddox",
-		FirstName:    "Otto",
-		FullName:     "Otto Maddox",
-		HostedDomain: "",
-		PictureURL:   "",
-		ProfileLink:  "",
-	}
+	otto := User{}
+	otto.Username = "otto.maddox@helpinghandacceptanceco.com"
+	otto.Profile.LastName = "Maddox"
+	otto.Profile.FirstName = "Otto"
+	otto.Profile.FullName = "Otto Maddox"
 
-	invalidOtto := User{
-		Email:        "otto.maddox@helpinghandacceptanceco.com",
-		LastName:     "",
-		FirstName:    "Otto",
-		FullName:     "Otto Maddox",
-		HostedDomain: "",
-		PictureURL:   "",
-		ProfileLink:  "",
-	}
+	invalidOtto := User{}
+	invalidOtto.Username = "otto.maddox@helpinghandacceptanceco.com"
+	invalidOtto.Profile.LastName = ""
+	invalidOtto.Profile.FirstName = "Otto"
+	invalidOtto.Profile.FullName = "Otto Maddox"
 
 	ctx := context.Background()
 	ctx = CtxWithUser(ctx, otto)
 	r = r.WithContext(ctx)
 
-	noUserRequest, err := http.NewRequest(http.MethodGet, "/api/v1/movies", nil)
+	noUserRequest, err := http.NewRequest(http.MethodGet, "/api/v1/ping", nil)
 	if err != nil {
 		t.Fatalf("http.NewRequest() error = %v", err)
 	}
