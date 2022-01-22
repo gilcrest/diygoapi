@@ -1,6 +1,6 @@
 # go-API-basic
 
-OMG - 1/11/2022 - v0.39.2 - everything is somewhat broken! I've changed a lot and am pulling the pieces all back together - stay tuned...
+OMG - 1/22/2022 - v0.39.3 - things are coming back together, been a lot of work recently. I need to update a lot in the docs below and start to give better examples, etc. Hoping to have everything sorted in the next week or so, but you can start to see the structure coming together...
 
 A RESTful API template (built with Go)
 
