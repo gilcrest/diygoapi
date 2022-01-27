@@ -5,11 +5,12 @@ import (
 	"os"
 	"testing"
 
+	qt "github.com/frankban/quicktest"
+
 	"github.com/gilcrest/go-api-basic/datastore/datastoretest"
 	"github.com/gilcrest/go-api-basic/domain/secure"
+	"github.com/gilcrest/go-api-basic/domain/secure/random"
 	"github.com/gilcrest/go-api-basic/service"
-
-	qt "github.com/frankban/quicktest"
 )
 
 func TestSeedService_Seed(t *testing.T) {
@@ -32,7 +33,7 @@ func TestSeedService_Seed(t *testing.T) {
 
 		sr := service.SeedService{
 			Datastorer:            ds,
-			CryptoRandomGenerator: secure.CryptoRandomGenerator{},
+			CryptoRandomGenerator: random.CryptoGenerator{},
 			EncryptionKey:         ek,
 		}
 		r := service.SeedRequest{
