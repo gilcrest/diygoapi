@@ -1,7 +1,7 @@
 // Package commands defines and implements command-line build
 // commands and flags used by the application. The package name is
-// inspired by Hugo and Cobra/Viper, but for now, neither of those
-// are actually being used, opting instead for the simplicity of ff.
+// inspired by Hugo and Cobra/Viper, but for now, Cobra/Viper is
+// not used, opting instead for the simplicity of ff.
 package commands
 
 import (
@@ -184,14 +184,9 @@ func Run(args []string) error {
 		lgr.Fatal().Err(err).Msg("portRange() error")
 	}
 
-	// initialize Gorilla mux router with /api subroute
-	rtr := server.NewMuxRouter()
-
-	// initialize server driver
-	serverDriver := server.NewDriver()
-
-	// initialize Server
-	s := server.New(rtr, lgr, serverDriver)
+	// initialize Server enfolding an http.Server with default timeouts
+	// a Gorilla mux router with /api subroute and a zerolog.Logger
+	s := server.New(server.NewMuxRouter(), server.NewDriver(), lgr)
 
 	// set listener address
 	s.Addr = fmt.Sprintf(":%d", flgs.port)
