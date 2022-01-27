@@ -76,11 +76,12 @@ func (bfn byFileNumber) Less(i, j int) bool { return bfn[i].fileNumber < bfn[j].
 
 // PSQLArgs takes a slice of DDL files to be executed and builds a
 // sequence of command line arguments using the appropriate flags
-// psql needs to execute files. The flags returned for psql are as follows:
+// psql needs to execute files. The arguments returned for psql are as follows:
 //
-// -w flag is used to never prompt for a password as we are running this as a script
-//    see
+// -w flag is set to never prompt for a password as we are running this as a script
+//
 // -d flag sets the database connection using a Connection URI string.
+//
 // -f flag is sent before each file to tell it to process the file
 func PSQLArgs(up bool) ([]string, error) {
 	dir := "./scripts/ddl/db-deploy"
