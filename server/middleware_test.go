@@ -5,17 +5,20 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
 	qt "github.com/frankban/quicktest"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 	"golang.org/x/oauth2"
 
 	"github.com/gilcrest/go-api-basic/domain/app"
 	"github.com/gilcrest/go-api-basic/domain/auth"
 	"github.com/gilcrest/go-api-basic/domain/errs"
+	"github.com/gilcrest/go-api-basic/domain/logger"
 	"github.com/gilcrest/go-api-basic/domain/org"
 )
 
@@ -60,6 +63,7 @@ func TestJSONContentTypeResponseHandler(t *testing.T) {
 	handlers.ServeHTTP(rr, req)
 }
 
+// TODO - add typical - with database test to actually query db. Requires quite a bit of data setup, but is appropriate and will get to this.
 func TestServer_appHandler(t *testing.T) {
 	t.Run("typical - mock database", func(t *testing.T) {
 		c := qt.New(t)
@@ -90,12 +94,15 @@ func TestServer_appHandler(t *testing.T) {
 				UpdateTime:   time.Time{},
 				APIKeys:      nil,
 			}
-			c.Assert(a, qt.Equals, wantApp)
+			c.Assert(a, qt.DeepEquals, wantApp)
 		})
 
 		rr := httptest.NewRecorder()
 
-		s := Server{}
+		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+
+		s := New(NewMuxRouter(), NewDriver(), lgr)
+		s.FindAppService = mockFindAppService{}
 
 		handlers := s.appHandler(testAppHandler)
 		handlers.ServeHTTP(rr, req)
@@ -104,37 +111,6 @@ func TestServer_appHandler(t *testing.T) {
 		// should be empty and the status code should be 401
 		c.Assert(rr.Code, qt.Equals, http.StatusOK)
 	})
-
-	//// Authorization header is not added at all
-	//t.Run("no auth header", func(t *testing.T) {
-	//	c := qt.New(t)
-	//
-	//	req, err := http.NewRequest("GET", "/ping", nil)
-	//	if err != nil {
-	//		t.Fatalf("http.NewRequest() error = %v", err)
-	//	}
-	//
-	//	testAccessTokenHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	//		c.Fatal("handler should not make it here")
-	//	})
-	//
-	//	rr := httptest.NewRecorder()
-	//
-	//	s := Server{}
-	//
-	//	handlers := s.defaultRealmHandler(s.accessTokenHandler(testAccessTokenHandler))
-	//	handlers.ServeHTTP(rr, req)
-	//
-	//	body, err := ioutil.ReadAll(rr.Body)
-	//	if err != nil {
-	//		t.Fatalf("ioutil.ReadAll() error = %v", err)
-	//	}
-	//
-	//	// If there is any issues with the Access Token, the status
-	//	// code should be 401, and the body should be empty
-	//	c.Assert(rr.Code, qt.Equals, http.StatusUnauthorized)
-	//	c.Assert(string(body), qt.Equals, "")
-	//})
 }
 
 func TestXHeader(t *testing.T) {
@@ -172,72 +148,6 @@ func TestXHeader(t *testing.T) {
 		c.Assert(err, qt.CmpEquals(cmp.Comparer(errs.Match)), errs.E(errs.Unauthenticated, errs.Realm(defaultRealm), fmt.Sprintf("unauthenticated: %s header value not found", appIDHeaderKey)))
 	})
 }
-
-//func TestAccessTokenHandler(t *testing.T) {
-//	t.Run("typical", func(t *testing.T) {
-//		c := qt.New(t)
-//
-//		req, err := http.NewRequest("GET", "/ping", nil)
-//		if err != nil {
-//			t.Fatalf("http.NewRequest() error = %v", err)
-//		}
-//		req.Header.Add("Authorization", auth.BearerTokenType+" abcdef123")
-//
-//		testAccessTokenHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-//			token, ok := auth.AccessTokenFromRequest(r)
-//			if !ok {
-//				t.Fatal("auth.AccessTokenFromRequest() !ok")
-//			}
-//			wantToken := auth.AccessToken{
-//				Token:     "abcdef123",
-//				TokenType: auth.BearerTokenType,
-//			}
-//			c.Assert(token, qt.Equals, wantToken)
-//		})
-//
-//		rr := httptest.NewRecorder()
-//
-//		s := Server{}
-//
-//		handlers := s.defaultRealmHandler(s.accessTokenHandler(testAccessTokenHandler))
-//		handlers.ServeHTTP(rr, req)
-//
-//		// If there is any issues with the Access Token, the body
-//		// should be empty and the status code should be 401
-//		c.Assert(rr.Code, qt.Equals, http.StatusOK)
-//	})
-//
-//	// Authorization header is not added at all
-//	t.Run("no auth header", func(t *testing.T) {
-//		c := qt.New(t)
-//
-//		req, err := http.NewRequest("GET", "/ping", nil)
-//		if err != nil {
-//			t.Fatalf("http.NewRequest() error = %v", err)
-//		}
-//
-//		testAccessTokenHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-//			c.Fatal("handler should not make it here")
-//		})
-//
-//		rr := httptest.NewRecorder()
-//
-//		s := Server{}
-//
-//		handlers := s.defaultRealmHandler(s.accessTokenHandler(testAccessTokenHandler))
-//		handlers.ServeHTTP(rr, req)
-//
-//		body, err := ioutil.ReadAll(rr.Body)
-//		if err != nil {
-//			t.Fatalf("ioutil.ReadAll() error = %v", err)
-//		}
-//
-//		// If there is any issues with the Access Token, the status
-//		// code should be 401, and the body should be empty
-//		c.Assert(rr.Code, qt.Equals, http.StatusUnauthorized)
-//		c.Assert(string(body), qt.Equals, "")
-//	})
-//}
 
 func Test_authHeader(t *testing.T) {
 	c := qt.New(t)
