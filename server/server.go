@@ -65,7 +65,7 @@ type Server struct {
 
 // New initializes a new Server and registers
 // routes to the given router
-func New(rtr *mux.Router, lgr zerolog.Logger, serverDriver driver.Server) *Server {
+func New(rtr *mux.Router, serverDriver driver.Server, lgr zerolog.Logger) *Server {
 	s := &Server{router: rtr}
 	s.Logger = lgr
 	s.Driver = serverDriver
