@@ -1,1 +1,1 @@
-drop table if exists demo.app_user;
+drop table if exists demo.app_user cascade;
