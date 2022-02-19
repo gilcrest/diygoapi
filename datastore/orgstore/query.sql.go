@@ -11,21 +11,10 @@ import (
 	"github.com/jackc/pgconn"
 )
 
-const countOrgs = `-- name: CountOrgs :one
-SELECT count(*) as org_count FROM org
-`
-
-func (q *Queries) CountOrgs(ctx context.Context) (int64, error) {
-	row := q.db.QueryRow(ctx, countOrgs)
-	var org_count int64
-	err := row.Scan(&org_count)
-	return org_count, err
-}
-
 const createOrg = `-- name: CreateOrg :execresult
-INSERT INTO org (org_id, org_extl_id, org_name, org_description, create_app_id, create_user_id,
+INSERT INTO org (org_id, org_extl_id, org_name, org_description, org_kind_id, create_app_id, create_user_id,
                  create_timestamp, update_app_id, update_user_id, update_timestamp)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 `
 
 type CreateOrgParams struct {
@@ -33,6 +22,7 @@ type CreateOrgParams struct {
 	OrgExtlID       string
 	OrgName         string
 	OrgDescription  string
+	OrgKindID       uuid.UUID
 	CreateAppID     uuid.UUID
 	CreateUserID    uuid.NullUUID
 	CreateTimestamp time.Time
@@ -47,6 +37,39 @@ func (q *Queries) CreateOrg(ctx context.Context, arg CreateOrgParams) (pgconn.Co
 		arg.OrgExtlID,
 		arg.OrgName,
 		arg.OrgDescription,
+		arg.OrgKindID,
+		arg.CreateAppID,
+		arg.CreateUserID,
+		arg.CreateTimestamp,
+		arg.UpdateAppID,
+		arg.UpdateUserID,
+		arg.UpdateTimestamp,
+	)
+}
+
+const createOrgKind = `-- name: CreateOrgKind :execresult
+insert into org_kind (org_kind_id, org_kind_extl_id, org_kind_desc, create_app_id, create_user_id, create_timestamp,
+                      update_app_id, update_user_id, update_timestamp)
+values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+`
+
+type CreateOrgKindParams struct {
+	OrgKindID       uuid.UUID
+	OrgKindExtlID   string
+	OrgKindDesc     string
+	CreateAppID     uuid.UUID
+	CreateUserID    uuid.NullUUID
+	CreateTimestamp time.Time
+	UpdateAppID     uuid.UUID
+	UpdateUserID    uuid.NullUUID
+	UpdateTimestamp time.Time
+}
+
+func (q *Queries) CreateOrgKind(ctx context.Context, arg CreateOrgKindParams) (pgconn.CommandTag, error) {
+	return q.db.Exec(ctx, createOrgKind,
+		arg.OrgKindID,
+		arg.OrgKindExtlID,
+		arg.OrgKindDesc,
 		arg.CreateAppID,
 		arg.CreateUserID,
 		arg.CreateTimestamp,
@@ -67,7 +90,7 @@ func (q *Queries) DeleteOrg(ctx context.Context, orgID uuid.UUID) error {
 }
 
 const findOrgByExtlID = `-- name: FindOrgByExtlID :one
-SELECT org_id, org_extl_id, org_name, org_description, create_app_id, create_user_id, create_timestamp, update_app_id, update_user_id, update_timestamp FROM org
+SELECT org_id, org_extl_id, org_name, org_description, org_kind_id, create_app_id, create_user_id, create_timestamp, update_app_id, update_user_id, update_timestamp FROM org
 WHERE org_extl_id = $1 LIMIT 1
 `
 
@@ -79,6 +102,7 @@ func (q *Queries) FindOrgByExtlID(ctx context.Context, orgExtlID string) (Org, e
 		&i.OrgExtlID,
 		&i.OrgName,
 		&i.OrgDescription,
+		&i.OrgKindID,
 		&i.CreateAppID,
 		&i.CreateUserID,
 		&i.CreateTimestamp,
@@ -90,7 +114,7 @@ func (q *Queries) FindOrgByExtlID(ctx context.Context, orgExtlID string) (Org, e
 }
 
 const findOrgByID = `-- name: FindOrgByID :one
-SELECT org_id, org_extl_id, org_name, org_description, create_app_id, create_user_id, create_timestamp, update_app_id, update_user_id, update_timestamp FROM org
+SELECT org_id, org_extl_id, org_name, org_description, org_kind_id, create_app_id, create_user_id, create_timestamp, update_app_id, update_user_id, update_timestamp FROM org
 WHERE org_id = $1 LIMIT 1
 `
 
@@ -102,6 +126,7 @@ func (q *Queries) FindOrgByID(ctx context.Context, orgID uuid.UUID) (Org, error)
 		&i.OrgExtlID,
 		&i.OrgName,
 		&i.OrgDescription,
+		&i.OrgKindID,
 		&i.CreateAppID,
 		&i.CreateUserID,
 		&i.CreateTimestamp,
@@ -112,8 +137,102 @@ func (q *Queries) FindOrgByID(ctx context.Context, orgID uuid.UUID) (Org, error)
 	return i, err
 }
 
+const findOrgByKindExtlID = `-- name: FindOrgByKindExtlID :many
+SELECT o.org_id, o.org_extl_id, o.org_name, o.org_description, o.org_kind_id, o.create_app_id, o.create_user_id, o.create_timestamp, o.update_app_id, o.update_user_id, o.update_timestamp FROM org o
+                    INNER JOIN org_kind ot on ot.org_kind_id = o.org_kind_id
+WHERE ot.org_kind_extl_id = $1
+`
+
+func (q *Queries) FindOrgByKindExtlID(ctx context.Context, orgKindExtlID string) ([]Org, error) {
+	rows, err := q.db.Query(ctx, findOrgByKindExtlID, orgKindExtlID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Org
+	for rows.Next() {
+		var i Org
+		if err := rows.Scan(
+			&i.OrgID,
+			&i.OrgExtlID,
+			&i.OrgName,
+			&i.OrgDescription,
+			&i.OrgKindID,
+			&i.CreateAppID,
+			&i.CreateUserID,
+			&i.CreateTimestamp,
+			&i.UpdateAppID,
+			&i.UpdateUserID,
+			&i.UpdateTimestamp,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const findOrgKindByExtlID = `-- name: FindOrgKindByExtlID :one
+SELECT org_kind_id, org_kind_extl_id, org_kind_desc, create_app_id, create_user_id, create_timestamp, update_app_id, update_user_id, update_timestamp FROM org_kind
+WHERE org_kind_extl_id = $1
+`
+
+func (q *Queries) FindOrgKindByExtlID(ctx context.Context, orgKindExtlID string) (OrgKind, error) {
+	row := q.db.QueryRow(ctx, findOrgKindByExtlID, orgKindExtlID)
+	var i OrgKind
+	err := row.Scan(
+		&i.OrgKindID,
+		&i.OrgKindExtlID,
+		&i.OrgKindDesc,
+		&i.CreateAppID,
+		&i.CreateUserID,
+		&i.CreateTimestamp,
+		&i.UpdateAppID,
+		&i.UpdateUserID,
+		&i.UpdateTimestamp,
+	)
+	return i, err
+}
+
+const findOrgKinds = `-- name: FindOrgKinds :many
+SELECT org_kind_id, org_kind_extl_id, org_kind_desc, create_app_id, create_user_id, create_timestamp, update_app_id, update_user_id, update_timestamp FROM org_kind
+`
+
+func (q *Queries) FindOrgKinds(ctx context.Context) ([]OrgKind, error) {
+	rows, err := q.db.Query(ctx, findOrgKinds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []OrgKind
+	for rows.Next() {
+		var i OrgKind
+		if err := rows.Scan(
+			&i.OrgKindID,
+			&i.OrgKindExtlID,
+			&i.OrgKindDesc,
+			&i.CreateAppID,
+			&i.CreateUserID,
+			&i.CreateTimestamp,
+			&i.UpdateAppID,
+			&i.UpdateUserID,
+			&i.UpdateTimestamp,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const findOrgs = `-- name: FindOrgs :many
-SELECT org_id, org_extl_id, org_name, org_description, create_app_id, create_user_id, create_timestamp, update_app_id, update_user_id, update_timestamp FROM org
+SELECT org_id, org_extl_id, org_name, org_description, org_kind_id, create_app_id, create_user_id, create_timestamp, update_app_id, update_user_id, update_timestamp FROM org
 ORDER BY org_name
 `
 
@@ -131,6 +250,7 @@ func (q *Queries) FindOrgs(ctx context.Context) ([]Org, error) {
 			&i.OrgExtlID,
 			&i.OrgName,
 			&i.OrgDescription,
+			&i.OrgKindID,
 			&i.CreateAppID,
 			&i.CreateUserID,
 			&i.CreateTimestamp,
