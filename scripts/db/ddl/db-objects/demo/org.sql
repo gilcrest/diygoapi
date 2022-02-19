@@ -4,7 +4,7 @@ create table org
     org_extl_id      varchar                  not null,
     org_name         varchar                  not null,
     org_description  varchar                  not null,
-    org_type_id      uuid                     not null,
+    org_kind_id      uuid                     not null,
     create_app_id    uuid                     not null,
     create_user_id   uuid,
     create_timestamp timestamp with time zone not null,
@@ -25,8 +25,8 @@ create table org
     constraint org_update_app_fk
         foreign key (update_app_id) references app
             deferrable initially deferred,
-    constraint org_org_type_fk
-        foreign key (org_type_id) references org_type
+    constraint org_org_kind_fk
+        foreign key (org_kind_id) references org_kind
             deferrable initially deferred
 );
 
@@ -38,7 +38,7 @@ comment on column org.org_name is 'Organization Name - a short name for the orga
 
 comment on column org.org_description is 'Organization Description - several sentences to describe the organization';
 
-comment on column org.org_type_id is 'Foreign Key to org_type table.';
+comment on column org.org_kind_id is 'Foreign Key to org_kind table.';
 
 comment on column org.create_app_id is 'The application which created this record.';
 
@@ -53,7 +53,7 @@ comment on column org.update_user_id is 'The user which performed the most recen
 comment on column org.update_timestamp is 'The timestamp when the record was updated most recently.';
 
 alter table org
-    owner to demo_user;
+    owner to demo;
 
 create unique index org_org_id_uindex
     on org (org_id);
