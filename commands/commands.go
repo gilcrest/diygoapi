@@ -218,20 +218,21 @@ func Run(args []string) error {
 	}
 
 	s.Services = server.Services{
-		SeedService: service.SeedService{
+		GenesisService: service.GenesisService{
 			Datastorer:            ds,
-			CryptoRandomGenerator: random.CryptoGenerator{},
+			RandomStringGenerator: random.CryptoGenerator{},
 			EncryptionKey:         ek,
 		},
-		PingService:      service.PingService{Pinger: pingstore.Pinger{Datastorer: ds}},
-		LoggerService:    service.LoggerService{Logger: lgr},
-		CreateOrgService: service.CreateOrgService{Datastorer: ds},
-		UpdateOrgService: service.UpdateOrgService{Datastorer: ds},
-		FindOrgService:   service.FindOrgService{Datastorer: ds},
-		CreateAppService: service.CreateAppService{Datastorer: ds, CryptoRandomGenerator: random.CryptoGenerator{}, EncryptionKey: ek},
-		FindAppService:   service.FindAppService{Datastorer: ds},
-		FindUserService:  service.FindUserService{GoogleOauth2TokenConverter: authgateway.GoogleOauth2TokenConverter{}, Datastorer: ds},
-		AuthorizeService: service.AuthorizeService{Authorizer: auth.CasbinAuthorizer{Enforcer: casbinEnforcer}},
+		PingService:         service.PingService{Pinger: pingstore.Pinger{Datastorer: ds}},
+		LoggerService:       service.LoggerService{Logger: lgr},
+		CreateOrgService:    service.CreateOrgService{Datastorer: ds},
+		UpdateOrgService:    service.UpdateOrgService{Datastorer: ds},
+		FindOrgService:      service.FindOrgService{Datastorer: ds},
+		CreateAppService:    service.CreateAppService{Datastorer: ds, RandomStringGenerator: random.CryptoGenerator{}, EncryptionKey: ek},
+		FindAppService:      service.FindAppService{Datastorer: ds},
+		RegisterUserService: service.RegisterUserService{Datastorer: ds},
+		FindUserService:     service.FindUserService{GoogleOauth2TokenConverter: authgateway.GoogleOauth2TokenConverter{}, Datastorer: ds},
+		AuthorizeService:    service.AuthorizeService{Authorizer: auth.CasbinAuthorizer{Enforcer: casbinEnforcer}},
 	}
 
 	return s.ListenAndServe()
