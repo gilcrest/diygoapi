@@ -39,7 +39,7 @@ func TestNewMuxRouter(t *testing.T) {
 			{pathPrefix + loggerV1PathRoot, []string{http.MethodGet}},
 			{pathPrefix + loggerV1PathRoot, []string{http.MethodPut}},
 			{pathPrefix + pingV1PathRoot, []string{http.MethodGet}},
-			{pathPrefix + "/v1/seed", []string{http.MethodPost}},
+			{pathPrefix + genesisV1PathRoot, []string{http.MethodPost}},
 		}
 
 		// make a slice of r for use in the Walk function
