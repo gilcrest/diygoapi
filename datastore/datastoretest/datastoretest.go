@@ -125,7 +125,7 @@ func newDB(t *testing.T) (dbpool *pgxpool.Pool, cleanup func()) {
 // The following environment variables must be set to connect to the DB.
 //
 // 		DB Host        = DB_HOST
-//		Port           = DB_PORT
+//		DB Port        = DB_PORT
 //		DB Name        = DB_NAME
 //		DB User        = DB_USER
 //		DB Password    = DB_PASSWORD
