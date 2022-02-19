@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -75,9 +76,10 @@ func (s *Server) appHandler(h http.Handler) http.Handler {
 }
 
 // userHandler middleware is used to parse the request authorization
-// provider and authorization headers (X-AUTH-PROVIDER + Authorization),
+// provider and authorization headers (X-AUTH-PROVIDER + Authorization respectively),
 // retrieve and validate their veracity, retrieve the User details from
-// the datastore and finally set the User to the request context.
+// the Oauth2 provider as well as the datastore and finally set the User
+// to the request context.
 func (s *Server) userHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		lgr := *hlog.FromRequest(r)
@@ -85,39 +87,7 @@ func (s *Server) userHandler(h http.Handler) http.Handler {
 		// retrieve the context from the http.Request
 		ctx := r.Context()
 
-		var (
-			a     app.App
-			u     user.User
-			token oauth2.Token
-			err   error
-		)
-		a, err = app.FromRequest(r)
-		if err != nil {
-			errs.HTTPErrorResponse(w, lgr, err)
-			return
-		}
-
-		providerVal, err := xHeader(defaultRealm, r.Header, authProviderHeaderKey)
-		if err != nil {
-			errs.HTTPErrorResponse(w, lgr, err)
-			return
-		}
-		provider := auth.NewProvider(providerVal)
-
-		token, err = authHeader(defaultRealm, r.Header)
-		if err != nil {
-			errs.HTTPErrorResponse(w, lgr, err)
-			return
-		}
-
-		params := service.FindUserParams{
-			Realm:    defaultRealm,
-			App:      a,
-			Provider: provider,
-			Token:    token,
-		}
-
-		u, err = s.FindUserService.FindUserByOauth2Token(ctx, params)
+		u, err := newUser(ctx, s.FindUserService, r, true)
 		if err != nil {
 			errs.HTTPErrorResponse(w, lgr, err)
 			return
@@ -129,6 +99,71 @@ func (s *Server) userHandler(h http.Handler) http.Handler {
 		// call original, adding User to request context
 		h.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+// newUserHandler middleware is used to parse the request authorization
+// provider and authorization headers (X-AUTH-PROVIDER + Authorization respectively),
+// retrieve and validate their veracity, retrieve the User details from
+// the Oauth2 provider and finally set the User to the request context.
+func (s *Server) newUserHandler(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		lgr := *hlog.FromRequest(r)
+
+		// retrieve the context from the http.Request
+		ctx := r.Context()
+
+		u, err := newUser(ctx, s.FindUserService, r, false)
+		if err != nil {
+			errs.HTTPErrorResponse(w, lgr, err)
+			return
+		}
+
+		// add User to context
+		ctx = user.CtxWithUser(ctx, u)
+
+		// call original, adding User to request context
+		h.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func newUser(ctx context.Context, s FindUserService, r *http.Request, retrieveFromDB bool) (user.User, error) {
+
+	var (
+		a     app.App
+		u     user.User
+		token oauth2.Token
+		err   error
+	)
+	a, err = app.FromRequest(r)
+	if err != nil {
+		return user.User{}, err
+	}
+
+	providerVal, err := xHeader(defaultRealm, r.Header, authProviderHeaderKey)
+	if err != nil {
+		return user.User{}, err
+	}
+	provider := auth.NewProvider(providerVal)
+
+	token, err = authHeader(defaultRealm, r.Header)
+	if err != nil {
+		return user.User{}, err
+	}
+
+	params := service.FindUserParams{
+		Realm:          defaultRealm,
+		App:            a,
+		Provider:       provider,
+		Token:          token,
+		RetrieveFromDB: retrieveFromDB,
+	}
+
+	u, err = s.FindUserByOauth2Token(ctx, params)
+	if err != nil {
+		return user.User{}, err
+	}
+
+	return u, nil
 }
 
 // authorizeUserHandler middleware is used authorize a User for a request path and http method
