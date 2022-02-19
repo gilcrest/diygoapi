@@ -4,7 +4,7 @@ create table demo.org
     org_extl_id      varchar                  not null,
     org_name         varchar                  not null,
     org_description  varchar                  not null,
-    org_type_id      uuid                     not null,
+    org_kind_id      uuid                     not null,
     create_app_id    uuid                     not null,
     create_user_id   uuid,
     create_timestamp timestamp with time zone not null,
@@ -25,8 +25,8 @@ create table demo.org
     constraint org_update_app_fk
         foreign key (update_app_id) references demo.app
             deferrable initially deferred,
-    constraint org_org_type_fk
-        foreign key (org_type_id) references demo.org_type
+    constraint org_org_kind_fk
+        foreign key (org_kind_id) references demo.org_kind
             deferrable initially deferred
 );
 
@@ -38,7 +38,7 @@ comment on column demo.org.org_name is 'Organization Name - a short name for the
 
 comment on column demo.org.org_description is 'Organization Description - several sentences to describe the organization';
 
-comment on column demo.org.org_type_id is 'Foreign Key to org_type table.';
+comment on column demo.org.org_kind_id is 'Foreign Key to org_kind table.';
 
 comment on column demo.org.create_app_id is 'The application which created this record.';
 

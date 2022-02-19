@@ -16,10 +16,10 @@ create table demo.person_profile
     birth_month       bigint,
     birth_day         bigint,
     language_id       uuid,
-    create_app_id     uuid,
+    create_app_id     uuid                     not null,
     create_user_id    uuid,
     create_timestamp  timestamp with time zone not null,
-    update_app_id     uuid,
+    update_app_id     uuid                     not null,
     update_user_id    uuid,
     update_timestamp  timestamp with time zone not null,
     constraint person_profile_pk
