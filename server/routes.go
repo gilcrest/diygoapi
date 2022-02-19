@@ -20,10 +20,14 @@ const (
 	orgsV1PathRoot string = "/v1/orgs"
 	// app V1 Path root
 	appsV1PathRoot string = "/v1/apps"
+	// register V1 Path root
+	registerV1PathRoot string = "v1/register"
 	// logger V1 Path root
 	loggerV1PathRoot string = "/v1/logger"
 	// ping V1 Path root
 	pingV1PathRoot string = "/v1/ping"
+	// genesis V1 Path root
+	genesisV1PathRoot string = "/v1/genesis"
 )
 
 // register routes/middleware/handlers to the Server router
@@ -139,6 +143,15 @@ func (s *Server) registerRoutes() {
 		Methods(http.MethodPost).
 		Headers(contentTypeHeaderKey, appJSONContentTypeHeaderVal)
 
+	// Match only POST requests at /api/v1/register
+	s.router.Handle(registerV1PathRoot,
+		s.loggerChain().
+			Append(s.appHandler).
+			Append(s.newUserHandler).
+			Append(s.jsonContentTypeResponseHandler).
+			ThenFunc(s.handleAppCreate)).
+		Methods(http.MethodPost)
+
 	// Match only GET requests /api/v1/logger
 	s.router.Handle(loggerV1PathRoot,
 		s.loggerChain().
@@ -170,11 +183,11 @@ func (s *Server) registerRoutes() {
 			ThenFunc(s.handlePing)).
 		Methods(http.MethodGet)
 
-	// Match only POST requests at /api/v1/seed
-	s.router.Handle("/v1/seed",
+	// Match only POST requests at /api/v1/genesis
+	s.router.Handle(genesisV1PathRoot,
 		s.loggerChain().
 			Append(s.jsonContentTypeResponseHandler).
-			ThenFunc(s.handleSeed)).
+			ThenFunc(s.handleGenesis)).
 		Methods(http.MethodPost).
 		Headers(contentTypeHeaderKey, appJSONContentTypeHeaderVal)
 }
