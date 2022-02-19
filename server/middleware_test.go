@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
-	"time"
 
 	qt "github.com/frankban/quicktest"
 	"github.com/google/go-cmp/cmp"
@@ -26,18 +25,12 @@ type mockFindAppService struct{}
 
 func (m mockFindAppService) FindAppByAPIKey(ctx context.Context, realm string, appExtlID string, apiKey string) (app.App, error) {
 	return app.App{
-		ID:           uuid.UUID{},
-		ExternalID:   []byte("so random"),
-		Org:          org.Org{},
-		Name:         "",
-		Description:  "",
-		CreateAppID:  uuid.UUID{},
-		CreateUserID: uuid.UUID{},
-		CreateTime:   time.Time{},
-		UpdateAppID:  uuid.UUID{},
-		UpdateUserID: uuid.UUID{},
-		UpdateTime:   time.Time{},
-		APIKeys:      nil,
+		ID:          uuid.UUID{},
+		ExternalID:  []byte("so random"),
+		Org:         org.Org{},
+		Name:        "",
+		Description: "",
+		APIKeys:     nil,
 	}, nil
 }
 
@@ -81,18 +74,12 @@ func TestServer_appHandler(t *testing.T) {
 				t.Fatal("app.FromRequest() error", err)
 			}
 			wantApp := app.App{
-				ID:           uuid.UUID{},
-				ExternalID:   []byte("so random"),
-				Org:          org.Org{},
-				Name:         "",
-				Description:  "",
-				CreateAppID:  uuid.UUID{},
-				CreateUserID: uuid.UUID{},
-				CreateTime:   time.Time{},
-				UpdateAppID:  uuid.UUID{},
-				UpdateUserID: uuid.UUID{},
-				UpdateTime:   time.Time{},
-				APIKeys:      nil,
+				ID:          uuid.UUID{},
+				ExternalID:  []byte("so random"),
+				Org:         org.Org{},
+				Name:        "",
+				Description: "",
+				APIKeys:     nil,
 			}
 			c.Assert(a, qt.DeepEquals, wantApp)
 		})
