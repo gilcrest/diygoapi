@@ -21,8 +21,8 @@ type APIKey struct {
 	key string
 	// ciphertext: the encrypted API key as []byte
 	ciphertext []byte
-	// deactivationDate: the date the API key is no longer usable
-	deactivationDate time.Time
+	// deactivation: the date/time the API key is no longer usable
+	deactivation time.Time
 }
 
 // NewAPIKey initializes an APIKey. It generates both a 128-bit (16 byte)
@@ -68,13 +68,13 @@ func (a APIKey) Ciphertext() string {
 
 // DeactivationDate returns the Deactivation Date for the API key
 func (a APIKey) DeactivationDate() time.Time {
-	return a.deactivationDate
+	return a.deactivation
 }
 
 // SetDeactivationDate sets the deactivation date value to AppAPIkey
 // TODO - try SetDeactivationDate as a candidate for generics with 1.18
 func (a *APIKey) SetDeactivationDate(t time.Time) {
-	a.deactivationDate = t
+	a.deactivation = t
 }
 
 // SetStringAsDeactivationDate sets the deactivation date value to
@@ -84,16 +84,20 @@ func (a *APIKey) SetStringAsDeactivationDate(s string) error {
 	if err != nil {
 		return errs.E(errs.Validation, err)
 	}
-	a.deactivationDate = t
+	a.deactivation = t
 
 	return nil
 }
 
 // isValid validates the API Key
-func (a APIKey) isValid(realm string) error {
+func (a APIKey) isValid() error {
+	if a.ciphertext == nil {
+		return errs.E("ciphertext must have a value")
+	}
+
 	now := time.Now()
-	if a.deactivationDate.Before(now) {
-		return errs.E(errs.Unauthenticated, errs.Realm(realm), fmt.Sprintf("Key Deactivation Date %s is before current time %s", a.deactivationDate.String(), now.String()))
+	if a.deactivation.Before(now) {
+		return errs.E(fmt.Sprintf("Key Deactivation %s is before current time %s", a.deactivation.String(), now.String()))
 	}
 	return nil
 }

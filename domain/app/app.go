@@ -13,18 +13,46 @@ import (
 
 // App is an application that interacts with the system
 type App struct {
-	ID           uuid.UUID
-	ExternalID   secure.Identifier
-	Org          org.Org
-	Name         string
-	Description  string
-	CreateAppID  uuid.UUID
-	CreateUserID uuid.UUID
-	CreateTime   time.Time
-	UpdateAppID  uuid.UUID
-	UpdateUserID uuid.UUID
-	UpdateTime   time.Time
-	APIKeys      []APIKey
+	ID          uuid.UUID
+	ExternalID  secure.Identifier
+	Org         org.Org
+	Name        string
+	Description string
+	APIKeys     []APIKey
+}
+
+// AddKey adds the API key to slice of API keys for the App
+func (a *App) AddKey(key APIKey) error {
+	err := key.isValid()
+	if err != nil {
+		return errs.E(errs.Internal, err)
+	}
+	a.APIKeys = append(a.APIKeys, key)
+
+	return nil
+}
+
+// AddNewKey adds a newly generated API key to the slice of API keys for the App
+func (a *App) AddNewKey(g APIKeyStringGenerator, ek *[32]byte, deactivation time.Time) error {
+	var (
+		key APIKey
+		err error
+	)
+
+	// generate App API key
+	key, err = NewAPIKey(g, ek)
+	if err != nil {
+		return err
+	}
+	key.SetDeactivationDate(deactivation)
+
+	err = key.isValid()
+	if err != nil {
+		return errs.E(errs.Internal, err)
+	}
+	a.APIKeys = append(a.APIKeys, key)
+
+	return nil
 }
 
 // ValidKey determines if the app has a matching key for the input
@@ -34,9 +62,9 @@ func (a App) ValidKey(realm, matchKey string) error {
 	if err != nil {
 		return err
 	}
-	err = key.isValid(realm)
+	err = key.isValid()
 	if err != nil {
-		return err
+		return errs.E(errs.Unauthenticated, errs.Realm(realm), err)
 	}
 	return nil
 }
