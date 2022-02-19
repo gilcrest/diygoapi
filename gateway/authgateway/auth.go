@@ -12,10 +12,10 @@ import (
 	"github.com/gilcrest/go-api-basic/domain/errs"
 )
 
-// Userinfo contains common fields from the various Oauth2 providers.
+// ProviderUserInfo contains common fields from the various Oauth2 providers.
 // Currently only using Google, so looks exactly like Google's.
 // TODO - maybe make this look like an OpenID Connect struct
-type Userinfo struct {
+type ProviderUserInfo struct {
 	// Username: For most providers, the username is the email.
 	Username string
 
@@ -57,10 +57,10 @@ type GoogleOauth2TokenConverter struct{}
 
 // Convert calls the Google Userinfo API with the access token and converts
 // the Userinfo struct to a User struct
-func (c GoogleOauth2TokenConverter) Convert(ctx context.Context, realm string, token oauth2.Token) (Userinfo, error) {
+func (c GoogleOauth2TokenConverter) Convert(ctx context.Context, realm string, token oauth2.Token) (ProviderUserInfo, error) {
 	oauthService, err := googleoauth.NewService(ctx, option.WithTokenSource(oauth2.StaticTokenSource(&token)))
 	if err != nil {
-		return Userinfo{}, errs.E(err)
+		return ProviderUserInfo{}, errs.E(err)
 	}
 
 	uInfo, err := oauthService.Userinfo.Get().Do()
@@ -71,26 +71,26 @@ func (c GoogleOauth2TokenConverter) Convert(ctx context.Context, realm string, t
 		// requested operation on the given resource."
 		// In this case, we are getting a bad response from Google service, assume
 		// they are not able to authenticate properly
-		return Userinfo{}, errs.E(errs.Unauthenticated, errs.Realm(realm), err)
+		return ProviderUserInfo{}, errs.E(errs.Unauthenticated, errs.Realm(realm), err)
 	}
 
-	return newUserInfoFromGoogle(uInfo), nil
+	return newProviderUserInfoFromGoogle(uInfo), nil
 }
 
 // newUserInfo initializes the Userinfo struct given a Userinfo struct
 // from Google
-func newUserInfoFromGoogle(ginfo *googleoauth.Userinfo) Userinfo {
-	return Userinfo{
-		Username:   ginfo.Email,
-		Email:      ginfo.Email,
-		FamilyName: ginfo.FamilyName,
-		Gender:     ginfo.Gender,
-		GivenName:  ginfo.GivenName,
-		Hd:         ginfo.Hd,
-		Id:         ginfo.Id,
-		Link:       ginfo.Link,
-		Locale:     ginfo.Locale,
-		Name:       ginfo.Name,
-		Picture:    ginfo.Picture,
+func newProviderUserInfoFromGoogle(g *googleoauth.Userinfo) ProviderUserInfo {
+	return ProviderUserInfo{
+		Username:   g.Email,
+		Email:      g.Email,
+		FamilyName: g.FamilyName,
+		Gender:     g.Gender,
+		GivenName:  g.GivenName,
+		Hd:         g.Hd,
+		Id:         g.Id,
+		Link:       g.Link,
+		Locale:     g.Locale,
+		Name:       g.Name,
+		Picture:    g.Picture,
 	}
 }
