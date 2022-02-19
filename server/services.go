@@ -61,6 +61,11 @@ type FindAppService interface {
 	FindAppByAPIKey(ctx context.Context, realm, appExtlID, apiKey string) (app.App, error)
 }
 
+// RegisterUserService registers a new user
+type RegisterUserService interface {
+	SelfRegister(ctx context.Context, adt audit.Audit) error
+}
+
 // FindUserService retrieves a User
 type FindUserService interface {
 	FindUserByOauth2Token(ctx context.Context, params service.FindUserParams) (user.User, error)
@@ -83,21 +88,22 @@ type PingService interface {
 	Ping(ctx context.Context, logger zerolog.Logger) service.PingResponse
 }
 
-// SeedService initializes the database with dependent data
-type SeedService interface {
-	Seed(ctx context.Context, r *service.SeedRequest) (service.SeedResponse, error)
+// GenesisService initializes the database with dependent data
+type GenesisService interface {
+	Seed(ctx context.Context, r *service.GenesisRequest) (service.GenesisResponse, error)
 }
 
 // Services are used by the application service handlers
 type Services struct {
-	SeedService      SeedService
-	PingService      PingService
-	LoggerService    LoggerService
-	CreateOrgService CreateOrgService
-	UpdateOrgService UpdateOrgService
-	FindOrgService   FindOrgService
-	CreateAppService CreateAppService
-	FindAppService   FindAppService
-	FindUserService  FindUserService
-	AuthorizeService AuthorizeService
+	GenesisService      GenesisService
+	PingService         PingService
+	LoggerService       LoggerService
+	CreateOrgService    CreateOrgService
+	UpdateOrgService    UpdateOrgService
+	FindOrgService      FindOrgService
+	CreateAppService    CreateAppService
+	FindAppService      FindAppService
+	RegisterUserService RegisterUserService
+	FindUserService     FindUserService
+	AuthorizeService    AuthorizeService
 }
