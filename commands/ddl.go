@@ -84,7 +84,7 @@ func (bfn byFileNumber) Less(i, j int) bool { return bfn[i].fileNumber < bfn[j].
 //
 // -f flag is sent before each file to tell it to process the file
 func PSQLArgs(up bool) ([]string, error) {
-	dir := "./scripts/ddl/db-deploy"
+	dir := "./scripts/db/ddl/db-deploy"
 	if up {
 		dir += "/up"
 	} else {
