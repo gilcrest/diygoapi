@@ -15,7 +15,7 @@ import (
 
 const defaultIDByteLength int = 12
 
-// Identifier is a way of identifying something
+// Identifier is a random, cryptographically generated sequence of characters used to refer to something
 type Identifier []byte
 
 // NewIdentifier creates a new random Identifier of n bytes or
