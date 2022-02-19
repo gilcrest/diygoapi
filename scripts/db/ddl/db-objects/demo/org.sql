@@ -53,7 +53,7 @@ comment on column org.update_user_id is 'The user which performed the most recen
 comment on column org.update_timestamp is 'The timestamp when the record was updated most recently.';
 
 alter table org
-    owner to demo;
+    owner to demo_user;
 
 create unique index org_org_id_uindex
     on org (org_id);
