@@ -15,6 +15,14 @@ type Audit struct {
 	Moment time.Time
 }
 
+// SimpleAudit captures the first time a record was written as well
+// as the last time the record was updated. The first time a record
+// is written First and Last will be identical.
+type SimpleAudit struct {
+	First Audit `json:"first"`
+	Last  Audit `json:"last"`
+}
+
 // FromRequest is a convenience function that retrieves the App
 // and User structs from the request context. The moment is also
 // set to time.Now
