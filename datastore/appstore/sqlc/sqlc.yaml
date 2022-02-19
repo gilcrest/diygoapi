@@ -4,8 +4,8 @@ packages:
     path: "../"
     queries: "query.sql"
     schema:
-      - "../../../scripts/ddl/app.sql"
-      - "../../../scripts/ddl/app_api_key.sql"
-      - "../../../scripts/ddl/org.sql"
+      - "../../../scripts/db/ddl/db-objects/demo/app.sql"
+      - "../../../scripts/db/ddl/db-objects/demo/app_api_key.sql"
+      - "../../../scripts/db/ddl/db-objects/demo/org.sql"
     engine: "postgresql"
     sql_package: "pgx/v4"
