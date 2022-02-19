@@ -48,8 +48,8 @@ type Org struct {
 	OrgName string
 	// Organization Description - several sentences to describe the organization
 	OrgDescription string
-	// Foreign Key to org_type table.
-	OrgTypeID uuid.UUID
+	// Foreign Key to org_kind table.
+	OrgKindID uuid.UUID
 	// The application which created this record.
 	CreateAppID uuid.UUID
 	// The user which created this record.
