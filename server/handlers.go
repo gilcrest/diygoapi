@@ -341,6 +341,23 @@ func (s *Server) handleAppCreate(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handleRegister is a HandlerFunc used to register a User
+func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
+	logger := *hlog.FromRequest(r)
+
+	adt, err := audit.FromRequest(r)
+	if err != nil {
+		errs.HTTPErrorResponse(w, logger, err)
+		return
+	}
+
+	err = s.RegisterUserService.SelfRegister(r.Context(), adt)
+	if err != nil {
+		errs.HTTPErrorResponse(w, logger, err)
+		return
+	}
+}
+
 // handleLoggerRead handles GET requests for the /logger endpoint
 func (s *Server) handleLoggerRead(w http.ResponseWriter, r *http.Request) {
 	lgr := *hlog.FromRequest(r)
@@ -407,13 +424,13 @@ func (s *Server) handlePing(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleSeed handles POST requests for the /seed endpoint
+// handleGenesis handles POST requests for the /genesis endpoint
 // and updates the logger globals
-func (s *Server) handleSeed(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleGenesis(w http.ResponseWriter, r *http.Request) {
 	lgr := *hlog.FromRequest(r)
 
 	// Declare rb as an instance of service.LoggerRequest
-	rb := new(service.SeedRequest)
+	rb := new(service.GenesisRequest)
 
 	// Decode JSON HTTP request body into a json.Decoder type
 	// and unmarshal that into rb
@@ -427,7 +444,7 @@ func (s *Server) handleSeed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response, err := s.SeedService.Seed(r.Context(), rb)
+	response, err := s.GenesisService.Seed(r.Context(), rb)
 	if err != nil {
 		errs.HTTPErrorResponse(w, lgr, err)
 		return
