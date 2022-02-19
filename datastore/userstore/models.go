@@ -23,15 +23,27 @@ type AppUser struct {
 }
 
 type Org struct {
-	OrgID           uuid.UUID
-	OrgExtlID       string
-	OrgName         string
-	OrgDescription  string
-	CreateAppID     uuid.UUID
-	CreateUserID    uuid.NullUUID
+	// Organization ID - Unique ID for table
+	OrgID uuid.UUID
+	// Organization Unique External ID to be given to outside callers.
+	OrgExtlID string
+	// Organization Name - a short name for the organization
+	OrgName string
+	// Organization Description - several sentences to describe the organization
+	OrgDescription string
+	// Foreign Key to org_kind table.
+	OrgKindID uuid.UUID
+	// The application which created this record.
+	CreateAppID uuid.UUID
+	// The user which created this record.
+	CreateUserID uuid.NullUUID
+	// The timestamp when this record was created.
 	CreateTimestamp time.Time
-	UpdateAppID     uuid.UUID
-	UpdateUserID    uuid.NullUUID
+	// The application which performed the most recent update to this record.
+	UpdateAppID uuid.UUID
+	// The user which performed the most recent update to this record.
+	UpdateUserID uuid.NullUUID
+	// The timestamp when the record was updated most recently.
 	UpdateTimestamp time.Time
 }
 
@@ -63,10 +75,10 @@ type PersonProfile struct {
 	BirthMonth      sql.NullInt64
 	BirthDay        sql.NullInt64
 	LanguageID      uuid.NullUUID
-	CreateAppID     uuid.NullUUID
+	CreateAppID     uuid.UUID
 	CreateUserID    uuid.NullUUID
 	CreateTimestamp time.Time
-	UpdateAppID     uuid.NullUUID
+	UpdateAppID     uuid.UUID
 	UpdateUserID    uuid.NullUUID
 	UpdateTimestamp time.Time
 }

@@ -68,10 +68,10 @@ type CreatePersonProfileParams struct {
 	BirthMonth      sql.NullInt64
 	BirthDay        sql.NullInt64
 	LanguageID      uuid.NullUUID
-	CreateAppID     uuid.NullUUID
+	CreateAppID     uuid.UUID
 	CreateUserID    uuid.NullUUID
 	CreateTimestamp time.Time
-	UpdateAppID     uuid.NullUUID
+	UpdateAppID     uuid.UUID
 	UpdateUserID    uuid.NullUUID
 	UpdateTimestamp time.Time
 }
