@@ -4,7 +4,7 @@ packages:
     path: "../"
     queries: "query.sql"
     schema:
-      - "../../../scripts/db/ddl/db-objects/demo/org.sql"
-      - "../../../scripts/db/ddl/db-objects/demo/org_kind.sql"
+      - "../../../scripts/db/objects/demo/org.sql"
+      - "../../../scripts/db/objects/demo/org_kind.sql"
     engine: "postgresql"
     sql_package: "pgx/v4"
