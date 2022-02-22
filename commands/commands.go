@@ -218,11 +218,10 @@ func Run(args []string) error {
 	}
 
 	s.Services = server.Services{
-		GenesisService: service.GenesisService{
-			Datastorer:            ds,
-			RandomStringGenerator: random.CryptoGenerator{},
-			EncryptionKey:         ek,
-		},
+		CreateMovieService:  service.CreateMovieService{Datastorer: ds},
+		UpdateMovieService:  service.UpdateMovieService{Datastorer: ds},
+		DeleteMovieService:  service.DeleteMovieService{Datastorer: ds},
+		FindMovieService:    service.FindMovieService{Datastorer: ds},
 		PingService:         service.PingService{Pinger: pingstore.Pinger{Datastorer: ds}},
 		LoggerService:       service.LoggerService{Logger: lgr},
 		CreateOrgService:    service.CreateOrgService{Datastorer: ds},
@@ -233,6 +232,11 @@ func Run(args []string) error {
 		RegisterUserService: service.RegisterUserService{Datastorer: ds},
 		FindUserService:     service.FindUserService{GoogleOauth2TokenConverter: authgateway.GoogleOauth2TokenConverter{}, Datastorer: ds},
 		AuthorizeService:    service.AuthorizeService{Authorizer: auth.CasbinAuthorizer{Enforcer: casbinEnforcer}},
+		GenesisService: service.GenesisService{
+			Datastorer:            ds,
+			RandomStringGenerator: random.CryptoGenerator{},
+			EncryptionKey:         ek,
+		},
 	}
 
 	return s.ListenAndServe()
