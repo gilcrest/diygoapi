@@ -10,9 +10,9 @@ import (
 )
 
 // DBUp uses the psql command line interface to execute DDL scripts
-// in the ./scripts/ddl/db-deploy/up directory and create all required
-// DB objects. All files will be executed, regardless of errors within
-// an individual file. Check output to determine if any errors occurred.
+// in the up directory and create all required DB objects. All files
+// will be executed, regardless of errors within an individual file.
+// Check output to determine if any errors occurred.
 // Eventually, I will write this to stop on errors, but for now it is
 // what it is.
 func DBUp() error {
@@ -40,8 +40,8 @@ func DBUp() error {
 }
 
 // DBDown uses the psql command line interface to execute DDL scripts
-// in the ./scripts/ddl/db-deploy/down directory and drops all project-specific
-// DB objects. All files will be executed, regardless of errors within
+// in the down directory and drops all project-specific DB objects.
+// All files will be executed, regardless of errors within
 // an individual file. Check output to determine if any errors occurred.
 // Eventually, I will write this to stop on errors, but for now it is
 // what it is.
