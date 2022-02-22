@@ -36,7 +36,7 @@ func (df ddlFile) String() string {
 }
 
 // readDDLFiles reads and returns sorted DDL files from the
-// ./scripts/ddl/db-deploy/up or ./scripts/ddl/db-deploy/down directory
+// up or down directory
 func readDDLFiles(dir string) ([]ddlFile, error) {
 
 	files, err := os.ReadDir(dir)
@@ -84,13 +84,14 @@ func (bfn byFileNumber) Less(i, j int) bool { return bfn[i].fileNumber < bfn[j].
 //
 // -f flag is sent before each file to tell it to process the file
 func PSQLArgs(up bool) ([]string, error) {
-	dir := "./scripts/db/ddl/db-deploy"
+	dir := "./scripts/db/migrations"
 	if up {
 		dir += "/up"
 	} else {
 		dir += "/down"
 	}
 
+	// readDDLFiles reads and returns sorted DDL files from the up or down directory
 	ddlFiles, err := readDDLFiles(dir)
 	if err != nil {
 		return nil, err
@@ -100,11 +101,13 @@ func PSQLArgs(up bool) ([]string, error) {
 		return nil, fmt.Errorf("there are no DDL files to process in %s", dir)
 	}
 
+	// newFlags will retrieve the database info from the environment using ff
 	flgs, err := newFlags([]string{"server"})
 	if err != nil {
 		return nil, err
 	}
 
+	// command line args for psql are constructed
 	args := []string{"-w", "-d", newPostgreSQLDSN(flgs).ConnectionURI(), "-c", "select current_database(), current_user, version()"}
 
 	for _, file := range ddlFiles {
