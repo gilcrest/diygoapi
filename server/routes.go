@@ -21,71 +21,73 @@ const (
 	// app V1 Path root
 	appsV1PathRoot string = "/v1/apps"
 	// register V1 Path root
-	registerV1PathRoot string = "v1/register"
+	registerV1PathRoot string = "/v1/register"
 	// logger V1 Path root
 	loggerV1PathRoot string = "/v1/logger"
 	// ping V1 Path root
 	pingV1PathRoot string = "/v1/ping"
 	// genesis V1 Path root
 	genesisV1PathRoot string = "/v1/genesis"
+	// movies V1 Path root
+	moviesV1PathRoot string = "/v1/movies"
 )
 
 // register routes/middleware/handlers to the Server router
 func (s *Server) registerRoutes() {
 
-	//// Match only POST requests at /api/v1/movies
-	//// with Content-Type header = application/json
-	//s.router.Handle(moviesV1PathRoot,
-	//	s.loggerChain().
-	//		Append(s.appHandler).
-	//		Append(s.userHandler).
-	//		Append(s.authorizeUserHandler).
-	//		Append(s.jsonContentTypeResponseHandler).
-	//		ThenFunc(s.handleMovieCreate)).
-	//	Methods(http.MethodPost).
-	//	Headers(contentTypeHeaderKey, appJSONContentTypeHeaderVal)
-	//
-	//// Match only PUT requests having an ID at /api/v1/movies/{extlID}
-	//// with the Content-Type header = application/json
-	//s.router.Handle(moviesV1PathRoot+extlIDPathDir,
-	//	s.loggerChain().
-	//		Append(s.appHandler).
-	//		Append(s.userHandler).
-	//		Append(s.authorizeUserHandler).
-	//		Append(s.jsonContentTypeResponseHandler).
-	//		ThenFunc(s.handleMovieUpdate)).
-	//	Methods(http.MethodPut).
-	//	Headers(contentTypeHeaderKey, appJSONContentTypeHeaderVal)
-	//
-	//// Match only DELETE requests having an ID at /api/v1/movies/{extlID}
-	//s.router.Handle(moviesV1PathRoot+extlIDPathDir,
-	//	s.loggerChain().
-	//		Append(s.appHandler).
-	//		Append(s.userHandler).
-	//		Append(s.authorizeUserHandler).
-	//		Append(s.jsonContentTypeResponseHandler).
-	//		ThenFunc(s.handleMovieDelete)).
-	//	Methods(http.MethodDelete)
-	//
-	//// Match only GET requests having an ID at /api/v1/movies/{extlID}
-	//s.router.Handle(moviesV1PathRoot+extlIDPathDir,
-	//	s.loggerChain().
-	//		Append(s.appHandler).
-	//		Append(s.userHandler).
-	//		Append(s.authorizeUserHandler).
-	//		Append(s.jsonContentTypeResponseHandler).
-	//		ThenFunc(s.handleFindMovieByID)).
-	//	Methods(http.MethodGet)
-	//
-	//// Match only GET requests /api/v1/movies
-	//s.router.Handle(moviesV1PathRoot,
-	//	s.loggerChain().
-	//		Append(s.appHandler).
-	//		Append(s.userHandler).
-	//		Append(s.authorizeUserHandler).
-	//		Append(s.jsonContentTypeResponseHandler).
-	//		ThenFunc(s.handleFindAllMovies)).
-	//	Methods(http.MethodGet)
+	// Match only POST requests at /api/v1/movies
+	// with Content-Type header = application/json
+	s.router.Handle(moviesV1PathRoot,
+		s.loggerChain().
+			Append(s.appHandler).
+			Append(s.userHandler).
+			Append(s.authorizeUserHandler).
+			Append(s.jsonContentTypeResponseHandler).
+			ThenFunc(s.handleMovieCreate)).
+		Methods(http.MethodPost).
+		Headers(contentTypeHeaderKey, appJSONContentTypeHeaderVal)
+
+	// Match only PUT requests having an ID at /api/v1/movies/{extlID}
+	// with the Content-Type header = application/json
+	s.router.Handle(moviesV1PathRoot+extlIDPathDir,
+		s.loggerChain().
+			Append(s.appHandler).
+			Append(s.userHandler).
+			Append(s.authorizeUserHandler).
+			Append(s.jsonContentTypeResponseHandler).
+			ThenFunc(s.handleMovieUpdate)).
+		Methods(http.MethodPut).
+		Headers(contentTypeHeaderKey, appJSONContentTypeHeaderVal)
+
+	// Match only DELETE requests having an ID at /api/v1/movies/{extlID}
+	s.router.Handle(moviesV1PathRoot+extlIDPathDir,
+		s.loggerChain().
+			Append(s.appHandler).
+			Append(s.userHandler).
+			Append(s.authorizeUserHandler).
+			Append(s.jsonContentTypeResponseHandler).
+			ThenFunc(s.handleMovieDelete)).
+		Methods(http.MethodDelete)
+
+	// Match only GET requests having an ID at /api/v1/movies/{extlID}
+	s.router.Handle(moviesV1PathRoot+extlIDPathDir,
+		s.loggerChain().
+			Append(s.appHandler).
+			Append(s.userHandler).
+			Append(s.authorizeUserHandler).
+			Append(s.jsonContentTypeResponseHandler).
+			ThenFunc(s.handleFindMovieByID)).
+		Methods(http.MethodGet)
+
+	// Match only GET requests /api/v1/movies
+	s.router.Handle(moviesV1PathRoot,
+		s.loggerChain().
+			Append(s.appHandler).
+			Append(s.userHandler).
+			Append(s.authorizeUserHandler).
+			Append(s.jsonContentTypeResponseHandler).
+			ThenFunc(s.handleFindAllMovies)).
+		Methods(http.MethodGet)
 
 	// Match only GET requests at /api/v1/orgs
 	s.router.Handle(orgsV1PathRoot,

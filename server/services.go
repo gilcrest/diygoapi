@@ -12,26 +12,26 @@ import (
 	"github.com/gilcrest/go-api-basic/service"
 )
 
-//// CreateMovieService creates a Movie
-//type CreateMovieService interface {
-//	Create(ctx context.Context, r *service.CreateMovieRequest, u user.User) (service.MovieResponse, error)
-//}
-//
-//// UpdateMovieService is a service for updating a Movie
-//type UpdateMovieService interface {
-//	Update(ctx context.Context, r *service.UpdateMovieRequest, u user.User) (service.MovieResponse, error)
-//}
-//
-//// DeleteMovieService is a service for deleting a Movie
-//type DeleteMovieService interface {
-//	Delete(ctx context.Context, extlID string) (service.DeleteMovieResponse, error)
-//}
-//
-//// FindMovieService interface reads a Movie form the database
-//type FindMovieService interface {
-//	FindMovieByID(ctx context.Context, extlID string) (service.MovieResponse, error)
-//	FindAllMovies(ctx context.Context) ([]service.MovieResponse, error)
-//}
+// CreateMovieService creates a Movie
+type CreateMovieService interface {
+	Create(ctx context.Context, r *service.CreateMovieRequest, adt audit.Audit) (service.MovieResponse, error)
+}
+
+// UpdateMovieService is a service for updating a Movie
+type UpdateMovieService interface {
+	Update(ctx context.Context, r *service.UpdateMovieRequest, adt audit.Audit) (service.MovieResponse, error)
+}
+
+// DeleteMovieService is a service for deleting a Movie
+type DeleteMovieService interface {
+	Delete(ctx context.Context, extlID string) (service.DeleteMovieResponse, error)
+}
+
+// FindMovieService interface reads a Movie form the database
+type FindMovieService interface {
+	FindMovieByID(ctx context.Context, extlID string) (service.MovieResponse, error)
+	FindAllMovies(ctx context.Context) ([]service.MovieResponse, error)
+}
 
 // CreateOrgService creates an Org
 type CreateOrgService interface {
@@ -90,12 +90,15 @@ type PingService interface {
 
 // GenesisService initializes the database with dependent data
 type GenesisService interface {
-	Seed(ctx context.Context, r *service.GenesisRequest) (service.GenesisResponse, error)
+	Seed(ctx context.Context, r *service.GenesisRequest) (service.FullGenesisResponse, error)
 }
 
 // Services are used by the application service handlers
 type Services struct {
-	GenesisService      GenesisService
+	CreateMovieService  CreateMovieService
+	UpdateMovieService  UpdateMovieService
+	DeleteMovieService  DeleteMovieService
+	FindMovieService    FindMovieService
 	PingService         PingService
 	LoggerService       LoggerService
 	CreateOrgService    CreateOrgService
@@ -106,4 +109,5 @@ type Services struct {
 	RegisterUserService RegisterUserService
 	FindUserService     FindUserService
 	AuthorizeService    AuthorizeService
+	GenesisService      GenesisService
 }
