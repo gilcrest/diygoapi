@@ -6,6 +6,10 @@ import (
 	"context"
 	"time"
 
+	"github.com/gilcrest/go-api-basic/domain/app"
+	"github.com/gilcrest/go-api-basic/domain/user"
+	"github.com/google/uuid"
+
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -55,4 +59,30 @@ func newAuditResponse(adt audit.Audit) auditResponse {
 		Username:      adt.User.Username,
 		AuditTime:     adt.Moment.Format(time.RFC3339),
 	}
+}
+
+func newAudit(ctx context.Context, dbtx DBTX, appID uuid.UUID, userID uuid.NullUUID, moment time.Time) (audit.Audit, error) {
+	var (
+		a   app.App
+		u   user.User
+		err error
+	)
+
+	a, _, err = findAppByID(ctx, dbtx, appID, false)
+	if err != nil {
+		return audit.Audit{}, err
+	}
+
+	if userID.Valid {
+		u, err = findUserByID(ctx, dbtx, userID.UUID)
+		if err != nil {
+			return audit.Audit{}, err
+		}
+	}
+
+	return audit.Audit{
+		App:    a,
+		User:   u,
+		Moment: moment,
+	}, nil
 }
