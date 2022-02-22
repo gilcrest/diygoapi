@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
@@ -29,8 +28,19 @@ type GenesisRequest struct {
 	SeedUserLastName  string `json:"seed_user_last_name"`
 }
 
-// GenesisResponse is the response struct for seeding the database
+type FullGenesisResponse struct {
+	GenesisResponse GenesisResponse `json:"genesis"`
+	TestResponse    TestResponse    `json:"test"`
+}
+
+// GenesisResponse is the response struct for the genesis org and app
 type GenesisResponse struct {
+	OrgResponse OrgResponse `json:"org"`
+	AppResponse AppResponse `json:"app"`
+}
+
+// TestResponse is the response struct for the test org and app
+type TestResponse struct {
 	OrgResponse OrgResponse `json:"org"`
 	AppResponse AppResponse `json:"app"`
 }
@@ -50,7 +60,7 @@ type seedSet struct {
 }
 
 // Seed method seeds the database
-func (s GenesisService) Seed(ctx context.Context, r *GenesisRequest) (GenesisResponse, error) {
+func (s GenesisService) Seed(ctx context.Context, r *GenesisRequest) (FullGenesisResponse, error) {
 
 	var (
 		tx  pgx.Tx
@@ -60,13 +70,13 @@ func (s GenesisService) Seed(ctx context.Context, r *GenesisRequest) (GenesisRes
 	// ensure the Genesis seed event has not already taken place
 	err = genesisHasOccurred(ctx, s.Datastorer.Pool())
 	if err != nil {
-		return GenesisResponse{}, err
+		return FullGenesisResponse{}, err
 	}
 
 	// start db txn using pgxpool
 	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
-		return GenesisResponse{}, err
+		return FullGenesisResponse{}, err
 	}
 
 	var (
@@ -76,24 +86,33 @@ func (s GenesisService) Seed(ctx context.Context, r *GenesisRequest) (GenesisRes
 	)
 	genesisSet, testKind, err = s.seedGenesis(ctx, tx, r)
 	if err != nil {
-		return GenesisResponse{}, err
+		return FullGenesisResponse{}, err
 	}
 
 	testSet, err = s.seedTest(ctx, tx, r, testKind)
 	if err != nil {
-		return GenesisResponse{}, err
+		return FullGenesisResponse{}, err
 	}
-	fmt.Println(testSet)
 
 	// commit db txn using pgxpool
 	err = s.Datastorer.CommitTx(ctx, tx)
 	if err != nil {
-		return GenesisResponse{}, err
+		return FullGenesisResponse{}, err
 	}
 
-	response := GenesisResponse{
+	genesisResponse := GenesisResponse{
 		OrgResponse: newOrgResponse(genesisSet.org, genesisSet.audit),
 		AppResponse: newAppResponse(genesisSet.app),
+	}
+
+	testResponse := TestResponse{
+		OrgResponse: newOrgResponse(testSet.org, testSet.audit),
+		AppResponse: newAppResponse(testSet.app),
+	}
+
+	response := FullGenesisResponse{
+		GenesisResponse: genesisResponse,
+		TestResponse:    testResponse,
 	}
 
 	return response, nil
