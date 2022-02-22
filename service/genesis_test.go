@@ -14,7 +14,7 @@ import (
 )
 
 func TestGenesisService_Seed(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 	t.Run("standard", func(t *testing.T) {
 		c := qt.New(t)
 
