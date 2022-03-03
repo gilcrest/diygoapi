@@ -3,14 +3,10 @@ package service
 import (
 	"context"
 
-	"github.com/pkg/errors"
+	"github.com/gilcrest/go-api-basic/datastore/pingstore"
+
 	"github.com/rs/zerolog"
 )
-
-// Pinger pings the database
-type Pinger interface {
-	PingDB(context.Context) error
-}
 
 // PingResponse is the response struct for the PingService
 type PingResponse struct {
@@ -19,21 +15,17 @@ type PingResponse struct {
 
 // PingService pings the database.
 type PingService struct {
-	Pinger Pinger
+	Datastorer Datastorer
 }
 
 // Ping method pings the database
-func (p PingService) Ping(ctx context.Context, logger zerolog.Logger) PingResponse {
-	dbok := true
-	err := p.Pinger.PingDB(ctx)
+func (p PingService) Ping(ctx context.Context, lgr zerolog.Logger) PingResponse {
+	err := pingstore.PingDB(ctx, p.Datastorer.Pool())
 	if err != nil {
-		pingErr := errors.WithStack(err)
 		// if error from PingDB, log the error, set dbok to false
-		logger.Error().Stack().Err(pingErr).Msg("PingDB error")
-		dbok = false
+		lgr.Error().Stack().Err(err).Msg("PingDB error")
+		return PingResponse{DBUp: false}
 	}
 
-	response := PingResponse{DBUp: dbok}
-
-	return response
+	return PingResponse{DBUp: true}
 }
