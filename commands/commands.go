@@ -15,7 +15,6 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/gilcrest/go-api-basic/datastore"
-	"github.com/gilcrest/go-api-basic/datastore/pingstore"
 	"github.com/gilcrest/go-api-basic/domain/auth"
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/logger"
@@ -222,8 +221,6 @@ func Run(args []string) error {
 		UpdateMovieService:  service.UpdateMovieService{Datastorer: ds},
 		DeleteMovieService:  service.DeleteMovieService{Datastorer: ds},
 		FindMovieService:    service.FindMovieService{Datastorer: ds},
-		PingService:         service.PingService{Pinger: pingstore.Pinger{Datastorer: ds}},
-		LoggerService:       service.LoggerService{Logger: lgr},
 		CreateOrgService:    service.CreateOrgService{Datastorer: ds},
 		UpdateOrgService:    service.UpdateOrgService{Datastorer: ds},
 		FindOrgService:      service.FindOrgService{Datastorer: ds},
@@ -232,6 +229,8 @@ func Run(args []string) error {
 		RegisterUserService: service.RegisterUserService{Datastorer: ds},
 		FindUserService:     service.FindUserService{GoogleOauth2TokenConverter: authgateway.GoogleOauth2TokenConverter{}, Datastorer: ds},
 		AuthorizeService:    service.AuthorizeService{Authorizer: auth.CasbinAuthorizer{Enforcer: casbinEnforcer}},
+		PingService:         service.PingService{Datastorer: ds},
+		LoggerService:       service.LoggerService{Logger: lgr},
 		GenesisService: service.GenesisService{
 			Datastorer:            ds,
 			RandomStringGenerator: random.CryptoGenerator{},
