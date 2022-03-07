@@ -14,10 +14,10 @@ create table demo.org
     constraint org_pk
         primary key (org_id),
     constraint org_create_user_fk
-        foreign key (create_user_id) references demo.app_user
+        foreign key (create_user_id) references demo.org_user
             deferrable initially deferred,
     constraint org_update_user_fk
-        foreign key (update_user_id) references demo.app_user
+        foreign key (update_user_id) references demo.org_user
             deferrable initially deferred,
     constraint org_create_app_fk
         foreign key (create_app_id) references demo.app
@@ -60,7 +60,7 @@ alter table demo.app
         foreign key (org_id) references demo.org
             deferrable initially deferred;
 
-alter table demo.app_user
+alter table demo.org_user
     add constraint user_org_fk
         foreign key (org_id) references demo.org
             deferrable initially deferred;

@@ -1,4 +1,4 @@
-create table app_user
+create table org_user
 (
     user_id           uuid      not null,
     username          varchar   not null,
@@ -13,13 +13,13 @@ create table app_user
     constraint user_pk
         primary key (user_id),
     constraint user_self_ref_fk1
-        foreign key (create_user_id) references app_user,
+        foreign key (create_user_id) references org_user,
     constraint user_self_ref_fk2
-        foreign key (update_user_id) references app_user,
-    constraint app_user_create_app_id_fk
+        foreign key (update_user_id) references org_user,
+    constraint org_user_create_app_id_fk
         foreign key (create_app_id) references app
             deferrable initially deferred,
-    constraint app_user_update_app_id_fk
+    constraint org_user_update_app_id_fk
         foreign key (update_app_id) references app
             deferrable initially deferred,
     constraint user_org_fk
@@ -27,9 +27,9 @@ create table app_user
             deferrable initially deferred
 );
 
-alter table app_user
+alter table org_user
     owner to demo_user;
 
 create unique index user_org_uindex
-    on app_user (username, org_id);
+    on org_user (username, org_id);
 

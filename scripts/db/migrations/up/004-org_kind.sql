@@ -15,13 +15,13 @@ create table demo.org_kind
         foreign key (create_app_id) references demo.app
             deferrable initially deferred,
     constraint org_kind_create_user_fk
-        foreign key (create_user_id) references demo.app_user
+        foreign key (create_user_id) references demo.org_user
             deferrable initially deferred,
     constraint org_kind_update_app_fk
         foreign key (update_app_id) references demo.app
             deferrable initially deferred,
     constraint org_kind_update_user_fk
-        foreign key (update_user_id) references demo.app_user
+        foreign key (update_user_id) references demo.org_user
             deferrable initially deferred
 );
 

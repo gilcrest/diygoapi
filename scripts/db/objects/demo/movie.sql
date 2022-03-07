@@ -17,10 +17,10 @@ create table movie
     constraint movie_pk
         primary key (movie_id),
     constraint movie_create_user_fk
-        foreign key (create_user_id) references app_user
+        foreign key (create_user_id) references org_user
             deferrable initially deferred,
     constraint movie_update_user_fk
-        foreign key (update_user_id) references app_user
+        foreign key (update_user_id) references org_user
             deferrable initially deferred,
     constraint movie_create_app_fk
         foreign key (create_app_id) references app

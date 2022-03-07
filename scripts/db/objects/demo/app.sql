@@ -18,11 +18,11 @@ create table app
         foreign key (create_app_id) references app,
     constraint app_self_ref2
         foreign key (update_app_id) references app,
-    constraint app_user_fk1
-        foreign key (create_user_id) references app_user
+    constraint org_user_fk1
+        foreign key (create_user_id) references org_user
             deferrable initially deferred,
-    constraint app_user_fk2
-        foreign key (update_user_id) references app_user
+    constraint org_user_fk2
+        foreign key (update_user_id) references org_user
             deferrable initially deferred,
     constraint app_org_org_id_fk
         foreign key (org_id) references org

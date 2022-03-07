@@ -1,0 +1,1 @@
+drop table if exists demo.org_user cascade;

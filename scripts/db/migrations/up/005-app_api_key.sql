@@ -16,14 +16,14 @@ create table demo.app_api_key
     constraint app_api_key_app_fk1
         foreign key (create_app_id) references demo.app
             deferrable initially deferred,
-    constraint app_api_key_app_user_fk1
-        foreign key (create_user_id) references demo.app_user
+    constraint app_api_key_org_user_fk1
+        foreign key (create_user_id) references demo.org_user
             deferrable initially deferred,
     constraint app_api_key_app_fk2
         foreign key (update_app_id) references demo.app
             deferrable initially deferred,
-    constraint app_api_key_app_user_fk2
-        foreign key (update_user_id) references demo.app_user
+    constraint app_api_key_org_user_fk2
+        foreign key (update_user_id) references demo.org_user
             deferrable initially deferred
 );
 
