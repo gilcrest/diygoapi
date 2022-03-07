@@ -94,7 +94,7 @@ SELECT o.org_id, o.org_extl_id, o.org_name, o.org_description, o.org_kind_id, o.
 FROM org o
          INNER JOIN org_kind ok on ok.org_kind_id = o.org_kind_id
 WHERE ok.org_kind_extl_id = 'genesis'
-  AND o.name = 'genesis'
+  AND o.org_name = 'genesis'
 `
 
 type FindGenesisOrgRow struct {
