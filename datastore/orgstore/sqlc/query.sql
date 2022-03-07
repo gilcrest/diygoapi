@@ -15,6 +15,13 @@ SELECT o.* FROM org o
                     INNER JOIN org_kind ot on ot.org_kind_id = o.org_kind_id
 WHERE ot.org_kind_extl_id = $1;
 
+-- name: FindGenesisOrg :one
+SELECT o.*, ok.*
+FROM org o
+         INNER JOIN org_kind ok on ok.org_kind_id = o.org_kind_id
+WHERE ok.org_kind_extl_id = 'genesis'
+  AND o.name = 'genesis';
+
 -- name: FindOrgByID :one
 SELECT * FROM org
 WHERE org_id = $1 LIMIT 1;

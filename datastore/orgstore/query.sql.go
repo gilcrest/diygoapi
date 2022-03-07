@@ -89,6 +89,65 @@ func (q *Queries) DeleteOrg(ctx context.Context, orgID uuid.UUID) error {
 	return err
 }
 
+const findGenesisOrg = `-- name: FindGenesisOrg :one
+SELECT o.org_id, o.org_extl_id, o.org_name, o.org_description, o.org_kind_id, o.create_app_id, o.create_user_id, o.create_timestamp, o.update_app_id, o.update_user_id, o.update_timestamp, ok.org_kind_id, ok.org_kind_extl_id, ok.org_kind_desc, ok.create_app_id, ok.create_user_id, ok.create_timestamp, ok.update_app_id, ok.update_user_id, ok.update_timestamp
+FROM org o
+         INNER JOIN org_kind ok on ok.org_kind_id = o.org_kind_id
+WHERE ok.org_kind_extl_id = 'genesis'
+  AND o.name = 'genesis'
+`
+
+type FindGenesisOrgRow struct {
+	OrgID             uuid.UUID
+	OrgExtlID         string
+	OrgName           string
+	OrgDescription    string
+	OrgKindID         uuid.UUID
+	CreateAppID       uuid.UUID
+	CreateUserID      uuid.NullUUID
+	CreateTimestamp   time.Time
+	UpdateAppID       uuid.UUID
+	UpdateUserID      uuid.NullUUID
+	UpdateTimestamp   time.Time
+	OrgKindID_2       uuid.UUID
+	OrgKindExtlID     string
+	OrgKindDesc       string
+	CreateAppID_2     uuid.UUID
+	CreateUserID_2    uuid.NullUUID
+	CreateTimestamp_2 time.Time
+	UpdateAppID_2     uuid.UUID
+	UpdateUserID_2    uuid.NullUUID
+	UpdateTimestamp_2 time.Time
+}
+
+func (q *Queries) FindGenesisOrg(ctx context.Context) (FindGenesisOrgRow, error) {
+	row := q.db.QueryRow(ctx, findGenesisOrg)
+	var i FindGenesisOrgRow
+	err := row.Scan(
+		&i.OrgID,
+		&i.OrgExtlID,
+		&i.OrgName,
+		&i.OrgDescription,
+		&i.OrgKindID,
+		&i.CreateAppID,
+		&i.CreateUserID,
+		&i.CreateTimestamp,
+		&i.UpdateAppID,
+		&i.UpdateUserID,
+		&i.UpdateTimestamp,
+		&i.OrgKindID_2,
+		&i.OrgKindExtlID,
+		&i.OrgKindDesc,
+		&i.CreateAppID_2,
+		&i.CreateUserID_2,
+		&i.CreateTimestamp_2,
+		&i.UpdateAppID_2,
+		&i.UpdateUserID_2,
+		&i.UpdateTimestamp_2,
+	)
+	return i, err
+}
+
 const findOrgByExtlID = `-- name: FindOrgByExtlID :one
 SELECT org_id, org_extl_id, org_name, org_description, org_kind_id, create_app_id, create_user_id, create_timestamp, update_app_id, update_user_id, update_timestamp FROM org
 WHERE org_extl_id = $1 LIMIT 1
