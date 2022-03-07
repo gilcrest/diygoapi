@@ -9,19 +9,6 @@ import (
 	"github.com/google/uuid"
 )
 
-type AppUser struct {
-	UserID          uuid.UUID
-	Username        string
-	OrgID           uuid.UUID
-	PersonProfileID uuid.UUID
-	CreateAppID     uuid.UUID
-	CreateUserID    uuid.NullUUID
-	CreateTimestamp time.Time
-	UpdateAppID     uuid.UUID
-	UpdateUserID    uuid.NullUUID
-	UpdateTimestamp time.Time
-}
-
 type Org struct {
 	// Organization ID - Unique ID for table
 	OrgID uuid.UUID
@@ -44,6 +31,19 @@ type Org struct {
 	// The user which performed the most recent update to this record.
 	UpdateUserID uuid.NullUUID
 	// The timestamp when the record was updated most recently.
+	UpdateTimestamp time.Time
+}
+
+type OrgUser struct {
+	UserID          uuid.UUID
+	Username        string
+	OrgID           uuid.UUID
+	PersonProfileID uuid.UUID
+	CreateAppID     uuid.UUID
+	CreateUserID    uuid.NullUUID
+	CreateTimestamp time.Time
+	UpdateAppID     uuid.UUID
+	UpdateUserID    uuid.NullUUID
 	UpdateTimestamp time.Time
 }
 

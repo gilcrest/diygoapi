@@ -4,7 +4,7 @@ packages:
     path: "../"
     queries: "query.sql"
     schema:
-      - "../../../scripts/db/objects/demo/app_user.sql"
+      - "../../../scripts/db/objects/demo/org_user.sql"
       - "../../../scripts/db/objects/demo/org.sql"
       - "../../../scripts/db/objects/demo/person.sql"
       - "../../../scripts/db/objects/demo/person_profile.sql"
