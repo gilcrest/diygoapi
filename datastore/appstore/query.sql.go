@@ -238,6 +238,38 @@ func (q *Queries) FindAppByID(ctx context.Context, appID uuid.UUID) (App, error)
 	return i, err
 }
 
+const findAppByName = `-- name: FindAppByName :one
+SELECT a.app_id, a.org_id, a.app_extl_id, a.app_name, a.app_description, a.active, a.create_app_id, a.create_user_id, a.create_timestamp, a.update_app_id, a.update_user_id, a.update_timestamp
+FROM app a inner join org o on o.org_id = a.org_id
+WHERE o.org_id = $1
+  AND a.app_name = $2
+`
+
+type FindAppByNameParams struct {
+	OrgID   uuid.UUID
+	AppName string
+}
+
+func (q *Queries) FindAppByName(ctx context.Context, arg FindAppByNameParams) (App, error) {
+	row := q.db.QueryRow(ctx, findAppByName, arg.OrgID, arg.AppName)
+	var i App
+	err := row.Scan(
+		&i.AppID,
+		&i.OrgID,
+		&i.AppExtlID,
+		&i.AppName,
+		&i.AppDescription,
+		&i.Active,
+		&i.CreateAppID,
+		&i.CreateUserID,
+		&i.CreateTimestamp,
+		&i.UpdateAppID,
+		&i.UpdateUserID,
+		&i.UpdateTimestamp,
+	)
+	return i, err
+}
+
 const findApps = `-- name: FindApps :many
 SELECT app_id, org_id, app_extl_id, app_name, app_description, active, create_app_id, create_user_id, create_timestamp, update_app_id, update_user_id, update_timestamp FROM app
 ORDER BY app_name

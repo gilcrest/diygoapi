@@ -6,6 +6,12 @@ WHERE app_id = $1 LIMIT 1;
 SELECT * FROM app
 WHERE app_extl_id = $1 LIMIT 1;
 
+-- name: FindAppByName :one
+SELECT a.*
+FROM app a inner join org o on o.org_id = a.org_id
+WHERE o.org_id = $1
+  AND a.app_name = $2;
+
 -- name: FindApps :many
 SELECT * FROM app
 ORDER BY app_name;
