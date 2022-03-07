@@ -6,15 +6,14 @@ import (
 	"context"
 	"time"
 
-	"github.com/gilcrest/go-api-basic/domain/app"
-	"github.com/gilcrest/go-api-basic/domain/user"
 	"github.com/google/uuid"
-
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 
+	"github.com/gilcrest/go-api-basic/domain/app"
 	"github.com/gilcrest/go-api-basic/domain/audit"
+	"github.com/gilcrest/go-api-basic/domain/user"
 )
 
 // Datastorer is an interface for working with the Database
