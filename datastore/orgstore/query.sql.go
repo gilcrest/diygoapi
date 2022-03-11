@@ -89,149 +89,448 @@ func (q *Queries) DeleteOrg(ctx context.Context, orgID uuid.UUID) error {
 	return err
 }
 
-const findGenesisOrg = `-- name: FindGenesisOrg :one
-SELECT o.org_id, o.org_extl_id, o.org_name, o.org_description, o.org_kind_id, o.create_app_id, o.create_user_id, o.create_timestamp, o.update_app_id, o.update_user_id, o.update_timestamp, ok.org_kind_id, ok.org_kind_extl_id, ok.org_kind_desc, ok.create_app_id, ok.create_user_id, ok.create_timestamp, ok.update_app_id, ok.update_user_id, ok.update_timestamp
+const findOrgByExtlID = `-- name: FindOrgByExtlID :one
+SELECT o.org_id,
+       o.org_extl_id,
+       o.org_name,
+       o.org_description,
+       o.org_kind_id,
+       ok.org_kind_extl_id,
+       ok.org_kind_desc
 FROM org o
          INNER JOIN org_kind ok on ok.org_kind_id = o.org_kind_id
-WHERE ok.org_kind_extl_id = 'genesis'
-  AND o.org_name = 'genesis'
+WHERE org_extl_id = $1
 `
 
-type FindGenesisOrgRow struct {
-	OrgID             uuid.UUID
-	OrgExtlID         string
-	OrgName           string
-	OrgDescription    string
-	OrgKindID         uuid.UUID
-	CreateAppID       uuid.UUID
-	CreateUserID      uuid.NullUUID
-	CreateTimestamp   time.Time
-	UpdateAppID       uuid.UUID
-	UpdateUserID      uuid.NullUUID
-	UpdateTimestamp   time.Time
-	OrgKindID_2       uuid.UUID
-	OrgKindExtlID     string
-	OrgKindDesc       string
-	CreateAppID_2     uuid.UUID
-	CreateUserID_2    uuid.NullUUID
-	CreateTimestamp_2 time.Time
-	UpdateAppID_2     uuid.UUID
-	UpdateUserID_2    uuid.NullUUID
-	UpdateTimestamp_2 time.Time
+type FindOrgByExtlIDRow struct {
+	OrgID          uuid.UUID
+	OrgExtlID      string
+	OrgName        string
+	OrgDescription string
+	OrgKindID      uuid.UUID
+	OrgKindExtlID  string
+	OrgKindDesc    string
 }
 
-func (q *Queries) FindGenesisOrg(ctx context.Context) (FindGenesisOrgRow, error) {
-	row := q.db.QueryRow(ctx, findGenesisOrg)
-	var i FindGenesisOrgRow
+func (q *Queries) FindOrgByExtlID(ctx context.Context, orgExtlID string) (FindOrgByExtlIDRow, error) {
+	row := q.db.QueryRow(ctx, findOrgByExtlID, orgExtlID)
+	var i FindOrgByExtlIDRow
 	err := row.Scan(
 		&i.OrgID,
 		&i.OrgExtlID,
 		&i.OrgName,
 		&i.OrgDescription,
 		&i.OrgKindID,
-		&i.CreateAppID,
-		&i.CreateUserID,
-		&i.CreateTimestamp,
-		&i.UpdateAppID,
-		&i.UpdateUserID,
-		&i.UpdateTimestamp,
-		&i.OrgKindID_2,
 		&i.OrgKindExtlID,
 		&i.OrgKindDesc,
-		&i.CreateAppID_2,
-		&i.CreateUserID_2,
-		&i.CreateTimestamp_2,
-		&i.UpdateAppID_2,
-		&i.UpdateUserID_2,
-		&i.UpdateTimestamp_2,
 	)
 	return i, err
 }
 
-const findOrgByExtlID = `-- name: FindOrgByExtlID :one
-SELECT org_id, org_extl_id, org_name, org_description, org_kind_id, create_app_id, create_user_id, create_timestamp, update_app_id, update_user_id, update_timestamp FROM org
-WHERE org_extl_id = $1 LIMIT 1
+const findOrgByExtlIDWithAudit = `-- name: FindOrgByExtlIDWithAudit :one
+SELECT o.org_id,
+       o.org_extl_id,
+       o.org_name,
+       o.org_description,
+       ok.org_kind_id,
+       ok.org_kind_extl_id,
+       ok.org_kind_desc,
+       o.create_app_id,
+       a.org_id           create_app_org_id,
+       a.app_extl_id      create_app_extl_id,
+       a.app_name         create_app_name,
+       a.app_description  create_app_description,
+       o.create_user_id,
+       ou.username        create_username,
+       ou.org_id          create_user_org_id,
+       pp.first_name      create_user_first_name,
+       pp.last_name       create_user_last_name,
+       o.create_timestamp,
+       o.update_app_id,
+       a2.org_id          update_app_org_id,
+       a2.app_extl_id     update_app_extl_id,
+       a2.app_name        update_app_name,
+       a2.app_description update_app_description,
+       o.update_user_id,
+       ou2.username       update_username,
+       ou2.org_id         update_user_org_id,
+       pp2.first_name     update_user_first_name,
+       pp2.last_name      update_user_last_name,
+       o.update_timestamp
+FROM org o
+         INNER JOIN org_kind ok on ok.org_kind_id = o.org_kind_id
+         INNER JOIN app a on a.app_id = o.create_app_id
+         INNER JOIN app a2 on a2.app_id = o.update_app_id
+         LEFT JOIN org_user ou on ou.user_id = o.create_user_id
+         INNER JOIN person_profile pp on pp.person_profile_id = ou.person_profile_id
+         LEFT JOIN org_user ou2 on ou2.user_id = o.update_user_id
+         INNER JOIN person_profile pp2 on pp2.person_profile_id = ou2.person_profile_id
+WHERE org_extl_id = $1
 `
 
-func (q *Queries) FindOrgByExtlID(ctx context.Context, orgExtlID string) (Org, error) {
-	row := q.db.QueryRow(ctx, findOrgByExtlID, orgExtlID)
-	var i Org
+type FindOrgByExtlIDWithAuditRow struct {
+	OrgID                uuid.UUID
+	OrgExtlID            string
+	OrgName              string
+	OrgDescription       string
+	OrgKindID            uuid.UUID
+	OrgKindExtlID        string
+	OrgKindDesc          string
+	CreateAppID          uuid.UUID
+	CreateAppOrgID       uuid.UUID
+	CreateAppExtlID      string
+	CreateAppName        string
+	CreateAppDescription string
+	CreateUserID         uuid.NullUUID
+	CreateUsername       string
+	CreateUserOrgID      uuid.UUID
+	CreateUserFirstName  string
+	CreateUserLastName   string
+	CreateTimestamp      time.Time
+	UpdateAppID          uuid.UUID
+	UpdateAppOrgID       uuid.UUID
+	UpdateAppExtlID      string
+	UpdateAppName        string
+	UpdateAppDescription string
+	UpdateUserID         uuid.NullUUID
+	UpdateUsername       string
+	UpdateUserOrgID      uuid.UUID
+	UpdateUserFirstName  string
+	UpdateUserLastName   string
+	UpdateTimestamp      time.Time
+}
+
+func (q *Queries) FindOrgByExtlIDWithAudit(ctx context.Context, orgExtlID string) (FindOrgByExtlIDWithAuditRow, error) {
+	row := q.db.QueryRow(ctx, findOrgByExtlIDWithAudit, orgExtlID)
+	var i FindOrgByExtlIDWithAuditRow
 	err := row.Scan(
 		&i.OrgID,
 		&i.OrgExtlID,
 		&i.OrgName,
 		&i.OrgDescription,
 		&i.OrgKindID,
+		&i.OrgKindExtlID,
+		&i.OrgKindDesc,
 		&i.CreateAppID,
+		&i.CreateAppOrgID,
+		&i.CreateAppExtlID,
+		&i.CreateAppName,
+		&i.CreateAppDescription,
 		&i.CreateUserID,
+		&i.CreateUsername,
+		&i.CreateUserOrgID,
+		&i.CreateUserFirstName,
+		&i.CreateUserLastName,
 		&i.CreateTimestamp,
 		&i.UpdateAppID,
+		&i.UpdateAppOrgID,
+		&i.UpdateAppExtlID,
+		&i.UpdateAppName,
+		&i.UpdateAppDescription,
 		&i.UpdateUserID,
+		&i.UpdateUsername,
+		&i.UpdateUserOrgID,
+		&i.UpdateUserFirstName,
+		&i.UpdateUserLastName,
 		&i.UpdateTimestamp,
 	)
 	return i, err
 }
 
 const findOrgByID = `-- name: FindOrgByID :one
-SELECT org_id, org_extl_id, org_name, org_description, org_kind_id, create_app_id, create_user_id, create_timestamp, update_app_id, update_user_id, update_timestamp FROM org
-WHERE org_id = $1 LIMIT 1
+SELECT o.org_id,
+       o.org_extl_id,
+       o.org_name,
+       o.org_description,
+       o.org_kind_id,
+       ok.org_kind_extl_id,
+       ok.org_kind_desc
+FROM org o
+         INNER JOIN org_kind ok on ok.org_kind_id = o.org_kind_id
+WHERE o.org_id = $1
 `
 
-func (q *Queries) FindOrgByID(ctx context.Context, orgID uuid.UUID) (Org, error) {
+type FindOrgByIDRow struct {
+	OrgID          uuid.UUID
+	OrgExtlID      string
+	OrgName        string
+	OrgDescription string
+	OrgKindID      uuid.UUID
+	OrgKindExtlID  string
+	OrgKindDesc    string
+}
+
+func (q *Queries) FindOrgByID(ctx context.Context, orgID uuid.UUID) (FindOrgByIDRow, error) {
 	row := q.db.QueryRow(ctx, findOrgByID, orgID)
-	var i Org
+	var i FindOrgByIDRow
 	err := row.Scan(
 		&i.OrgID,
 		&i.OrgExtlID,
 		&i.OrgName,
 		&i.OrgDescription,
 		&i.OrgKindID,
+		&i.OrgKindExtlID,
+		&i.OrgKindDesc,
+	)
+	return i, err
+}
+
+const findOrgByIDWithAudit = `-- name: FindOrgByIDWithAudit :one
+SELECT o.org_id,
+       o.org_extl_id,
+       o.org_name,
+       o.org_description,
+       ok.org_kind_id,
+       ok.org_kind_extl_id,
+       ok.org_kind_desc,
+       o.create_app_id,
+       a.org_id           create_app_org_id,
+       a.app_extl_id      create_app_extl_id,
+       a.app_name         create_app_name,
+       a.app_description  create_app_description,
+       o.create_user_id,
+       ou.username        create_username,
+       ou.org_id          create_user_org_id,
+       pp.first_name      create_user_first_name,
+       pp.last_name       create_user_last_name,
+       o.create_timestamp,
+       o.update_app_id,
+       a2.org_id          update_app_org_id,
+       a2.app_extl_id     update_app_extl_id,
+       a2.app_name        update_app_name,
+       a2.app_description update_app_description,
+       o.update_user_id,
+       ou2.username       update_username,
+       ou2.org_id         update_user_org_id,
+       pp2.first_name     update_user_first_name,
+       pp2.last_name      update_user_last_name,
+       o.update_timestamp
+FROM org o
+         INNER JOIN org_kind ok on ok.org_kind_id = o.org_kind_id
+         INNER JOIN app a on a.app_id = o.create_app_id
+         INNER JOIN app a2 on a2.app_id = o.update_app_id
+         LEFT JOIN org_user ou on ou.user_id = o.create_user_id
+         INNER JOIN person_profile pp on pp.person_profile_id = ou.person_profile_id
+         LEFT JOIN org_user ou2 on ou2.user_id = o.update_user_id
+         INNER JOIN person_profile pp2 on pp2.person_profile_id = ou2.person_profile_id
+WHERE o.org_id = $1
+`
+
+type FindOrgByIDWithAuditRow struct {
+	OrgID                uuid.UUID
+	OrgExtlID            string
+	OrgName              string
+	OrgDescription       string
+	OrgKindID            uuid.UUID
+	OrgKindExtlID        string
+	OrgKindDesc          string
+	CreateAppID          uuid.UUID
+	CreateAppOrgID       uuid.UUID
+	CreateAppExtlID      string
+	CreateAppName        string
+	CreateAppDescription string
+	CreateUserID         uuid.NullUUID
+	CreateUsername       string
+	CreateUserOrgID      uuid.UUID
+	CreateUserFirstName  string
+	CreateUserLastName   string
+	CreateTimestamp      time.Time
+	UpdateAppID          uuid.UUID
+	UpdateAppOrgID       uuid.UUID
+	UpdateAppExtlID      string
+	UpdateAppName        string
+	UpdateAppDescription string
+	UpdateUserID         uuid.NullUUID
+	UpdateUsername       string
+	UpdateUserOrgID      uuid.UUID
+	UpdateUserFirstName  string
+	UpdateUserLastName   string
+	UpdateTimestamp      time.Time
+}
+
+func (q *Queries) FindOrgByIDWithAudit(ctx context.Context, orgID uuid.UUID) (FindOrgByIDWithAuditRow, error) {
+	row := q.db.QueryRow(ctx, findOrgByIDWithAudit, orgID)
+	var i FindOrgByIDWithAuditRow
+	err := row.Scan(
+		&i.OrgID,
+		&i.OrgExtlID,
+		&i.OrgName,
+		&i.OrgDescription,
+		&i.OrgKindID,
+		&i.OrgKindExtlID,
+		&i.OrgKindDesc,
 		&i.CreateAppID,
+		&i.CreateAppOrgID,
+		&i.CreateAppExtlID,
+		&i.CreateAppName,
+		&i.CreateAppDescription,
 		&i.CreateUserID,
+		&i.CreateUsername,
+		&i.CreateUserOrgID,
+		&i.CreateUserFirstName,
+		&i.CreateUserLastName,
 		&i.CreateTimestamp,
 		&i.UpdateAppID,
+		&i.UpdateAppOrgID,
+		&i.UpdateAppExtlID,
+		&i.UpdateAppName,
+		&i.UpdateAppDescription,
 		&i.UpdateUserID,
+		&i.UpdateUsername,
+		&i.UpdateUserOrgID,
+		&i.UpdateUserFirstName,
+		&i.UpdateUserLastName,
 		&i.UpdateTimestamp,
 	)
 	return i, err
 }
 
-const findOrgByKindExtlID = `-- name: FindOrgByKindExtlID :many
-SELECT o.org_id, o.org_extl_id, o.org_name, o.org_description, o.org_kind_id, o.create_app_id, o.create_user_id, o.create_timestamp, o.update_app_id, o.update_user_id, o.update_timestamp FROM org o
-                    INNER JOIN org_kind ot on ot.org_kind_id = o.org_kind_id
-WHERE ot.org_kind_extl_id = $1
+const findOrgByName = `-- name: FindOrgByName :one
+SELECT o.org_id,
+       o.org_extl_id,
+       o.org_name,
+       o.org_description,
+       o.org_kind_id,
+       ok.org_kind_extl_id,
+       ok.org_kind_desc
+FROM org o
+         INNER JOIN org_kind ok on ok.org_kind_id = o.org_kind_id
+WHERE o.org_name = $1
 `
 
-func (q *Queries) FindOrgByKindExtlID(ctx context.Context, orgKindExtlID string) ([]Org, error) {
-	rows, err := q.db.Query(ctx, findOrgByKindExtlID, orgKindExtlID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Org
-	for rows.Next() {
-		var i Org
-		if err := rows.Scan(
-			&i.OrgID,
-			&i.OrgExtlID,
-			&i.OrgName,
-			&i.OrgDescription,
-			&i.OrgKindID,
-			&i.CreateAppID,
-			&i.CreateUserID,
-			&i.CreateTimestamp,
-			&i.UpdateAppID,
-			&i.UpdateUserID,
-			&i.UpdateTimestamp,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+type FindOrgByNameRow struct {
+	OrgID          uuid.UUID
+	OrgExtlID      string
+	OrgName        string
+	OrgDescription string
+	OrgKindID      uuid.UUID
+	OrgKindExtlID  string
+	OrgKindDesc    string
+}
+
+func (q *Queries) FindOrgByName(ctx context.Context, orgName string) (FindOrgByNameRow, error) {
+	row := q.db.QueryRow(ctx, findOrgByName, orgName)
+	var i FindOrgByNameRow
+	err := row.Scan(
+		&i.OrgID,
+		&i.OrgExtlID,
+		&i.OrgName,
+		&i.OrgDescription,
+		&i.OrgKindID,
+		&i.OrgKindExtlID,
+		&i.OrgKindDesc,
+	)
+	return i, err
+}
+
+const findOrgByNameWithAudit = `-- name: FindOrgByNameWithAudit :one
+SELECT o.org_id,
+       o.org_extl_id,
+       o.org_name,
+       o.org_description,
+       ok.org_kind_id,
+       ok.org_kind_extl_id,
+       ok.org_kind_desc,
+       o.create_app_id,
+       a.org_id           create_app_org_id,
+       a.app_extl_id      create_app_extl_id,
+       a.app_name         create_app_name,
+       a.app_description  create_app_description,
+       o.create_user_id,
+       ou.username        create_username,
+       ou.org_id          create_user_org_id,
+       pp.first_name      create_user_first_name,
+       pp.last_name       create_user_last_name,
+       o.create_timestamp,
+       o.update_app_id,
+       a2.org_id          update_app_org_id,
+       a2.app_extl_id     update_app_extl_id,
+       a2.app_name        update_app_name,
+       a2.app_description update_app_description,
+       o.update_user_id,
+       ou2.username       update_username,
+       ou2.org_id         update_user_org_id,
+       pp2.first_name     update_user_first_name,
+       pp2.last_name      update_user_last_name,
+       o.update_timestamp
+FROM org o
+         INNER JOIN org_kind ok on ok.org_kind_id = o.org_kind_id
+         INNER JOIN app a on a.app_id = o.create_app_id
+         INNER JOIN app a2 on a2.app_id = o.update_app_id
+         LEFT JOIN org_user ou on ou.user_id = o.create_user_id
+         INNER JOIN person_profile pp on pp.person_profile_id = ou.person_profile_id
+         LEFT JOIN org_user ou2 on ou2.user_id = o.update_user_id
+         INNER JOIN person_profile pp2 on pp2.person_profile_id = ou2.person_profile_id
+WHERE o.org_name = $1
+`
+
+type FindOrgByNameWithAuditRow struct {
+	OrgID                uuid.UUID
+	OrgExtlID            string
+	OrgName              string
+	OrgDescription       string
+	OrgKindID            uuid.UUID
+	OrgKindExtlID        string
+	OrgKindDesc          string
+	CreateAppID          uuid.UUID
+	CreateAppOrgID       uuid.UUID
+	CreateAppExtlID      string
+	CreateAppName        string
+	CreateAppDescription string
+	CreateUserID         uuid.NullUUID
+	CreateUsername       string
+	CreateUserOrgID      uuid.UUID
+	CreateUserFirstName  string
+	CreateUserLastName   string
+	CreateTimestamp      time.Time
+	UpdateAppID          uuid.UUID
+	UpdateAppOrgID       uuid.UUID
+	UpdateAppExtlID      string
+	UpdateAppName        string
+	UpdateAppDescription string
+	UpdateUserID         uuid.NullUUID
+	UpdateUsername       string
+	UpdateUserOrgID      uuid.UUID
+	UpdateUserFirstName  string
+	UpdateUserLastName   string
+	UpdateTimestamp      time.Time
+}
+
+func (q *Queries) FindOrgByNameWithAudit(ctx context.Context, orgName string) (FindOrgByNameWithAuditRow, error) {
+	row := q.db.QueryRow(ctx, findOrgByNameWithAudit, orgName)
+	var i FindOrgByNameWithAuditRow
+	err := row.Scan(
+		&i.OrgID,
+		&i.OrgExtlID,
+		&i.OrgName,
+		&i.OrgDescription,
+		&i.OrgKindID,
+		&i.OrgKindExtlID,
+		&i.OrgKindDesc,
+		&i.CreateAppID,
+		&i.CreateAppOrgID,
+		&i.CreateAppExtlID,
+		&i.CreateAppName,
+		&i.CreateAppDescription,
+		&i.CreateUserID,
+		&i.CreateUsername,
+		&i.CreateUserOrgID,
+		&i.CreateUserFirstName,
+		&i.CreateUserLastName,
+		&i.CreateTimestamp,
+		&i.UpdateAppID,
+		&i.UpdateAppOrgID,
+		&i.UpdateAppExtlID,
+		&i.UpdateAppName,
+		&i.UpdateAppDescription,
+		&i.UpdateUserID,
+		&i.UpdateUsername,
+		&i.UpdateUserOrgID,
+		&i.UpdateUserFirstName,
+		&i.UpdateUserLastName,
+		&i.UpdateTimestamp,
+	)
+	return i, err
 }
 
 const findOrgKindByExtlID = `-- name: FindOrgKindByExtlID :one
@@ -291,30 +590,214 @@ func (q *Queries) FindOrgKinds(ctx context.Context) ([]OrgKind, error) {
 }
 
 const findOrgs = `-- name: FindOrgs :many
-SELECT org_id, org_extl_id, org_name, org_description, org_kind_id, create_app_id, create_user_id, create_timestamp, update_app_id, update_user_id, update_timestamp FROM org
+SELECT o.org_id,
+       o.org_extl_id,
+       o.org_name,
+       o.org_description,
+       o.org_kind_id,
+       ok.org_kind_extl_id,
+       ok.org_kind_desc
+FROM org o
+         INNER JOIN org_kind ok on ok.org_kind_id = o.org_kind_id
 ORDER BY org_name
 `
 
-func (q *Queries) FindOrgs(ctx context.Context) ([]Org, error) {
+type FindOrgsRow struct {
+	OrgID          uuid.UUID
+	OrgExtlID      string
+	OrgName        string
+	OrgDescription string
+	OrgKindID      uuid.UUID
+	OrgKindExtlID  string
+	OrgKindDesc    string
+}
+
+func (q *Queries) FindOrgs(ctx context.Context) ([]FindOrgsRow, error) {
 	rows, err := q.db.Query(ctx, findOrgs)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Org
+	var items []FindOrgsRow
 	for rows.Next() {
-		var i Org
+		var i FindOrgsRow
 		if err := rows.Scan(
 			&i.OrgID,
 			&i.OrgExtlID,
 			&i.OrgName,
 			&i.OrgDescription,
 			&i.OrgKindID,
+			&i.OrgKindExtlID,
+			&i.OrgKindDesc,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const findOrgsByKindExtlID = `-- name: FindOrgsByKindExtlID :many
+SELECT o.org_id,
+       o.org_extl_id,
+       o.org_name,
+       o.org_description,
+       ok.org_kind_extl_id,
+       ok.org_kind_desc
+FROM org o
+         INNER JOIN org_kind ok on ot.org_kind_id = o.org_kind_id
+WHERE ok.org_kind_extl_id = $1
+`
+
+type FindOrgsByKindExtlIDRow struct {
+	OrgID          uuid.UUID
+	OrgExtlID      string
+	OrgName        string
+	OrgDescription string
+	OrgKindExtlID  string
+	OrgKindDesc    string
+}
+
+func (q *Queries) FindOrgsByKindExtlID(ctx context.Context, orgKindExtlID string) ([]FindOrgsByKindExtlIDRow, error) {
+	rows, err := q.db.Query(ctx, findOrgsByKindExtlID, orgKindExtlID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FindOrgsByKindExtlIDRow
+	for rows.Next() {
+		var i FindOrgsByKindExtlIDRow
+		if err := rows.Scan(
+			&i.OrgID,
+			&i.OrgExtlID,
+			&i.OrgName,
+			&i.OrgDescription,
+			&i.OrgKindExtlID,
+			&i.OrgKindDesc,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const findOrgsWithAudit = `-- name: FindOrgsWithAudit :many
+SELECT o.org_id,
+       o.org_extl_id,
+       o.org_name,
+       o.org_description,
+       ok.org_kind_id,
+       ok.org_kind_extl_id,
+       ok.org_kind_desc,
+       o.create_app_id,
+       a.org_id           create_app_org_id,
+       a.app_extl_id      create_app_extl_id,
+       a.app_name         create_app_name,
+       a.app_description  create_app_description,
+       o.create_user_id,
+       ou.username        create_username,
+       ou.org_id          create_user_org_id,
+       pp.first_name      create_user_first_name,
+       pp.last_name       create_user_last_name,
+       o.create_timestamp,
+       o.update_app_id,
+       a2.org_id          update_app_org_id,
+       a2.app_extl_id     update_app_extl_id,
+       a2.app_name        update_app_name,
+       a2.app_description update_app_description,
+       o.update_user_id,
+       ou2.username       update_username,
+       ou2.org_id         update_user_org_id,
+       pp2.first_name     update_user_first_name,
+       pp2.last_name      update_user_last_name,
+       o.update_timestamp
+FROM org o
+         INNER JOIN org_kind ok on ok.org_kind_id = o.org_kind_id
+         INNER JOIN app a on a.app_id = o.create_app_id
+         INNER JOIN app a2 on a2.app_id = o.update_app_id
+         LEFT JOIN org_user ou on ou.user_id = o.create_user_id
+         INNER JOIN person_profile pp on pp.person_profile_id = ou.person_profile_id
+         LEFT JOIN org_user ou2 on ou2.user_id = o.update_user_id
+         INNER JOIN person_profile pp2 on pp2.person_profile_id = ou2.person_profile_id
+`
+
+type FindOrgsWithAuditRow struct {
+	OrgID                uuid.UUID
+	OrgExtlID            string
+	OrgName              string
+	OrgDescription       string
+	OrgKindID            uuid.UUID
+	OrgKindExtlID        string
+	OrgKindDesc          string
+	CreateAppID          uuid.UUID
+	CreateAppOrgID       uuid.UUID
+	CreateAppExtlID      string
+	CreateAppName        string
+	CreateAppDescription string
+	CreateUserID         uuid.NullUUID
+	CreateUsername       string
+	CreateUserOrgID      uuid.UUID
+	CreateUserFirstName  string
+	CreateUserLastName   string
+	CreateTimestamp      time.Time
+	UpdateAppID          uuid.UUID
+	UpdateAppOrgID       uuid.UUID
+	UpdateAppExtlID      string
+	UpdateAppName        string
+	UpdateAppDescription string
+	UpdateUserID         uuid.NullUUID
+	UpdateUsername       string
+	UpdateUserOrgID      uuid.UUID
+	UpdateUserFirstName  string
+	UpdateUserLastName   string
+	UpdateTimestamp      time.Time
+}
+
+func (q *Queries) FindOrgsWithAudit(ctx context.Context) ([]FindOrgsWithAuditRow, error) {
+	rows, err := q.db.Query(ctx, findOrgsWithAudit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FindOrgsWithAuditRow
+	for rows.Next() {
+		var i FindOrgsWithAuditRow
+		if err := rows.Scan(
+			&i.OrgID,
+			&i.OrgExtlID,
+			&i.OrgName,
+			&i.OrgDescription,
+			&i.OrgKindID,
+			&i.OrgKindExtlID,
+			&i.OrgKindDesc,
 			&i.CreateAppID,
+			&i.CreateAppOrgID,
+			&i.CreateAppExtlID,
+			&i.CreateAppName,
+			&i.CreateAppDescription,
 			&i.CreateUserID,
+			&i.CreateUsername,
+			&i.CreateUserOrgID,
+			&i.CreateUserFirstName,
+			&i.CreateUserLastName,
 			&i.CreateTimestamp,
 			&i.UpdateAppID,
+			&i.UpdateAppOrgID,
+			&i.UpdateAppExtlID,
+			&i.UpdateAppName,
+			&i.UpdateAppDescription,
 			&i.UpdateUserID,
+			&i.UpdateUsername,
+			&i.UpdateUserOrgID,
+			&i.UpdateUserFirstName,
+			&i.UpdateUserLastName,
 			&i.UpdateTimestamp,
 		); err != nil {
 			return nil, err

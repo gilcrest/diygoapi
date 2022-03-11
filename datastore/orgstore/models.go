@@ -3,10 +3,27 @@
 package orgstore
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+// app stores data about applications that interact with the system
+type App struct {
+	AppID           uuid.UUID
+	OrgID           uuid.UUID
+	AppExtlID       string
+	AppName         string
+	AppDescription  string
+	Active          sql.NullBool
+	CreateAppID     uuid.UUID
+	CreateUserID    uuid.NullUUID
+	CreateTimestamp time.Time
+	UpdateAppID     uuid.UUID
+	UpdateUserID    uuid.NullUUID
+	UpdateTimestamp time.Time
+}
 
 type Org struct {
 	// Organization ID - Unique ID for table
@@ -52,5 +69,53 @@ type OrgKind struct {
 	// The user which performed the most recent update to this record.
 	UpdateUserID uuid.NullUUID
 	// The timestamp when the record was updated most recently.
+	UpdateTimestamp time.Time
+}
+
+type OrgUser struct {
+	// The user ID is the unique ID for user (pk for table)
+	UserID uuid.UUID
+	// The username is a unique, human readable username.
+	Username string
+	// The organization ID for the organization that the user belongs to.
+	OrgID uuid.UUID
+	// The person profile ID - ID for the profile of the person to which this user belongs.
+	PersonProfileID uuid.UUID
+	// The application which created this record.
+	CreateAppID uuid.UUID
+	// The user which created this record.
+	CreateUserID uuid.NullUUID
+	// The timestamp when this record was created.
+	CreateTimestamp time.Time
+	// The application which performed the most recent update to this record.
+	UpdateAppID uuid.UUID
+	// The user which performed the most recent update to this record.
+	UpdateUserID uuid.NullUUID
+	// The timestamp when the record was updated most recently.
+	UpdateTimestamp time.Time
+}
+
+type PersonProfile struct {
+	PersonProfileID uuid.UUID
+	PersonID        uuid.UUID
+	NamePrefix      sql.NullString
+	FirstName       string
+	MiddleName      sql.NullString
+	LastName        string
+	NameSuffix      sql.NullString
+	Nickname        sql.NullString
+	CompanyName     sql.NullString
+	CompanyDept     sql.NullString
+	JobTitle        sql.NullString
+	BirthDate       sql.NullTime
+	BirthYear       sql.NullInt64
+	BirthMonth      sql.NullInt64
+	BirthDay        sql.NullInt64
+	LanguageID      uuid.NullUUID
+	CreateAppID     uuid.UUID
+	CreateUserID    uuid.NullUUID
+	CreateTimestamp time.Time
+	UpdateAppID     uuid.UUID
+	UpdateUserID    uuid.NullUUID
 	UpdateTimestamp time.Time
 }

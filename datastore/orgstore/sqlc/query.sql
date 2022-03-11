@@ -1,38 +1,221 @@
--- name: FindOrgKinds :many
-SELECT * FROM org_kind;
-
--- name: FindOrgKindByExtlID :one
-SELECT * FROM org_kind
-WHERE org_kind_extl_id = $1;
-
--- name: CreateOrgKind :execresult
-insert into org_kind (org_kind_id, org_kind_extl_id, org_kind_desc, create_app_id, create_user_id, create_timestamp,
-                      update_app_id, update_user_id, update_timestamp)
-values ($1, $2, $3, $4, $5, $6, $7, $8, $9);
-
--- name: FindOrgByKindExtlID :many
-SELECT o.* FROM org o
-                    INNER JOIN org_kind ot on ot.org_kind_id = o.org_kind_id
-WHERE ot.org_kind_extl_id = $1;
-
--- name: FindGenesisOrg :one
-SELECT o.*, ok.*
+-- name: FindOrgByID :one
+SELECT o.org_id,
+       o.org_extl_id,
+       o.org_name,
+       o.org_description,
+       o.org_kind_id,
+       ok.org_kind_extl_id,
+       ok.org_kind_desc
 FROM org o
          INNER JOIN org_kind ok on ok.org_kind_id = o.org_kind_id
-WHERE ok.org_kind_extl_id = 'genesis'
-  AND o.org_name = 'genesis';
+WHERE o.org_id = $1;
 
--- name: FindOrgByID :one
-SELECT * FROM org
-WHERE org_id = $1 LIMIT 1;
+-- name: FindOrgByIDWithAudit :one
+SELECT o.org_id,
+       o.org_extl_id,
+       o.org_name,
+       o.org_description,
+       ok.org_kind_id,
+       ok.org_kind_extl_id,
+       ok.org_kind_desc,
+       o.create_app_id,
+       a.org_id           create_app_org_id,
+       a.app_extl_id      create_app_extl_id,
+       a.app_name         create_app_name,
+       a.app_description  create_app_description,
+       o.create_user_id,
+       ou.username        create_username,
+       ou.org_id          create_user_org_id,
+       pp.first_name      create_user_first_name,
+       pp.last_name       create_user_last_name,
+       o.create_timestamp,
+       o.update_app_id,
+       a2.org_id          update_app_org_id,
+       a2.app_extl_id     update_app_extl_id,
+       a2.app_name        update_app_name,
+       a2.app_description update_app_description,
+       o.update_user_id,
+       ou2.username       update_username,
+       ou2.org_id         update_user_org_id,
+       pp2.first_name     update_user_first_name,
+       pp2.last_name      update_user_last_name,
+       o.update_timestamp
+FROM org o
+         INNER JOIN org_kind ok on ok.org_kind_id = o.org_kind_id
+         INNER JOIN app a on a.app_id = o.create_app_id
+         INNER JOIN app a2 on a2.app_id = o.update_app_id
+         LEFT JOIN org_user ou on ou.user_id = o.create_user_id
+         INNER JOIN person_profile pp on pp.person_profile_id = ou.person_profile_id
+         LEFT JOIN org_user ou2 on ou2.user_id = o.update_user_id
+         INNER JOIN person_profile pp2 on pp2.person_profile_id = ou2.person_profile_id
+WHERE o.org_id = $1;
 
 -- name: FindOrgByExtlID :one
-SELECT * FROM org
-WHERE org_extl_id = $1 LIMIT 1;
+SELECT o.org_id,
+       o.org_extl_id,
+       o.org_name,
+       o.org_description,
+       o.org_kind_id,
+       ok.org_kind_extl_id,
+       ok.org_kind_desc
+FROM org o
+         INNER JOIN org_kind ok on ok.org_kind_id = o.org_kind_id
+WHERE org_extl_id = $1;
+
+-- name: FindOrgByExtlIDWithAudit :one
+SELECT o.org_id,
+       o.org_extl_id,
+       o.org_name,
+       o.org_description,
+       ok.org_kind_id,
+       ok.org_kind_extl_id,
+       ok.org_kind_desc,
+       o.create_app_id,
+       a.org_id           create_app_org_id,
+       a.app_extl_id      create_app_extl_id,
+       a.app_name         create_app_name,
+       a.app_description  create_app_description,
+       o.create_user_id,
+       ou.username        create_username,
+       ou.org_id          create_user_org_id,
+       pp.first_name      create_user_first_name,
+       pp.last_name       create_user_last_name,
+       o.create_timestamp,
+       o.update_app_id,
+       a2.org_id          update_app_org_id,
+       a2.app_extl_id     update_app_extl_id,
+       a2.app_name        update_app_name,
+       a2.app_description update_app_description,
+       o.update_user_id,
+       ou2.username       update_username,
+       ou2.org_id         update_user_org_id,
+       pp2.first_name     update_user_first_name,
+       pp2.last_name      update_user_last_name,
+       o.update_timestamp
+FROM org o
+         INNER JOIN org_kind ok on ok.org_kind_id = o.org_kind_id
+         INNER JOIN app a on a.app_id = o.create_app_id
+         INNER JOIN app a2 on a2.app_id = o.update_app_id
+         LEFT JOIN org_user ou on ou.user_id = o.create_user_id
+         INNER JOIN person_profile pp on pp.person_profile_id = ou.person_profile_id
+         LEFT JOIN org_user ou2 on ou2.user_id = o.update_user_id
+         INNER JOIN person_profile pp2 on pp2.person_profile_id = ou2.person_profile_id
+WHERE org_extl_id = $1;
+
+-- name: FindOrgByName :one
+SELECT o.org_id,
+       o.org_extl_id,
+       o.org_name,
+       o.org_description,
+       o.org_kind_id,
+       ok.org_kind_extl_id,
+       ok.org_kind_desc
+FROM org o
+         INNER JOIN org_kind ok on ok.org_kind_id = o.org_kind_id
+WHERE o.org_name = $1;
+
+-- name: FindOrgByNameWithAudit :one
+SELECT o.org_id,
+       o.org_extl_id,
+       o.org_name,
+       o.org_description,
+       ok.org_kind_id,
+       ok.org_kind_extl_id,
+       ok.org_kind_desc,
+       o.create_app_id,
+       a.org_id           create_app_org_id,
+       a.app_extl_id      create_app_extl_id,
+       a.app_name         create_app_name,
+       a.app_description  create_app_description,
+       o.create_user_id,
+       ou.username        create_username,
+       ou.org_id          create_user_org_id,
+       pp.first_name      create_user_first_name,
+       pp.last_name       create_user_last_name,
+       o.create_timestamp,
+       o.update_app_id,
+       a2.org_id          update_app_org_id,
+       a2.app_extl_id     update_app_extl_id,
+       a2.app_name        update_app_name,
+       a2.app_description update_app_description,
+       o.update_user_id,
+       ou2.username       update_username,
+       ou2.org_id         update_user_org_id,
+       pp2.first_name     update_user_first_name,
+       pp2.last_name      update_user_last_name,
+       o.update_timestamp
+FROM org o
+         INNER JOIN org_kind ok on ok.org_kind_id = o.org_kind_id
+         INNER JOIN app a on a.app_id = o.create_app_id
+         INNER JOIN app a2 on a2.app_id = o.update_app_id
+         LEFT JOIN org_user ou on ou.user_id = o.create_user_id
+         INNER JOIN person_profile pp on pp.person_profile_id = ou.person_profile_id
+         LEFT JOIN org_user ou2 on ou2.user_id = o.update_user_id
+         INNER JOIN person_profile pp2 on pp2.person_profile_id = ou2.person_profile_id
+WHERE o.org_name = $1;
 
 -- name: FindOrgs :many
-SELECT * FROM org
+SELECT o.org_id,
+       o.org_extl_id,
+       o.org_name,
+       o.org_description,
+       o.org_kind_id,
+       ok.org_kind_extl_id,
+       ok.org_kind_desc
+FROM org o
+         INNER JOIN org_kind ok on ok.org_kind_id = o.org_kind_id
 ORDER BY org_name;
+
+-- name: FindOrgsWithAudit :many
+SELECT o.org_id,
+       o.org_extl_id,
+       o.org_name,
+       o.org_description,
+       ok.org_kind_id,
+       ok.org_kind_extl_id,
+       ok.org_kind_desc,
+       o.create_app_id,
+       a.org_id           create_app_org_id,
+       a.app_extl_id      create_app_extl_id,
+       a.app_name         create_app_name,
+       a.app_description  create_app_description,
+       o.create_user_id,
+       ou.username        create_username,
+       ou.org_id          create_user_org_id,
+       pp.first_name      create_user_first_name,
+       pp.last_name       create_user_last_name,
+       o.create_timestamp,
+       o.update_app_id,
+       a2.org_id          update_app_org_id,
+       a2.app_extl_id     update_app_extl_id,
+       a2.app_name        update_app_name,
+       a2.app_description update_app_description,
+       o.update_user_id,
+       ou2.username       update_username,
+       ou2.org_id         update_user_org_id,
+       pp2.first_name     update_user_first_name,
+       pp2.last_name      update_user_last_name,
+       o.update_timestamp
+FROM org o
+         INNER JOIN org_kind ok on ok.org_kind_id = o.org_kind_id
+         INNER JOIN app a on a.app_id = o.create_app_id
+         INNER JOIN app a2 on a2.app_id = o.update_app_id
+         LEFT JOIN org_user ou on ou.user_id = o.create_user_id
+         INNER JOIN person_profile pp on pp.person_profile_id = ou.person_profile_id
+         LEFT JOIN org_user ou2 on ou2.user_id = o.update_user_id
+         INNER JOIN person_profile pp2 on pp2.person_profile_id = ou2.person_profile_id;
+
+-- name: FindOrgsByKindExtlID :many
+SELECT o.org_id,
+       o.org_extl_id,
+       o.org_name,
+       o.org_description,
+       ok.org_kind_extl_id,
+       ok.org_kind_desc
+FROM org o
+         INNER JOIN org_kind ok on ot.org_kind_id = o.org_kind_id
+WHERE ok.org_kind_extl_id = $1;
+
 
 -- name: CreateOrg :execresult
 INSERT INTO org (org_id, org_extl_id, org_name, org_description, org_kind_id, create_app_id, create_user_id,
@@ -51,3 +234,15 @@ WHERE org_id = $6;
 -- name: DeleteOrg :exec
 DELETE FROM org
 WHERE org_id = $1;
+
+-- name: FindOrgKinds :many
+SELECT * FROM org_kind;
+
+-- name: FindOrgKindByExtlID :one
+SELECT * FROM org_kind
+WHERE org_kind_extl_id = $1;
+
+-- name: CreateOrgKind :execresult
+insert into org_kind (org_kind_id, org_kind_extl_id, org_kind_desc, create_app_id, create_user_id, create_timestamp,
+                      update_app_id, update_user_id, update_timestamp)
+values ($1, $2, $3, $4, $5, $6, $7, $8, $9);
