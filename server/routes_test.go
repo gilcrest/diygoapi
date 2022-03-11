@@ -36,6 +36,7 @@ func TestNewMuxRouter(t *testing.T) {
 			{pathPrefix + orgsV1PathRoot, []string{http.MethodPost}},
 			{pathPrefix + orgsV1PathRoot + extlIDPathDir, []string{http.MethodPut}},
 			{pathPrefix + appsV1PathRoot, []string{http.MethodPost}},
+			{pathPrefix + registerV1PathRoot, []string{http.MethodPost}},
 			{pathPrefix + loggerV1PathRoot, []string{http.MethodGet}},
 			{pathPrefix + loggerV1PathRoot, []string{http.MethodPut}},
 			{pathPrefix + pingV1PathRoot, []string{http.MethodGet}},
