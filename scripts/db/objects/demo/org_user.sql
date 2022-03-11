@@ -27,6 +27,26 @@ create table org_user
             deferrable initially deferred
 );
 
+comment on column org_user.user_id is 'The user ID is the unique ID for user (pk for table)';
+
+comment on column org_user.username is 'The username is a unique, human readable username.';
+
+comment on column org_user.org_id is 'The organization ID for the organization that the user belongs to.';
+
+comment on column org_user.person_profile_id is 'The person profile ID - ID for the profile of the person to which this user belongs.';
+
+comment on column org_user.create_app_id is 'The application which created this record.';
+
+comment on column org_user.create_user_id is 'The user which created this record.';
+
+comment on column org_user.create_timestamp is 'The timestamp when this record was created.';
+
+comment on column org_user.update_app_id is 'The application which performed the most recent update to this record.';
+
+comment on column org_user.update_user_id is 'The user which performed the most recent update to this record.';
+
+comment on column org_user.update_timestamp is 'The timestamp when the record was updated most recently.';
+
 alter table org_user
     owner to demo_user;
 
