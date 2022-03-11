@@ -190,6 +190,5 @@ func (s *Server) registerRoutes() {
 		s.loggerChain().
 			Append(s.jsonContentTypeResponseHandler).
 			ThenFunc(s.handleGenesis)).
-		Methods(http.MethodPost).
-		Headers(contentTypeHeaderKey, appJSONContentTypeHeaderVal)
+		Methods(http.MethodPost)
 }
