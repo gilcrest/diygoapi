@@ -4,16 +4,10 @@ package service
 
 import (
 	"context"
-	"time"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
-
-	"github.com/gilcrest/go-api-basic/domain/app"
-	"github.com/gilcrest/go-api-basic/domain/audit"
-	"github.com/gilcrest/go-api-basic/domain/user"
 )
 
 // Datastorer is an interface for working with the Database
@@ -42,46 +36,8 @@ type CryptoRandomGenerator interface {
 	RandomString(n int) (string, error)
 }
 
-// auditResponse is to be embedded into other structs for the purpose
-// of displaying audit information.
-type auditResponse struct {
-	AppExternalID string `json:"app_external_id"`
-	AppName       string `json:"app_name"`
-	Username      string `json:"username"`
-	AuditTime     string `json:"audit_time"`
-}
-
-func newAuditResponse(adt audit.Audit) auditResponse {
-	return auditResponse{
-		AppExternalID: adt.App.ExternalID.String(),
-		AppName:       adt.App.Name,
-		Username:      adt.User.Username,
-		AuditTime:     adt.Moment.Format(time.RFC3339),
-	}
-}
-
-func newAudit(ctx context.Context, dbtx DBTX, appID uuid.UUID, userID uuid.NullUUID, moment time.Time) (audit.Audit, error) {
-	var (
-		a   app.App
-		u   user.User
-		err error
-	)
-
-	a, _, err = findAppByID(ctx, dbtx, appID, false)
-	if err != nil {
-		return audit.Audit{}, err
-	}
-
-	if userID.Valid {
-		u, err = findUserByID(ctx, dbtx, userID.UUID)
-		if err != nil {
-			return audit.Audit{}, err
-		}
-	}
-
-	return audit.Audit{
-		App:    a,
-		User:   u,
-		Moment: moment,
-	}, nil
+// DeleteResponse is the response struct for things that have been deleted
+type DeleteResponse struct {
+	ExternalID string `json:"extl_id"`
+	Deleted    bool   `json:"deleted"`
 }
