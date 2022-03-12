@@ -178,7 +178,7 @@ func (s *Server) handleFindAllMovies(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleOrgFindAll(w http.ResponseWriter, r *http.Request) {
 	logger := *hlog.FromRequest(r)
 
-	response, err := s.FindOrgService.FindAll(r.Context())
+	response, err := s.OrgService.FindAll(r.Context())
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, err)
 		return
@@ -201,7 +201,7 @@ func (s *Server) handleOrgFindByExtlID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	extlID := vars["extlID"]
 
-	response, err := s.FindOrgService.FindByExternalID(r.Context(), extlID)
+	response, err := s.OrgService.FindByExternalID(r.Context(), extlID)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, err)
 		return
@@ -241,7 +241,7 @@ func (s *Server) handleOrgCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response, err := s.CreateOrgService.Create(r.Context(), rb, adt)
+	response, err := s.OrgService.Create(r.Context(), rb, adt)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, err)
 		return
@@ -286,7 +286,7 @@ func (s *Server) handleOrgUpdate(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	rb.ExternalID = vars["extlID"]
 
-	response, err := s.UpdateOrgService.Update(r.Context(), rb, adt)
+	response, err := s.OrgService.Update(r.Context(), rb, adt)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, err)
 		return
@@ -428,22 +428,7 @@ func (s *Server) handlePing(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleGenesis(w http.ResponseWriter, r *http.Request) {
 	lgr := *hlog.FromRequest(r)
 
-	// Declare rb as an instance of service.LoggerRequest
-	rb := new(service.GenesisRequest)
-
-	// Decode JSON HTTP request body into a json.Decoder type
-	// and unmarshal that into rb
-	err := json.NewDecoder(r.Body).Decode(&rb)
-	defer r.Body.Close()
-	// Call DecoderErr to determine if body is nil, json is malformed
-	// or any other error
-	err = decoderErr(err)
-	if err != nil {
-		errs.HTTPErrorResponse(w, lgr, err)
-		return
-	}
-
-	response, err := s.GenesisService.Seed(r.Context(), rb)
+	response, err := s.GenesisService.Seed(r.Context())
 	if err != nil {
 		errs.HTTPErrorResponse(w, lgr, err)
 		return
