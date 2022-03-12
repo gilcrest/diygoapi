@@ -33,18 +33,10 @@ type FindMovieService interface {
 	FindAllMovies(ctx context.Context) ([]service.MovieResponse, error)
 }
 
-// CreateOrgService creates an Org
-type CreateOrgService interface {
+// OrgService manages the retrieval and manipulation of an Org
+type OrgService interface {
 	Create(ctx context.Context, r *service.CreateOrgRequest, adt audit.Audit) (service.OrgResponse, error)
-}
-
-// UpdateOrgService updates an Org
-type UpdateOrgService interface {
 	Update(ctx context.Context, r *service.UpdateOrgRequest, adt audit.Audit) (service.OrgResponse, error)
-}
-
-// FindOrgService retrieves Org information from the datastore
-type FindOrgService interface {
 	FindAll(ctx context.Context) ([]service.OrgResponse, error)
 	FindByExternalID(ctx context.Context, extlID string) (service.OrgResponse, error)
 }
@@ -90,7 +82,7 @@ type PingService interface {
 
 // GenesisService initializes the database with dependent data
 type GenesisService interface {
-	Seed(ctx context.Context, r *service.GenesisRequest) (service.FullGenesisResponse, error)
+	Seed(ctx context.Context) (service.FullGenesisResponse, error)
 }
 
 // Services are used by the application service handlers
@@ -99,15 +91,13 @@ type Services struct {
 	UpdateMovieService  UpdateMovieService
 	DeleteMovieService  DeleteMovieService
 	FindMovieService    FindMovieService
-	PingService         PingService
-	LoggerService       LoggerService
-	CreateOrgService    CreateOrgService
-	UpdateOrgService    UpdateOrgService
-	FindOrgService      FindOrgService
+	OrgService          OrgService
 	CreateAppService    CreateAppService
 	FindAppService      FindAppService
 	RegisterUserService RegisterUserService
 	FindUserService     FindUserService
 	AuthorizeService    AuthorizeService
+	PingService         PingService
+	LoggerService       LoggerService
 	GenesisService      GenesisService
 }
