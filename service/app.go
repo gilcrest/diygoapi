@@ -244,9 +244,10 @@ func newApp(ctx context.Context, dbtx DBTX, dba appstore.App, withAudit bool) (a
 		err                    error
 		createApp, updateApp   app.App
 		createUser, updateUser user.User
+		o                      org.Org
 	)
 
-	o, _, err := findOrgByID(ctx, dbtx, dba.OrgID, false)
+	o, err = findOrgByID(ctx, dbtx, dba.OrgID)
 	if err != nil {
 		return app.App{}, nil, err
 	}
