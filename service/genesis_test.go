@@ -36,13 +36,8 @@ func TestGenesisService_Seed(t *testing.T) {
 			RandomStringGenerator: random.CryptoGenerator{},
 			EncryptionKey:         ek,
 		}
-		r := service.GenesisRequest{
-			SeedUsername:      "dan@dangillis.dev",
-			SeedUserFirstName: "Dan",
-			SeedUserLastName:  "Gillis",
-		}
 
-		_, err = sr.Seed(context.Background(), &r)
+		_, err = sr.Seed(context.Background())
 		c.Assert(err, qt.IsNil)
 	})
 }

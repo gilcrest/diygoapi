@@ -20,14 +20,6 @@ import (
 
 const genesisOrgTypeString string = "genesis"
 
-// GenesisRequest is the request struct for initializing the database
-// with data for the first time.
-type GenesisRequest struct {
-	SeedUsername      string `json:"seed_username"`
-	SeedUserFirstName string `json:"seed_user_first_name"`
-	SeedUserLastName  string `json:"seed_user_last_name"`
-}
-
 type FullGenesisResponse struct {
 	GenesisResponse GenesisResponse `json:"genesis"`
 	TestResponse    TestResponse    `json:"test"`
@@ -60,7 +52,7 @@ type seedSet struct {
 }
 
 // Seed method seeds the database
-func (s GenesisService) Seed(ctx context.Context, r *GenesisRequest) (FullGenesisResponse, error) {
+func (s GenesisService) Seed(ctx context.Context) (FullGenesisResponse, error) {
 
 	var (
 		tx  pgx.Tx
@@ -84,12 +76,12 @@ func (s GenesisService) Seed(ctx context.Context, r *GenesisRequest) (FullGenesi
 		testSet    seedSet
 		testKind   org.Kind
 	)
-	genesisSet, testKind, err = s.seedGenesis(ctx, tx, r)
+	genesisSet, testKind, err = s.seedGenesis(ctx, tx)
 	if err != nil {
 		return FullGenesisResponse{}, err
 	}
 
-	testSet, err = s.seedTest(ctx, tx, r, testKind)
+	testSet, err = s.seedTest(ctx, tx, testKind)
 	if err != nil {
 		return FullGenesisResponse{}, err
 	}
@@ -101,12 +93,12 @@ func (s GenesisService) Seed(ctx context.Context, r *GenesisRequest) (FullGenesi
 	}
 
 	genesisResponse := GenesisResponse{
-		OrgResponse: newOrgResponse(genesisSet.org, genesisSet.audit),
+		OrgResponse: newOrgResponse(orgAudit{Org: genesisSet.org, SimpleAudit: genesisSet.audit}),
 		AppResponse: newAppResponse(genesisSet.app),
 	}
 
 	testResponse := TestResponse{
-		OrgResponse: newOrgResponse(testSet.org, testSet.audit),
+		OrgResponse: newOrgResponse(orgAudit{Org: testSet.org, SimpleAudit: testSet.audit}),
 		AppResponse: newAppResponse(testSet.app),
 	}
 
@@ -118,7 +110,7 @@ func (s GenesisService) Seed(ctx context.Context, r *GenesisRequest) (FullGenesi
 	return response, nil
 }
 
-func (s GenesisService) seedGenesis(ctx context.Context, tx pgx.Tx, r *GenesisRequest) (seedSet, org.Kind, error) {
+func (s GenesisService) seedGenesis(ctx context.Context, tx pgx.Tx) (seedSet, org.Kind, error) {
 	var err error
 
 	// create Org
@@ -145,35 +137,12 @@ func (s GenesisService) seedGenesis(ctx context.Context, tx pgx.Tx, r *GenesisRe
 		return seedSet{}, org.Kind{}, errs.E(errs.Internal, s.Datastorer.RollbackTx(ctx, tx, err))
 	}
 
-	// create Person
-	prsn := person.Person{
-		ID:  uuid.New(),
-		Org: o,
-	}
-
-	// create Person Profile
-	pfl := person.Profile{ID: uuid.New(), Person: prsn}
-	pfl.FirstName = r.SeedUserFirstName
-	pfl.LastName = r.SeedUserLastName
-
-	// create User
-	u := user.User{
-		ID:       uuid.New(),
-		Username: strings.TrimSpace(r.SeedUsername),
-		Org:      o,
-		Profile:  pfl,
-	}
-
-	//create Audit
-	adt := audit.Audit{
-		App:    a,
-		User:   u,
-		Moment: time.Now(),
-	}
+	pgUser, pgAudit := createPeterGabriel(o, a)
+	pcUser, pcAudit := createPhilCollins(o, a)
 
 	// create Genesis org kind
 	var genesisKindParams orgstore.CreateOrgKindParams
-	genesisKindParams, err = createGenesisOrgKind(ctx, s.Datastorer, tx, adt)
+	genesisKindParams, err = createGenesisOrgKind(ctx, s.Datastorer, tx, pgAudit)
 	if err != nil {
 		return seedSet{}, org.Kind{}, errs.E(errs.Database, s.Datastorer.RollbackTx(ctx, tx, err))
 	}
@@ -185,7 +154,7 @@ func (s GenesisService) seedGenesis(ctx context.Context, tx pgx.Tx, r *GenesisRe
 
 	// create other org kinds (test, standard)
 	var testKindParams orgstore.CreateOrgKindParams
-	testKindParams, err = createTestOrgKind(ctx, s.Datastorer, tx, adt)
+	testKindParams, err = createTestOrgKind(ctx, s.Datastorer, tx, pgAudit)
 	if err != nil {
 		return seedSet{}, org.Kind{}, errs.E(errs.Database, s.Datastorer.RollbackTx(ctx, tx, err))
 	}
@@ -195,38 +164,104 @@ func (s GenesisService) seedGenesis(ctx context.Context, tx pgx.Tx, r *GenesisRe
 		Description: testKindParams.OrgKindDesc,
 	}
 
-	err = createStandardOrgKind(ctx, s.Datastorer, tx, adt)
+	err = createStandardOrgKind(ctx, s.Datastorer, tx, pgAudit)
 	if err != nil {
 		return seedSet{}, org.Kind{}, errs.E(errs.Database, s.Datastorer.RollbackTx(ctx, tx, err))
 	}
 
 	sa := audit.SimpleAudit{
-		First: adt,
-		Last:  adt,
+		First: pgAudit,
+		Last:  pgAudit,
 	}
 
 	// write the Org to the database
-	err = createOrgDB(ctx, s.Datastorer, tx, o, sa)
+	err = createOrgDB(ctx, s.Datastorer, tx, orgAudit{Org: o, SimpleAudit: sa})
 	if err != nil {
 		return seedSet{}, org.Kind{}, err
 	}
 
 	// write the App to the database
-	err = createAppDB(ctx, s.Datastorer, tx, a, adt)
+	err = createAppDB(ctx, s.Datastorer, tx, a, pgAudit)
 	if err != nil {
 		return seedSet{}, org.Kind{}, err
 	}
 
-	// write the User to the database
-	err = createUserDB(ctx, s.Datastorer, tx, u, adt)
+	// write Peter Gabriel to the database
+	err = createUserDB(ctx, s.Datastorer, tx, pgUser, pgAudit)
 	if err != nil {
 		return seedSet{}, org.Kind{}, err
 	}
 
-	return seedSet{org: o, app: a, user: u, audit: sa}, tk, nil
+	// write Phil Collins to the database
+	err = createUserDB(ctx, s.Datastorer, tx, pcUser, pcAudit)
+	if err != nil {
+		return seedSet{}, org.Kind{}, err
+	}
+
+	return seedSet{org: o, app: a, user: pgUser, audit: sa}, tk, nil
 }
 
-func (s GenesisService) seedTest(ctx context.Context, tx pgx.Tx, r *GenesisRequest, k org.Kind) (seedSet, error) {
+func createPeterGabriel(o org.Org, a app.App) (user.User, audit.Audit) {
+	// Peter Gabriel Person
+	pgPrsn := person.Person{
+		ID:  uuid.New(),
+		Org: o,
+	}
+
+	// Peter Gabriel Person Profile
+	pgPfl := person.Profile{ID: uuid.New(), Person: pgPrsn}
+	pgPfl.FirstName = "Peter"
+	pgPfl.LastName = "Gabriel"
+
+	// Peter Gabriel User
+	pgUser := user.User{
+		ID:       uuid.New(),
+		Username: strings.TrimSpace("pgabriel"),
+		Org:      o,
+		Profile:  pgPfl,
+	}
+
+	// Peter Gabriel Audit
+	pgAudit := audit.Audit{
+		App:    a,
+		User:   pgUser,
+		Moment: time.Now(),
+	}
+
+	return pgUser, pgAudit
+}
+
+func createPhilCollins(o org.Org, a app.App) (user.User, audit.Audit) {
+	// Peter Gabriel Person
+	pcPrsn := person.Person{
+		ID:  uuid.New(),
+		Org: o,
+	}
+
+	// Peter Gabriel Person Profile
+	pgPfl := person.Profile{ID: uuid.New(), Person: pcPrsn}
+	pgPfl.FirstName = "Phil"
+	pgPfl.LastName = "Collins"
+
+	// Peter Gabriel User
+	pcUser := user.User{
+		ID:       uuid.New(),
+		Username: strings.TrimSpace("pcollins"),
+		Org:      o,
+		Profile:  pgPfl,
+	}
+
+	// Peter Gabriel Audit
+	pcAudit := audit.Audit{
+		App:    a,
+		User:   pcUser,
+		Moment: time.Now(),
+	}
+
+	return pcUser, pcAudit
+}
+
+func (s GenesisService) seedTest(ctx context.Context, tx pgx.Tx, k org.Kind) (seedSet, error) {
 	var err error
 
 	// create Org
@@ -262,13 +297,13 @@ func (s GenesisService) seedTest(ctx context.Context, tx pgx.Tx, r *GenesisReque
 
 	// create Person Profile
 	pfl := person.Profile{ID: uuid.New(), Person: prsn}
-	pfl.FirstName = r.SeedUserFirstName
-	pfl.LastName = r.SeedUserLastName
+	pfl.FirstName = "Steve"
+	pfl.LastName = "Hackett"
 
 	// create User
 	u := user.User{
 		ID:       uuid.New(),
-		Username: strings.TrimSpace(r.SeedUsername),
+		Username: strings.TrimSpace("shackett"),
 		Org:      o,
 		Profile:  pfl,
 	}
@@ -286,7 +321,7 @@ func (s GenesisService) seedTest(ctx context.Context, tx pgx.Tx, r *GenesisReque
 	}
 
 	// write the Org to the database
-	err = createOrgDB(ctx, s.Datastorer, tx, o, sa)
+	err = createOrgDB(ctx, s.Datastorer, tx, orgAudit{Org: o, SimpleAudit: sa})
 	if err != nil {
 		return seedSet{}, err
 	}
@@ -308,7 +343,7 @@ func (s GenesisService) seedTest(ctx context.Context, tx pgx.Tx, r *GenesisReque
 
 func genesisHasOccurred(ctx context.Context, dbtx orgstore.DBTX) (err error) {
 	var (
-		existingOrgs         []orgstore.Org
+		existingOrgs         []orgstore.FindOrgsByKindExtlIDRow
 		hasGenesisOrgTypeRow = true
 		hasGenesisOrgRow     = true
 	)
@@ -324,7 +359,7 @@ func genesisHasOccurred(ctx context.Context, dbtx orgstore.DBTX) (err error) {
 	}
 
 	// last: check org
-	existingOrgs, err = orgstore.New(dbtx).FindOrgByKindExtlID(ctx, genesisOrgTypeString)
+	existingOrgs, err = orgstore.New(dbtx).FindOrgsByKindExtlID(ctx, genesisOrgTypeString)
 	if err != nil {
 		return errs.E(errs.Database, err)
 	}
