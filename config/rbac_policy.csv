@@ -1,3 +1,5 @@
+p, user, /api/v1/ping, read
+p, admin, /api/v1/ping, read
 p, user, /api/v1/movies, read
 p, admin, /api/v1/movies, read
 p, admin, /api/v1/movies, write
