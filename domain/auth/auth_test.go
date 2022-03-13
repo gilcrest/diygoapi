@@ -70,7 +70,7 @@ func TestCasbinAuthorizer_Authorize(t *testing.T) {
 		a := app.App{}
 		u := user.User{
 			ID:       uuid.Nil,
-			Username: "dan@dangillis.dev",
+			Username: "otto.maddox711@gmail.com",
 			Org:      org.Org{},
 			Profile:  person.Profile{},
 		}
