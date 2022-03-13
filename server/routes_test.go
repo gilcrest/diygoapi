@@ -31,16 +31,21 @@ func TestNewMuxRouter(t *testing.T) {
 		// use a slice literal to create the routes in order of how
 		// they are registered in NewMuxRouter
 		wantRoutes := []r{
-			{pathPrefix + orgsV1PathRoot, []string{http.MethodGet}},
-			{pathPrefix + orgsV1PathRoot + extlIDPathDir, []string{http.MethodGet}},
-			{pathPrefix + orgsV1PathRoot, []string{http.MethodPost}},
-			{pathPrefix + orgsV1PathRoot + extlIDPathDir, []string{http.MethodPut}},
-			{pathPrefix + appsV1PathRoot, []string{http.MethodPost}},
-			{pathPrefix + registerV1PathRoot, []string{http.MethodPost}},
-			{pathPrefix + loggerV1PathRoot, []string{http.MethodGet}},
-			{pathPrefix + loggerV1PathRoot, []string{http.MethodPut}},
-			{pathPrefix + pingV1PathRoot, []string{http.MethodGet}},
-			{pathPrefix + genesisV1PathRoot, []string{http.MethodPost}},
+			{PathTemplate: pathPrefix + moviesV1PathRoot, HTTPMethods: []string{"POST"}},
+			{PathTemplate: pathPrefix + moviesV1PathRoot + extlIDPathDir, HTTPMethods: []string{"PUT"}},
+			{PathTemplate: pathPrefix + moviesV1PathRoot + extlIDPathDir, HTTPMethods: []string{"DELETE"}},
+			{PathTemplate: pathPrefix + moviesV1PathRoot + extlIDPathDir, HTTPMethods: []string{"GET"}},
+			{PathTemplate: pathPrefix + moviesV1PathRoot, HTTPMethods: []string{"GET"}},
+			{PathTemplate: pathPrefix + orgsV1PathRoot, HTTPMethods: []string{http.MethodGet}},
+			{PathTemplate: pathPrefix + orgsV1PathRoot + extlIDPathDir, HTTPMethods: []string{http.MethodGet}},
+			{PathTemplate: pathPrefix + orgsV1PathRoot, HTTPMethods: []string{http.MethodPost}},
+			{PathTemplate: pathPrefix + orgsV1PathRoot + extlIDPathDir, HTTPMethods: []string{http.MethodPut}},
+			{PathTemplate: pathPrefix + appsV1PathRoot, HTTPMethods: []string{http.MethodPost}},
+			{PathTemplate: pathPrefix + registerV1PathRoot, HTTPMethods: []string{http.MethodPost}},
+			{PathTemplate: pathPrefix + loggerV1PathRoot, HTTPMethods: []string{http.MethodGet}},
+			{PathTemplate: pathPrefix + loggerV1PathRoot, HTTPMethods: []string{http.MethodPut}},
+			{PathTemplate: pathPrefix + pingV1PathRoot, HTTPMethods: []string{http.MethodGet}},
+			{PathTemplate: pathPrefix + genesisV1PathRoot, HTTPMethods: []string{http.MethodPost}},
 		}
 
 		// make a slice of r for use in the Walk function
