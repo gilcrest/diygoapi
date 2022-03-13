@@ -4,6 +4,11 @@ import (
 	"context"
 	"time"
 
+	"github.com/gilcrest/go-api-basic/domain/app"
+	"github.com/gilcrest/go-api-basic/domain/org"
+	"github.com/gilcrest/go-api-basic/domain/person"
+	"github.com/gilcrest/go-api-basic/domain/user"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 
@@ -14,6 +19,12 @@ import (
 	"github.com/gilcrest/go-api-basic/domain/movie"
 	"github.com/gilcrest/go-api-basic/domain/secure"
 )
+
+// movieAudit is the combination of a domain Movie and its audit data
+type movieAudit struct {
+	Movie       movie.Movie
+	SimpleAudit audit.SimpleAudit
+}
 
 // CreateMovieRequest is the request struct for Creating a Movie
 type CreateMovieRequest struct {
@@ -27,29 +38,44 @@ type CreateMovieRequest struct {
 
 // MovieResponse is the response struct for a Movie
 type MovieResponse struct {
-	ExternalID  string        `json:"external_id"`
-	Title       string        `json:"title"`
-	Rated       string        `json:"rated"`
-	Released    string        `json:"release_date"`
-	RunTime     int           `json:"run_time"`
-	Director    string        `json:"director"`
-	Writer      string        `json:"writer"`
-	CreateAudit auditResponse `json:"create_audit"`
-	UpdateAudit auditResponse `json:"update_audit"`
+	ExternalID          string `json:"external_id"`
+	Title               string `json:"title"`
+	Rated               string `json:"rated"`
+	Released            string `json:"release_date"`
+	RunTime             int    `json:"run_time"`
+	Director            string `json:"director"`
+	Writer              string `json:"writer"`
+	CreateAppExtlID     string `json:"create_app_extl_id"`
+	CreateUsername      string `json:"create_username"`
+	CreateUserFirstName string `json:"create_user_first_name"`
+	CreateUserLastName  string `json:"create_user_last_name"`
+	CreateDateTime      string `json:"create_date_time"`
+	UpdateAppExtlID     string `json:"update_app_extl_id"`
+	UpdateUsername      string `json:"update_username"`
+	UpdateUserFirstName string `json:"update_user_first_name"`
+	UpdateUserLastName  string `json:"update_user_last_name"`
+	UpdateDateTime      string `json:"update_date_time"`
 }
 
 // newMovieResponse initializes MovieResponse
-func newMovieResponse(m movie.Movie, sa audit.SimpleAudit) MovieResponse {
+func newMovieResponse(ma movieAudit) MovieResponse {
 	return MovieResponse{
-		ExternalID:  m.ExternalID.String(),
-		Title:       m.Title,
-		Rated:       m.Rated,
-		Released:    m.Released.Format(time.RFC3339),
-		RunTime:     m.RunTime,
-		Director:    m.Director,
-		Writer:      m.Writer,
-		CreateAudit: newAuditResponse(sa.First),
-		UpdateAudit: newAuditResponse(sa.Last),
+		ExternalID:          ma.Movie.ExternalID.String(),
+		Title:               ma.Movie.Title,
+		Rated:               ma.Movie.Rated,
+		Released:            ma.Movie.Released.Format(time.RFC3339),
+		RunTime:             ma.Movie.RunTime,
+		Director:            ma.Movie.Director,
+		Writer:              ma.Movie.Writer,
+		CreateAppExtlID:     ma.SimpleAudit.First.App.ExternalID.String(),
+		CreateUsername:      ma.SimpleAudit.First.User.Username,
+		CreateUserFirstName: ma.SimpleAudit.First.User.Profile.FirstName,
+		CreateUserLastName:  ma.SimpleAudit.First.User.Profile.LastName,
+		CreateDateTime:      ma.SimpleAudit.First.Moment.Format(time.RFC3339),
+		UpdateAppExtlID:     ma.SimpleAudit.Last.App.ExternalID.String(),
+		UpdateUsername:      ma.SimpleAudit.Last.User.Username,
+		UpdateUserFirstName: ma.SimpleAudit.Last.User.Profile.FirstName,
+		UpdateUserLastName:  ma.SimpleAudit.Last.User.Profile.LastName,
 	}
 }
 
@@ -126,7 +152,7 @@ func (s CreateMovieService) Create(ctx context.Context, r *CreateMovieRequest, a
 		return MovieResponse{}, err
 	}
 
-	return newMovieResponse(m, sa), nil
+	return newMovieResponse(movieAudit{m, sa}), nil
 }
 
 // UpdateMovieRequest is the request struct for updating a Movie
@@ -150,9 +176,7 @@ func (s UpdateMovieService) Update(ctx context.Context, r *UpdateMovieRequest, a
 
 	// retrieve existing Movie
 	var (
-		m   movie.Movie
-		dbm moviestore.Movie
-		sa  audit.SimpleAudit
+		row moviestore.FindMovieByExternalIDWithAuditRow
 		err error
 	)
 
@@ -165,7 +189,7 @@ func (s UpdateMovieService) Update(ctx context.Context, r *UpdateMovieRequest, a
 			err)
 	}
 
-	dbm, err = moviestore.New(s.Datastorer.Pool()).FindMovieByExternalID(ctx, r.ExternalID)
+	row, err = moviestore.New(s.Datastorer.Pool()).FindMovieByExternalIDWithAudit(ctx, r.ExternalID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return MovieResponse{}, errs.E(errs.Validation, "No movie exists for the given external ID")
@@ -173,9 +197,15 @@ func (s UpdateMovieService) Update(ctx context.Context, r *UpdateMovieRequest, a
 		return MovieResponse{}, errs.E(errs.Database, err)
 	}
 
-	m, sa, err = hydrateMovieFromDB(ctx, s.Datastorer.Pool(), dbm)
-	if err != nil {
-		return MovieResponse{}, err
+	m := movie.Movie{
+		ID:         row.MovieID,
+		ExternalID: secure.MustParseIdentifier(row.ExtlID),
+		Title:      row.Title,
+		Rated:      row.Rated.String,
+		Released:   row.Released.Time,
+		RunTime:    int(row.RunTime.Int32),
+		Director:   row.Director.String,
+		Writer:     row.Writer.String,
 	}
 
 	// update fields from request
@@ -191,6 +221,28 @@ func (s UpdateMovieService) Update(ctx context.Context, r *UpdateMovieRequest, a
 		return MovieResponse{}, err
 	}
 
+	sa := audit.SimpleAudit{
+		First: audit.Audit{
+			App: app.App{
+				ID:          row.CreateAppID,
+				ExternalID:  secure.MustParseIdentifier(row.CreateAppExtlID),
+				Org:         org.Org{ID: row.CreateAppOrgID},
+				Name:        row.CreateAppName,
+				Description: row.CreateAppDescription,
+				APIKeys:     nil,
+			},
+			User: user.User{
+				ID:       row.CreateUserID.UUID,
+				Username: row.CreateUsername,
+				Org:      org.Org{ID: row.CreateUserOrgID},
+				Profile: person.Profile{
+					FirstName: row.CreateUserFirstName,
+					LastName:  row.CreateUserLastName,
+				},
+			},
+			Moment: row.CreateTimestamp,
+		},
+	}
 	// update audit with latest
 	sa.Last = adt
 
@@ -224,7 +276,7 @@ func (s UpdateMovieService) Update(ctx context.Context, r *UpdateMovieRequest, a
 		return MovieResponse{}, err
 	}
 
-	return newMovieResponse(m, sa), nil
+	return newMovieResponse(movieAudit{m, sa}), nil
 }
 
 // DeleteMovieResponse is the response struct for deleted Movies
@@ -289,13 +341,11 @@ type FindMovieService struct {
 func (s FindMovieService) FindMovieByID(ctx context.Context, extlID string) (MovieResponse, error) {
 
 	var (
-		m   movie.Movie
-		dbm moviestore.Movie
-		sa  audit.SimpleAudit
+		row moviestore.FindMovieByExternalIDWithAuditRow
 		err error
 	)
 
-	dbm, err = moviestore.New(s.Datastorer.Pool()).FindMovieByExternalID(ctx, extlID)
+	row, err = moviestore.New(s.Datastorer.Pool()).FindMovieByExternalIDWithAudit(ctx, extlID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return MovieResponse{}, errs.E(errs.Validation, "no movie exists for the given external ID")
@@ -303,12 +353,61 @@ func (s FindMovieService) FindMovieByID(ctx context.Context, extlID string) (Mov
 		return MovieResponse{}, errs.E(errs.Database, err)
 	}
 
-	m, sa, err = hydrateMovieFromDB(ctx, s.Datastorer.Pool(), dbm)
-	if err != nil {
-		return MovieResponse{}, err
+	m := movie.Movie{
+		ID:         row.MovieID,
+		ExternalID: secure.MustParseIdentifier(row.ExtlID),
+		Title:      row.Title,
+		Rated:      row.Rated.String,
+		Released:   row.Released.Time,
+		RunTime:    int(row.RunTime.Int32),
+		Director:   row.Director.String,
+		Writer:     row.Writer.String,
 	}
 
-	return newMovieResponse(m, sa), nil
+	sa := audit.SimpleAudit{
+		First: audit.Audit{
+			App: app.App{
+				ID:          row.CreateAppID,
+				ExternalID:  secure.MustParseIdentifier(row.CreateAppExtlID),
+				Org:         org.Org{ID: row.CreateAppOrgID},
+				Name:        row.CreateAppName,
+				Description: row.CreateAppDescription,
+				APIKeys:     nil,
+			},
+			User: user.User{
+				ID:       row.CreateUserID.UUID,
+				Username: row.CreateUsername,
+				Org:      org.Org{ID: row.CreateUserOrgID},
+				Profile: person.Profile{
+					FirstName: row.CreateUserFirstName,
+					LastName:  row.CreateUserLastName,
+				},
+			},
+			Moment: row.CreateTimestamp,
+		},
+		Last: audit.Audit{
+			App: app.App{
+				ID:          row.UpdateAppID,
+				ExternalID:  secure.MustParseIdentifier(row.UpdateAppExtlID),
+				Org:         org.Org{ID: row.UpdateAppOrgID},
+				Name:        row.UpdateAppName,
+				Description: row.UpdateAppDescription,
+				APIKeys:     nil,
+			},
+			User: user.User{
+				ID:       row.UpdateUserID.UUID,
+				Username: row.UpdateUsername,
+				Org:      org.Org{ID: row.UpdateUserOrgID},
+				Profile: person.Profile{
+					FirstName: row.UpdateUserFirstName,
+					LastName:  row.UpdateUserLastName,
+				},
+			},
+			Moment: row.UpdateTimestamp,
+		},
+	}
+
+	return newMovieResponse(movieAudit{m, sa}), nil
 }
 
 // FindAllMovies is used to list all movies in the db
@@ -324,57 +423,62 @@ func (s FindMovieService) FindAllMovies(ctx context.Context) ([]MovieResponse, e
 		return nil, errs.E(errs.Database, err)
 	}
 
-	for _, dbm := range movies {
-		var (
-			m  movie.Movie
-			sa audit.SimpleAudit
-		)
-		m, sa, err = hydrateMovieFromDB(ctx, s.Datastorer.Pool(), dbm)
-		if err != nil {
-			return nil, err
+	for _, row := range movies {
+		m := movie.Movie{
+			ID:         row.MovieID,
+			ExternalID: secure.MustParseIdentifier(row.ExtlID),
+			Title:      row.Title,
+			Rated:      row.Rated.String,
+			Released:   row.Released.Time,
+			RunTime:    int(row.RunTime.Int32),
+			Director:   row.Director.String,
+			Writer:     row.Writer.String,
 		}
-
-		mr := newMovieResponse(m, sa)
+		sa := audit.SimpleAudit{
+			First: audit.Audit{
+				App: app.App{
+					ID:          row.CreateAppID,
+					ExternalID:  secure.MustParseIdentifier(row.CreateAppExtlID),
+					Org:         org.Org{ID: row.CreateAppOrgID},
+					Name:        row.CreateAppName,
+					Description: row.CreateAppDescription,
+					APIKeys:     nil,
+				},
+				User: user.User{
+					ID:       row.CreateUserID.UUID,
+					Username: row.CreateUsername,
+					Org:      org.Org{ID: row.CreateUserOrgID},
+					Profile: person.Profile{
+						FirstName: row.CreateUserFirstName,
+						LastName:  row.CreateUserLastName,
+					},
+				},
+				Moment: row.CreateTimestamp,
+			},
+			Last: audit.Audit{
+				App: app.App{
+					ID:          row.UpdateAppID,
+					ExternalID:  secure.MustParseIdentifier(row.UpdateAppExtlID),
+					Org:         org.Org{ID: row.UpdateAppOrgID},
+					Name:        row.UpdateAppName,
+					Description: row.UpdateAppDescription,
+					APIKeys:     nil,
+				},
+				User: user.User{
+					ID:       row.UpdateUserID.UUID,
+					Username: row.UpdateUsername,
+					Org:      org.Org{ID: row.UpdateUserOrgID},
+					Profile: person.Profile{
+						FirstName: row.UpdateUserFirstName,
+						LastName:  row.UpdateUserLastName,
+					},
+				},
+				Moment: row.UpdateTimestamp,
+			},
+		}
+		mr := newMovieResponse(movieAudit{m, sa})
 		response = append(response, mr)
 	}
 
 	return response, nil
-}
-
-// hydrateMovieFromDB populates a movie.Movie and an audit.SimpleAudit given a moviestore.Movie
-func hydrateMovieFromDB(ctx context.Context, dbtx DBTX, dbm moviestore.Movie) (movie.Movie, audit.SimpleAudit, error) {
-	var (
-		err error
-	)
-
-	// Convert moviestore.Movie into a domain movie.Movie struct
-	m := movie.Movie{
-		ID:         dbm.MovieID,
-		ExternalID: secure.MustParseIdentifier(dbm.ExtlID),
-		Title:      dbm.Title,
-		Rated:      dbm.Rated.String,
-		Released:   dbm.Released.Time,
-		RunTime:    int(dbm.RunTime.Int32),
-		Director:   dbm.Director.String,
-		Writer:     dbm.Writer.String,
-	}
-
-	var createAudit audit.Audit
-	createAudit, err = newAudit(ctx, dbtx, dbm.CreateAppID, dbm.CreateUserID, dbm.CreateTimestamp)
-	if err != nil {
-		return movie.Movie{}, audit.SimpleAudit{}, err
-	}
-
-	var updateAudit audit.Audit
-	updateAudit, err = newAudit(ctx, dbtx, dbm.UpdateAppID, dbm.UpdateUserID, dbm.UpdateTimestamp)
-	if err != nil {
-		return movie.Movie{}, audit.SimpleAudit{}, err
-	}
-
-	sa := audit.SimpleAudit{
-		First: createAudit,
-		Last:  updateAudit,
-	}
-
-	return m, sa, nil
 }
