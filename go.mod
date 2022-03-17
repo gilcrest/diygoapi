@@ -13,7 +13,7 @@ require (
 	github.com/jackc/pgx/v4 v4.15.0
 	github.com/jackc/puddle v1.2.1
 	github.com/justinas/alice v1.2.0
-	github.com/magefile/mage v1.12.1
+	github.com/magefile/mage v1.13.0
 	github.com/peterbourgon/ff/v3 v3.1.2
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.26.1
