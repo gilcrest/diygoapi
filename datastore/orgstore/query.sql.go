@@ -648,7 +648,7 @@ SELECT o.org_id,
        ok.org_kind_extl_id,
        ok.org_kind_desc
 FROM org o
-         INNER JOIN org_kind ok on ot.org_kind_id = o.org_kind_id
+         INNER JOIN org_kind ok on ok.org_kind_id = o.org_kind_id
 WHERE ok.org_kind_extl_id = $1
 `
 
