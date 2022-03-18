@@ -1,6 +1,3 @@
-//go:build mage
-// +build mage
-
 package main
 
 import (
@@ -76,7 +73,7 @@ func TestAll() error {
 		return err
 	}
 
-	err = sh.Run("go", "test", "./...")
+	err = sh.Run("go", "test", "-v", "./...")
 	if err != nil {
 		return err
 	}
@@ -95,8 +92,13 @@ func Build() error {
 }
 
 // Run runs the binary executable created with Build
-func Run() error {
-	err := commands.OverrideEnv()
+func Run() (err error) {
+	err = commands.OverrideEnv()
+	if err != nil {
+		return err
+	}
+
+	err = sh.Run("go", "build", "-o", "srvr")
 	if err != nil {
 		return err
 	}
@@ -107,4 +109,24 @@ func Run() error {
 	}
 
 	return nil
+}
+
+// Genesis runs all tests including executing the Genesis service
+func Genesis() (err error) {
+	err = commands.OverrideEnv()
+	if err != nil {
+		return err
+	}
+
+	err = commands.Genesis()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// NewKey generates a new encryption key
+func NewKey() {
+	commands.NewEncryptionKey()
 }
