@@ -5,7 +5,6 @@ package appstore
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,9 +12,9 @@ import (
 )
 
 const createApp = `-- name: CreateApp :execresult
-INSERT INTO app (app_id, org_id, app_extl_id, app_name, app_description, active, create_app_id, create_user_id,
+INSERT INTO app (app_id, org_id, app_extl_id, app_name, app_description, create_app_id, create_user_id,
                  create_timestamp, update_app_id, update_user_id, update_timestamp)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 `
 
 type CreateAppParams struct {
@@ -24,7 +23,6 @@ type CreateAppParams struct {
 	AppExtlID       string
 	AppName         string
 	AppDescription  string
-	Active          sql.NullBool
 	CreateAppID     uuid.UUID
 	CreateUserID    uuid.NullUUID
 	CreateTimestamp time.Time
@@ -40,7 +38,6 @@ func (q *Queries) CreateApp(ctx context.Context, arg CreateAppParams) (pgconn.Co
 		arg.AppExtlID,
 		arg.AppName,
 		arg.AppDescription,
-		arg.Active,
 		arg.CreateAppID,
 		arg.CreateUserID,
 		arg.CreateTimestamp,
@@ -189,7 +186,7 @@ func (q *Queries) FindAppAPIKeysByAppExtlID(ctx context.Context, appExtlID strin
 }
 
 const findAppByExternalID = `-- name: FindAppByExternalID :one
-SELECT app_id, org_id, app_extl_id, app_name, app_description, active, create_app_id, create_user_id, create_timestamp, update_app_id, update_user_id, update_timestamp FROM app
+SELECT app_id, org_id, app_extl_id, app_name, app_description, create_app_id, create_user_id, create_timestamp, update_app_id, update_user_id, update_timestamp FROM app
 WHERE app_extl_id = $1 LIMIT 1
 `
 
@@ -202,7 +199,6 @@ func (q *Queries) FindAppByExternalID(ctx context.Context, appExtlID string) (Ap
 		&i.AppExtlID,
 		&i.AppName,
 		&i.AppDescription,
-		&i.Active,
 		&i.CreateAppID,
 		&i.CreateUserID,
 		&i.CreateTimestamp,
@@ -214,7 +210,7 @@ func (q *Queries) FindAppByExternalID(ctx context.Context, appExtlID string) (Ap
 }
 
 const findAppByID = `-- name: FindAppByID :one
-SELECT app_id, org_id, app_extl_id, app_name, app_description, active, create_app_id, create_user_id, create_timestamp, update_app_id, update_user_id, update_timestamp FROM app
+SELECT app_id, org_id, app_extl_id, app_name, app_description, create_app_id, create_user_id, create_timestamp, update_app_id, update_user_id, update_timestamp FROM app
 WHERE app_id = $1 LIMIT 1
 `
 
@@ -227,7 +223,6 @@ func (q *Queries) FindAppByID(ctx context.Context, appID uuid.UUID) (App, error)
 		&i.AppExtlID,
 		&i.AppName,
 		&i.AppDescription,
-		&i.Active,
 		&i.CreateAppID,
 		&i.CreateUserID,
 		&i.CreateTimestamp,
@@ -239,7 +234,7 @@ func (q *Queries) FindAppByID(ctx context.Context, appID uuid.UUID) (App, error)
 }
 
 const findAppByName = `-- name: FindAppByName :one
-SELECT a.app_id, a.org_id, a.app_extl_id, a.app_name, a.app_description, a.active, a.create_app_id, a.create_user_id, a.create_timestamp, a.update_app_id, a.update_user_id, a.update_timestamp
+SELECT a.app_id, a.org_id, a.app_extl_id, a.app_name, a.app_description, a.create_app_id, a.create_user_id, a.create_timestamp, a.update_app_id, a.update_user_id, a.update_timestamp
 FROM app a inner join org o on o.org_id = a.org_id
 WHERE o.org_id = $1
   AND a.app_name = $2
@@ -259,7 +254,6 @@ func (q *Queries) FindAppByName(ctx context.Context, arg FindAppByNameParams) (A
 		&i.AppExtlID,
 		&i.AppName,
 		&i.AppDescription,
-		&i.Active,
 		&i.CreateAppID,
 		&i.CreateUserID,
 		&i.CreateTimestamp,
@@ -271,7 +265,7 @@ func (q *Queries) FindAppByName(ctx context.Context, arg FindAppByNameParams) (A
 }
 
 const findApps = `-- name: FindApps :many
-SELECT app_id, org_id, app_extl_id, app_name, app_description, active, create_app_id, create_user_id, create_timestamp, update_app_id, update_user_id, update_timestamp FROM app
+SELECT app_id, org_id, app_extl_id, app_name, app_description, create_app_id, create_user_id, create_timestamp, update_app_id, update_user_id, update_timestamp FROM app
 ORDER BY app_name
 `
 
@@ -290,7 +284,6 @@ func (q *Queries) FindApps(ctx context.Context) ([]App, error) {
 			&i.AppExtlID,
 			&i.AppName,
 			&i.AppDescription,
-			&i.Active,
 			&i.CreateAppID,
 			&i.CreateUserID,
 			&i.CreateTimestamp,

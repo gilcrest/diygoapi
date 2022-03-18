@@ -17,9 +17,9 @@ SELECT * FROM app
 ORDER BY app_name;
 
 -- name: CreateApp :execresult
-INSERT INTO app (app_id, org_id, app_extl_id, app_name, app_description, active, create_app_id, create_user_id,
+INSERT INTO app (app_id, org_id, app_extl_id, app_name, app_description, create_app_id, create_user_id,
                  create_timestamp, update_app_id, update_user_id, update_timestamp)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
 
 -- name: DeleteApp :exec
 DELETE FROM app

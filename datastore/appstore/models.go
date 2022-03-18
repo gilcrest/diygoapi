@@ -3,7 +3,6 @@
 package appstore
 
 import (
-	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -11,17 +10,27 @@ import (
 
 // app stores data about applications that interact with the system
 type App struct {
-	AppID           uuid.UUID
-	OrgID           uuid.UUID
-	AppExtlID       string
-	AppName         string
-	AppDescription  string
-	Active          sql.NullBool
-	CreateAppID     uuid.UUID
-	CreateUserID    uuid.NullUUID
+	// The Unique ID for the table.
+	AppID uuid.UUID
+	// The organization ID for the organization that the app belongs to.
+	OrgID uuid.UUID
+	// The unique application External ID to be given to outside callers.
+	AppExtlID string
+	// The application name is a short name for the application.
+	AppName string
+	// The application description is several sentences to describe the application.
+	AppDescription string
+	// The application which created this record.
+	CreateAppID uuid.UUID
+	// The user which created this record.
+	CreateUserID uuid.NullUUID
+	// The timestamp when this record was created.
 	CreateTimestamp time.Time
-	UpdateAppID     uuid.UUID
-	UpdateUserID    uuid.NullUUID
+	// The application which performed the most recent update to this record.
+	UpdateAppID uuid.UUID
+	// The user which performed the most recent update to this record.
+	UpdateUserID uuid.NullUUID
+	// The timestamp when the record was updated most recently.
 	UpdateTimestamp time.Time
 }
 
