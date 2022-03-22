@@ -2,8 +2,11 @@ package service
 
 import (
 	"context"
-	"database/sql"
+	"fmt"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v4"
 
 	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/gilcrest/go-api-basic/datastore/appstore"
@@ -11,11 +14,16 @@ import (
 	"github.com/gilcrest/go-api-basic/domain/audit"
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/org"
+	"github.com/gilcrest/go-api-basic/domain/person"
 	"github.com/gilcrest/go-api-basic/domain/secure"
 	"github.com/gilcrest/go-api-basic/domain/user"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v4"
 )
+
+// appAudit is the combination of a domain App and its audit data
+type appAudit struct {
+	App         app.App
+	SimpleAudit audit.SimpleAudit
+}
 
 // CreateAppRequest is the request struct for Creating an App
 type CreateAppRequest struct {
@@ -25,10 +33,20 @@ type CreateAppRequest struct {
 
 // AppResponse is the response struct for an App
 type AppResponse struct {
-	ExternalID  string           `json:"external_id"`
-	Name        string           `json:"name"`
-	Description string           `json:"description"`
-	APIKeys     []APIKeyResponse `json:"api_keys"`
+	ExternalID          string           `json:"external_id"`
+	Name                string           `json:"name"`
+	Description         string           `json:"description"`
+	CreateAppExtlID     string           `json:"create_app_extl_id"`
+	CreateUsername      string           `json:"create_username"`
+	CreateUserFirstName string           `json:"create_user_first_name"`
+	CreateUserLastName  string           `json:"create_user_last_name"`
+	CreateDateTime      string           `json:"create_date_time"`
+	UpdateAppExtlID     string           `json:"update_app_extl_id"`
+	UpdateUsername      string           `json:"update_username"`
+	UpdateUserFirstName string           `json:"update_user_first_name"`
+	UpdateUserLastName  string           `json:"update_user_last_name"`
+	UpdateDateTime      string           `json:"update_date_time"`
+	APIKeys             []APIKeyResponse `json:"api_keys"`
 }
 
 // APIKeyResponse is the response fields for an API key
@@ -44,29 +62,39 @@ func newAPIKeyResponse(key app.APIKey) APIKeyResponse {
 }
 
 // newAppResponse initializes an AppResponse given an app.App
-func newAppResponse(a app.App) AppResponse {
+func newAppResponse(aa appAudit) AppResponse {
 	var keys []APIKeyResponse
-	for _, key := range a.APIKeys {
+	for _, key := range aa.App.APIKeys {
 		akr := newAPIKeyResponse(key)
 		keys = append(keys, akr)
 	}
 	return AppResponse{
-		ExternalID:  a.ExternalID.String(),
-		Name:        a.Name,
-		Description: a.Description,
-		APIKeys:     keys,
+		ExternalID:          aa.App.ExternalID.String(),
+		Name:                aa.App.Name,
+		Description:         aa.App.Description,
+		CreateAppExtlID:     aa.SimpleAudit.First.App.ExternalID.String(),
+		CreateUsername:      aa.SimpleAudit.First.User.Username,
+		CreateUserFirstName: aa.SimpleAudit.First.User.Profile.FirstName,
+		CreateUserLastName:  aa.SimpleAudit.First.User.Profile.LastName,
+		CreateDateTime:      aa.SimpleAudit.First.Moment.Format(time.RFC3339),
+		UpdateAppExtlID:     aa.SimpleAudit.Last.App.ExternalID.String(),
+		UpdateUsername:      aa.SimpleAudit.Last.User.Username,
+		UpdateUserFirstName: aa.SimpleAudit.Last.User.Profile.FirstName,
+		UpdateUserLastName:  aa.SimpleAudit.Last.User.Profile.LastName,
+		UpdateDateTime:      aa.SimpleAudit.Last.Moment.Format(time.RFC3339),
+		APIKeys:             keys,
 	}
 }
 
-// CreateAppService is a service for creating an App
-type CreateAppService struct {
+// AppService is a service for creating an App
+type AppService struct {
 	Datastorer            Datastorer
 	RandomStringGenerator CryptoRandomGenerator
 	EncryptionKey         *[32]byte
 }
 
 // Create is used to create an App
-func (s CreateAppService) Create(ctx context.Context, r *CreateAppRequest, adt audit.Audit) (AppResponse, error) {
+func (s AppService) Create(ctx context.Context, r *CreateAppRequest, adt audit.Audit) (AppResponse, error) {
 	var (
 		a   app.App
 		err error
@@ -83,15 +111,63 @@ func (s CreateAppService) Create(ctx context.Context, r *CreateAppRequest, adt a
 		return AppResponse{}, err
 	}
 
+	createAppParams := appstore.CreateAppParams{
+		AppID:           a.ID,
+		OrgID:           a.Org.ID,
+		AppExtlID:       a.ExternalID.String(),
+		AppName:         a.Name,
+		AppDescription:  a.Description,
+		CreateAppID:     adt.App.ID,
+		CreateUserID:    datastore.NewNullUUID(adt.User.ID),
+		CreateTimestamp: adt.Moment,
+		UpdateAppID:     adt.App.ID,
+		UpdateUserID:    datastore.NewNullUUID(adt.User.ID),
+		UpdateTimestamp: adt.Moment,
+	}
+
 	// start db txn using pgxpool
-	tx, err := s.Datastorer.BeginTx(ctx)
+	var tx pgx.Tx
+	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
 		return AppResponse{}, err
 	}
 
-	err = createAppDB(ctx, s.Datastorer, tx, a, adt)
+	// create app database record using appstore
+	var rowsAffected int64
+	rowsAffected, err = appstore.New(tx).CreateApp(ctx, createAppParams)
 	if err != nil {
-		return AppResponse{}, err
+		return AppResponse{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Database, err))
+	}
+
+	if rowsAffected != 1 {
+		return AppResponse{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected)))
+	}
+
+	for _, key := range a.APIKeys {
+
+		createAppAPIKeyParams := appstore.CreateAppAPIKeyParams{
+			ApiKey:          key.Ciphertext(),
+			AppID:           a.ID,
+			DeactvDate:      key.DeactivationDate(),
+			CreateAppID:     adt.App.ID,
+			CreateUserID:    datastore.NewNullUUID(adt.User.ID),
+			CreateTimestamp: adt.Moment,
+			UpdateAppID:     adt.App.ID,
+			UpdateUserID:    datastore.NewNullUUID(adt.User.ID),
+			UpdateTimestamp: adt.Moment,
+		}
+
+		// create app API key database record using appstore
+		var apiKeyRowsAffected int64
+		apiKeyRowsAffected, err = appstore.New(tx).CreateAppAPIKey(ctx, createAppAPIKeyParams)
+		if err != nil {
+			return AppResponse{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Database, err))
+		}
+
+		if apiKeyRowsAffected != 1 {
+			return AppResponse{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", apiKeyRowsAffected)))
+		}
+
 	}
 
 	// commit db txn using pgxpool
@@ -100,204 +176,146 @@ func (s CreateAppService) Create(ctx context.Context, r *CreateAppRequest, adt a
 		return AppResponse{}, err
 	}
 
-	return newAppResponse(a), nil
+	return newAppResponse(appAudit{App: a, SimpleAudit: audit.SimpleAudit{First: adt, Last: adt}}), nil
 }
 
-// createAppDB creates an app in the database given a domain app.App and audit.Audit
-func createAppDB(ctx context.Context, ds Datastorer, tx pgx.Tx, a app.App, adt audit.Audit) error {
+// UpdateAppRequest is the request struct for Updating an App
+type UpdateAppRequest struct {
+	ExternalID  string
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+// Update is used to update an App. API Keys for an App cannot be updated.
+func (s AppService) Update(ctx context.Context, r *UpdateAppRequest, adt audit.Audit) (AppResponse, error) {
+
 	var err error
 
-	if len(a.APIKeys) == 0 {
-		return errs.E(errs.Internal, ds.RollbackTx(ctx, tx, errs.E("app must have at least one API key.")))
-	}
-
-	// create app database record using appstore
-	_, err = appstore.New(tx).CreateApp(ctx, newCreateAppParams(a, adt))
+	// retrieve existing Org
+	var aa appAudit
+	aa, err = findAppByExternalIDWithAudit(ctx, s.Datastorer.Pool(), r.ExternalID)
 	if err != nil {
-		return errs.E(errs.Database, ds.RollbackTx(ctx, tx, err))
-	}
-
-	for _, aak := range a.APIKeys {
-		// create app API key database record using appstore
-		_, err = appstore.New(tx).CreateAppAPIKey(ctx, newCreateAppAPIKeyParams(a, aak, adt))
-		if err != nil {
-			return errs.E(errs.Database, ds.RollbackTx(ctx, tx, err))
+		if err == pgx.ErrNoRows {
+			return AppResponse{}, errs.E(errs.Validation, "No app exists for the given external ID")
 		}
+		return AppResponse{}, errs.E(errs.Database, err)
 	}
+	// overwrite Last audit with the current audit
+	aa.SimpleAudit.Last = adt
 
-	return nil
-}
+	// override fields with data from request
+	aa.App.Name = r.Name
+	aa.App.Description = r.Description
 
-// newCreateAppParams maps an App to appstore.CreateAppParams
-func newCreateAppParams(a app.App, adt audit.Audit) appstore.CreateAppParams {
-	return appstore.CreateAppParams{
-		AppID:           a.ID,
-		OrgID:           a.Org.ID,
-		AppExtlID:       a.ExternalID.String(),
-		AppName:         a.Name,
-		AppDescription:  a.Description,
-		Active:          sql.NullBool{Bool: true, Valid: true},
-		CreateAppID:     adt.App.ID,
-		CreateUserID:    datastore.NewNullUUID(adt.User.ID),
-		CreateTimestamp: adt.Moment,
+	updateAppParams := appstore.UpdateAppParams{
+		AppName:         aa.App.Name,
+		AppDescription:  aa.App.Description,
 		UpdateAppID:     adt.App.ID,
 		UpdateUserID:    datastore.NewNullUUID(adt.User.ID),
 		UpdateTimestamp: adt.Moment,
+		AppID:           aa.App.ID,
 	}
-}
 
-// newCreateAppAPIKeyParams maps an AppAPIKey to appstore.CreateAppAPIKeyParams
-func newCreateAppAPIKeyParams(a app.App, k app.APIKey, adt audit.Audit) appstore.CreateAppAPIKeyParams {
-	return appstore.CreateAppAPIKeyParams{
-		ApiKey:          k.Ciphertext(),
-		AppID:           a.ID,
-		DeactvDate:      k.DeactivationDate(),
-		CreateAppID:     adt.App.ID,
-		CreateUserID:    datastore.NewNullUUID(adt.User.ID),
-		CreateTimestamp: adt.Moment,
-		UpdateAppID:     adt.App.ID,
-		UpdateUserID:    datastore.NewNullUUID(adt.User.ID),
-		UpdateTimestamp: adt.Moment,
+	// start db txn using pgxpool
+	var tx pgx.Tx
+	tx, err = s.Datastorer.BeginTx(ctx)
+	if err != nil {
+		return AppResponse{}, err
 	}
+
+	var rowsAffected int64
+	rowsAffected, err = appstore.New(tx).UpdateApp(ctx, updateAppParams)
+	if err != nil {
+		return AppResponse{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Database, err))
+	}
+
+	if rowsAffected != 1 {
+		return AppResponse{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected)))
+	}
+
+	// commit db txn using pgxpool
+	err = s.Datastorer.CommitTx(ctx, tx)
+	if err != nil {
+		return AppResponse{}, err
+	}
+
+	return newAppResponse(aa), nil
 }
 
-// FindAppService is a service for retrieving an App from the datastore
-type FindAppService struct {
-	Datastorer    Datastorer
-	EncryptionKey *[32]byte
-}
-
-// FindAppByAPIKey finds an app given its External ID and determines
-// if the given API key is a valid key for it. It is used as part of
-// app authentication
-func (fas FindAppService) FindAppByAPIKey(ctx context.Context, realm, appExtlID, apiKey string) (app.App, error) {
-
+// findAppByExternalIDWithAudit retrieves App data from the datastore given a unique external ID.
+// This data is then hydrated into the app.App struct along with the simple audit struct
+func findAppByExternalIDWithAudit(ctx context.Context, dbtx DBTX, extlID string) (appAudit, error) {
 	var (
-		kr  []appstore.FindAppAPIKeysByAppExtlIDRow
+		row appstore.FindAppByExternalIDWithAuditRow
 		err error
 	)
 
-	kr, err = appstore.New(fas.Datastorer.Pool()).FindAppAPIKeysByAppExtlID(ctx, appExtlID)
+	row, err = appstore.New(dbtx).FindAppByExternalIDWithAudit(ctx, extlID)
 	if err != nil {
-		return app.App{}, errs.E(errs.Unauthenticated, errs.Realm(realm), err)
-	}
-
-	var (
-		a    app.App
-		keys []app.APIKey
-	)
-	for i, row := range kr {
-		if i == 0 { // only need to fill the app struct on first iteration
-			var extl secure.Identifier
-			extl, err = secure.ParseIdentifier(row.OrgExtlID)
-			if err != nil {
-				return app.App{}, err
-			}
-			a.ID = row.AppID
-			a.ExternalID = extl
-			a.Org = org.Org{
-				ID:          row.OrgID,
-				ExternalID:  extl,
-				Name:        row.OrgName,
-				Description: row.OrgDescription,
-			}
-			a.Name = row.AppName
-			a.Description = row.AppDescription
-		}
-		var key app.APIKey
-		key, err = app.NewAPIKeyFromCipher(row.ApiKey, fas.EncryptionKey)
-		if err != nil {
-			return app.App{}, err
-		}
-		key.SetDeactivationDate(row.DeactvDate)
-		keys = append(keys, key)
-	}
-	a.APIKeys = keys
-
-	err = a.ValidKey(realm, apiKey)
-	if err != nil {
-		return app.App{}, err
-	}
-
-	return a, nil
-}
-
-// findAppByID finds an app from the datastore given its ID
-func findAppByID(ctx context.Context, dbtx DBTX, id uuid.UUID, withAudit bool) (app.App, *audit.SimpleAudit, error) {
-	dba, err := appstore.New(dbtx).FindAppByID(ctx, id)
-	if err != nil {
-		return app.App{}, nil, errs.E(errs.Database, err)
-	}
-
-	a, sa, err := newApp(ctx, dbtx, dba, withAudit)
-	if err != nil {
-		return app.App{}, nil, err
-	}
-
-	return a, sa, nil
-}
-
-// newApp hydrates an appstore.App into an app.App and an audit.SimpleAudit (if withAudit is true)
-func newApp(ctx context.Context, dbtx DBTX, dba appstore.App, withAudit bool) (app.App, *audit.SimpleAudit, error) {
-	var (
-		extl                   secure.Identifier
-		err                    error
-		createApp, updateApp   app.App
-		createUser, updateUser user.User
-		o                      org.Org
-	)
-
-	o, err = findOrgByID(ctx, dbtx, dba.OrgID)
-	if err != nil {
-		return app.App{}, nil, err
-	}
-
-	extl, err = secure.ParseIdentifier(dba.AppExtlID)
-	if err != nil {
-		return app.App{}, nil, err
+		return appAudit{}, errs.E(errs.Database, err)
 	}
 
 	a := app.App{
-		ID:          dba.AppID,
-		ExternalID:  extl,
-		Org:         o,
-		Name:        dba.AppName,
-		Description: dba.AppDescription,
+		ID:         row.AppID,
+		ExternalID: secure.MustParseIdentifier(row.AppExtlID),
+		Org: org.Org{
+			ID:          row.OrgID,
+			ExternalID:  secure.MustParseIdentifier(row.OrgExtlID),
+			Name:        row.OrgName,
+			Description: row.OrgDescription,
+			Kind: org.Kind{
+				ID:          row.OrgKindID,
+				ExternalID:  row.OrgKindExtlID,
+				Description: row.OrgKindDesc,
+			},
+		},
+		Name:        row.AppName,
+		Description: row.AppDescription,
 		APIKeys:     nil,
 	}
 
-	sa := new(audit.SimpleAudit)
-	if withAudit {
-		createApp, _, err = findAppByID(ctx, dbtx, dba.CreateAppID, false)
-		if err != nil {
-			return app.App{}, nil, err
-		}
-		createUser, err = findUserByID(ctx, dbtx, dba.CreateUserID.UUID)
-		if err != nil {
-			return app.App{}, nil, err
-		}
-		createAudit := audit.Audit{
-			App:    createApp,
-			User:   createUser,
-			Moment: dba.CreateTimestamp,
-		}
-
-		updateApp, _, err = findAppByID(ctx, dbtx, dba.UpdateAppID, false)
-		if err != nil {
-			return app.App{}, nil, err
-		}
-		updateUser, err = findUserByID(ctx, dbtx, dba.UpdateUserID.UUID)
-		if err != nil {
-			return app.App{}, nil, err
-		}
-		updateAudit := audit.Audit{
-			App:    updateApp,
-			User:   updateUser,
-			Moment: dba.UpdateTimestamp,
-		}
-
-		sa = &audit.SimpleAudit{First: createAudit, Last: updateAudit}
+	sa := audit.SimpleAudit{
+		First: audit.Audit{
+			App: app.App{
+				ID:          row.CreateAppID,
+				ExternalID:  secure.MustParseIdentifier(row.CreateAppExtlID),
+				Org:         org.Org{ID: row.CreateAppOrgID},
+				Name:        row.CreateAppName,
+				Description: row.CreateAppDescription,
+				APIKeys:     nil,
+			},
+			User: user.User{
+				ID:       row.CreateUserID.UUID,
+				Username: row.CreateUsername,
+				Org:      org.Org{ID: row.CreateUserOrgID},
+				Profile: person.Profile{
+					FirstName: row.CreateUserFirstName,
+					LastName:  row.CreateUserLastName,
+				},
+			},
+			Moment: row.CreateTimestamp,
+		},
+		Last: audit.Audit{
+			App: app.App{
+				ID:          row.UpdateAppID,
+				ExternalID:  secure.MustParseIdentifier(row.UpdateAppExtlID),
+				Org:         org.Org{ID: row.UpdateAppOrgID},
+				Name:        row.UpdateAppName,
+				Description: row.UpdateAppDescription,
+				APIKeys:     nil,
+			},
+			User: user.User{
+				ID:       row.UpdateUserID.UUID,
+				Username: row.UpdateUsername,
+				Org:      org.Org{ID: row.UpdateUserOrgID},
+				Profile: person.Profile{
+					FirstName: row.UpdateUserFirstName,
+					LastName:  row.UpdateUserLastName,
+				},
+			},
+			Moment: row.UpdateTimestamp,
+		},
 	}
 
-	return a, sa, nil
+	return appAudit{App: a, SimpleAudit: sa}, nil
 }
