@@ -8,6 +8,10 @@ import (
 	"os"
 	"testing"
 
+	"github.com/gilcrest/go-api-basic/domain/audit"
+	"github.com/gilcrest/go-api-basic/domain/user"
+	"github.com/gilcrest/go-api-basic/service"
+
 	qt "github.com/frankban/quicktest"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
@@ -21,9 +25,9 @@ import (
 	"github.com/gilcrest/go-api-basic/domain/org"
 )
 
-type mockFindAppService struct{}
+type mockMiddlewareService struct{}
 
-func (m mockFindAppService) FindAppByAPIKey(ctx context.Context, realm string, appExtlID string, apiKey string) (app.App, error) {
+func (mockMiddlewareService) FindAppByAPIKey(ctx context.Context, realm, appExtlID, apiKey string) (app.App, error) {
 	return app.App{
 		ID:          uuid.UUID{},
 		ExternalID:  []byte("so random"),
@@ -32,6 +36,16 @@ func (m mockFindAppService) FindAppByAPIKey(ctx context.Context, realm string, a
 		Description: "",
 		APIKeys:     nil,
 	}, nil
+}
+
+func (mockMiddlewareService) FindUserByOauth2Token(ctx context.Context, params service.FindUserParams) (user.User, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (mockMiddlewareService) Authorize(lgr zerolog.Logger, r *http.Request, sub audit.Audit) error {
+	//TODO implement me
+	panic("implement me")
 }
 
 func TestJSONContentTypeResponseHandler(t *testing.T) {
@@ -89,7 +103,7 @@ func TestServer_appHandler(t *testing.T) {
 		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
 		s := New(NewMuxRouter(), NewDriver(), lgr)
-		s.FindAppService = mockFindAppService{}
+		s.MiddlewareService = mockMiddlewareService{}
 
 		handlers := s.appHandler(testAppHandler)
 		handlers.ServeHTTP(rr, req)

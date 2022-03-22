@@ -61,7 +61,7 @@ func (s *Server) appHandler(h http.Handler) http.Handler {
 			return
 		}
 
-		a, err := s.FindAppService.FindAppByAPIKey(ctx, defaultRealm, appExtlID, apiKey)
+		a, err := s.MiddlewareService.FindAppByAPIKey(ctx, defaultRealm, appExtlID, apiKey)
 		if err != nil {
 			errs.HTTPErrorResponse(w, lgr, err)
 			return
@@ -87,7 +87,7 @@ func (s *Server) userHandler(h http.Handler) http.Handler {
 		// retrieve the context from the http.Request
 		ctx := r.Context()
 
-		u, err := newUser(ctx, s.FindUserService, r, true)
+		u, err := newUser(ctx, s.MiddlewareService, r, true)
 		if err != nil {
 			errs.HTTPErrorResponse(w, lgr, err)
 			return
@@ -112,7 +112,7 @@ func (s *Server) newUserHandler(h http.Handler) http.Handler {
 		// retrieve the context from the http.Request
 		ctx := r.Context()
 
-		u, err := newUser(ctx, s.FindUserService, r, false)
+		u, err := newUser(ctx, s.MiddlewareService, r, false)
 		if err != nil {
 			errs.HTTPErrorResponse(w, lgr, err)
 			return
@@ -126,7 +126,7 @@ func (s *Server) newUserHandler(h http.Handler) http.Handler {
 	})
 }
 
-func newUser(ctx context.Context, s FindUserService, r *http.Request, retrieveFromDB bool) (user.User, error) {
+func newUser(ctx context.Context, s MiddlewareService, r *http.Request, retrieveFromDB bool) (user.User, error) {
 
 	var (
 		a     app.App
@@ -179,7 +179,7 @@ func (s *Server) authorizeUserHandler(h http.Handler) http.Handler {
 		}
 
 		// authorize user can access the path/method
-		err = s.AuthorizeService.Authorize(lgr, r, adt)
+		err = s.MiddlewareService.Authorize(lgr, r, adt)
 		if err != nil {
 			errs.HTTPErrorResponse(w, lgr, err)
 			return
