@@ -217,22 +217,28 @@ func Run(args []string) error {
 	}
 
 	s.Services = server.Services{
-		CreateMovieService:  service.CreateMovieService{Datastorer: ds},
-		UpdateMovieService:  service.UpdateMovieService{Datastorer: ds},
-		DeleteMovieService:  service.DeleteMovieService{Datastorer: ds},
-		FindMovieService:    service.FindMovieService{Datastorer: ds},
-		OrgService:          service.OrgService{Datastorer: ds},
-		CreateAppService:    service.CreateAppService{Datastorer: ds, RandomStringGenerator: random.CryptoGenerator{}, EncryptionKey: ek},
-		FindAppService:      service.FindAppService{Datastorer: ds},
+		CreateMovieService: service.CreateMovieService{Datastorer: ds},
+		UpdateMovieService: service.UpdateMovieService{Datastorer: ds},
+		DeleteMovieService: service.DeleteMovieService{Datastorer: ds},
+		FindMovieService:   service.FindMovieService{Datastorer: ds},
+		OrgService:         service.OrgService{Datastorer: ds},
+		AppService: service.AppService{
+			Datastorer:            ds,
+			RandomStringGenerator: random.CryptoGenerator{},
+			EncryptionKey:         ek},
 		RegisterUserService: service.RegisterUserService{Datastorer: ds},
-		FindUserService:     service.FindUserService{GoogleOauth2TokenConverter: authgateway.GoogleOauth2TokenConverter{}, Datastorer: ds},
-		AuthorizeService:    service.AuthorizeService{Authorizer: auth.CasbinAuthorizer{Enforcer: casbinEnforcer}},
 		PingService:         service.PingService{Datastorer: ds},
 		LoggerService:       service.LoggerService{Logger: lgr},
 		GenesisService: service.GenesisService{
 			Datastorer:            ds,
 			RandomStringGenerator: random.CryptoGenerator{},
 			EncryptionKey:         ek,
+		},
+		MiddlewareService: service.MiddlewareService{
+			Datastorer:                 ds,
+			GoogleOauth2TokenConverter: authgateway.GoogleOauth2TokenConverter{},
+			Authorizer:                 auth.CasbinAuthorizer{Enforcer: casbinEnforcer},
+			EncryptionKey:              ek,
 		},
 	}
 
