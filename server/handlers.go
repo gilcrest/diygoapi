@@ -174,47 +174,6 @@ func (s *Server) handleFindAllMovies(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleOrgFindAll is a HandlerFunc used to find a list of Orgs
-func (s *Server) handleOrgFindAll(w http.ResponseWriter, r *http.Request) {
-	logger := *hlog.FromRequest(r)
-
-	response, err := s.OrgService.FindAll(r.Context())
-	if err != nil {
-		errs.HTTPErrorResponse(w, logger, err)
-		return
-	}
-
-	// Encode response struct to JSON for the response body
-	err = json.NewEncoder(w).Encode(response)
-	if err != nil {
-		errs.HTTPErrorResponse(w, logger, errs.E(errs.Internal, err))
-		return
-	}
-}
-
-// handleOrgFindByExtlID is a HandlerFunc used to find a specific Org by External ID
-func (s *Server) handleOrgFindByExtlID(w http.ResponseWriter, r *http.Request) {
-	logger := *hlog.FromRequest(r)
-
-	// gorilla mux Vars function returns the route variables for the
-	// current request, if any. ID is the external id given for the resource
-	vars := mux.Vars(r)
-	extlID := vars["extlID"]
-
-	response, err := s.OrgService.FindByExternalID(r.Context(), extlID)
-	if err != nil {
-		errs.HTTPErrorResponse(w, logger, err)
-		return
-	}
-
-	// Encode response struct to JSON for the response body
-	err = json.NewEncoder(w).Encode(response)
-	if err != nil {
-		errs.HTTPErrorResponse(w, logger, errs.E(errs.Internal, err))
-		return
-	}
-}
-
 // handleOrgCreate is a HandlerFunc used to create an Org
 func (s *Server) handleOrgCreate(w http.ResponseWriter, r *http.Request) {
 	logger := *hlog.FromRequest(r)
@@ -300,6 +259,71 @@ func (s *Server) handleOrgUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handleOrgDelete is a HandlerFunc used to delete an Org
+func (s *Server) handleOrgDelete(w http.ResponseWriter, r *http.Request) {
+	logger := *hlog.FromRequest(r)
+
+	// gorilla mux Vars function returns the route variables for the
+	// current request, if any.
+	vars := mux.Vars(r)
+	// extlID is the external id given for the resource
+	extlID := vars["extlID"]
+
+	response, err := s.OrgService.Delete(r.Context(), extlID)
+	if err != nil {
+		errs.HTTPErrorResponse(w, logger, err)
+		return
+	}
+
+	// Encode response struct to JSON for the response body
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		errs.HTTPErrorResponse(w, logger, errs.E(errs.Internal, err))
+		return
+	}
+}
+
+// handleOrgFindAll is a HandlerFunc used to find a list of Orgs
+func (s *Server) handleOrgFindAll(w http.ResponseWriter, r *http.Request) {
+	logger := *hlog.FromRequest(r)
+
+	response, err := s.OrgService.FindAll(r.Context())
+	if err != nil {
+		errs.HTTPErrorResponse(w, logger, err)
+		return
+	}
+
+	// Encode response struct to JSON for the response body
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		errs.HTTPErrorResponse(w, logger, errs.E(errs.Internal, err))
+		return
+	}
+}
+
+// handleOrgFindByExtlID is a HandlerFunc used to find a specific Org by External ID
+func (s *Server) handleOrgFindByExtlID(w http.ResponseWriter, r *http.Request) {
+	logger := *hlog.FromRequest(r)
+
+	// gorilla mux Vars function returns the route variables for the
+	// current request, if any. ID is the external id given for the resource
+	vars := mux.Vars(r)
+	extlID := vars["extlID"]
+
+	response, err := s.OrgService.FindByExternalID(r.Context(), extlID)
+	if err != nil {
+		errs.HTTPErrorResponse(w, logger, err)
+		return
+	}
+
+	// Encode response struct to JSON for the response body
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		errs.HTTPErrorResponse(w, logger, errs.E(errs.Internal, err))
+		return
+	}
+}
+
 // handleAppCreate is a HandlerFunc used to create an App
 func (s *Server) handleAppCreate(w http.ResponseWriter, r *http.Request) {
 	logger := *hlog.FromRequest(r)
@@ -326,7 +350,7 @@ func (s *Server) handleAppCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response, err := s.CreateAppService.Create(r.Context(), rb, adt)
+	response, err := s.AppService.Create(r.Context(), rb, adt)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, err)
 		return
