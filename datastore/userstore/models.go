@@ -35,15 +35,25 @@ type Org struct {
 }
 
 type OrgUser struct {
-	UserID          uuid.UUID
-	Username        string
-	OrgID           uuid.UUID
+	// The user ID is the unique ID for user (pk for table)
+	UserID uuid.UUID
+	// The username is a unique, human readable username.
+	Username string
+	// The organization ID for the organization that the user belongs to.
+	OrgID uuid.UUID
+	// The person profile ID - ID for the profile of the person to which this user belongs.
 	PersonProfileID uuid.UUID
-	CreateAppID     uuid.UUID
-	CreateUserID    uuid.NullUUID
+	// The application which created this record.
+	CreateAppID uuid.UUID
+	// The user which created this record.
+	CreateUserID uuid.NullUUID
+	// The timestamp when this record was created.
 	CreateTimestamp time.Time
-	UpdateAppID     uuid.UUID
-	UpdateUserID    uuid.NullUUID
+	// The application which performed the most recent update to this record.
+	UpdateAppID uuid.UUID
+	// The user which performed the most recent update to this record.
+	UpdateUserID uuid.NullUUID
+	// The timestamp when the record was updated most recently.
 	UpdateTimestamp time.Time
 }
 

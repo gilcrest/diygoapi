@@ -9,10 +9,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgconn"
 )
 
-const createUser = `-- name: CreateUser :execresult
+const createUser = `-- name: CreateUser :execrows
 INSERT INTO org_user (user_id, username, org_id, person_profile_id, create_app_id, create_user_id,
                       create_timestamp, update_app_id, update_user_id, update_timestamp)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -31,8 +30,8 @@ type CreateUserParams struct {
 	UpdateTimestamp time.Time
 }
 
-func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (pgconn.CommandTag, error) {
-	return q.db.Exec(ctx, createUser,
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (int64, error) {
+	result, err := q.db.Exec(ctx, createUser,
 		arg.UserID,
 		arg.Username,
 		arg.OrgID,
@@ -44,17 +43,24 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (pgconn.
 		arg.UpdateUserID,
 		arg.UpdateTimestamp,
 	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
-const deleteUser = `-- name: DeleteUser :exec
+const deleteUser = `-- name: DeleteUser :execrows
 DELETE
 FROM org_user
 WHERE user_id = $1
 `
 
-func (q *Queries) DeleteUser(ctx context.Context, userID uuid.UUID) error {
-	_, err := q.db.Exec(ctx, deleteUser, userID)
-	return err
+func (q *Queries) DeleteUser(ctx context.Context, userID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteUser, userID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const findUserByID = `-- name: FindUserByID :one
