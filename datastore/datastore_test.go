@@ -105,7 +105,8 @@ func TestDatastore_BeginTx(t *testing.T) {
 
 		ds := NewDatastore(dbpool)
 
-		tx, err := ds.BeginTx(ctx)
+		var tx pgx.Tx
+		tx, err = ds.BeginTx(ctx)
 		c.Assert(err, qt.IsNil)
 
 		// the cleanup function pgxpool.Pool.Close() blocks until all connections have been returned to the pool
@@ -135,11 +136,13 @@ func TestDatastore_BeginTx(t *testing.T) {
 	t.Run("nil pool", func(t *testing.T) {
 		c := qt.New(t)
 
+		var err error
+
 		ds := NewDatastore(nil)
 		ds.dbpool = nil
 
 		ctx := context.Background()
-		_, err := ds.BeginTx(ctx)
+		_, err = ds.BeginTx(ctx)
 		c.Assert(err, qt.CmpEquals(cmp.Comparer(errs.Match)), errs.E(errs.Database, "db pool cannot be nil"))
 	})
 
