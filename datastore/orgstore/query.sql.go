@@ -8,10 +8,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgconn"
 )
 
-const createOrg = `-- name: CreateOrg :execresult
+const createOrg = `-- name: CreateOrg :execrows
 INSERT INTO org (org_id, org_extl_id, org_name, org_description, org_kind_id, create_app_id, create_user_id,
                  create_timestamp, update_app_id, update_user_id, update_timestamp)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
@@ -31,8 +30,8 @@ type CreateOrgParams struct {
 	UpdateTimestamp time.Time
 }
 
-func (q *Queries) CreateOrg(ctx context.Context, arg CreateOrgParams) (pgconn.CommandTag, error) {
-	return q.db.Exec(ctx, createOrg,
+func (q *Queries) CreateOrg(ctx context.Context, arg CreateOrgParams) (int64, error) {
+	result, err := q.db.Exec(ctx, createOrg,
 		arg.OrgID,
 		arg.OrgExtlID,
 		arg.OrgName,
@@ -45,9 +44,13 @@ func (q *Queries) CreateOrg(ctx context.Context, arg CreateOrgParams) (pgconn.Co
 		arg.UpdateUserID,
 		arg.UpdateTimestamp,
 	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
-const createOrgKind = `-- name: CreateOrgKind :execresult
+const createOrgKind = `-- name: CreateOrgKind :execrows
 insert into org_kind (org_kind_id, org_kind_extl_id, org_kind_desc, create_app_id, create_user_id, create_timestamp,
                       update_app_id, update_user_id, update_timestamp)
 values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -65,8 +68,8 @@ type CreateOrgKindParams struct {
 	UpdateTimestamp time.Time
 }
 
-func (q *Queries) CreateOrgKind(ctx context.Context, arg CreateOrgKindParams) (pgconn.CommandTag, error) {
-	return q.db.Exec(ctx, createOrgKind,
+func (q *Queries) CreateOrgKind(ctx context.Context, arg CreateOrgKindParams) (int64, error) {
+	result, err := q.db.Exec(ctx, createOrgKind,
 		arg.OrgKindID,
 		arg.OrgKindExtlID,
 		arg.OrgKindDesc,
@@ -77,16 +80,23 @@ func (q *Queries) CreateOrgKind(ctx context.Context, arg CreateOrgKindParams) (p
 		arg.UpdateUserID,
 		arg.UpdateTimestamp,
 	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
-const deleteOrg = `-- name: DeleteOrg :exec
+const deleteOrg = `-- name: DeleteOrg :execrows
 DELETE FROM org
 WHERE org_id = $1
 `
 
-func (q *Queries) DeleteOrg(ctx context.Context, orgID uuid.UUID) error {
-	_, err := q.db.Exec(ctx, deleteOrg, orgID)
-	return err
+func (q *Queries) DeleteOrg(ctx context.Context, orgID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteOrg, orgID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const findOrgByExtlID = `-- name: FindOrgByExtlID :one
@@ -556,8 +566,13 @@ func (q *Queries) FindOrgKindByExtlID(ctx context.Context, orgKindExtlID string)
 }
 
 const findOrgKinds = `-- name: FindOrgKinds :many
+
 SELECT org_kind_id, org_kind_extl_id, org_kind_desc, create_app_id, create_user_id, create_timestamp, update_app_id, update_user_id, update_timestamp FROM org_kind
 `
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Org Kind
+// ---------------------------------------------------------------------------------------------------------------------
 
 func (q *Queries) FindOrgKinds(ctx context.Context) ([]OrgKind, error) {
 	rows, err := q.db.Query(ctx, findOrgKinds)
@@ -810,7 +825,7 @@ func (q *Queries) FindOrgsWithAudit(ctx context.Context) ([]FindOrgsWithAuditRow
 	return items, nil
 }
 
-const updateOrg = `-- name: UpdateOrg :exec
+const updateOrg = `-- name: UpdateOrg :execrows
 UPDATE org
 SET org_name         = $1,
     org_description  = $2,
@@ -829,8 +844,8 @@ type UpdateOrgParams struct {
 	OrgID           uuid.UUID
 }
 
-func (q *Queries) UpdateOrg(ctx context.Context, arg UpdateOrgParams) error {
-	_, err := q.db.Exec(ctx, updateOrg,
+func (q *Queries) UpdateOrg(ctx context.Context, arg UpdateOrgParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateOrg,
 		arg.OrgName,
 		arg.OrgDescription,
 		arg.UpdateAppID,
@@ -838,5 +853,8 @@ func (q *Queries) UpdateOrg(ctx context.Context, arg UpdateOrgParams) error {
 		arg.UpdateTimestamp,
 		arg.OrgID,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
