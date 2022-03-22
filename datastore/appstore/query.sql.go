@@ -8,10 +8,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgconn"
 )
 
-const createApp = `-- name: CreateApp :execresult
+const createApp = `-- name: CreateApp :execrows
 INSERT INTO app (app_id, org_id, app_extl_id, app_name, app_description, create_app_id, create_user_id,
                  create_timestamp, update_app_id, update_user_id, update_timestamp)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
@@ -31,8 +30,8 @@ type CreateAppParams struct {
 	UpdateTimestamp time.Time
 }
 
-func (q *Queries) CreateApp(ctx context.Context, arg CreateAppParams) (pgconn.CommandTag, error) {
-	return q.db.Exec(ctx, createApp,
+func (q *Queries) CreateApp(ctx context.Context, arg CreateAppParams) (int64, error) {
+	result, err := q.db.Exec(ctx, createApp,
 		arg.AppID,
 		arg.OrgID,
 		arg.AppExtlID,
@@ -45,9 +44,13 @@ func (q *Queries) CreateApp(ctx context.Context, arg CreateAppParams) (pgconn.Co
 		arg.UpdateUserID,
 		arg.UpdateTimestamp,
 	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
-const createAppAPIKey = `-- name: CreateAppAPIKey :execresult
+const createAppAPIKey = `-- name: CreateAppAPIKey :execrows
 INSERT INTO app_api_key (api_key, app_id, deactv_date, create_app_id, create_user_id,
                          create_timestamp, update_app_id, update_user_id, update_timestamp)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -65,8 +68,8 @@ type CreateAppAPIKeyParams struct {
 	UpdateTimestamp time.Time
 }
 
-func (q *Queries) CreateAppAPIKey(ctx context.Context, arg CreateAppAPIKeyParams) (pgconn.CommandTag, error) {
-	return q.db.Exec(ctx, createAppAPIKey,
+func (q *Queries) CreateAppAPIKey(ctx context.Context, arg CreateAppAPIKeyParams) (int64, error) {
+	result, err := q.db.Exec(ctx, createAppAPIKey,
 		arg.ApiKey,
 		arg.AppID,
 		arg.DeactvDate,
@@ -77,22 +80,34 @@ func (q *Queries) CreateAppAPIKey(ctx context.Context, arg CreateAppAPIKeyParams
 		arg.UpdateUserID,
 		arg.UpdateTimestamp,
 	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
-const deleteApp = `-- name: DeleteApp :exec
+const deleteApp = `-- name: DeleteApp :execrows
 DELETE FROM app
 WHERE app_id = $1
 `
 
-func (q *Queries) DeleteApp(ctx context.Context, appID uuid.UUID) error {
-	_, err := q.db.Exec(ctx, deleteApp, appID)
-	return err
+func (q *Queries) DeleteApp(ctx context.Context, appID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteApp, appID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const findAPIKeysByAppID = `-- name: FindAPIKeysByAppID :many
+
 SELECT api_key, app_id, deactv_date, create_app_id, create_user_id, create_timestamp, update_app_id, update_user_id, update_timestamp FROM app_api_key
 WHERE app_id = $1
 `
+
+// ---------------------------------------------------------------------------------------------------------------------
+// App API Keys
+// ---------------------------------------------------------------------------------------------------------------------
 
 func (q *Queries) FindAPIKeysByAppID(ctx context.Context, appID uuid.UUID) ([]AppApiKey, error) {
 	rows, err := q.db.Query(ctx, findAPIKeysByAppID, appID)
@@ -186,56 +201,368 @@ func (q *Queries) FindAppAPIKeysByAppExtlID(ctx context.Context, appExtlID strin
 }
 
 const findAppByExternalID = `-- name: FindAppByExternalID :one
-SELECT app_id, org_id, app_extl_id, app_name, app_description, create_app_id, create_user_id, create_timestamp, update_app_id, update_user_id, update_timestamp FROM app
-WHERE app_extl_id = $1 LIMIT 1
+SELECT a.app_id,
+       a.org_id,
+       o.org_extl_id,
+       o.org_name,
+       o.org_description,
+       ok.org_kind_id,
+       ok.org_kind_extl_id,
+       ok.org_kind_desc,
+       a.app_extl_id,
+       a.app_name,
+       a.app_description
+FROM app a
+         INNER JOIN org o on o.org_id = a.org_id
+         INNER JOIN org_kind ok on ok.org_kind_id = o.org_kind_id
+WHERE a.app_extl_id = $1
 `
 
-func (q *Queries) FindAppByExternalID(ctx context.Context, appExtlID string) (App, error) {
+type FindAppByExternalIDRow struct {
+	AppID          uuid.UUID
+	OrgID          uuid.UUID
+	OrgExtlID      string
+	OrgName        string
+	OrgDescription string
+	OrgKindID      uuid.UUID
+	OrgKindExtlID  string
+	OrgKindDesc    string
+	AppExtlID      string
+	AppName        string
+	AppDescription string
+}
+
+func (q *Queries) FindAppByExternalID(ctx context.Context, appExtlID string) (FindAppByExternalIDRow, error) {
 	row := q.db.QueryRow(ctx, findAppByExternalID, appExtlID)
-	var i App
+	var i FindAppByExternalIDRow
 	err := row.Scan(
 		&i.AppID,
 		&i.OrgID,
+		&i.OrgExtlID,
+		&i.OrgName,
+		&i.OrgDescription,
+		&i.OrgKindID,
+		&i.OrgKindExtlID,
+		&i.OrgKindDesc,
+		&i.AppExtlID,
+		&i.AppName,
+		&i.AppDescription,
+	)
+	return i, err
+}
+
+const findAppByExternalIDWithAudit = `-- name: FindAppByExternalIDWithAudit :one
+SELECT a.org_id,
+       o.org_extl_id,
+       o.org_name,
+       o.org_description,
+       ok.org_kind_id,
+       ok.org_kind_extl_id,
+       ok.org_kind_desc,
+       a.app_id,
+       a.app_extl_id,
+       a.app_name,
+       a.app_description,
+       a.create_app_id,
+       ca.org_id          create_app_org_id,
+       ca.app_extl_id     create_app_extl_id,
+       ca.app_name        create_app_name,
+       ca.app_description create_app_description,
+       a.create_user_id,
+       cu.username        create_username,
+       cu.org_id          create_user_org_id,
+       cup.first_name     create_user_first_name,
+       cup.last_name      create_user_last_name,
+       a.create_timestamp,
+       a.update_app_id,
+       ua.org_id          update_app_org_id,
+       ua.app_extl_id     update_app_extl_id,
+       ua.app_name        update_app_name,
+       ua.app_description update_app_description,
+       a.update_user_id,
+       uu.username        update_username,
+       uu.org_id          update_user_org_id,
+       uup.first_name     update_user_first_name,
+       uup.last_name      update_user_last_name,
+       a.update_timestamp
+FROM app a
+         INNER JOIN org o on o.org_id = a.org_id
+         INNER JOIN org_kind ok on ok.org_kind_id = o.org_kind_id
+         INNER JOIN app ca on ca.app_id = a.create_app_id
+         INNER JOIN app ua on ua.app_id = a.update_app_id
+         LEFT JOIN org_user cu on cu.user_id = a.create_user_id
+         INNER JOIN person_profile cup on cup.person_profile_id = cu.person_profile_id
+         LEFT JOIN org_user uu on uu.user_id = a.update_user_id
+         INNER JOIN person_profile uup on uup.person_profile_id = uu.person_profile_id
+WHERE a.app_extl_id = $1
+`
+
+type FindAppByExternalIDWithAuditRow struct {
+	OrgID                uuid.UUID
+	OrgExtlID            string
+	OrgName              string
+	OrgDescription       string
+	OrgKindID            uuid.UUID
+	OrgKindExtlID        string
+	OrgKindDesc          string
+	AppID                uuid.UUID
+	AppExtlID            string
+	AppName              string
+	AppDescription       string
+	CreateAppID          uuid.UUID
+	CreateAppOrgID       uuid.UUID
+	CreateAppExtlID      string
+	CreateAppName        string
+	CreateAppDescription string
+	CreateUserID         uuid.NullUUID
+	CreateUsername       string
+	CreateUserOrgID      uuid.UUID
+	CreateUserFirstName  string
+	CreateUserLastName   string
+	CreateTimestamp      time.Time
+	UpdateAppID          uuid.UUID
+	UpdateAppOrgID       uuid.UUID
+	UpdateAppExtlID      string
+	UpdateAppName        string
+	UpdateAppDescription string
+	UpdateUserID         uuid.NullUUID
+	UpdateUsername       string
+	UpdateUserOrgID      uuid.UUID
+	UpdateUserFirstName  string
+	UpdateUserLastName   string
+	UpdateTimestamp      time.Time
+}
+
+func (q *Queries) FindAppByExternalIDWithAudit(ctx context.Context, appExtlID string) (FindAppByExternalIDWithAuditRow, error) {
+	row := q.db.QueryRow(ctx, findAppByExternalIDWithAudit, appExtlID)
+	var i FindAppByExternalIDWithAuditRow
+	err := row.Scan(
+		&i.OrgID,
+		&i.OrgExtlID,
+		&i.OrgName,
+		&i.OrgDescription,
+		&i.OrgKindID,
+		&i.OrgKindExtlID,
+		&i.OrgKindDesc,
+		&i.AppID,
 		&i.AppExtlID,
 		&i.AppName,
 		&i.AppDescription,
 		&i.CreateAppID,
+		&i.CreateAppOrgID,
+		&i.CreateAppExtlID,
+		&i.CreateAppName,
+		&i.CreateAppDescription,
 		&i.CreateUserID,
+		&i.CreateUsername,
+		&i.CreateUserOrgID,
+		&i.CreateUserFirstName,
+		&i.CreateUserLastName,
 		&i.CreateTimestamp,
 		&i.UpdateAppID,
+		&i.UpdateAppOrgID,
+		&i.UpdateAppExtlID,
+		&i.UpdateAppName,
+		&i.UpdateAppDescription,
 		&i.UpdateUserID,
+		&i.UpdateUsername,
+		&i.UpdateUserOrgID,
+		&i.UpdateUserFirstName,
+		&i.UpdateUserLastName,
 		&i.UpdateTimestamp,
 	)
 	return i, err
 }
 
 const findAppByID = `-- name: FindAppByID :one
-SELECT app_id, org_id, app_extl_id, app_name, app_description, create_app_id, create_user_id, create_timestamp, update_app_id, update_user_id, update_timestamp FROM app
-WHERE app_id = $1 LIMIT 1
+SELECT a.org_id,
+       o.org_extl_id,
+       o.org_name,
+       o.org_description,
+       ok.org_kind_id,
+       ok.org_kind_extl_id,
+       ok.org_kind_desc,
+       a.app_id,
+       a.app_extl_id,
+       a.app_name,
+       a.app_description
+FROM app a
+         INNER JOIN org o on o.org_id = a.org_id
+         INNER JOIN org_kind ok on ok.org_kind_id = o.org_kind_id
+WHERE a.app_id = $1
 `
 
-func (q *Queries) FindAppByID(ctx context.Context, appID uuid.UUID) (App, error) {
+type FindAppByIDRow struct {
+	OrgID          uuid.UUID
+	OrgExtlID      string
+	OrgName        string
+	OrgDescription string
+	OrgKindID      uuid.UUID
+	OrgKindExtlID  string
+	OrgKindDesc    string
+	AppID          uuid.UUID
+	AppExtlID      string
+	AppName        string
+	AppDescription string
+}
+
+func (q *Queries) FindAppByID(ctx context.Context, appID uuid.UUID) (FindAppByIDRow, error) {
 	row := q.db.QueryRow(ctx, findAppByID, appID)
-	var i App
+	var i FindAppByIDRow
 	err := row.Scan(
-		&i.AppID,
 		&i.OrgID,
+		&i.OrgExtlID,
+		&i.OrgName,
+		&i.OrgDescription,
+		&i.OrgKindID,
+		&i.OrgKindExtlID,
+		&i.OrgKindDesc,
+		&i.AppID,
+		&i.AppExtlID,
+		&i.AppName,
+		&i.AppDescription,
+	)
+	return i, err
+}
+
+const findAppByIDWithAudit = `-- name: FindAppByIDWithAudit :one
+SELECT a.org_id,
+       o.org_extl_id,
+       o.org_name,
+       o.org_description,
+       ok.org_kind_id,
+       ok.org_kind_extl_id,
+       ok.org_kind_desc,
+       a.app_id,
+       a.app_extl_id,
+       a.app_name,
+       a.app_description,
+       a.create_app_id,
+       ca.org_id          create_app_org_id,
+       ca.app_extl_id     create_app_extl_id,
+       ca.app_name        create_app_name,
+       ca.app_description create_app_description,
+       a.create_user_id,
+       cu.username        create_username,
+       cu.org_id          create_user_org_id,
+       cup.first_name     create_user_first_name,
+       cup.last_name      create_user_last_name,
+       a.create_timestamp,
+       a.update_app_id,
+       ua.org_id          update_app_org_id,
+       ua.app_extl_id     update_app_extl_id,
+       ua.app_name        update_app_name,
+       ua.app_description update_app_description,
+       a.update_user_id,
+       uu.username        update_username,
+       uu.org_id          update_user_org_id,
+       uup.first_name     update_user_first_name,
+       uup.last_name      update_user_last_name,
+       a.update_timestamp
+FROM app a
+         INNER JOIN org o on o.org_id = a.org_id
+         INNER JOIN org_kind ok on ok.org_kind_id = o.org_kind_id
+         INNER JOIN app ca on ca.app_id = a.create_app_id
+         INNER JOIN app ua on ua.app_id = a.update_app_id
+         LEFT JOIN org_user cu on cu.user_id = a.create_user_id
+         INNER JOIN person_profile cup on cup.person_profile_id = cu.person_profile_id
+         LEFT JOIN org_user uu on uu.user_id = a.update_user_id
+         INNER JOIN person_profile uup on uup.person_profile_id = uu.person_profile_id
+WHERE a.app_id = $1
+`
+
+type FindAppByIDWithAuditRow struct {
+	OrgID                uuid.UUID
+	OrgExtlID            string
+	OrgName              string
+	OrgDescription       string
+	OrgKindID            uuid.UUID
+	OrgKindExtlID        string
+	OrgKindDesc          string
+	AppID                uuid.UUID
+	AppExtlID            string
+	AppName              string
+	AppDescription       string
+	CreateAppID          uuid.UUID
+	CreateAppOrgID       uuid.UUID
+	CreateAppExtlID      string
+	CreateAppName        string
+	CreateAppDescription string
+	CreateUserID         uuid.NullUUID
+	CreateUsername       string
+	CreateUserOrgID      uuid.UUID
+	CreateUserFirstName  string
+	CreateUserLastName   string
+	CreateTimestamp      time.Time
+	UpdateAppID          uuid.UUID
+	UpdateAppOrgID       uuid.UUID
+	UpdateAppExtlID      string
+	UpdateAppName        string
+	UpdateAppDescription string
+	UpdateUserID         uuid.NullUUID
+	UpdateUsername       string
+	UpdateUserOrgID      uuid.UUID
+	UpdateUserFirstName  string
+	UpdateUserLastName   string
+	UpdateTimestamp      time.Time
+}
+
+func (q *Queries) FindAppByIDWithAudit(ctx context.Context, appID uuid.UUID) (FindAppByIDWithAuditRow, error) {
+	row := q.db.QueryRow(ctx, findAppByIDWithAudit, appID)
+	var i FindAppByIDWithAuditRow
+	err := row.Scan(
+		&i.OrgID,
+		&i.OrgExtlID,
+		&i.OrgName,
+		&i.OrgDescription,
+		&i.OrgKindID,
+		&i.OrgKindExtlID,
+		&i.OrgKindDesc,
+		&i.AppID,
 		&i.AppExtlID,
 		&i.AppName,
 		&i.AppDescription,
 		&i.CreateAppID,
+		&i.CreateAppOrgID,
+		&i.CreateAppExtlID,
+		&i.CreateAppName,
+		&i.CreateAppDescription,
 		&i.CreateUserID,
+		&i.CreateUsername,
+		&i.CreateUserOrgID,
+		&i.CreateUserFirstName,
+		&i.CreateUserLastName,
 		&i.CreateTimestamp,
 		&i.UpdateAppID,
+		&i.UpdateAppOrgID,
+		&i.UpdateAppExtlID,
+		&i.UpdateAppName,
+		&i.UpdateAppDescription,
 		&i.UpdateUserID,
+		&i.UpdateUsername,
+		&i.UpdateUserOrgID,
+		&i.UpdateUserFirstName,
+		&i.UpdateUserLastName,
 		&i.UpdateTimestamp,
 	)
 	return i, err
 }
 
 const findAppByName = `-- name: FindAppByName :one
-SELECT a.app_id, a.org_id, a.app_extl_id, a.app_name, a.app_description, a.create_app_id, a.create_user_id, a.create_timestamp, a.update_app_id, a.update_user_id, a.update_timestamp
-FROM app a inner join org o on o.org_id = a.org_id
+SELECT a.app_id,
+       a.org_id,
+       o.org_extl_id,
+       o.org_name,
+       o.org_description,
+       ok.org_kind_id,
+       ok.org_kind_extl_id,
+       ok.org_kind_desc,
+       a.app_extl_id,
+       a.app_name,
+       a.app_description
+FROM app a
+         INNER JOIN org o on o.org_id = a.org_id
+         INNER JOIN org_kind ok on ok.org_kind_id = o.org_kind_id
 WHERE o.org_id = $1
   AND a.app_name = $2
 `
@@ -245,21 +572,35 @@ type FindAppByNameParams struct {
 	AppName string
 }
 
-func (q *Queries) FindAppByName(ctx context.Context, arg FindAppByNameParams) (App, error) {
+type FindAppByNameRow struct {
+	AppID          uuid.UUID
+	OrgID          uuid.UUID
+	OrgExtlID      string
+	OrgName        string
+	OrgDescription string
+	OrgKindID      uuid.UUID
+	OrgKindExtlID  string
+	OrgKindDesc    string
+	AppExtlID      string
+	AppName        string
+	AppDescription string
+}
+
+func (q *Queries) FindAppByName(ctx context.Context, arg FindAppByNameParams) (FindAppByNameRow, error) {
 	row := q.db.QueryRow(ctx, findAppByName, arg.OrgID, arg.AppName)
-	var i App
+	var i FindAppByNameRow
 	err := row.Scan(
 		&i.AppID,
 		&i.OrgID,
+		&i.OrgExtlID,
+		&i.OrgName,
+		&i.OrgDescription,
+		&i.OrgKindID,
+		&i.OrgKindExtlID,
+		&i.OrgKindDesc,
 		&i.AppExtlID,
 		&i.AppName,
 		&i.AppDescription,
-		&i.CreateAppID,
-		&i.CreateUserID,
-		&i.CreateTimestamp,
-		&i.UpdateAppID,
-		&i.UpdateUserID,
-		&i.UpdateTimestamp,
 	)
 	return i, err
 }
@@ -299,4 +640,38 @@ func (q *Queries) FindApps(ctx context.Context) ([]App, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateApp = `-- name: UpdateApp :execrows
+UPDATE app
+SET app_name        = $1,
+    app_description = $2,
+    update_app_id    = $3,
+    update_user_id   = $4,
+    update_timestamp = $5
+WHERE app_id = $6
+`
+
+type UpdateAppParams struct {
+	AppName         string
+	AppDescription  string
+	UpdateAppID     uuid.UUID
+	UpdateUserID    uuid.NullUUID
+	UpdateTimestamp time.Time
+	AppID           uuid.UUID
+}
+
+func (q *Queries) UpdateApp(ctx context.Context, arg UpdateAppParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateApp,
+		arg.AppName,
+		arg.AppDescription,
+		arg.UpdateAppID,
+		arg.UpdateUserID,
+		arg.UpdateTimestamp,
+		arg.AppID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

@@ -7,5 +7,8 @@ packages:
       - "../../../scripts/db/objects/demo/app.sql"
       - "../../../scripts/db/objects/demo/app_api_key.sql"
       - "../../../scripts/db/objects/demo/org.sql"
+      - "../../../scripts/db/objects/demo/org_kind.sql"
+      - "../../../scripts/db/objects/demo/org_user.sql"
+      - "../../../scripts/db/objects/demo/person_profile.sql"
     engine: "postgresql"
     sql_package: "pgx/v4"
