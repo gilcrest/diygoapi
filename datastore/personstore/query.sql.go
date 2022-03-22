@@ -9,10 +9,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgconn"
 )
 
-const createPerson = `-- name: CreatePerson :execresult
+const createPerson = `-- name: CreatePerson :execrows
 INSERT INTO person (person_id, org_id, create_app_id, create_user_id,
                     create_timestamp, update_app_id, update_user_id, update_timestamp)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -29,8 +28,8 @@ type CreatePersonParams struct {
 	UpdateTimestamp time.Time
 }
 
-func (q *Queries) CreatePerson(ctx context.Context, arg CreatePersonParams) (pgconn.CommandTag, error) {
-	return q.db.Exec(ctx, createPerson,
+func (q *Queries) CreatePerson(ctx context.Context, arg CreatePersonParams) (int64, error) {
+	result, err := q.db.Exec(ctx, createPerson,
 		arg.PersonID,
 		arg.OrgID,
 		arg.CreateAppID,
@@ -40,9 +39,13 @@ func (q *Queries) CreatePerson(ctx context.Context, arg CreatePersonParams) (pgc
 		arg.UpdateUserID,
 		arg.UpdateTimestamp,
 	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
-const createPersonProfile = `-- name: CreatePersonProfile :execresult
+const createPersonProfile = `-- name: CreatePersonProfile :execrows
 INSERT INTO person_profile (person_profile_id, person_id, name_prefix, first_name, middle_name, last_name, name_suffix,
                             nickname, company_name, company_dept, job_title, birth_date, birth_year, birth_month,
                             birth_day, language_id,
@@ -76,8 +79,8 @@ type CreatePersonProfileParams struct {
 	UpdateTimestamp time.Time
 }
 
-func (q *Queries) CreatePersonProfile(ctx context.Context, arg CreatePersonProfileParams) (pgconn.CommandTag, error) {
-	return q.db.Exec(ctx, createPersonProfile,
+func (q *Queries) CreatePersonProfile(ctx context.Context, arg CreatePersonProfileParams) (int64, error) {
+	result, err := q.db.Exec(ctx, createPersonProfile,
 		arg.PersonProfileID,
 		arg.PersonID,
 		arg.NamePrefix,
@@ -101,16 +104,23 @@ func (q *Queries) CreatePersonProfile(ctx context.Context, arg CreatePersonProfi
 		arg.UpdateUserID,
 		arg.UpdateTimestamp,
 	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
-const deletePersonProfile = `-- name: DeletePersonProfile :exec
+const deletePersonProfile = `-- name: DeletePersonProfile :execrows
 DELETE FROM person_profile
 WHERE person_id = $1
 `
 
-func (q *Queries) DeletePersonProfile(ctx context.Context, personID uuid.UUID) error {
-	_, err := q.db.Exec(ctx, deletePersonProfile, personID)
-	return err
+func (q *Queries) DeletePersonProfile(ctx context.Context, personID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deletePersonProfile, personID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const findPersonProfileByID = `-- name: FindPersonProfileByID :one
