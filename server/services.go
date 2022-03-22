@@ -37,36 +37,32 @@ type FindMovieService interface {
 type OrgService interface {
 	Create(ctx context.Context, r *service.CreateOrgRequest, adt audit.Audit) (service.OrgResponse, error)
 	Update(ctx context.Context, r *service.UpdateOrgRequest, adt audit.Audit) (service.OrgResponse, error)
+	Delete(ctx context.Context, extlID string) (service.DeleteResponse, error)
 	FindAll(ctx context.Context) ([]service.OrgResponse, error)
 	FindByExternalID(ctx context.Context, extlID string) (service.OrgResponse, error)
 }
 
-// CreateAppService creates an App
-type CreateAppService interface {
+// AppService manages the retrieval and manipulation of an App
+type AppService interface {
 	Create(ctx context.Context, r *service.CreateAppRequest, adt audit.Audit) (service.AppResponse, error)
+	Update(ctx context.Context, r *service.UpdateAppRequest, adt audit.Audit) (service.AppResponse, error)
 }
 
-// FindAppService retrieves an App
-type FindAppService interface {
+// MiddlewareService retrieves an App
+type MiddlewareService interface {
 	// FindAppByAPIKey finds an app given its External ID and determines
 	// if the given API key is a valid key for it
 	FindAppByAPIKey(ctx context.Context, realm, appExtlID, apiKey string) (app.App, error)
+	// FindUserByOauth2Token retrieves a User given an Oauth2 token
+	FindUserByOauth2Token(ctx context.Context, params service.FindUserParams) (user.User, error)
+	// Authorize determines whether an app/user (as part of an Audit
+	// struct) can perform an action against a resource
+	Authorize(lgr zerolog.Logger, r *http.Request, sub audit.Audit) error
 }
 
 // RegisterUserService registers a new user
 type RegisterUserService interface {
 	SelfRegister(ctx context.Context, adt audit.Audit) error
-}
-
-// FindUserService retrieves a User
-type FindUserService interface {
-	FindUserByOauth2Token(ctx context.Context, params service.FindUserParams) (user.User, error)
-}
-
-// AuthorizeService determines whether an app and a user can perform
-// an action against a resource
-type AuthorizeService interface {
-	Authorize(lgr zerolog.Logger, r *http.Request, sub audit.Audit) error
 }
 
 // LoggerService reads and updates the logger state
@@ -92,12 +88,10 @@ type Services struct {
 	DeleteMovieService  DeleteMovieService
 	FindMovieService    FindMovieService
 	OrgService          OrgService
-	CreateAppService    CreateAppService
-	FindAppService      FindAppService
+	AppService          AppService
 	RegisterUserService RegisterUserService
-	FindUserService     FindUserService
-	AuthorizeService    AuthorizeService
 	PingService         PingService
 	LoggerService       LoggerService
 	GenesisService      GenesisService
+	MiddlewareService   MiddlewareService
 }
