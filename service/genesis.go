@@ -2,12 +2,15 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 
+	"github.com/gilcrest/go-api-basic/datastore"
+	"github.com/gilcrest/go-api-basic/datastore/appstore"
 	"github.com/gilcrest/go-api-basic/datastore/orgstore"
 	"github.com/gilcrest/go-api-basic/domain/app"
 	"github.com/gilcrest/go-api-basic/domain/audit"
@@ -20,6 +23,7 @@ import (
 
 const genesisOrgTypeString string = "genesis"
 
+// FullGenesisResponse contains both the Genesis response and the Test response
 type FullGenesisResponse struct {
 	GenesisResponse GenesisResponse `json:"genesis"`
 	TestResponse    TestResponse    `json:"test"`
@@ -54,19 +58,10 @@ type seedSet struct {
 // Seed method seeds the database
 func (s GenesisService) Seed(ctx context.Context) (FullGenesisResponse, error) {
 
-	var (
-		tx  pgx.Tx
-		err error
-	)
+	var err error
 
 	// ensure the Genesis seed event has not already taken place
 	err = genesisHasOccurred(ctx, s.Datastorer.Pool())
-	if err != nil {
-		return FullGenesisResponse{}, err
-	}
-
-	// start db txn using pgxpool
-	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
 		return FullGenesisResponse{}, err
 	}
@@ -76,11 +71,23 @@ func (s GenesisService) Seed(ctx context.Context) (FullGenesisResponse, error) {
 		testSet    seedSet
 		testKind   org.Kind
 	)
+
+	// start db txn using pgxpool
+	var tx pgx.Tx
+	tx, err = s.Datastorer.BeginTx(ctx)
+	if err != nil {
+		return FullGenesisResponse{}, err
+	}
+
+	// seed Genesis data. As part of this method, the initial org.Kind
+	// structs are added to the db. The test kind is returned for use
+	// in the seedTest method
 	genesisSet, testKind, err = s.seedGenesis(ctx, tx)
 	if err != nil {
 		return FullGenesisResponse{}, err
 	}
 
+	// seed Test data.
 	testSet, err = s.seedTest(ctx, tx, testKind)
 	if err != nil {
 		return FullGenesisResponse{}, err
@@ -94,12 +101,12 @@ func (s GenesisService) Seed(ctx context.Context) (FullGenesisResponse, error) {
 
 	genesisResponse := GenesisResponse{
 		OrgResponse: newOrgResponse(orgAudit{Org: genesisSet.org, SimpleAudit: genesisSet.audit}),
-		AppResponse: newAppResponse(genesisSet.app),
+		AppResponse: newAppResponse(appAudit{App: genesisSet.app, SimpleAudit: genesisSet.audit}),
 	}
 
 	testResponse := TestResponse{
 		OrgResponse: newOrgResponse(orgAudit{Org: testSet.org, SimpleAudit: testSet.audit}),
-		AppResponse: newAppResponse(testSet.app),
+		AppResponse: newAppResponse(appAudit{App: testSet.app, SimpleAudit: testSet.audit}),
 	}
 
 	response := FullGenesisResponse{
@@ -134,7 +141,7 @@ func (s GenesisService) seedGenesis(ctx context.Context, tx pgx.Tx) (seedSet, or
 	keyDeactivation := time.Date(2099, 12, 31, 0, 0, 0, 0, time.UTC)
 	err = a.AddNewKey(s.RandomStringGenerator, s.EncryptionKey, keyDeactivation)
 	if err != nil {
-		return seedSet{}, org.Kind{}, errs.E(errs.Internal, s.Datastorer.RollbackTx(ctx, tx, err))
+		return seedSet{}, org.Kind{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Internal, err))
 	}
 
 	pgUser, pgAudit := createPeterGabriel(o, a)
@@ -144,7 +151,7 @@ func (s GenesisService) seedGenesis(ctx context.Context, tx pgx.Tx) (seedSet, or
 	var genesisKindParams orgstore.CreateOrgKindParams
 	genesisKindParams, err = createGenesisOrgKind(ctx, s.Datastorer, tx, pgAudit)
 	if err != nil {
-		return seedSet{}, org.Kind{}, errs.E(errs.Database, s.Datastorer.RollbackTx(ctx, tx, err))
+		return seedSet{}, org.Kind{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Database, err))
 	}
 	o.Kind = org.Kind{
 		ID:          genesisKindParams.OrgKindID,
@@ -156,7 +163,7 @@ func (s GenesisService) seedGenesis(ctx context.Context, tx pgx.Tx) (seedSet, or
 	var testKindParams orgstore.CreateOrgKindParams
 	testKindParams, err = createTestOrgKind(ctx, s.Datastorer, tx, pgAudit)
 	if err != nil {
-		return seedSet{}, org.Kind{}, errs.E(errs.Database, s.Datastorer.RollbackTx(ctx, tx, err))
+		return seedSet{}, org.Kind{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Database, err))
 	}
 	tk := org.Kind{
 		ID:          testKindParams.OrgKindID,
@@ -166,7 +173,7 @@ func (s GenesisService) seedGenesis(ctx context.Context, tx pgx.Tx) (seedSet, or
 
 	err = createStandardOrgKind(ctx, s.Datastorer, tx, pgAudit)
 	if err != nil {
-		return seedSet{}, org.Kind{}, errs.E(errs.Database, s.Datastorer.RollbackTx(ctx, tx, err))
+		return seedSet{}, org.Kind{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Database, err))
 	}
 
 	sa := audit.SimpleAudit{
@@ -180,10 +187,55 @@ func (s GenesisService) seedGenesis(ctx context.Context, tx pgx.Tx) (seedSet, or
 		return seedSet{}, org.Kind{}, err
 	}
 
-	// write the App to the database
-	err = createAppDB(ctx, s.Datastorer, tx, a, pgAudit)
+	createAppParams := appstore.CreateAppParams{
+		AppID:           a.ID,
+		OrgID:           a.Org.ID,
+		AppExtlID:       a.ExternalID.String(),
+		AppName:         a.Name,
+		AppDescription:  a.Description,
+		CreateAppID:     pgAudit.App.ID,
+		CreateUserID:    datastore.NewNullUUID(pgAudit.User.ID),
+		CreateTimestamp: pgAudit.Moment,
+		UpdateAppID:     pgAudit.App.ID,
+		UpdateUserID:    datastore.NewNullUUID(pgAudit.User.ID),
+		UpdateTimestamp: pgAudit.Moment,
+	}
+
+	// create app database record using appstore
+	var rowsAffected int64
+	rowsAffected, err = appstore.New(tx).CreateApp(ctx, createAppParams)
 	if err != nil {
-		return seedSet{}, org.Kind{}, err
+		return seedSet{}, org.Kind{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Database, err))
+	}
+
+	if rowsAffected != 1 {
+		return seedSet{}, org.Kind{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected)))
+	}
+
+	for _, key := range a.APIKeys {
+
+		createAppAPIKeyParams := appstore.CreateAppAPIKeyParams{
+			ApiKey:          key.Ciphertext(),
+			AppID:           a.ID,
+			DeactvDate:      key.DeactivationDate(),
+			CreateAppID:     pgAudit.App.ID,
+			CreateUserID:    datastore.NewNullUUID(pgAudit.User.ID),
+			CreateTimestamp: pgAudit.Moment,
+			UpdateAppID:     pgAudit.App.ID,
+			UpdateUserID:    datastore.NewNullUUID(pgAudit.User.ID),
+			UpdateTimestamp: pgAudit.Moment,
+		}
+
+		// create app API key database record using appstore
+		var apiKeyRowsAffected int64
+		apiKeyRowsAffected, err = appstore.New(tx).CreateAppAPIKey(ctx, createAppAPIKeyParams)
+		if err != nil {
+			return seedSet{}, org.Kind{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Database, err))
+		}
+
+		if apiKeyRowsAffected != 1 {
+			return seedSet{}, org.Kind{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", apiKeyRowsAffected)))
+		}
 	}
 
 	// write Peter Gabriel to the database
@@ -286,7 +338,7 @@ func (s GenesisService) seedTest(ctx context.Context, tx pgx.Tx, k org.Kind) (se
 	keyDeactivation := time.Date(2099, 12, 31, 0, 0, 0, 0, time.UTC)
 	err = a.AddNewKey(s.RandomStringGenerator, s.EncryptionKey, keyDeactivation)
 	if err != nil {
-		return seedSet{}, errs.E(errs.Internal, s.Datastorer.RollbackTx(ctx, tx, err))
+		return seedSet{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Internal, err))
 	}
 
 	// create Person
@@ -326,10 +378,55 @@ func (s GenesisService) seedTest(ctx context.Context, tx pgx.Tx, k org.Kind) (se
 		return seedSet{}, err
 	}
 
-	// write the App to the database
-	err = createAppDB(ctx, s.Datastorer, tx, a, adt)
+	createAppParams := appstore.CreateAppParams{
+		AppID:           a.ID,
+		OrgID:           a.Org.ID,
+		AppExtlID:       a.ExternalID.String(),
+		AppName:         a.Name,
+		AppDescription:  a.Description,
+		CreateAppID:     adt.App.ID,
+		CreateUserID:    datastore.NewNullUUID(adt.User.ID),
+		CreateTimestamp: adt.Moment,
+		UpdateAppID:     adt.App.ID,
+		UpdateUserID:    datastore.NewNullUUID(adt.User.ID),
+		UpdateTimestamp: adt.Moment,
+	}
+
+	// create app database record using appstore
+	var rowsAffected int64
+	rowsAffected, err = appstore.New(tx).CreateApp(ctx, createAppParams)
 	if err != nil {
-		return seedSet{}, err
+		return seedSet{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Database, err))
+	}
+
+	if rowsAffected != 1 {
+		return seedSet{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected)))
+	}
+
+	for _, key := range a.APIKeys {
+
+		createAppAPIKeyParams := appstore.CreateAppAPIKeyParams{
+			ApiKey:          key.Ciphertext(),
+			AppID:           a.ID,
+			DeactvDate:      key.DeactivationDate(),
+			CreateAppID:     adt.App.ID,
+			CreateUserID:    datastore.NewNullUUID(adt.User.ID),
+			CreateTimestamp: adt.Moment,
+			UpdateAppID:     adt.App.ID,
+			UpdateUserID:    datastore.NewNullUUID(adt.User.ID),
+			UpdateTimestamp: adt.Moment,
+		}
+
+		// create app API key database record using appstore
+		var apiKeyRowsAffected int64
+		apiKeyRowsAffected, err = appstore.New(tx).CreateAppAPIKey(ctx, createAppAPIKeyParams)
+		if err != nil {
+			return seedSet{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Database, err))
+		}
+
+		if apiKeyRowsAffected != 1 {
+			return seedSet{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", apiKeyRowsAffected)))
+		}
 	}
 
 	// write the User to the database
