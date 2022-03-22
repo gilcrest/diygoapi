@@ -31,15 +31,16 @@ func TestNewMuxRouter(t *testing.T) {
 		// use a slice literal to create the routes in order of how
 		// they are registered in NewMuxRouter
 		wantRoutes := []r{
-			{PathTemplate: pathPrefix + moviesV1PathRoot, HTTPMethods: []string{"POST"}},
-			{PathTemplate: pathPrefix + moviesV1PathRoot + extlIDPathDir, HTTPMethods: []string{"PUT"}},
-			{PathTemplate: pathPrefix + moviesV1PathRoot + extlIDPathDir, HTTPMethods: []string{"DELETE"}},
-			{PathTemplate: pathPrefix + moviesV1PathRoot + extlIDPathDir, HTTPMethods: []string{"GET"}},
-			{PathTemplate: pathPrefix + moviesV1PathRoot, HTTPMethods: []string{"GET"}},
-			{PathTemplate: pathPrefix + orgsV1PathRoot, HTTPMethods: []string{http.MethodGet}},
-			{PathTemplate: pathPrefix + orgsV1PathRoot + extlIDPathDir, HTTPMethods: []string{http.MethodGet}},
+			{PathTemplate: pathPrefix + moviesV1PathRoot, HTTPMethods: []string{http.MethodPost}},
+			{PathTemplate: pathPrefix + moviesV1PathRoot + extlIDPathDir, HTTPMethods: []string{http.MethodPut}},
+			{PathTemplate: pathPrefix + moviesV1PathRoot + extlIDPathDir, HTTPMethods: []string{http.MethodDelete}},
+			{PathTemplate: pathPrefix + moviesV1PathRoot + extlIDPathDir, HTTPMethods: []string{http.MethodGet}},
+			{PathTemplate: pathPrefix + moviesV1PathRoot, HTTPMethods: []string{http.MethodGet}},
 			{PathTemplate: pathPrefix + orgsV1PathRoot, HTTPMethods: []string{http.MethodPost}},
 			{PathTemplate: pathPrefix + orgsV1PathRoot + extlIDPathDir, HTTPMethods: []string{http.MethodPut}},
+			{PathTemplate: pathPrefix + orgsV1PathRoot + extlIDPathDir, HTTPMethods: []string{http.MethodDelete}},
+			{PathTemplate: pathPrefix + orgsV1PathRoot, HTTPMethods: []string{http.MethodGet}},
+			{PathTemplate: pathPrefix + orgsV1PathRoot + extlIDPathDir, HTTPMethods: []string{http.MethodGet}},
 			{PathTemplate: pathPrefix + appsV1PathRoot, HTTPMethods: []string{http.MethodPost}},
 			{PathTemplate: pathPrefix + registerV1PathRoot, HTTPMethods: []string{http.MethodPost}},
 			{PathTemplate: pathPrefix + loggerV1PathRoot, HTTPMethods: []string{http.MethodGet}},

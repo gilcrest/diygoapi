@@ -89,26 +89,6 @@ func (s *Server) registerRoutes() {
 			ThenFunc(s.handleFindAllMovies)).
 		Methods(http.MethodGet)
 
-	// Match only GET requests at /api/v1/orgs
-	s.router.Handle(orgsV1PathRoot,
-		s.loggerChain().
-			Append(s.appHandler).
-			Append(s.userHandler).
-			Append(s.authorizeUserHandler).
-			Append(s.jsonContentTypeResponseHandler).
-			ThenFunc(s.handleOrgFindAll)).
-		Methods(http.MethodGet)
-
-	// Match only GET requests at /api/v1/orgs/{extlID}
-	s.router.Handle(orgsV1PathRoot+extlIDPathDir,
-		s.loggerChain().
-			Append(s.appHandler).
-			Append(s.userHandler).
-			Append(s.authorizeUserHandler).
-			Append(s.jsonContentTypeResponseHandler).
-			ThenFunc(s.handleOrgFindByExtlID)).
-		Methods(http.MethodGet)
-
 	// Match only POST requests at /api/v1/orgs
 	// with Content-Type header = application/json
 	s.router.Handle(orgsV1PathRoot,
@@ -132,6 +112,36 @@ func (s *Server) registerRoutes() {
 			ThenFunc(s.handleOrgUpdate)).
 		Methods(http.MethodPut).
 		Headers(contentTypeHeaderKey, appJSONContentTypeHeaderVal)
+
+	// Match only DELETE requests at /api/v1/orgs/{extlID}
+	s.router.Handle(orgsV1PathRoot+extlIDPathDir,
+		s.loggerChain().
+			Append(s.appHandler).
+			Append(s.userHandler).
+			Append(s.authorizeUserHandler).
+			Append(s.jsonContentTypeResponseHandler).
+			ThenFunc(s.handleOrgDelete)).
+		Methods(http.MethodDelete)
+
+	// Match only GET requests at /api/v1/orgs
+	s.router.Handle(orgsV1PathRoot,
+		s.loggerChain().
+			Append(s.appHandler).
+			Append(s.userHandler).
+			Append(s.authorizeUserHandler).
+			Append(s.jsonContentTypeResponseHandler).
+			ThenFunc(s.handleOrgFindAll)).
+		Methods(http.MethodGet)
+
+	// Match only GET requests at /api/v1/orgs/{extlID}
+	s.router.Handle(orgsV1PathRoot+extlIDPathDir,
+		s.loggerChain().
+			Append(s.appHandler).
+			Append(s.userHandler).
+			Append(s.authorizeUserHandler).
+			Append(s.jsonContentTypeResponseHandler).
+			ThenFunc(s.handleOrgFindByExtlID)).
+		Methods(http.MethodGet)
 
 	// Match only POST requests at /api/v1/apps
 	// with Content-Type header = application/json
