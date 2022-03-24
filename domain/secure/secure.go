@@ -125,12 +125,14 @@ func Encrypt(plaintext []byte, key *[32]byte) (ciphertext []byte, err error) {
 // form nonce|ciphertext|tag where '|' indicates concatenation.
 // Taken from https://github.com/gtank/cryptopasta/blob/master/encrypt.go
 func Decrypt(ciphertext []byte, key *[32]byte) (plaintext []byte, err error) {
-	block, err := aes.NewCipher(key[:])
+	var block cipher.Block
+	block, err = aes.NewCipher(key[:])
 	if err != nil {
 		return nil, errs.E(errs.Internal, err)
 	}
 
-	gcm, err := cipher.NewGCM(block)
+	var gcm cipher.AEAD
+	gcm, err = cipher.NewGCM(block)
 	if err != nil {
 		return nil, errs.E(errs.Internal, err)
 	}
@@ -139,9 +141,14 @@ func Decrypt(ciphertext []byte, key *[32]byte) (plaintext []byte, err error) {
 		return nil, errs.E(errs.Internal, "malformed ciphertext")
 	}
 
-	return gcm.Open(nil,
+	plaintext, err = gcm.Open(nil,
 		ciphertext[:gcm.NonceSize()],
 		ciphertext[gcm.NonceSize():],
 		nil,
 	)
+	if err != nil {
+		return nil, errs.E(errs.Internal, err)
+	}
+
+	return plaintext, nil
 }
