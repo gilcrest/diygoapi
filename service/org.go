@@ -277,18 +277,18 @@ func (s OrgService) Delete(ctx context.Context, extlID string) (DeleteResponse, 
 func (s OrgService) FindAll(ctx context.Context) ([]OrgResponse, error) {
 
 	var (
-		dbos      []orgstore.FindOrgsWithAuditRow
+		rows      []orgstore.FindOrgsWithAuditRow
 		responses []OrgResponse
 		err       error
 	)
 
 	dbtx := s.Datastorer.Pool()
-	dbos, err = orgstore.New(dbtx).FindOrgsWithAudit(ctx)
+	rows, err = orgstore.New(dbtx).FindOrgsWithAudit(ctx)
 	if err != nil {
 		return nil, errs.E(errs.Database, err)
 	}
 
-	for _, row := range dbos {
+	for _, row := range rows {
 		o := org.Org{
 			ID:          row.OrgID,
 			ExternalID:  secure.MustParseIdentifier(row.OrgExtlID),
@@ -388,12 +388,7 @@ func findOrgByID(ctx context.Context, dbtx DBTX, id uuid.UUID) (org.Org, error) 
 
 // findOrgByExternalID retrieves an Org from the datastore given a unique external ID
 func findOrgByExternalID(ctx context.Context, dbtx DBTX, extlID string) (org.Org, error) {
-	var (
-		row orgstore.FindOrgByExtlIDRow
-		err error
-	)
-
-	row, err = orgstore.New(dbtx).FindOrgByExtlID(ctx, extlID)
+	row, err := orgstore.New(dbtx).FindOrgByExtlID(ctx, extlID)
 	if err != nil {
 		return org.Org{}, errs.E(errs.Database, err)
 	}
