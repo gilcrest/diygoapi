@@ -242,6 +242,89 @@ func (s AppService) Update(ctx context.Context, r *UpdateAppRequest, adt audit.A
 	return newAppResponse(aa), nil
 }
 
+// Delete is used to delete an App
+func (s AppService) Delete(ctx context.Context, extlID string) (DeleteResponse, error) {
+
+	// retrieve existing Org
+	a, err := findAppByExternalID(ctx, s.Datastorer.Pool(), extlID)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return DeleteResponse{}, errs.E(errs.Validation, "No app exists for the given external ID")
+		}
+		return DeleteResponse{}, errs.E(errs.Database, err)
+	}
+
+	// start db txn using pgxpool
+	var tx pgx.Tx
+	tx, err = s.Datastorer.BeginTx(ctx)
+	if err != nil {
+		return DeleteResponse{}, err
+	}
+
+	// one-to-many API keys can be associated with an App. This will
+	// delete them all.
+	var apiKeysRowsAffected int64
+	apiKeysRowsAffected, err = appstore.New(tx).DeleteAppAPIKeys(ctx, a.ID)
+	if err != nil {
+		return DeleteResponse{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Database, err))
+	}
+
+	if apiKeysRowsAffected < 1 {
+		return DeleteResponse{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Database, fmt.Sprintf("rows affected should be at least 1, actual: %d", apiKeysRowsAffected)))
+	}
+
+	var rowsAffected int64
+	rowsAffected, err = appstore.New(tx).DeleteApp(ctx, a.ID)
+	if err != nil {
+		return DeleteResponse{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Database, err))
+	}
+
+	if rowsAffected != 1 {
+		return DeleteResponse{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected)))
+	}
+
+	// commit db txn using pgxpool
+	err = s.Datastorer.CommitTx(ctx, tx)
+	if err != nil {
+		return DeleteResponse{}, err
+	}
+
+	response := DeleteResponse{
+		ExternalID: extlID,
+		Deleted:    true,
+	}
+
+	return response, nil
+}
+
+func findAppByExternalID(ctx context.Context, dbtx DBTX, extlID string) (app.App, error) {
+	row, err := appstore.New(dbtx).FindAppByExternalID(ctx, extlID)
+	if err != nil {
+		return app.App{}, errs.E(errs.Database, err)
+	}
+
+	a := app.App{
+		ID:         row.AppID,
+		ExternalID: secure.MustParseIdentifier(row.AppExtlID),
+		Org: org.Org{
+			ID:          row.OrgID,
+			ExternalID:  secure.MustParseIdentifier(row.OrgExtlID),
+			Name:        row.OrgName,
+			Description: row.OrgDescription,
+			Kind: org.Kind{
+				ID:          row.OrgKindID,
+				ExternalID:  row.OrgKindExtlID,
+				Description: row.OrgKindDesc,
+			},
+		},
+		Name:        row.AppName,
+		Description: row.AppDescription,
+		APIKeys:     nil,
+	}
+
+	return a, nil
+}
+
 // findAppByExternalIDWithAudit retrieves App data from the datastore given a unique external ID.
 // This data is then hydrated into the app.App struct along with the simple audit struct
 func findAppByExternalIDWithAudit(ctx context.Context, dbtx DBTX, extlID string) (appAudit, error) {
