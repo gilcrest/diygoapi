@@ -1,7 +1,6 @@
 package app
 
 import (
-	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"time"
@@ -43,12 +42,19 @@ func NewAPIKey(g APIKeyStringGenerator, ek *[32]byte) (APIKey, error) {
 
 // NewAPIKeyFromCipher initializes an APIKey
 func NewAPIKeyFromCipher(ciphertext string, ek *[32]byte) (APIKey, error) {
-	eak, err := base64.URLEncoding.DecodeString(ciphertext)
+	var (
+		eak []byte
+		err error
+	)
+
+	// encrypted key is stored using hex in db. Decode to get ciphertext bytes.
+	eak, err = hex.DecodeString(ciphertext)
 	if err != nil {
 		return APIKey{}, errs.E(errs.Internal, err)
 	}
 
-	apiKey, err := secure.Decrypt(eak, ek)
+	var apiKey []byte
+	apiKey, err = secure.Decrypt(eak, ek)
 	if err != nil {
 		return APIKey{}, err
 	}
