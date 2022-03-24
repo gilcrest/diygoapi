@@ -99,15 +99,36 @@ func (q *Queries) DeleteApp(ctx context.Context, appID uuid.UUID) (int64, error)
 	return result.RowsAffected(), nil
 }
 
-const findAPIKeysByAppID = `-- name: FindAPIKeysByAppID :many
+const deleteAppAPIKey = `-- name: DeleteAppAPIKey :execrows
+DELETE FROM app_api_key
+WHERE api_key = $1
+`
 
-SELECT api_key, app_id, deactv_date, create_app_id, create_user_id, create_timestamp, update_app_id, update_user_id, update_timestamp FROM app_api_key
+func (q *Queries) DeleteAppAPIKey(ctx context.Context, apiKey string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteAppAPIKey, apiKey)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteAppAPIKeys = `-- name: DeleteAppAPIKeys :execrows
+DELETE FROM app_api_key
 WHERE app_id = $1
 `
 
-// ---------------------------------------------------------------------------------------------------------------------
-// App API Keys
-// ---------------------------------------------------------------------------------------------------------------------
+func (q *Queries) DeleteAppAPIKeys(ctx context.Context, appID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteAppAPIKeys, appID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const findAPIKeysByAppID = `-- name: FindAPIKeysByAppID :many
+SELECT api_key, app_id, deactv_date, create_app_id, create_user_id, create_timestamp, update_app_id, update_user_id, update_timestamp FROM app_api_key
+WHERE app_id = $1
+`
 
 func (q *Queries) FindAPIKeysByAppID(ctx context.Context, appID uuid.UUID) ([]AppApiKey, error) {
 	rows, err := q.db.Query(ctx, findAPIKeysByAppID, appID)

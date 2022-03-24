@@ -163,9 +163,13 @@ WHERE app_id = $6;
 DELETE FROM app
 WHERE app_id = $1;
 
--- ---------------------------------------------------------------------------------------------------------------------
--- App API Keys
--- ---------------------------------------------------------------------------------------------------------------------
+-- name: DeleteAppAPIKey :execrows
+DELETE FROM app_api_key
+WHERE api_key = $1;
+
+-- name: DeleteAppAPIKeys :execrows
+DELETE FROM app_api_key
+WHERE app_id = $1;
 
 -- name: FindAPIKeysByAppID :many
 SELECT * FROM app_api_key
