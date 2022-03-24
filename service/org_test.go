@@ -107,6 +107,69 @@ func TestOrgService(t *testing.T) {
 		c.Assert(err, qt.IsNil)
 		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(service.OrgResponse{}, "CreateDateTime", "UpdateDateTime")), want)
 	})
+	t.Run("findByExtlID", func(t *testing.T) {
+		c := qt.New(t)
+
+		ds, cleanup := datastoretest.NewDatastore(t)
+		c.Cleanup(cleanup)
+
+		ctx := context.Background()
+
+		var (
+			testOrg orgstore.FindOrgByNameRow
+			err     error
+		)
+		testOrg, err = orgstore.New(ds.Pool()).FindOrgByName(ctx, "Updated Test Org")
+		if err != nil {
+			t.Fatalf("FindOrgByName() error = %v", err)
+		}
+
+		s := service.OrgService{
+			Datastorer: ds,
+		}
+
+		adt := findGenesisTestAudit(ctx, t, ds)
+
+		var got service.OrgResponse
+		got, err = s.FindByExternalID(context.Background(), testOrg.OrgExtlID)
+		want := service.OrgResponse{
+			ExternalID:          got.ExternalID,
+			Name:                "Updated Test Org",
+			KindExternalID:      "test",
+			Description:         "Test Org updated via TestCreateOrgService_Update",
+			CreateAppExtlID:     adt.App.ExternalID.String(),
+			CreateUsername:      adt.User.Username,
+			CreateUserFirstName: adt.User.Profile.FirstName,
+			CreateUserLastName:  adt.User.Profile.LastName,
+			UpdateAppExtlID:     adt.App.ExternalID.String(),
+			UpdateUsername:      adt.User.Username,
+			UpdateUserFirstName: adt.User.Profile.FirstName,
+			UpdateUserLastName:  adt.User.Profile.LastName,
+		}
+		c.Assert(err, qt.IsNil)
+		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(service.OrgResponse{}, "CreateDateTime", "UpdateDateTime")), want)
+	})
+	t.Run("findAll", func(t *testing.T) {
+		c := qt.New(t)
+
+		ds, cleanup := datastoretest.NewDatastore(t)
+		c.Cleanup(cleanup)
+
+		ctx := context.Background()
+
+		s := service.OrgService{
+			Datastorer: ds,
+		}
+
+		var (
+			got []service.OrgResponse
+			err error
+		)
+		got, err = s.FindAll(ctx)
+		c.Assert(err, qt.IsNil)
+		c.Assert(len(got) >= 1, qt.IsTrue, qt.Commentf("orgs found = %d", len(got)))
+		c.Logf("orgs found = %d", len(got))
+	})
 	t.Run("delete", func(t *testing.T) {
 		c := qt.New(t)
 
