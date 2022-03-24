@@ -49,19 +49,25 @@ func (s *Server) appHandler(h http.Handler) http.Handler {
 		// retrieve the context from the http.Request
 		ctx := r.Context()
 
-		appExtlID, err := xHeader(defaultRealm, r.Header, appIDHeaderKey)
+		var (
+			appExtlID string
+			err       error
+		)
+		appExtlID, err = xHeader(defaultRealm, r.Header, appIDHeaderKey)
 		if err != nil {
 			errs.HTTPErrorResponse(w, lgr, err)
 			return
 		}
 
-		apiKey, err := xHeader(defaultRealm, r.Header, apiKeyHeaderKey)
+		var apiKey string
+		apiKey, err = xHeader(defaultRealm, r.Header, apiKeyHeaderKey)
 		if err != nil {
 			errs.HTTPErrorResponse(w, lgr, err)
 			return
 		}
 
-		a, err := s.MiddlewareService.FindAppByAPIKey(ctx, defaultRealm, appExtlID, apiKey)
+		var a app.App
+		a, err = s.MiddlewareService.FindAppByAPIKey(ctx, defaultRealm, appExtlID, apiKey)
 		if err != nil {
 			errs.HTTPErrorResponse(w, lgr, err)
 			return
@@ -129,22 +135,23 @@ func (s *Server) newUserHandler(h http.Handler) http.Handler {
 func newUser(ctx context.Context, s MiddlewareService, r *http.Request, retrieveFromDB bool) (user.User, error) {
 
 	var (
-		a     app.App
-		u     user.User
-		token oauth2.Token
-		err   error
+		a   app.App
+		err error
 	)
 	a, err = app.FromRequest(r)
 	if err != nil {
 		return user.User{}, err
 	}
 
-	providerVal, err := xHeader(defaultRealm, r.Header, authProviderHeaderKey)
+	var providerVal string
+	providerVal, err = xHeader(defaultRealm, r.Header, authProviderHeaderKey)
 	if err != nil {
 		return user.User{}, err
 	}
+	fmt.Println(providerVal)
 	provider := auth.NewProvider(providerVal)
 
+	var token oauth2.Token
 	token, err = authHeader(defaultRealm, r.Header)
 	if err != nil {
 		return user.User{}, err
@@ -158,6 +165,7 @@ func newUser(ctx context.Context, s MiddlewareService, r *http.Request, retrieve
 		RetrieveFromDB: retrieveFromDB,
 	}
 
+	var u user.User
 	u, err = s.FindUserByOauth2Token(ctx, params)
 	if err != nil {
 		return user.User{}, err
