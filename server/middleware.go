@@ -148,7 +148,6 @@ func newUser(ctx context.Context, s MiddlewareService, r *http.Request, retrieve
 	if err != nil {
 		return user.User{}, err
 	}
-	fmt.Println(providerVal)
 	provider := auth.NewProvider(providerVal)
 
 	var token oauth2.Token
