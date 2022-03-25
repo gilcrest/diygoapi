@@ -118,11 +118,11 @@ func TestXHeader(t *testing.T) {
 	t.Run("x-app-id", func(t *testing.T) {
 		c := qt.New(t)
 		hdr := http.Header{}
-		hdr.Add(appIDHeaderKey, "appologies")
+		hdr.Add(appIDHeaderKey, "appIdHeaderFakeText")
 
 		appID, err := xHeader(defaultRealm, hdr, appIDHeaderKey)
 		c.Assert(err, qt.IsNil)
-		c.Assert(appID, qt.Equals, "appologies")
+		c.Assert(appID, qt.Equals, "appIdHeaderFakeText")
 	})
 	t.Run("no header error", func(t *testing.T) {
 		c := qt.New(t)
