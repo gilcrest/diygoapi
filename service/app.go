@@ -297,6 +297,100 @@ func (s AppService) Delete(ctx context.Context, extlID string) (DeleteResponse, 
 	return response, nil
 }
 
+// FindByExternalID is used to find an App by its External ID
+func (s AppService) FindByExternalID(ctx context.Context, extlID string) (AppResponse, error) {
+
+	aa, err := findAppByExternalIDWithAudit(ctx, s.Datastorer.Pool(), extlID)
+	if err != nil {
+		return AppResponse{}, err
+	}
+
+	return newAppResponse(aa), nil
+}
+
+// FindAll is used to list all apps in the datastore
+func (s AppService) FindAll(ctx context.Context) ([]AppResponse, error) {
+
+	var (
+		rows      []appstore.FindAppsWithAuditRow
+		responses []AppResponse
+		err       error
+	)
+	rows, err = appstore.New(s.Datastorer.Pool()).FindAppsWithAudit(ctx)
+	if err != nil {
+		return nil, errs.E(errs.Database, err)
+	}
+
+	for _, row := range rows {
+		a := app.App{
+			ID:         row.AppID,
+			ExternalID: secure.MustParseIdentifier(row.AppExtlID),
+			Org: org.Org{
+				ID:          row.OrgID,
+				ExternalID:  secure.MustParseIdentifier(row.OrgExtlID),
+				Name:        row.OrgName,
+				Description: row.OrgDescription,
+				Kind: org.Kind{
+					ID:          row.OrgKindID,
+					ExternalID:  row.OrgKindExtlID,
+					Description: row.OrgKindDesc,
+				},
+			},
+			Name:        row.AppName,
+			Description: row.AppDescription,
+			APIKeys:     nil,
+		}
+
+		sa := audit.SimpleAudit{
+			First: audit.Audit{
+				App: app.App{
+					ID:          row.CreateAppID,
+					ExternalID:  secure.MustParseIdentifier(row.CreateAppExtlID),
+					Org:         org.Org{ID: row.CreateAppOrgID},
+					Name:        row.CreateAppName,
+					Description: row.CreateAppDescription,
+					APIKeys:     nil,
+				},
+				User: user.User{
+					ID:       row.CreateUserID.UUID,
+					Username: row.CreateUsername,
+					Org:      org.Org{ID: row.CreateUserOrgID},
+					Profile: person.Profile{
+						FirstName: row.CreateUserFirstName,
+						LastName:  row.CreateUserLastName,
+					},
+				},
+				Moment: row.CreateTimestamp,
+			},
+			Last: audit.Audit{
+				App: app.App{
+					ID:          row.UpdateAppID,
+					ExternalID:  secure.MustParseIdentifier(row.UpdateAppExtlID),
+					Org:         org.Org{ID: row.UpdateAppOrgID},
+					Name:        row.UpdateAppName,
+					Description: row.UpdateAppDescription,
+					APIKeys:     nil,
+				},
+				User: user.User{
+					ID:       row.UpdateUserID.UUID,
+					Username: row.UpdateUsername,
+					Org:      org.Org{ID: row.UpdateUserOrgID},
+					Profile: person.Profile{
+						FirstName: row.UpdateUserFirstName,
+						LastName:  row.UpdateUserLastName,
+					},
+				},
+				Moment: row.UpdateTimestamp,
+			},
+		}
+		or := newAppResponse(appAudit{App: a, SimpleAudit: sa})
+
+		responses = append(responses, or)
+	}
+
+	return responses, nil
+}
+
 func findAppByExternalID(ctx context.Context, dbtx DBTX, extlID string) (app.App, error) {
 	row, err := appstore.New(dbtx).FindAppByExternalID(ctx, extlID)
 	if err != nil {
