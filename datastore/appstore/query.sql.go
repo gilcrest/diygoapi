@@ -663,6 +663,141 @@ func (q *Queries) FindApps(ctx context.Context) ([]App, error) {
 	return items, nil
 }
 
+const findAppsWithAudit = `-- name: FindAppsWithAudit :many
+SELECT a.org_id,
+       o.org_extl_id,
+       o.org_name,
+       o.org_description,
+       ok.org_kind_id,
+       ok.org_kind_extl_id,
+       ok.org_kind_desc,
+       a.app_id,
+       a.app_extl_id,
+       a.app_name,
+       a.app_description,
+       a.create_app_id,
+       ca.org_id          create_app_org_id,
+       ca.app_extl_id     create_app_extl_id,
+       ca.app_name        create_app_name,
+       ca.app_description create_app_description,
+       a.create_user_id,
+       cu.username        create_username,
+       cu.org_id          create_user_org_id,
+       cup.first_name     create_user_first_name,
+       cup.last_name      create_user_last_name,
+       a.create_timestamp,
+       a.update_app_id,
+       ua.org_id          update_app_org_id,
+       ua.app_extl_id     update_app_extl_id,
+       ua.app_name        update_app_name,
+       ua.app_description update_app_description,
+       a.update_user_id,
+       uu.username        update_username,
+       uu.org_id          update_user_org_id,
+       uup.first_name     update_user_first_name,
+       uup.last_name      update_user_last_name,
+       a.update_timestamp
+FROM app a
+         INNER JOIN org o on o.org_id = a.org_id
+         INNER JOIN org_kind ok on ok.org_kind_id = o.org_kind_id
+         INNER JOIN app ca on ca.app_id = a.create_app_id
+         INNER JOIN app ua on ua.app_id = a.update_app_id
+         LEFT JOIN org_user cu on cu.user_id = a.create_user_id
+         INNER JOIN person_profile cup on cup.person_profile_id = cu.person_profile_id
+         LEFT JOIN org_user uu on uu.user_id = a.update_user_id
+         INNER JOIN person_profile uup on uup.person_profile_id = uu.person_profile_id
+`
+
+type FindAppsWithAuditRow struct {
+	OrgID                uuid.UUID
+	OrgExtlID            string
+	OrgName              string
+	OrgDescription       string
+	OrgKindID            uuid.UUID
+	OrgKindExtlID        string
+	OrgKindDesc          string
+	AppID                uuid.UUID
+	AppExtlID            string
+	AppName              string
+	AppDescription       string
+	CreateAppID          uuid.UUID
+	CreateAppOrgID       uuid.UUID
+	CreateAppExtlID      string
+	CreateAppName        string
+	CreateAppDescription string
+	CreateUserID         uuid.NullUUID
+	CreateUsername       string
+	CreateUserOrgID      uuid.UUID
+	CreateUserFirstName  string
+	CreateUserLastName   string
+	CreateTimestamp      time.Time
+	UpdateAppID          uuid.UUID
+	UpdateAppOrgID       uuid.UUID
+	UpdateAppExtlID      string
+	UpdateAppName        string
+	UpdateAppDescription string
+	UpdateUserID         uuid.NullUUID
+	UpdateUsername       string
+	UpdateUserOrgID      uuid.UUID
+	UpdateUserFirstName  string
+	UpdateUserLastName   string
+	UpdateTimestamp      time.Time
+}
+
+func (q *Queries) FindAppsWithAudit(ctx context.Context) ([]FindAppsWithAuditRow, error) {
+	rows, err := q.db.Query(ctx, findAppsWithAudit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FindAppsWithAuditRow
+	for rows.Next() {
+		var i FindAppsWithAuditRow
+		if err := rows.Scan(
+			&i.OrgID,
+			&i.OrgExtlID,
+			&i.OrgName,
+			&i.OrgDescription,
+			&i.OrgKindID,
+			&i.OrgKindExtlID,
+			&i.OrgKindDesc,
+			&i.AppID,
+			&i.AppExtlID,
+			&i.AppName,
+			&i.AppDescription,
+			&i.CreateAppID,
+			&i.CreateAppOrgID,
+			&i.CreateAppExtlID,
+			&i.CreateAppName,
+			&i.CreateAppDescription,
+			&i.CreateUserID,
+			&i.CreateUsername,
+			&i.CreateUserOrgID,
+			&i.CreateUserFirstName,
+			&i.CreateUserLastName,
+			&i.CreateTimestamp,
+			&i.UpdateAppID,
+			&i.UpdateAppOrgID,
+			&i.UpdateAppExtlID,
+			&i.UpdateAppName,
+			&i.UpdateAppDescription,
+			&i.UpdateUserID,
+			&i.UpdateUsername,
+			&i.UpdateUserOrgID,
+			&i.UpdateUserFirstName,
+			&i.UpdateUserLastName,
+			&i.UpdateTimestamp,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateApp = `-- name: UpdateApp :execrows
 UPDATE app
 SET app_name        = $1,

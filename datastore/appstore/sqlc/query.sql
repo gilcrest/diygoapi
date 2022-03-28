@@ -144,6 +144,50 @@ WHERE o.org_id = $1
 SELECT * FROM app
 ORDER BY app_name;
 
+-- name: FindAppsWithAudit :many
+SELECT a.org_id,
+       o.org_extl_id,
+       o.org_name,
+       o.org_description,
+       ok.org_kind_id,
+       ok.org_kind_extl_id,
+       ok.org_kind_desc,
+       a.app_id,
+       a.app_extl_id,
+       a.app_name,
+       a.app_description,
+       a.create_app_id,
+       ca.org_id          create_app_org_id,
+       ca.app_extl_id     create_app_extl_id,
+       ca.app_name        create_app_name,
+       ca.app_description create_app_description,
+       a.create_user_id,
+       cu.username        create_username,
+       cu.org_id          create_user_org_id,
+       cup.first_name     create_user_first_name,
+       cup.last_name      create_user_last_name,
+       a.create_timestamp,
+       a.update_app_id,
+       ua.org_id          update_app_org_id,
+       ua.app_extl_id     update_app_extl_id,
+       ua.app_name        update_app_name,
+       ua.app_description update_app_description,
+       a.update_user_id,
+       uu.username        update_username,
+       uu.org_id          update_user_org_id,
+       uup.first_name     update_user_first_name,
+       uup.last_name      update_user_last_name,
+       a.update_timestamp
+FROM app a
+         INNER JOIN org o on o.org_id = a.org_id
+         INNER JOIN org_kind ok on ok.org_kind_id = o.org_kind_id
+         INNER JOIN app ca on ca.app_id = a.create_app_id
+         INNER JOIN app ua on ua.app_id = a.update_app_id
+         LEFT JOIN org_user cu on cu.user_id = a.create_user_id
+         INNER JOIN person_profile cup on cup.person_profile_id = cu.person_profile_id
+         LEFT JOIN org_user uu on uu.user_id = a.update_user_id
+         INNER JOIN person_profile uup on uup.person_profile_id = uu.person_profile_id;
+
 -- name: CreateApp :execrows
 INSERT INTO app (app_id, org_id, app_extl_id, app_name, app_description, create_app_id, create_user_id,
                  create_timestamp, update_app_id, update_user_id, update_timestamp)
