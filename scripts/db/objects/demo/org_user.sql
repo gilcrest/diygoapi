@@ -1,15 +1,15 @@
 create table org_user
 (
-    user_id           uuid      not null,
-    username          varchar   not null,
-    org_id            uuid      not null,
-    person_profile_id uuid      not null,
-    create_app_id     uuid      not null,
+    user_id           uuid                     not null,
+    username          varchar                  not null,
+    org_id            uuid                     not null,
+    person_profile_id uuid                     not null,
+    create_app_id     uuid                     not null,
     create_user_id    uuid,
-    create_timestamp  timestamp not null,
-    update_app_id     uuid      not null,
+    create_timestamp  timestamp with time zone not null,
+    update_app_id     uuid                     not null,
     update_user_id    uuid,
-    update_timestamp  timestamp not null,
+    update_timestamp  timestamp with time zone not null,
     constraint user_pk
         primary key (user_id),
     constraint user_self_ref_fk1

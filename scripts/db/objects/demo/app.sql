@@ -1,16 +1,16 @@
 create table app
 (
-    app_id           uuid      not null,
-    org_id           uuid      not null,
-    app_extl_id      varchar   not null,
-    app_name         varchar   not null,
-    app_description  varchar   not null,
-    create_app_id    uuid      not null,
+    app_id           uuid                     not null,
+    org_id           uuid                     not null,
+    app_extl_id      varchar                  not null,
+    app_name         varchar                  not null,
+    app_description  varchar                  not null,
+    create_app_id    uuid                     not null,
     create_user_id   uuid,
-    create_timestamp timestamp not null,
-    update_app_id    uuid      not null,
+    create_timestamp timestamp with time zone not null,
+    update_app_id    uuid                     not null,
     update_user_id   uuid,
-    update_timestamp timestamp not null,
+    update_timestamp timestamp with time zone not null,
     constraint app_pk
         primary key (app_id),
     constraint app_self_ref1
