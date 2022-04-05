@@ -1,6 +1,6 @@
-# go-API-basic
+# DIY Go API
 
-v0.40.0 - 2/22/2022 - things are still coming back together, a ton of work recently. The docs below are out of date in many cases. Hoping to have everything sorted soon, but if you look at the code, you can start to see the structure coming together. I will get this updated!
+v0.42.0 - 4/5/2022 - I renamed the repo from go-api-basic to diy-go-api today, it just seemed more in the spirit of what I'm doing here... Things are still coming back together, a ton of work recently. **The docs below are out of date in many cases**. Hoping to have everything sorted soon, but if you look at the code, you can start to see the structure coming together. I am currently building a simple RBAC implementation as part of this as well. After that is completed, README documentation will be my focus. I will get this updated!
 
 A RESTful API template (built with Go)
 
