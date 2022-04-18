@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/jackc/pgx/v4/pgxpool"
+
 	"github.com/casbin/casbin/v2"
 	"github.com/peterbourgon/ff/v3"
 	"github.com/rs/zerolog"
@@ -45,9 +47,9 @@ const (
 	// database user password environment variable name
 	dbPasswordEnv string = "DB_PASSWORD"
 	// database search path environment variable name
-	dbSearchPath string = "DB_SEARCH_PATH"
+	dbSearchPathEnv string = "DB_SEARCH_PATH"
 	// encryption key environment variable name
-	encryptKey string = "ENCRYPT_KEY"
+	encryptKeyEnv string = "ENCRYPT_KEY"
 )
 
 type flags struct {
@@ -110,8 +112,8 @@ func newFlags(args []string) (flags, error) {
 		dbname        = flagSet.String("db-name", "", fmt.Sprintf("postgresql database name (also via %s)", dbNameEnv))
 		dbuser        = flagSet.String("db-user", "", fmt.Sprintf("postgresql database user (also via %s)", dbUserEnv))
 		dbpassword    = flagSet.String("db-password", "", fmt.Sprintf("postgresql database password (also via %s)", dbPasswordEnv))
-		dbsearchpath  = flagSet.String("db-search-path", "", fmt.Sprintf("postgresql database search path (also via %s)", dbSearchPath))
-		encryptkey    = flagSet.String("encrypt-key", "", fmt.Sprintf("encryption key (also via %s)", encryptKey))
+		dbsearchpath  = flagSet.String("db-search-path", "", fmt.Sprintf("postgresql database search path (also via %s)", dbSearchPathEnv))
+		encryptkey    = flagSet.String("encrypt-key", "", fmt.Sprintf("encryption key (also via %s)", encryptKeyEnv))
 	)
 
 	// Parse the command line flags from above
@@ -136,21 +138,24 @@ func newFlags(args []string) (flags, error) {
 }
 
 // Run parses command line flags and starts the server
-func Run(args []string) error {
+func Run(args []string) (err error) {
 
-	flgs, err := newFlags(args)
+	var flgs flags
+	flgs, err = newFlags(args)
 	if err != nil {
 		return err
 	}
 
 	// determine minimum logging level based on flag input
-	minlvl, err := zerolog.ParseLevel(flgs.logLvlMin)
+	var minlvl zerolog.Level
+	minlvl, err = zerolog.ParseLevel(flgs.logLvlMin)
 	if err != nil {
 		return err
 	}
 
 	// determine logging level based on flag input
-	lvl, err := zerolog.ParseLevel(flgs.loglvl)
+	var lvl zerolog.Level
+	lvl, err = zerolog.ParseLevel(flgs.loglvl)
 	if err != nil {
 		return err
 	}
@@ -195,13 +200,18 @@ func Run(args []string) error {
 	}
 
 	// decode and retrieve encryption key
-	ek, err := secure.ParseEncryptionKey(flgs.encryptkey)
+	var ek *[32]byte
+	ek, err = secure.ParseEncryptionKey(flgs.encryptkey)
 	if err != nil {
 		lgr.Fatal().Err(err).Msg("secure.ParseEncryptionKey() error")
 	}
 
 	// initialize PostgreSQL database
-	dbpool, cleanup, err := datastore.NewPostgreSQLPool(context.Background(), newPostgreSQLDSN(flgs), lgr)
+	var (
+		dbpool  *pgxpool.Pool
+		cleanup func()
+	)
+	dbpool, cleanup, err = datastore.NewPostgreSQLPool(context.Background(), newPostgreSQLDSN(flgs), lgr)
 	if err != nil {
 		lgr.Fatal().Err(err).Msg("datastore.NewPostgreSQLPool error")
 	}
@@ -211,7 +221,8 @@ func Run(args []string) error {
 	ds := datastore.NewDatastore(dbpool)
 
 	// initialize casbin enforcer (using config files for now, will migrate to db)
-	casbinEnforcer, err := casbin.NewEnforcer("config/rbac_model.conf", "config/rbac_policy.csv")
+	var casbinEnforcer *casbin.Enforcer
+	casbinEnforcer, err = casbin.NewEnforcer("config/rbac_model.conf", "config/rbac_policy.csv")
 	if err != nil {
 		lgr.Fatal().Err(err).Msg("casbin.NewEnforcer error")
 	}
