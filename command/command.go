@@ -2,7 +2,7 @@
 // commands and flags used by the application. The package name is
 // inspired by Hugo and Cobra/Viper, but for now, Cobra/Viper is
 // not used, opting instead for the simplicity of ff.
-package commands
+package command
 
 import (
 	"context"
@@ -10,9 +10,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jackc/pgx/v4/pgxpool"
-
 	"github.com/casbin/casbin/v2"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/peterbourgon/ff/v3"
 	"github.com/rs/zerolog"
 

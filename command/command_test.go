@@ -1,12 +1,12 @@
-package commands
+package command
 
 import (
 	"fmt"
 	"testing"
 
+	qt "github.com/frankban/quicktest"
 	"github.com/google/go-cmp/cmp"
 
-	qt "github.com/frankban/quicktest"
 	"github.com/gilcrest/go-api-basic/domain/errs"
 )
 
@@ -51,8 +51,8 @@ func Test_newFlags(t *testing.T) {
 		c.Setenv(dbNameEnv, "whatisinaname")
 		c.Setenv(dbUserEnv, "usersarelosers")
 		c.Setenv(dbPasswordEnv, "yeet")
-		c.Setenv(dbSearchPath, "u2")
-		c.Setenv(encryptKey, "reallyGoodKey")
+		c.Setenv(dbSearchPathEnv, "u2")
+		c.Setenv(encryptKeyEnv, "reallyGoodKey")
 		c.Log("Environment setup completed")
 	}
 
@@ -67,8 +67,8 @@ func Test_newFlags(t *testing.T) {
 		c.Setenv(dbNameEnv, "")
 		c.Setenv(dbUserEnv, "")
 		c.Setenv(dbPasswordEnv, "")
-		c.Setenv(dbSearchPath, "")
-		c.Setenv(encryptKey, "")
+		c.Setenv(dbSearchPathEnv, "")
+		c.Setenv(encryptKeyEnv, "")
 		c.Log("Environment setup completed")
 	}
 
