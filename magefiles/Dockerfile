@@ -19,7 +19,7 @@ RUN go mod download
 COPY . ./
 
 # Build the binary inside the container
-RUN CGO_ENABLED=0 GOOS=linux go build -mod=readonly -v -o server
+RUN CGO_ENABLED=0 GOOS=linux go build -mod=readonly -v -o srvr
 
 ####################################################################
 # Final Stage                                                      #
@@ -27,17 +27,21 @@ RUN CGO_ENABLED=0 GOOS=linux go build -mod=readonly -v -o server
 # Use the official Alpine image for a lean production container.
 # https://hub.docker.com/_/alpine
 # https://docs.docker.com/develop/develop-images/multistage-build/#use-multi-stage-builds
-FROM alpine:3
+FROM alpine:latest
 
 # Install ca-certificates bundle inside the docker image
 RUN apk add --no-cache ca-certificates
 
 # Copy the binary to the production image from the builder stage.
-COPY --from=builder /app/server /server
+COPY --from=builder /app/srvr /srvr
 
 # Get timezone zip from go library and add environment variable to point to it
 ADD https://github.com/golang/go/raw/master/lib/time/zoneinfo.zip /zoneinfo.zip
 ENV ZONEINFO /zoneinfo.zip
 
+# Copy the config files for Casbin into the container
+COPY ./config/rbac_model.conf /config/rbac_model.conf
+COPY ./config/rbac_policy.csv /config/rbac_policy.csv
+
 # Run the web service on container startup.
-CMD ["/server"]
+CMD ["/srvr", "-log-level=debug"]
