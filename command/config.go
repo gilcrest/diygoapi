@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/gilcrest/go-api-basic/domain/errs"
 )
 
@@ -42,13 +43,13 @@ type ConfigFile struct {
 		} `json:"database"`
 		EncryptionKey string `json:"encryptionKey"`
 		GCP           struct {
-			ProjectID           string `json:"projectID"`
-			ArtifactoryRegistry struct {
+			ProjectID        string `json:"projectID"`
+			ArtifactRegistry struct {
 				RepoLocation string `json:"repoLocation"`
 				RepoName     string `json:"repoName"`
 				ImageID      string `json:"imageID"`
 				Tag          string `json:"tag"`
-			} `json:"artifactoryRegistry"`
+			} `json:"artifactRegistry"`
 			CloudSQL struct {
 				InstanceName           string `json:"instanceName"`
 				InstanceConnectionName string `json:"instanceConnectionName"`
@@ -106,37 +107,37 @@ func overrideEnv(f ConfigFile) error {
 	}
 
 	// database host
-	err = os.Setenv(dbHostEnv, f.Config.Database.Host)
+	err = os.Setenv(datastore.DBHostEnv, f.Config.Database.Host)
 	if err != nil {
 		return err
 	}
 
 	// database port
-	err = os.Setenv(dbPortEnv, strconv.Itoa(f.Config.Database.Port))
+	err = os.Setenv(datastore.DBPortEnv, strconv.Itoa(f.Config.Database.Port))
 	if err != nil {
 		return err
 	}
 
 	// database name
-	err = os.Setenv(dbNameEnv, f.Config.Database.Name)
+	err = os.Setenv(datastore.DBNameEnv, f.Config.Database.Name)
 	if err != nil {
 		return err
 	}
 
 	// database user
-	err = os.Setenv(dbUserEnv, f.Config.Database.User)
+	err = os.Setenv(datastore.DBUserEnv, f.Config.Database.User)
 	if err != nil {
 		return err
 	}
 
 	// database user password
-	err = os.Setenv(dbPasswordEnv, f.Config.Database.Password)
+	err = os.Setenv(datastore.DBPasswordEnv, f.Config.Database.Password)
 	if err != nil {
 		return err
 	}
 
 	// database search path
-	err = os.Setenv(dbSearchPathEnv, f.Config.Database.SearchPath)
+	err = os.Setenv(datastore.DBSearchPathEnv, f.Config.Database.SearchPath)
 	if err != nil {
 		return err
 	}
