@@ -48,7 +48,7 @@ type AppService interface {
 	Update(ctx context.Context, r *service.UpdateAppRequest, adt audit.Audit) (service.AppResponse, error)
 }
 
-// MiddlewareService retrieves an App
+// MiddlewareService are all the services uses by the various middleware functions
 type MiddlewareService interface {
 	// FindAppByAPIKey finds an app given its External ID and determines
 	// if the given API key is a valid key for it
@@ -58,6 +58,19 @@ type MiddlewareService interface {
 	// Authorize determines whether an app/user (as part of an Audit
 	// struct) can perform an action against a resource
 	Authorize(lgr zerolog.Logger, r *http.Request, sub audit.Audit) error
+}
+
+// PermissionService allows for creating, updating, reading and deleting a Permission
+type PermissionService interface {
+	Create(ctx context.Context, r *auth.Permission, adt audit.Audit) (auth.Permission, error)
+	FindAll(ctx context.Context) ([]auth.Permission, error)
+}
+
+// RoleService allows for creating, updating, reading and deleting a Role
+// as well as assigning permissions and users to it.
+type RoleService interface {
+	Create(ctx context.Context, r *auth.Role, adt audit.Audit) (auth.Role, error)
+	//AddPermissions(ctx context.Context, r *[]auth.Permission, adt audit.Audit) error
 }
 
 // RegisterUserService registers a new user
@@ -78,7 +91,11 @@ type PingService interface {
 
 // GenesisService initializes the database with dependent data
 type GenesisService interface {
-	Seed(ctx context.Context) (service.FullGenesisResponse, error)
+	// Seed initializes required dependent data in database
+	Seed(ctx context.Context, r *service.GenesisRequest) (service.FullGenesisResponse, error)
+	// ReadConfig reads the local config file generated as part of Seed (when run locally).
+	// Is only a utility to help with local testing.
+	ReadConfig() (service.FullGenesisResponse, error)
 }
 
 // Services are used by the application service handlers
@@ -94,4 +111,6 @@ type Services struct {
 	LoggerService       LoggerService
 	GenesisService      GenesisService
 	MiddlewareService   MiddlewareService
+	PermissionService   PermissionService
+	RoleService         RoleService
 }
