@@ -8,6 +8,7 @@ import (
 	"github.com/rs/zerolog/hlog"
 
 	"github.com/gilcrest/go-api-basic/domain/audit"
+	"github.com/gilcrest/go-api-basic/domain/auth"
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/service"
 )
