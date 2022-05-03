@@ -8,6 +8,7 @@ import (
 
 	"github.com/gilcrest/go-api-basic/domain/app"
 	"github.com/gilcrest/go-api-basic/domain/audit"
+	"github.com/gilcrest/go-api-basic/domain/auth"
 	"github.com/gilcrest/go-api-basic/domain/user"
 	"github.com/gilcrest/go-api-basic/service"
 )
