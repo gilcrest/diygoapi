@@ -195,10 +195,36 @@ func (s *Server) registerRoutes() {
 			ThenFunc(s.handlePing)).
 		Methods(http.MethodGet)
 
+	// Match only POST requests at /api/v1/permissions
+	s.router.Handle(permissionV1PathRoot,
+		s.loggerChain().
+			Append(s.appHandler).
+			Append(s.userHandler).
+			Append(s.jsonContentTypeResponseHandler).
+			ThenFunc(s.handlePermissionCreate)).
+		Methods(http.MethodPost).
+		Headers(contentTypeHeaderKey, appJSONContentTypeHeaderVal)
+
+	// Match only POST requests at /api/v1/permissions
+	s.router.Handle(permissionV1PathRoot,
+		s.loggerChain().
+			Append(s.appHandler).
+			Append(s.userHandler).
+			Append(s.jsonContentTypeResponseHandler).
+			ThenFunc(s.handlePermissionFindAll)).
+		Methods(http.MethodGet)
+
 	// Match only POST requests at /api/v1/genesis
 	s.router.Handle(genesisV1PathRoot,
 		s.loggerChain().
 			Append(s.jsonContentTypeResponseHandler).
 			ThenFunc(s.handleGenesis)).
 		Methods(http.MethodPost)
+
+	// Match only GET requests at /api/v1/genesis
+	s.router.Handle(genesisV1PathRoot,
+		s.loggerChain().
+			Append(s.jsonContentTypeResponseHandler).
+			ThenFunc(s.handleGenesisRead)).
+		Methods(http.MethodGet)
 }

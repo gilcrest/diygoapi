@@ -46,7 +46,10 @@ func TestNewMuxRouter(t *testing.T) {
 			{PathTemplate: pathPrefix + loggerV1PathRoot, HTTPMethods: []string{http.MethodGet}},
 			{PathTemplate: pathPrefix + loggerV1PathRoot, HTTPMethods: []string{http.MethodPut}},
 			{PathTemplate: pathPrefix + pingV1PathRoot, HTTPMethods: []string{http.MethodGet}},
+			{PathTemplate: pathPrefix + permissionV1PathRoot, HTTPMethods: []string{http.MethodPost}},
+			{PathTemplate: pathPrefix + permissionV1PathRoot, HTTPMethods: []string{http.MethodGet}},
 			{PathTemplate: pathPrefix + genesisV1PathRoot, HTTPMethods: []string{http.MethodPost}},
+			{PathTemplate: pathPrefix + genesisV1PathRoot, HTTPMethods: []string{http.MethodGet}},
 		}
 
 		// make a slice of r for use in the Walk function
