@@ -94,11 +94,8 @@ type AppService struct {
 }
 
 // Create is used to create an App
-func (s AppService) Create(ctx context.Context, r *CreateAppRequest, adt audit.Audit) (AppResponse, error) {
-	var (
-		a   app.App
-		err error
-	)
+func (s AppService) Create(ctx context.Context, r *CreateAppRequest, adt audit.Audit) (ar AppResponse, err error) {
+	var a app.App
 	a.ID = uuid.New()
 	a.ExternalID = secure.NewID()
 	a.Org = adt.App.Org
@@ -131,16 +128,20 @@ func (s AppService) Create(ctx context.Context, r *CreateAppRequest, adt audit.A
 	if err != nil {
 		return AppResponse{}, err
 	}
+	// defer transaction rollback and handle error, if any
+	defer func() {
+		err = s.Datastorer.RollbackTx(ctx, tx, err)
+	}()
 
 	// create app database record using appstore
 	var rowsAffected int64
 	rowsAffected, err = appstore.New(tx).CreateApp(ctx, createAppParams)
 	if err != nil {
-		return AppResponse{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Database, err))
+		return AppResponse{}, errs.E(errs.Database, err)
 	}
 
 	if rowsAffected != 1 {
-		return AppResponse{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected)))
+		return AppResponse{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
 	}
 
 	for _, key := range a.APIKeys {
@@ -161,11 +162,11 @@ func (s AppService) Create(ctx context.Context, r *CreateAppRequest, adt audit.A
 		var apiKeyRowsAffected int64
 		apiKeyRowsAffected, err = appstore.New(tx).CreateAppAPIKey(ctx, createAppAPIKeyParams)
 		if err != nil {
-			return AppResponse{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Database, err))
+			return AppResponse{}, errs.E(errs.Database, err)
 		}
 
 		if apiKeyRowsAffected != 1 {
-			return AppResponse{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", apiKeyRowsAffected)))
+			return AppResponse{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", apiKeyRowsAffected))
 		}
 
 	}
@@ -187,9 +188,7 @@ type UpdateAppRequest struct {
 }
 
 // Update is used to update an App. API Keys for an App cannot be updated.
-func (s AppService) Update(ctx context.Context, r *UpdateAppRequest, adt audit.Audit) (AppResponse, error) {
-
-	var err error
+func (s AppService) Update(ctx context.Context, r *UpdateAppRequest, adt audit.Audit) (ar AppResponse, err error) {
 
 	// retrieve existing Org
 	var aa appAudit
@@ -222,15 +221,19 @@ func (s AppService) Update(ctx context.Context, r *UpdateAppRequest, adt audit.A
 	if err != nil {
 		return AppResponse{}, err
 	}
+	// defer transaction rollback and handle error, if any
+	defer func() {
+		err = s.Datastorer.RollbackTx(ctx, tx, err)
+	}()
 
 	var rowsAffected int64
 	rowsAffected, err = appstore.New(tx).UpdateApp(ctx, updateAppParams)
 	if err != nil {
-		return AppResponse{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Database, err))
+		return AppResponse{}, errs.E(errs.Database, err)
 	}
 
 	if rowsAffected != 1 {
-		return AppResponse{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected)))
+		return AppResponse{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
 	}
 
 	// commit db txn using pgxpool
@@ -243,10 +246,11 @@ func (s AppService) Update(ctx context.Context, r *UpdateAppRequest, adt audit.A
 }
 
 // Delete is used to delete an App
-func (s AppService) Delete(ctx context.Context, extlID string) (DeleteResponse, error) {
+func (s AppService) Delete(ctx context.Context, extlID string) (dr DeleteResponse, err error) {
 
-	// retrieve existing Org
-	a, err := findAppByExternalID(ctx, s.Datastorer.Pool(), extlID)
+	// retrieve existing App
+	var a app.App
+	a, err = findAppByExternalID(ctx, s.Datastorer.Pool(), extlID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return DeleteResponse{}, errs.E(errs.Validation, "No app exists for the given external ID")
@@ -260,27 +264,31 @@ func (s AppService) Delete(ctx context.Context, extlID string) (DeleteResponse, 
 	if err != nil {
 		return DeleteResponse{}, err
 	}
+	// defer transaction rollback and handle error, if any
+	defer func() {
+		err = s.Datastorer.RollbackTx(ctx, tx, err)
+	}()
 
 	// one-to-many API keys can be associated with an App. This will
 	// delete them all.
 	var apiKeysRowsAffected int64
 	apiKeysRowsAffected, err = appstore.New(tx).DeleteAppAPIKeys(ctx, a.ID)
 	if err != nil {
-		return DeleteResponse{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Database, err))
+		return DeleteResponse{}, errs.E(errs.Database, err)
 	}
 
 	if apiKeysRowsAffected < 1 {
-		return DeleteResponse{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Database, fmt.Sprintf("rows affected should be at least 1, actual: %d", apiKeysRowsAffected)))
+		return DeleteResponse{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be at least 1, actual: %d", apiKeysRowsAffected))
 	}
 
 	var rowsAffected int64
 	rowsAffected, err = appstore.New(tx).DeleteApp(ctx, a.ID)
 	if err != nil {
-		return DeleteResponse{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Database, err))
+		return DeleteResponse{}, errs.E(errs.Database, err)
 	}
 
 	if rowsAffected != 1 {
-		return DeleteResponse{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected)))
+		return DeleteResponse{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
 	}
 
 	// commit db txn using pgxpool
@@ -298,9 +306,10 @@ func (s AppService) Delete(ctx context.Context, extlID string) (DeleteResponse, 
 }
 
 // FindByExternalID is used to find an App by its External ID
-func (s AppService) FindByExternalID(ctx context.Context, extlID string) (AppResponse, error) {
+func (s AppService) FindByExternalID(ctx context.Context, extlID string) (ar AppResponse, err error) {
 
-	aa, err := findAppByExternalIDWithAudit(ctx, s.Datastorer.Pool(), extlID)
+	var aa appAudit
+	aa, err = findAppByExternalIDWithAudit(ctx, s.Datastorer.Pool(), extlID)
 	if err != nil {
 		return AppResponse{}, err
 	}
@@ -309,12 +318,11 @@ func (s AppService) FindByExternalID(ctx context.Context, extlID string) (AppRes
 }
 
 // FindAll is used to list all apps in the datastore
-func (s AppService) FindAll(ctx context.Context) ([]AppResponse, error) {
+func (s AppService) FindAll(ctx context.Context) (sar []AppResponse, err error) {
 
 	var (
 		rows      []appstore.FindAppsWithAuditRow
 		responses []AppResponse
-		err       error
 	)
 	rows, err = appstore.New(s.Datastorer.Pool()).FindAppsWithAudit(ctx)
 	if err != nil {

@@ -32,6 +32,18 @@ type CreateOrgRequest struct {
 	Kind        string `json:"kind"`
 }
 
+func (r CreateOrgRequest) isValid() error {
+	switch {
+	case r.Name == "":
+		return errs.E(errs.Validation, "name is required")
+	case r.Description == "":
+		return errs.E(errs.Validation, "description is required")
+	case r.Kind == "":
+		return errs.E(errs.Validation, "kind is required")
+	}
+	return nil
+}
+
 // OrgResponse is the response struct for an Org
 type OrgResponse struct {
 	ExternalID          string `json:"external_id"`
@@ -76,8 +88,11 @@ type OrgService struct {
 }
 
 // Create is used to create an Org
-func (s OrgService) Create(ctx context.Context, r *CreateOrgRequest, adt audit.Audit) (OrgResponse, error) {
-	var err error
+func (s OrgService) Create(ctx context.Context, r *CreateOrgRequest, adt audit.Audit) (or OrgResponse, err error) {
+	err = r.isValid()
+	if err != nil {
+		return OrgResponse{}, err
+	}
 
 	var kind org.Kind
 	kind, err = findOrgKindByExtlID(ctx, s.Datastorer.Pool(), r.Kind)
@@ -110,8 +125,12 @@ func (s OrgService) Create(ctx context.Context, r *CreateOrgRequest, adt audit.A
 	if err != nil {
 		return OrgResponse{}, err
 	}
+	// defer transaction rollback and handle error, if any
+	defer func() {
+		err = s.Datastorer.RollbackTx(ctx, tx, err)
+	}()
 
-	err = createOrgDB(ctx, s.Datastorer, tx, oa)
+	err = createOrgDB(ctx, tx, oa)
 	if err != nil {
 		return OrgResponse{}, err
 	}
@@ -127,20 +146,20 @@ func (s OrgService) Create(ctx context.Context, r *CreateOrgRequest, adt audit.A
 
 // createOrgDB writes an Org and its audit information to the database.
 // separate function as it's used by genesis service as well
-func createOrgDB(ctx context.Context, ds Datastorer, tx pgx.Tx, oa orgAudit) error {
+func createOrgDB(ctx context.Context, tx pgx.Tx, oa orgAudit) error {
 	if oa.Org.Kind.ID == uuid.Nil {
-		return ds.RollbackTx(ctx, tx, errs.E("org Kind is required"))
+		return errs.E("org Kind is required")
 	}
 
 	// create database record using orgstore
 	rowsAffected, err := orgstore.New(tx).CreateOrg(ctx, newCreateOrgParams(oa))
 	if err != nil {
-		return ds.RollbackTx(ctx, tx, errs.E(errs.Database, err))
+		return errs.E(errs.Database, err)
 	}
 
 	// update should only update exactly one record
 	if rowsAffected != 1 {
-		return ds.RollbackTx(ctx, tx, errs.E(errs.Database, fmt.Sprintf("CreateOrg() should insert 1 row, actual: %d", rowsAffected)))
+		return errs.E(errs.Database, fmt.Sprintf("CreateOrg() should insert 1 row, actual: %d", rowsAffected))
 	}
 
 	return nil
@@ -171,12 +190,11 @@ type UpdateOrgRequest struct {
 }
 
 // Update is used to update an Org
-func (s OrgService) Update(ctx context.Context, r *UpdateOrgRequest, adt audit.Audit) (OrgResponse, error) {
+func (s OrgService) Update(ctx context.Context, r *UpdateOrgRequest, adt audit.Audit) (or OrgResponse, err error) {
 
 	// retrieve existing Org
 	var (
-		oa  orgAudit
-		err error
+		oa orgAudit
 	)
 	oa, err = findOrgByExternalIDWithAudit(ctx, s.Datastorer.Pool(), r.ExternalID)
 	if err != nil {
@@ -207,17 +225,21 @@ func (s OrgService) Update(ctx context.Context, r *UpdateOrgRequest, adt audit.A
 	if err != nil {
 		return OrgResponse{}, err
 	}
+	// defer transaction rollback and handle error, if any
+	defer func() {
+		err = s.Datastorer.RollbackTx(ctx, tx, err)
+	}()
 
 	// update database record using orgstore
 	var rowsAffected int64
 	rowsAffected, err = orgstore.New(tx).UpdateOrg(ctx, params)
 	if err != nil {
-		return OrgResponse{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Database, err))
+		return OrgResponse{}, errs.E(errs.Database, err)
 	}
 
 	// update should only update exactly one record
 	if rowsAffected != 1 {
-		return OrgResponse{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Database, fmt.Sprintf("UpdateOrg() should update 1 row, actual: %d", rowsAffected)))
+		return OrgResponse{}, errs.E(errs.Database, fmt.Sprintf("UpdateOrg() should update 1 row, actual: %d", rowsAffected))
 	}
 
 	// commit db txn using pgxpool
@@ -230,10 +252,11 @@ func (s OrgService) Update(ctx context.Context, r *UpdateOrgRequest, adt audit.A
 }
 
 // Delete is used to delete an Org
-func (s OrgService) Delete(ctx context.Context, extlID string) (DeleteResponse, error) {
+func (s OrgService) Delete(ctx context.Context, extlID string) (dr DeleteResponse, err error) {
 
 	// retrieve existing Org
-	o, err := findOrgByExternalID(ctx, s.Datastorer.Pool(), extlID)
+	var o org.Org
+	o, err = findOrgByExternalID(ctx, s.Datastorer.Pool(), extlID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return DeleteResponse{}, errs.E(errs.Validation, "No org exists for the given external ID")
@@ -247,15 +270,19 @@ func (s OrgService) Delete(ctx context.Context, extlID string) (DeleteResponse, 
 	if err != nil {
 		return DeleteResponse{}, err
 	}
+	// defer transaction rollback and handle error, if any
+	defer func() {
+		err = s.Datastorer.RollbackTx(ctx, tx, err)
+	}()
 
 	var rowsAffected int64
 	rowsAffected, err = orgstore.New(tx).DeleteOrg(ctx, o.ID)
 	if err != nil {
-		return DeleteResponse{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Database, err))
+		return DeleteResponse{}, errs.E(errs.Database, err)
 	}
 
 	if rowsAffected != 1 {
-		return DeleteResponse{}, s.Datastorer.RollbackTx(ctx, tx, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected)))
+		return DeleteResponse{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
 
 	}
 
@@ -496,10 +523,10 @@ func findOrgKindByExtlID(ctx context.Context, dbtx DBTX, extlID string) (org.Kin
 }
 
 // createGenesisOrgKind initializes the org_kind lookup table with the genesis kind record
-func createGenesisOrgKind(ctx context.Context, ds Datastorer, tx pgx.Tx, adt audit.Audit) (orgstore.CreateOrgKindParams, error) {
+func createGenesisOrgKind(ctx context.Context, tx pgx.Tx, adt audit.Audit) (orgstore.CreateOrgKindParams, error) {
 	genesisParams := orgstore.CreateOrgKindParams{
 		OrgKindID:       uuid.New(),
-		OrgKindExtlID:   genesisOrgTypeString,
+		OrgKindExtlID:   genesisOrgKind,
 		OrgKindDesc:     "The Genesis org represents the first organization created in the database and exists purely for the administrative purpose of creating other organizations, apps and users.",
 		CreateAppID:     adt.App.ID,
 		CreateUserID:    datastore.NewNullUUID(adt.User.ID),
@@ -515,18 +542,18 @@ func createGenesisOrgKind(ctx context.Context, ds Datastorer, tx pgx.Tx, adt aud
 	)
 	rowsAffected, err = orgstore.New(tx).CreateOrgKind(ctx, genesisParams)
 	if err != nil {
-		return orgstore.CreateOrgKindParams{}, ds.RollbackTx(ctx, tx, errs.E(errs.Database, err))
+		return orgstore.CreateOrgKindParams{}, errs.E(errs.Database, err)
 	}
 
 	if rowsAffected != 1 {
-		return orgstore.CreateOrgKindParams{}, ds.RollbackTx(ctx, tx, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected)))
+		return orgstore.CreateOrgKindParams{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
 	}
 
 	return genesisParams, nil
 }
 
 // createTestOrgKind initializes the org_kind lookup table with the test kind record
-func createTestOrgKind(ctx context.Context, ds Datastorer, tx pgx.Tx, adt audit.Audit) (orgstore.CreateOrgKindParams, error) {
+func createTestOrgKind(ctx context.Context, tx pgx.Tx, adt audit.Audit) (orgstore.CreateOrgKindParams, error) {
 	testParams := orgstore.CreateOrgKindParams{
 		OrgKindID:       uuid.New(),
 		OrgKindExtlID:   "test",
@@ -545,18 +572,18 @@ func createTestOrgKind(ctx context.Context, ds Datastorer, tx pgx.Tx, adt audit.
 	)
 	rowsAffected, err = orgstore.New(tx).CreateOrgKind(ctx, testParams)
 	if err != nil {
-		return orgstore.CreateOrgKindParams{}, ds.RollbackTx(ctx, tx, errs.E(errs.Database, err))
+		return orgstore.CreateOrgKindParams{}, errs.E(errs.Database, err)
 	}
 
 	if rowsAffected != 1 {
-		return orgstore.CreateOrgKindParams{}, ds.RollbackTx(ctx, tx, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected)))
+		return orgstore.CreateOrgKindParams{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
 	}
 
 	return testParams, nil
 }
 
 // createStandardOrgKind initializes the org_kind lookup table with the standard kind record
-func createStandardOrgKind(ctx context.Context, ds Datastorer, tx pgx.Tx, adt audit.Audit) error {
+func createStandardOrgKind(ctx context.Context, tx pgx.Tx, adt audit.Audit) error {
 	standardParams := orgstore.CreateOrgKindParams{
 		OrgKindID:       uuid.New(),
 		OrgKindExtlID:   "standard",
@@ -575,11 +602,11 @@ func createStandardOrgKind(ctx context.Context, ds Datastorer, tx pgx.Tx, adt au
 	)
 	rowsAffected, err = orgstore.New(tx).CreateOrgKind(ctx, standardParams)
 	if err != nil {
-		return ds.RollbackTx(ctx, tx, errs.E(errs.Database, err))
+		return errs.E(errs.Database, err)
 	}
 
 	if rowsAffected != 1 {
-		return ds.RollbackTx(ctx, tx, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected)))
+		return errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
 	}
 
 	return nil

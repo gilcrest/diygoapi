@@ -2,6 +2,7 @@ package service_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -22,6 +23,14 @@ import (
 	"github.com/gilcrest/go-api-basic/service"
 )
 
+const (
+	testOrgServiceOrgName               = "TestCreateOrgService_Create"
+	testOrgServiceOrgDescription        = "Test Org created via TestCreateOrgService_Create"
+	testOrgServiceOrgKind               = "test"
+	testOrgServiceUpdatedOrgName        = "TestCreateOrgService_Update"
+	testOrgServiceUpdatedOrgDescription = "Test Org updated via TestCreateOrgService_Update"
+)
+
 func TestOrgService(t *testing.T) {
 	t.Run("create", func(t *testing.T) {
 		c := qt.New(t)
@@ -33,21 +42,21 @@ func TestOrgService(t *testing.T) {
 			Datastorer: ds,
 		}
 		r := service.CreateOrgRequest{
-			Name:        "Test Org",
-			Description: "Test Org created via TestCreateOrgService_Create",
-			Kind:        "test",
+			Name:        testOrgServiceOrgName,
+			Description: testOrgServiceOrgDescription,
+			Kind:        testOrgServiceOrgKind,
 		}
 
 		ctx := context.Background()
 
-		adt := findGenesisTestAudit(ctx, t, ds)
+		adt := findPrincipalTestAudit(ctx, t, ds)
 
 		got, err := s.Create(context.Background(), &r, adt)
 		want := service.OrgResponse{
 			ExternalID:          got.ExternalID,
-			Name:                "Test Org",
-			KindExternalID:      "test",
-			Description:         "Test Org created via TestCreateOrgService_Create",
+			Name:                testOrgServiceOrgName,
+			KindExternalID:      testOrgServiceOrgKind,
+			Description:         testOrgServiceOrgDescription,
 			CreateAppExtlID:     adt.App.ExternalID.String(),
 			CreateUsername:      adt.User.Username,
 			CreateUserFirstName: adt.User.Profile.FirstName,
@@ -72,7 +81,7 @@ func TestOrgService(t *testing.T) {
 			testOrg orgstore.FindOrgByNameRow
 			err     error
 		)
-		testOrg, err = orgstore.New(ds.Pool()).FindOrgByName(ctx, "Test Org")
+		testOrg, err = orgstore.New(ds.Pool()).FindOrgByName(ctx, testOrgServiceOrgName)
 		if err != nil {
 			t.Fatalf("FindOrgByName() error = %v", err)
 		}
@@ -82,19 +91,19 @@ func TestOrgService(t *testing.T) {
 		}
 		r := service.UpdateOrgRequest{
 			ExternalID:  testOrg.OrgExtlID,
-			Name:        "Updated Test Org",
-			Description: "Test Org updated via TestCreateOrgService_Update",
+			Name:        testOrgServiceUpdatedOrgName,
+			Description: testOrgServiceUpdatedOrgDescription,
 		}
 
-		adt := findGenesisTestAudit(ctx, t, ds)
+		adt := findPrincipalTestAudit(ctx, t, ds)
 
 		var got service.OrgResponse
 		got, err = s.Update(context.Background(), &r, adt)
 		want := service.OrgResponse{
 			ExternalID:          got.ExternalID,
-			Name:                "Updated Test Org",
-			KindExternalID:      "test",
-			Description:         "Test Org updated via TestCreateOrgService_Update",
+			Name:                testOrgServiceUpdatedOrgName,
+			KindExternalID:      testOrgServiceOrgKind,
+			Description:         testOrgServiceUpdatedOrgDescription,
 			CreateAppExtlID:     adt.App.ExternalID.String(),
 			CreateUsername:      adt.User.Username,
 			CreateUserFirstName: adt.User.Profile.FirstName,
@@ -119,7 +128,7 @@ func TestOrgService(t *testing.T) {
 			testOrg orgstore.FindOrgByNameRow
 			err     error
 		)
-		testOrg, err = orgstore.New(ds.Pool()).FindOrgByName(ctx, "Updated Test Org")
+		testOrg, err = orgstore.New(ds.Pool()).FindOrgByName(ctx, testOrgServiceUpdatedOrgName)
 		if err != nil {
 			t.Fatalf("FindOrgByName() error = %v", err)
 		}
@@ -128,15 +137,15 @@ func TestOrgService(t *testing.T) {
 			Datastorer: ds,
 		}
 
-		adt := findGenesisTestAudit(ctx, t, ds)
+		adt := findPrincipalTestAudit(ctx, t, ds)
 
 		var got service.OrgResponse
 		got, err = s.FindByExternalID(context.Background(), testOrg.OrgExtlID)
 		want := service.OrgResponse{
 			ExternalID:          got.ExternalID,
-			Name:                "Updated Test Org",
-			KindExternalID:      "test",
-			Description:         "Test Org updated via TestCreateOrgService_Update",
+			Name:                testOrgServiceUpdatedOrgName,
+			KindExternalID:      testOrgServiceOrgKind,
+			Description:         testOrgServiceUpdatedOrgDescription,
 			CreateAppExtlID:     adt.App.ExternalID.String(),
 			CreateUsername:      adt.User.Username,
 			CreateUserFirstName: adt.User.Profile.FirstName,
@@ -182,7 +191,7 @@ func TestOrgService(t *testing.T) {
 			testOrg orgstore.FindOrgByNameRow
 			err     error
 		)
-		testOrg, err = orgstore.New(ds.Pool()).FindOrgByName(ctx, "Updated Test Org")
+		testOrg, err = orgstore.New(ds.Pool()).FindOrgByName(ctx, testOrgServiceUpdatedOrgName)
 		if err != nil {
 			t.Fatalf("FindOrgByName() error = %v", err)
 		}
@@ -202,14 +211,15 @@ func TestOrgService(t *testing.T) {
 	})
 }
 
-func findGenesisTestAudit(ctx context.Context, t *testing.T, ds datastore.Datastore) audit.Audit {
+// findPrincipalTestAudit returns an audit.Audit with the Principal Org, App and a Test User
+func findPrincipalTestAudit(ctx context.Context, t *testing.T, ds datastore.Datastore) audit.Audit {
 	t.Helper()
 
 	var (
 		findOrgByNameRow orgstore.FindOrgByNameRow
 		err              error
 	)
-	findOrgByNameRow, err = orgstore.New(ds.Pool()).FindOrgByName(ctx, "genesis")
+	findOrgByNameRow, err = orgstore.New(ds.Pool()).FindOrgByName(ctx, service.PrincipalOrgName)
 	if err != nil {
 		t.Fatalf("FindOrgByName() error = %v", err)
 	}
@@ -230,7 +240,7 @@ func findGenesisTestAudit(ctx context.Context, t *testing.T, ds datastore.Datast
 
 	findAppByNameParams := appstore.FindAppByNameParams{
 		OrgID:   findOrgByNameRow.OrgID,
-		AppName: "WOPR",
+		AppName: service.PrincipalAppName,
 	}
 
 	var genesisDBAppRow appstore.FindAppByNameRow
@@ -249,23 +259,23 @@ func findGenesisTestAudit(ctx context.Context, t *testing.T, ds datastore.Datast
 	}
 
 	findUserByUsernameParams := userstore.FindUserByUsernameParams{
-		Username: "pcollins",
+		Username: strings.TrimSpace(service.PrincipalTestUsername),
 		OrgID:    genesisOrg.ID,
 	}
 
-	var philCollinsDBUserRow userstore.FindUserByUsernameRow
-	philCollinsDBUserRow, err = userstore.New(ds.Pool()).FindUserByUsername(ctx, findUserByUsernameParams)
+	var row userstore.FindUserByUsernameRow
+	row, err = userstore.New(ds.Pool()).FindUserByUsername(ctx, findUserByUsernameParams)
 	if err != nil {
 		t.Fatalf("FindUserByUsername() error = %v", err)
 	}
 
 	genesisTestUser := user.User{
-		ID:       philCollinsDBUserRow.UserID,
-		Username: philCollinsDBUserRow.Username,
+		ID:       row.UserID,
+		Username: row.Username,
 		Org:      genesisOrg,
 		Profile: person.Profile{
-			FirstName: philCollinsDBUserRow.FirstName,
-			LastName:  philCollinsDBUserRow.LastName,
+			FirstName: row.FirstName,
+			LastName:  row.LastName,
 		},
 	}
 

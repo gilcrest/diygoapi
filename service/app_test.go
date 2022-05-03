@@ -24,6 +24,13 @@ import (
 	"github.com/gilcrest/go-api-basic/service"
 )
 
+const (
+	testAppServiceAppName               = "TestAppService_Create"
+	testAppServiceAppDescription        = "Test App created via TestAppService_Create"
+	testAppServiceUpdatedAppName        = "TestAppService_Update"
+	testAppServiceUpdatedAppDescription = "Test App updated via TestAppService_Update"
+)
+
 func TestAppService(t *testing.T) {
 	t.Run("create", func(t *testing.T) {
 		c := qt.New(t)
@@ -53,8 +60,8 @@ func TestAppService(t *testing.T) {
 			EncryptionKey:         ek,
 		}
 		r := service.CreateAppRequest{
-			Name:        "Test App",
-			Description: "Test App created via TestAppService_Create",
+			Name:        testAppServiceAppName,
+			Description: testAppServiceAppDescription,
 		}
 
 		ctx := context.Background()
@@ -64,8 +71,8 @@ func TestAppService(t *testing.T) {
 		var got service.AppResponse
 		got, err = s.Create(context.Background(), &r, adt)
 		want := service.AppResponse{
-			Name:                "Test App",
-			Description:         "Test App created via TestAppService_Create",
+			Name:                testAppServiceAppName,
+			Description:         testAppServiceAppDescription,
 			CreateAppExtlID:     adt.App.ExternalID.String(),
 			CreateUsername:      adt.User.Username,
 			CreateUserFirstName: adt.User.Profile.FirstName,
@@ -92,7 +99,7 @@ func TestAppService(t *testing.T) {
 
 		findAppByNameParams := appstore.FindAppByNameParams{
 			OrgID:   adt.App.Org.ID,
-			AppName: "Test App",
+			AppName: testAppServiceAppName,
 		}
 
 		var testAppRow appstore.FindAppByNameRow
@@ -106,15 +113,15 @@ func TestAppService(t *testing.T) {
 		}
 		r := service.UpdateAppRequest{
 			ExternalID:  testAppRow.AppExtlID,
-			Name:        "Updated Test App",
-			Description: "Test App updated via TestAppService_Update",
+			Name:        testAppServiceUpdatedAppName,
+			Description: testAppServiceUpdatedAppDescription,
 		}
 
 		var got service.AppResponse
 		got, err = s.Update(context.Background(), &r, adt)
 		want := service.AppResponse{
-			Name:                "Updated Test App",
-			Description:         "Test App updated via TestAppService_Update",
+			Name:                testAppServiceUpdatedAppName,
+			Description:         testAppServiceUpdatedAppDescription,
 			CreateAppExtlID:     adt.App.ExternalID.String(),
 			CreateUsername:      adt.User.Username,
 			CreateUserFirstName: adt.User.Profile.FirstName,
@@ -139,7 +146,7 @@ func TestAppService(t *testing.T) {
 
 		findAppByNameParams := appstore.FindAppByNameParams{
 			OrgID:   adt.App.Org.ID,
-			AppName: "Updated Test App",
+			AppName: testAppServiceUpdatedAppName,
 		}
 
 		var (
@@ -159,8 +166,8 @@ func TestAppService(t *testing.T) {
 		got, err = s.FindByExternalID(context.Background(), testAppRow.AppExtlID)
 		want := service.AppResponse{
 			ExternalID:          got.ExternalID,
-			Name:                "Updated Test App",
-			Description:         "Test App updated via TestAppService_Update",
+			Name:                testAppServiceUpdatedAppName,
+			Description:         testAppServiceUpdatedAppDescription,
 			CreateAppExtlID:     adt.App.ExternalID.String(),
 			CreateUsername:      adt.User.Username,
 			CreateUserFirstName: adt.User.Profile.FirstName,
@@ -207,7 +214,7 @@ func TestAppService(t *testing.T) {
 
 		findAppByNameParams := appstore.FindAppByNameParams{
 			OrgID:   adt.App.Org.ID,
-			AppName: "Updated Test App",
+			AppName: testAppServiceUpdatedAppName,
 		}
 
 		var testAppRow appstore.FindAppByNameRow
@@ -238,7 +245,7 @@ func findTestAudit(ctx context.Context, t *testing.T, ds datastore.Datastore) au
 		findOrgByNameRow orgstore.FindOrgByNameRow
 		err              error
 	)
-	findOrgByNameRow, err = orgstore.New(ds.Pool()).FindOrgByName(ctx, "test")
+	findOrgByNameRow, err = orgstore.New(ds.Pool()).FindOrgByName(ctx, service.TestOrgName)
 	if err != nil {
 		t.Fatalf("FindOrgByName() error = %v", err)
 	}
@@ -257,7 +264,7 @@ func findTestAudit(ctx context.Context, t *testing.T, ds datastore.Datastore) au
 
 	findAppByNameParams := appstore.FindAppByNameParams{
 		OrgID:   findOrgByNameRow.OrgID,
-		AppName: "test",
+		AppName: service.TestAppName,
 	}
 
 	var testDBAppRow appstore.FindAppByNameRow
@@ -276,23 +283,23 @@ func findTestAudit(ctx context.Context, t *testing.T, ds datastore.Datastore) au
 	}
 
 	findUserByUsernameParams := userstore.FindUserByUsernameParams{
-		Username: "shackett",
+		Username: service.TestUsername,
 		OrgID:    testOrg.ID,
 	}
 
-	var steveHackettDBUserRow userstore.FindUserByUsernameRow
-	steveHackettDBUserRow, err = userstore.New(ds.Pool()).FindUserByUsername(ctx, findUserByUsernameParams)
+	var findUserByUsernameRow userstore.FindUserByUsernameRow
+	findUserByUsernameRow, err = userstore.New(ds.Pool()).FindUserByUsername(ctx, findUserByUsernameParams)
 	if err != nil {
 		t.Fatalf("FindUserByUsername() error = %v", err)
 	}
 
 	testUser := user.User{
-		ID:       steveHackettDBUserRow.UserID,
-		Username: steveHackettDBUserRow.Username,
+		ID:       findUserByUsernameRow.UserID,
+		Username: findUserByUsernameRow.Username,
 		Org:      testOrg,
 		Profile: person.Profile{
-			FirstName: steveHackettDBUserRow.FirstName,
-			LastName:  steveHackettDBUserRow.LastName,
+			FirstName: findUserByUsernameRow.FirstName,
+			LastName:  findUserByUsernameRow.LastName,
 		},
 	}
 

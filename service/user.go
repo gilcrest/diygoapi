@@ -29,17 +29,19 @@ type RegisterUserService struct {
 
 // SelfRegister is used to register a User with an Organization. This is "self registration" as opposed to one user
 // registering another user.
-func (s RegisterUserService) SelfRegister(ctx context.Context, adt audit.Audit) error {
-	var err error
-
+func (s RegisterUserService) SelfRegister(ctx context.Context, adt audit.Audit) (err error) {
 	// start db txn using pgxpool
 	var tx pgx.Tx
 	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
 		return err
 	}
+	// defer transaction rollback and handle error, if any
+	defer func() {
+		err = s.Datastorer.RollbackTx(ctx, tx, err)
+	}()
 
-	err = createUserDB(ctx, s.Datastorer, tx, adt.User, adt)
+	err = createUserDB(ctx, tx, adt.User, adt)
 	if err != nil {
 		return err
 	}
@@ -55,7 +57,7 @@ func (s RegisterUserService) SelfRegister(ctx context.Context, adt audit.Audit) 
 
 // createUserDB creates a user in the database given a domain user.User and audit.Audit
 // If it is a self registration, u and adt.User will be the same
-func createUserDB(ctx context.Context, ds Datastorer, tx pgx.Tx, u user.User, adt audit.Audit) error {
+func createUserDB(ctx context.Context, tx pgx.Tx, u user.User, adt audit.Audit) error {
 	var err error
 
 	createPersonParams := personstore.CreatePersonParams{
@@ -73,11 +75,11 @@ func createUserDB(ctx context.Context, ds Datastorer, tx pgx.Tx, u user.User, ad
 	var rowsAffected int64
 	rowsAffected, err = personstore.New(tx).CreatePerson(ctx, createPersonParams)
 	if err != nil {
-		return ds.RollbackTx(ctx, tx, errs.E(errs.Database, err))
+		return errs.E(errs.Database, err)
 	}
 
 	if rowsAffected != 1 {
-		return ds.RollbackTx(ctx, tx, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected)))
+		return errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
 	}
 
 	// create Person Profile db record
@@ -109,11 +111,11 @@ func createUserDB(ctx context.Context, ds Datastorer, tx pgx.Tx, u user.User, ad
 	var personProfileRowsAffected int64
 	personProfileRowsAffected, err = personstore.New(tx).CreatePersonProfile(ctx, createPersonProfileParams)
 	if err != nil {
-		return ds.RollbackTx(ctx, tx, errs.E(errs.Database, err))
+		return errs.E(errs.Database, err)
 	}
 
 	if personProfileRowsAffected != 1 {
-		return ds.RollbackTx(ctx, tx, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected)))
+		return errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
 	}
 
 	createUserParams := userstore.CreateUserParams{
@@ -132,11 +134,11 @@ func createUserDB(ctx context.Context, ds Datastorer, tx pgx.Tx, u user.User, ad
 	var userRowsAffected int64
 	userRowsAffected, err = userstore.New(tx).CreateUser(ctx, createUserParams)
 	if err != nil {
-		return ds.RollbackTx(ctx, tx, errs.E(errs.Database, err))
+		return errs.E(errs.Database, err)
 	}
 
 	if userRowsAffected != 1 {
-		return ds.RollbackTx(ctx, tx, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected)))
+		return errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
 	}
 
 	return nil
