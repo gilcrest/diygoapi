@@ -1,12 +1,16 @@
-package datastore
+package datastore_test
 
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"os"
 	"reflect"
 	"strconv"
 	"testing"
+	"time"
+
+	"github.com/gilcrest/go-api-basic/datastore"
 
 	qt "github.com/frankban/quicktest"
 	"github.com/google/go-cmp/cmp"
@@ -38,7 +42,7 @@ func TestPostgreSQLDSN_ConnectionKeywordValueString(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			dsn := PostgreSQLDSN{
+			dsn := datastore.PostgreSQLDSN{
 				Host:     tt.fields.Host,
 				Port:     tt.fields.Port,
 				DBName:   tt.fields.DBName,
@@ -60,35 +64,15 @@ func TestDatastore_Pool(t *testing.T) {
 
 	dsn := newPostgreSQLDSN(t)
 
-	ogpool, cleanup, err := NewPostgreSQLPool(ctx, dsn, lgr)
+	ogpool, cleanup, err := datastore.NewPostgreSQLPool(ctx, dsn, lgr)
 	t.Cleanup(cleanup)
 	if err != nil {
 		t.Fatal(err)
 	}
-	ds := Datastore{dbpool: ogpool}
+	ds := datastore.NewDatastore(ogpool)
 	dbpool := ds.Pool()
 
 	c.Assert(dbpool, qt.Equals, ogpool)
-}
-
-func TestNewDatastore(t *testing.T) {
-	t.Run("numbers", func(t *testing.T) {
-		c := qt.New(t)
-
-		ctx := context.Background()
-		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
-
-		dsn := newPostgreSQLDSN(t)
-
-		dbpool, cleanup, err := NewPostgreSQLPool(ctx, dsn, lgr)
-		c.Assert(err, qt.IsNil)
-		t.Cleanup(cleanup)
-
-		got := NewDatastore(dbpool)
-		want := Datastore{dbpool: dbpool}
-
-		c.Assert(got, qt.Equals, want)
-	})
 }
 
 func TestDatastore_BeginTx(t *testing.T) {
@@ -99,11 +83,11 @@ func TestDatastore_BeginTx(t *testing.T) {
 		dsn := newPostgreSQLDSN(t)
 		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
-		dbpool, cleanup, err := NewPostgreSQLPool(ctx, dsn, lgr)
+		dbpool, cleanup, err := datastore.NewPostgreSQLPool(ctx, dsn, lgr)
 		c.Assert(err, qt.IsNil)
 		t.Cleanup(cleanup)
 
-		ds := NewDatastore(dbpool)
+		ds := datastore.NewDatastore(dbpool)
 
 		var tx pgx.Tx
 		tx, err = ds.BeginTx(ctx)
@@ -122,12 +106,12 @@ func TestDatastore_BeginTx(t *testing.T) {
 		dsn := newPostgreSQLDSN(t)
 		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
-		dbpool, cleanup, err := NewPostgreSQLPool(ctx, dsn, lgr)
+		dbpool, cleanup, err := datastore.NewPostgreSQLPool(ctx, dsn, lgr)
 		c.Assert(err, qt.IsNil)
 		// cleanup closes the pool
 		cleanup()
 
-		ds := NewDatastore(dbpool)
+		ds := datastore.NewDatastore(dbpool)
 
 		_, err = ds.BeginTx(ctx)
 		c.Assert(errors.Is(err, puddle.ErrClosedPool), qt.IsTrue)
@@ -138,8 +122,7 @@ func TestDatastore_BeginTx(t *testing.T) {
 
 		var err error
 
-		ds := NewDatastore(nil)
-		ds.dbpool = nil
+		ds := datastore.NewDatastore(nil)
 
 		ctx := context.Background()
 		_, err = ds.BeginTx(ctx)
@@ -149,67 +132,359 @@ func TestDatastore_BeginTx(t *testing.T) {
 }
 
 func TestDatastore_RollbackTx(t *testing.T) {
-	type fields struct {
-		dbpool *pgxpool.Pool
-	}
-	type args struct {
-		ctx context.Context
-		tx  pgx.Tx
-		err error
-	}
+	t.Run("rollback due to error", func(t *testing.T) {
+		c := qt.New(t)
 
+		ctx := context.Background()
+		dsn := newPostgreSQLDSN(t)
+		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+
+		// get a *pgxpool.Pool and setup datastore.Datastore
+		dbpool, cleanup, err := datastore.NewPostgreSQLPool(ctx, dsn, lgr)
+		t.Cleanup(cleanup)
+		if err != nil {
+			t.Errorf("datastore.NewPostgreSQLDB error = %v", err)
+		}
+		ds := datastore.NewDatastore(dbpool)
+
+		// begin a new tx from pool in datastore.Datastore
+		var tx pgx.Tx
+		tx, err = ds.BeginTx(ctx)
+		if err != nil {
+			t.Errorf("ds.BeginTx error = %v", err)
+		}
+
+		// create fake error to mimic an error that might trigger a rollback
+		fakeErr := errs.E(errs.Validation, errs.Code("INVALID_TOKEN"), "some validation error")
+
+		// attempt to roll back the transaction. The original error (fakeErr)
+		// should be returned as the response
+		rollbackErr := ds.RollbackTx(ctx, tx, fakeErr)
+
+		// assert that it does indeed match fakeErr and nothing else has been added
+		var errsErr *errs.Error
+		if errors.As(rollbackErr, &errsErr) {
+			c.Assert(errsErr.Kind, qt.Equals, errs.Validation)
+			c.Assert(errsErr.Code, qt.DeepEquals, errs.Code("INVALID_TOKEN"))
+			c.Assert(errsErr.Error(), qt.Equals, fakeErr.Error())
+		} else {
+			c.Fatalf("rollbackErr is invalid: %v", rollbackErr)
+		}
+	})
+	t.Run("nil tx", func(t *testing.T) {
+		c := qt.New(t)
+
+		ctx := context.Background()
+		dsn := newPostgreSQLDSN(t)
+		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+
+		// get a *pgxpool.Pool and setup datastore.Datastore
+		dbpool, cleanup, err := datastore.NewPostgreSQLPool(ctx, dsn, lgr)
+		t.Cleanup(cleanup)
+		if err != nil {
+			t.Errorf("datastore.NewPostgreSQLDB error = %v", err)
+		}
+		ds := datastore.NewDatastore(dbpool)
+
+		// create fake error to mimic an error that might trigger a rollback
+		fakeErr := errs.E(errs.Validation, errs.Code("INVALID_TOKEN"), "some validation error")
+
+		// attempt to roll back the transaction. The original error (fakeErr)
+		// should be returned combined with the error created in RollbackTX
+		rollbackErr := ds.RollbackTx(ctx, nil, fakeErr)
+
+		// assert that the combined error string matches what is expected
+		// as well as ensure the Kind and Code are correct
+		var errsErr *errs.Error
+		if errors.As(rollbackErr, &errsErr) {
+			c.Assert(errsErr.Kind, qt.Equals, errs.Database)
+			c.Assert(errsErr.Code, qt.DeepEquals, errs.Code("nil_tx"))
+			c.Assert(errsErr.Error(), qt.Equals, fmt.Sprintf("RollbackTx() error = tx cannot be nil: Original error = %s", fakeErr.Error()))
+		} else {
+			c.Fatalf("rollbackErr is invalid: %v", rollbackErr)
+		}
+	})
+	t.Run("already committed tx with error", func(t *testing.T) {
+		c := qt.New(t)
+
+		ctx := context.Background()
+		dsn := newPostgreSQLDSN(t)
+		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+
+		// get a *pgxpool.Pool and setup datastore.Datastore
+		dbpool, cleanup, err := datastore.NewPostgreSQLPool(ctx, dsn, lgr)
+		t.Cleanup(cleanup)
+		if err != nil {
+			t.Errorf("datastore.NewPostgreSQLDB error = %v", err)
+		}
+		ds := datastore.NewDatastore(dbpool)
+
+		// begin a new tx from pool in datastore.Datastore
+		var tx pgx.Tx
+		tx, err = ds.BeginTx(ctx)
+		if err != nil {
+			t.Errorf("ds.BeginTx error = %v", err)
+		}
+		// commit the tx - rollback should not work
+		err = tx.Commit(ctx)
+		if err != nil {
+			t.Errorf("tx.Commit error = %v", err)
+		}
+
+		// create fake error to mimic an error that might trigger a rollback
+		fakeErr := errs.E(errs.Validation, errs.Code("INVALID_TOKEN"), "some validation error")
+
+		// attempt to roll back the transaction. The original error (fakeErr)
+		// should be returned combined with the error created in RollbackTX
+		rollbackErr := ds.RollbackTx(ctx, tx, fakeErr)
+
+		// assert that the combined error string matches what is expected
+		// as well as ensure the Kind and Code are correct
+		var errsErr *errs.Error
+		if errors.As(rollbackErr, &errsErr) {
+			c.Assert(errsErr.Kind, qt.Equals, errs.Validation)
+			c.Assert(errsErr.Code, qt.DeepEquals, errs.Code("INVALID_TOKEN"))
+			c.Assert(errsErr.Error(), qt.Equals, fakeErr.Error())
+		} else {
+			c.Fatalf("rollbackErr is invalid: %v", rollbackErr)
+		}
+	})
+	t.Run("already committed tx with no error", func(t *testing.T) {
+		c := qt.New(t)
+
+		ctx := context.Background()
+		dsn := newPostgreSQLDSN(t)
+		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+
+		// get a *pgxpool.Pool and setup datastore.Datastore
+		dbpool, cleanup, err := datastore.NewPostgreSQLPool(ctx, dsn, lgr)
+		t.Cleanup(cleanup)
+		if err != nil {
+			t.Errorf("datastore.NewPostgreSQLDB error = %v", err)
+		}
+		ds := datastore.NewDatastore(dbpool)
+
+		// begin a new tx from pool in datastore.Datastore
+		var tx pgx.Tx
+		tx, err = ds.BeginTx(ctx)
+		if err != nil {
+			t.Errorf("ds.BeginTx error = %v", err)
+		}
+		// commit the tx - rollback should not work
+		err = tx.Commit(ctx)
+		if err != nil {
+			t.Errorf("tx.Commit error = %v", err)
+		}
+
+		// attempt to roll back the already committed transaction.
+		// There is no error, so this is the typical case, the tx
+		// should be closed and the error should be returned as nil
+		rollbackErr := ds.RollbackTx(ctx, tx, nil)
+
+		c.Assert(rollbackErr, qt.IsNil)
+	})
+	t.Run("deferred rollback (with error)", func(t *testing.T) {
+		c := qt.New(t)
+
+		deferErr := checkDefer(t)
+		// assert that the error string matches what is expected
+		// as well as ensure the Kind and Code are correct
+		var errsErr *errs.Error
+		if errors.As(deferErr, &errsErr) {
+			c.Assert(errsErr.Kind, qt.Equals, errs.Validation)
+			c.Assert(errsErr.Code, qt.DeepEquals, errs.Code("DATA_VALIDATION"))
+			c.Assert(errsErr.Error(), qt.Equals, "This validation happened.")
+		} else {
+			c.Fatalf("deferErr is invalid: %v", deferErr)
+		}
+	})
+	t.Run("deferred rollback (nil error)", func(t *testing.T) {
+		c := qt.New(t)
+
+		_, deferErr := checkDefer2FieldsNilError(t)
+		c.Assert(deferErr, qt.IsNil)
+	})
+	t.Run("deferred rollback (nil tx)", func(t *testing.T) {
+		c := qt.New(t)
+
+		_, deferErr := checkDefer2FieldsNilTx(t)
+		// assert that the combined error string matches what is expected
+		// as well as ensure the Kind and Code are correct
+		var errsErr *errs.Error
+		if errors.As(deferErr, &errsErr) {
+			c.Assert(errsErr.Kind, qt.Equals, errs.Database)
+			c.Assert(errsErr.Code, qt.DeepEquals, errs.Code("nil_tx"))
+			c.Assert(errsErr.Error(), qt.Equals, fmt.Sprintf("RollbackTx() error = tx cannot be nil: Original error is nil"))
+		} else {
+			c.Fatalf("rollbackErr is invalid: %v", deferErr)
+		}
+	})
+	// take down db during this test in order to put tx in bad state
+	// this test will typically be skipped, just doing it to see how it
+	// works
+	t.Run("deferred rollback (kill db)", func(t *testing.T) {
+		t.Skip()
+
+		c := qt.New(t)
+
+		deferErr := checkDeferKillDB(t)
+		// assert that the combined error string matches what is expected
+		// as well as ensure the Kind and Code are correct
+		var errsErr *errs.Error
+		if errors.As(deferErr, &errsErr) {
+			c.Assert(errsErr.Kind, qt.Equals, errs.Database)
+			c.Assert(errsErr.Code, qt.DeepEquals, errs.Code("rollback_err"))
+			c.Assert(errsErr.Error(), qt.Equals, fmt.Sprintf("PG Error Code: 57P01, PG Error Message: terminating connection due to administrator command, RollbackTx() error = FATAL: terminating connection due to administrator command (SQLSTATE 57P01): Original error = This validation happened."))
+		} else {
+			c.Fatalf("rollbackErr is invalid: %v", deferErr)
+		}
+	})
+}
+
+func checkDefer(t *testing.T) (err error) {
 	ctx := context.Background()
 	dsn := newPostgreSQLDSN(t)
 	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
-	dbpool, cleanup, err := NewPostgreSQLPool(ctx, dsn, lgr)
+	// get a *pgxpool.Pool and setup datastore.Datastore
+	var (
+		dbpool  *pgxpool.Pool
+		cleanup func()
+	)
+	dbpool, cleanup, err = datastore.NewPostgreSQLPool(ctx, dsn, lgr)
 	t.Cleanup(cleanup)
 	if err != nil {
-		t.Errorf("datastore.NewPostgreSQLDB error = %v", err)
+		t.Fatalf("datastore.NewPostgreSQLDB error = %v", err)
 	}
-	tx, err := dbpool.Begin(ctx)
+	ds := datastore.NewDatastore(dbpool)
+
+	// begin a new tx from pool in datastore.Datastore
+	var tx pgx.Tx
+	tx, err = ds.BeginTx(ctx)
 	if err != nil {
-		t.Errorf("dbpool.Begin error = %v", err)
+		t.Fatalf("ds.BeginTx error = %v", err)
 	}
-	tx2, err := dbpool.Begin(ctx)
+	defer func() {
+		err = ds.RollbackTx(ctx, tx, err)
+	}()
+
+	err = errs.E(errs.Validation, errs.Code("DATA_VALIDATION"), "This validation happened.")
 	if err != nil {
-		t.Errorf("dbpool.Begin error = %v", err)
-	}
-	err = tx2.Commit(ctx)
-	if err != nil {
-		t.Errorf("tx2.Commit() error = %v", err)
+		return err
 	}
 
-	err = errs.E("some error")
+	// commit the tx
+	err = ds.CommitTx(ctx, tx)
+	if err != nil {
+		return err
+	}
 
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-		{"typical", fields{dbpool}, args{ctx, tx, err}},
-		{"nil tx", fields{dbpool}, args{ctx, nil, err}},
-		{"already committed tx", fields{dbpool}, args{ctx, tx2, err}},
+	return nil
+}
+
+type fakeUser struct {
+	username string
+}
+
+func checkDefer2FieldsNilError(t *testing.T) (fu fakeUser, err error) {
+	ctx := context.Background()
+	dsn := newPostgreSQLDSN(t)
+	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+
+	// get a *pgxpool.Pool and setup datastore.Datastore
+	var (
+		dbpool  *pgxpool.Pool
+		cleanup func()
+	)
+	dbpool, cleanup, err = datastore.NewPostgreSQLPool(ctx, dsn, lgr)
+	t.Cleanup(cleanup)
+	if err != nil {
+		t.Fatalf("datastore.NewPostgreSQLDB error = %v", err)
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Log(tt.name)
-			ds := &Datastore{
-				dbpool: tt.fields.dbpool,
-			}
-			rollbackErr := ds.RollbackTx(tt.args.ctx, tt.args.tx, tt.args.err)
-			// I'm sending an *errs.Error, so RollbackTx will only return an *errs.Error
-			e, _ := rollbackErr.(*errs.Error)
-			t.Logf("error = %v", e)
-			if tt.args.tx == nil && e.Code != "nil_tx" {
-				t.Fatalf("ds.RollbackTx() tx was nil, but incorrect error returned = %v", e)
-			}
-			// I know this is weird, but it's the only way I could think to test this.
-			if tt.name == "already committed tx" && e.Code != "rollback_err" {
-				t.Fatalf("ds.RollbackTx() tx was already committed, but incorrect error returned = %v", e)
-			}
-		})
+	ds := datastore.NewDatastore(dbpool)
+
+	// begin a new tx from pool in datastore.Datastore
+	var tx pgx.Tx
+	tx, err = ds.BeginTx(ctx)
+	if err != nil {
+		t.Fatalf("ds.BeginTx error = %v", err)
 	}
+	defer func() {
+		err = ds.RollbackTx(ctx, tx, err)
+	}()
+
+	// commit the tx
+	err = ds.CommitTx(ctx, tx)
+	if err != nil {
+		return fakeUser{}, err
+	}
+
+	return fakeUser{}, nil
+}
+
+func checkDefer2FieldsNilTx(t *testing.T) (fu fakeUser, err error) {
+	ctx := context.Background()
+	dsn := newPostgreSQLDSN(t)
+	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+
+	// get a *pgxpool.Pool and setup datastore.Datastore
+	var (
+		dbpool  *pgxpool.Pool
+		cleanup func()
+	)
+	dbpool, cleanup, err = datastore.NewPostgreSQLPool(ctx, dsn, lgr)
+	t.Cleanup(cleanup)
+	if err != nil {
+		t.Fatalf("datastore.NewPostgreSQLDB error = %v", err)
+	}
+	ds := datastore.NewDatastore(dbpool)
+
+	// begin a new tx from pool in datastore.Datastore
+	var tx pgx.Tx
+	tx, err = ds.BeginTx(ctx)
+	if err != nil {
+		t.Errorf("ds.BeginTx error = %v", err)
+	}
+	defer func() {
+		err = ds.RollbackTx(ctx, nil, err)
+	}()
+
+	// commit the tx
+	err = ds.CommitTx(ctx, tx)
+	if err != nil {
+		return fakeUser{}, err
+	}
+
+	return fakeUser{}, err
+}
+
+func checkDeferKillDB(t *testing.T) (err error) {
+	ctx := context.Background()
+	dsn := newPostgreSQLDSN(t)
+	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+
+	// get a *pgxpool.Pool and setup datastore.Datastore
+	dbpool, cleanup, err := datastore.NewPostgreSQLPool(ctx, dsn, lgr)
+	t.Cleanup(cleanup)
+	if err != nil {
+		t.Fatalf("datastore.NewPostgreSQLDB error = %v", err)
+	}
+	ds := datastore.NewDatastore(dbpool)
+
+	// begin a new tx from pool in datastore.Datastore
+	var tx pgx.Tx
+	tx, err = ds.BeginTx(ctx)
+	if err != nil {
+		t.Fatalf("ds.BeginTx error = %v", err)
+	}
+	defer func() {
+		err = ds.RollbackTx(ctx, tx, err)
+	}()
+
+	t.Log("Go shutdown database server immediately for this test to work")
+	time.Sleep(30 * time.Second)
+
+	return errs.E(errs.Validation, errs.Code("DATA_VALIDATION"), "This validation happened.")
 }
 
 func TestDatastore_CommitTx(t *testing.T) {
@@ -225,7 +500,7 @@ func TestDatastore_CommitTx(t *testing.T) {
 	dsn := newPostgreSQLDSN(t)
 	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
 
-	dbpool, cleanup, err := NewPostgreSQLPool(ctx, dsn, lgr)
+	dbpool, cleanup, err := datastore.NewPostgreSQLPool(ctx, dsn, lgr)
 	t.Cleanup(cleanup)
 	if err != nil {
 		t.Errorf("datastore.NewPostgreSQLPool error = %v", err)
@@ -263,9 +538,7 @@ func TestDatastore_CommitTx(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ds := &Datastore{
-				dbpool: tt.fields.dbpool,
-			}
+			ds := datastore.NewDatastore(tt.fields.dbpool)
 			if commitErr := ds.CommitTx(tt.args.ctx, tt.args.tx); (commitErr != nil) != tt.wantErr {
 				t.Errorf("CommitTx() error = %v, wantErr %v", commitErr, tt.wantErr)
 			}
@@ -291,7 +564,7 @@ func TestNewNullString(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := NewNullString(tt.args.s)
+			got := datastore.NewNullString(tt.args.s)
 			c.Assert(got, qt.Equals, tt.want)
 		})
 	}
@@ -311,7 +584,7 @@ func TestNewNullInt64(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewNullInt64(tt.args.i); !reflect.DeepEqual(got, tt.want) {
+			if got := datastore.NewNullInt64(tt.args.i); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("NewNullInt64() = %v, want %v", got, tt.want)
 			}
 		})
@@ -320,18 +593,8 @@ func TestNewNullInt64(t *testing.T) {
 
 // newPGDatasourceName is a test helper to get a PGDatasourceName
 // from environment variables
-func newPostgreSQLDSN(t *testing.T) PostgreSQLDSN {
+func newPostgreSQLDSN(t *testing.T) datastore.PostgreSQLDSN {
 	t.Helper()
-
-	// Constants for the PostgreSQL Database connection
-	const (
-		pgDBHost       string = "DB_HOST"
-		pgDBPort       string = "DB_PORT"
-		pgDBName       string = "DB_NAME"
-		pgDBUser       string = "DB_USER"
-		pgDBPassword   string = "DB_PASSWORD"
-		pgDBSearchPath string = "DB_SEARCH_PATH"
-	)
 
 	var (
 		dbHost       string
@@ -344,41 +607,42 @@ func newPostgreSQLDSN(t *testing.T) PostgreSQLDSN {
 		err          error
 	)
 
-	dbHost, ok = os.LookupEnv(pgDBHost)
+	dbHost, ok = os.LookupEnv(datastore.DBHostEnv)
 	if !ok {
-		t.Fatalf("No environment variable found for %s", pgDBHost)
+		t.Fatalf("No environment variable found for %s", datastore.DBHostEnv)
 	}
 
-	p, ok := os.LookupEnv(pgDBPort)
+	var p string
+	p, ok = os.LookupEnv(datastore.DBPortEnv)
 	if !ok {
-		t.Fatalf("No environment variable found for %s", pgDBPort)
+		t.Fatalf("No environment variable found for %s", datastore.DBPortEnv)
 	}
 	dbPort, err = strconv.Atoi(p)
 	if err != nil {
 		t.Fatalf("Unable to convert db port %s to int", p)
 	}
 
-	dbName, ok = os.LookupEnv(pgDBName)
+	dbName, ok = os.LookupEnv(datastore.DBNameEnv)
 	if !ok {
-		t.Fatalf("No environment variable found for %s", pgDBName)
+		t.Fatalf("No environment variable found for %s", datastore.DBNameEnv)
 	}
 
-	dbUser, ok = os.LookupEnv(pgDBUser)
+	dbUser, ok = os.LookupEnv(datastore.DBUserEnv)
 	if !ok {
-		t.Fatalf("No environment variable found for %s", pgDBUser)
+		t.Fatalf("No environment variable found for %s", datastore.DBUserEnv)
 	}
 
-	dbPassword, ok = os.LookupEnv(pgDBPassword)
+	dbPassword, ok = os.LookupEnv(datastore.DBPasswordEnv)
 	if !ok {
-		t.Fatalf("No environment variable found for %s", pgDBPassword)
+		t.Fatalf("No environment variable found for %s", datastore.DBPasswordEnv)
 	}
 
-	dbSearchPath, ok = os.LookupEnv(pgDBSearchPath)
+	dbSearchPath, ok = os.LookupEnv(datastore.DBSearchPathEnv)
 	if !ok {
-		t.Fatalf("No environment variable found for %s", pgDBSearchPath)
+		t.Fatalf("No environment variable found for %s", datastore.DBSearchPathEnv)
 	}
 
-	return PostgreSQLDSN{
+	return datastore.PostgreSQLDSN{
 		Host:       dbHost,
 		Port:       dbPort,
 		DBName:     dbName,

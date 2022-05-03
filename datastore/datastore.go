@@ -6,16 +6,33 @@ package datastore
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/url"
 	"strconv"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 
 	"github.com/gilcrest/go-api-basic/domain/errs"
+)
+
+const (
+	// DBHostEnv is the database host environment variable name
+	DBHostEnv string = "DB_HOST"
+	// DBPortEnv is the database port environment variable name
+	DBPortEnv string = "DB_PORT"
+	// DBNameEnv is the database name environment variable name
+	DBNameEnv string = "DB_NAME"
+	// DBUserEnv is the database user environment variable name
+	DBUserEnv string = "DB_USER"
+	// DBPasswordEnv is the database user password environment variable name
+	DBPasswordEnv string = "DB_PASSWORD"
+	// DBSearchPathEnv is the database search path environment variable name
+	DBSearchPathEnv string = "DB_SEARCH_PATH"
 )
 
 // PostgreSQLDSN is a PostgreSQL datasource name
@@ -58,14 +75,9 @@ func (dsn PostgreSQLDSN) ConnectionURI() string {
 		h += ":" + strconv.Itoa(dsn.Port)
 	}
 
-	usr := url.User(dsn.User)
-	if dsn.Password != "" {
-		usr = url.UserPassword(dsn.User, dsn.Password)
-	}
-
 	u := url.URL{
 		Scheme: uriSchemeDesignator,
-		User:   usr,
+		User:   url.User(dsn.User),
 		Host:   h,
 		Path:   dsn.DBName,
 	}
@@ -136,11 +148,27 @@ func (ds Datastore) BeginTx(ctx context.Context) (pgx.Tx, error) {
 // the Datastore interface. Proper error handling is also considered.
 func (ds Datastore) RollbackTx(ctx context.Context, tx pgx.Tx, err error) error {
 	if tx == nil {
-		return errs.E(errs.Database, errs.Code("nil_tx"), fmt.Sprintf("RollbackTx() error = tx cannot be nil: Original error = %s", err.Error()))
+		if err != nil {
+			return errs.E(errs.Database, errs.Code("nil_tx"), fmt.Sprintf("RollbackTx() error = tx cannot be nil: Original error = %s", err.Error()))
+		}
+		return errs.E(errs.Database, errs.Code("nil_tx"), fmt.Sprintf("RollbackTx() error = tx cannot be nil: Original error is nil"))
 	}
 
-	// Attempt to rollback the transaction
+	// Attempt to roll back the transaction
 	if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
+		// if the transaction has already been closed, the transaction
+		// has already been committed or rolled back. In this case, there
+		// is nothing to do and is not considered a new error. Send back
+		// the original error (err)
+		if errors.Is(rollbackErr, pgx.ErrTxClosed) {
+			return err
+		}
+		// any other error should be reported, it should be a *pgconn.PgError type
+		var pgErr *pgconn.PgError
+		if errors.As(rollbackErr, &pgErr) {
+			return errs.E(errs.Database, errs.Code("rollback_err"), fmt.Sprintf("PG Error Code: %s, PG Error Message: %s, RollbackTx() error = %v: Original error = %s", pgErr.Code, pgErr.Message, rollbackErr, err.Error()))
+		}
+		// in case it is somehow not a &pgconn.PgError type
 		return errs.E(errs.Database, errs.Code("rollback_err"), fmt.Sprintf("RollbackTx() error = %v: Original error = %s", rollbackErr, err.Error()))
 	}
 
@@ -151,6 +179,10 @@ func (ds Datastore) RollbackTx(ctx context.Context, tx pgx.Tx, err error) error 
 // CommitTx is a wrapper for sql.Tx.Commit in order to expose from
 // the Datastore interface. Proper error handling is also considered.
 func (ds Datastore) CommitTx(ctx context.Context, tx pgx.Tx) error {
+	if tx == nil {
+		return errs.E(errs.Database, errs.Code("nil_tx"), "CommitTx() error = tx cannot be nil")
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return errs.E(errs.Database, err)
 	}
@@ -207,7 +239,7 @@ func NewNullInt32(i int32) sql.NullInt32 {
 }
 
 // NewNullUUID returns a null if id == uuid.Nil, otherwise it returns
-// the uuid.UUID which was input as an uuid.NullUUID type
+// the uuid.UUID which was input, with Valid set to true.
 func NewNullUUID(id uuid.UUID) uuid.NullUUID {
 	if id == uuid.Nil {
 		return uuid.NullUUID{}

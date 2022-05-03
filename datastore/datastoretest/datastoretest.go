@@ -22,16 +22,6 @@ import (
 func newPostgreSQLDSN(t *testing.T) datastore.PostgreSQLDSN {
 	t.Helper()
 
-	// Constants for the PostgreSQL Database connection
-	const (
-		pgDBHost       string = "DB_HOST"
-		pgDBPort       string = "DB_PORT"
-		pgDBName       string = "DB_NAME"
-		pgDBUser       string = "DB_USER"
-		pgDBPassword   string = "DB_PASSWORD"
-		pgDBSearchPath string = "DB_SEARCH_PATH"
-	)
-
 	var (
 		dbHost       string
 		dbPort       int
@@ -43,38 +33,39 @@ func newPostgreSQLDSN(t *testing.T) datastore.PostgreSQLDSN {
 		err          error
 	)
 
-	dbHost, ok = os.LookupEnv(pgDBHost)
+	dbHost, ok = os.LookupEnv(datastore.DBHostEnv)
 	if !ok {
-		t.Fatalf("No environment variable found for %s", pgDBHost)
+		t.Fatalf("No environment variable found for %s", datastore.DBHostEnv)
 	}
 
-	p, ok := os.LookupEnv(pgDBPort)
+	var p string
+	p, ok = os.LookupEnv(datastore.DBPortEnv)
 	if !ok {
-		t.Fatalf("No environment variable found for %s", pgDBPort)
+		t.Fatalf("No environment variable found for %s", datastore.DBPortEnv)
 	}
 	dbPort, err = strconv.Atoi(p)
 	if err != nil {
 		t.Fatalf("Unable to convert db port %s to int", p)
 	}
 
-	dbName, ok = os.LookupEnv(pgDBName)
+	dbName, ok = os.LookupEnv(datastore.DBNameEnv)
 	if !ok {
-		t.Fatalf("No environment variable found for %s", pgDBName)
+		t.Fatalf("No environment variable found for %s", datastore.DBNameEnv)
 	}
 
-	dbUser, ok = os.LookupEnv(pgDBUser)
+	dbUser, ok = os.LookupEnv(datastore.DBUserEnv)
 	if !ok {
-		t.Fatalf("No environment variable found for %s", pgDBUser)
+		t.Fatalf("No environment variable found for %s", datastore.DBUserEnv)
 	}
 
-	dbPassword, ok = os.LookupEnv(pgDBPassword)
+	dbPassword, ok = os.LookupEnv(datastore.DBPasswordEnv)
 	if !ok {
-		t.Fatalf("No environment variable found for %s", pgDBPassword)
+		t.Fatalf("No environment variable found for %s", datastore.DBPasswordEnv)
 	}
 
-	dbSearchPath, ok = os.LookupEnv(pgDBSearchPath)
+	dbSearchPath, ok = os.LookupEnv(datastore.DBSearchPathEnv)
 	if !ok {
-		t.Fatalf("No environment variable found for %s", pgDBSearchPath)
+		t.Fatalf("No environment variable found for %s", datastore.DBSearchPathEnv)
 	}
 
 	return datastore.PostgreSQLDSN{
