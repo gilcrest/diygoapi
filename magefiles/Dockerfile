@@ -39,9 +39,5 @@ COPY --from=builder /app/srvr /srvr
 ADD https://github.com/golang/go/raw/master/lib/time/zoneinfo.zip /zoneinfo.zip
 ENV ZONEINFO /zoneinfo.zip
 
-# Copy the config files for Casbin into the container
-COPY ./config/rbac_model.conf /config/rbac_model.conf
-COPY ./config/rbac_policy.csv /config/rbac_policy.csv
-
 # Run the web service on container startup.
 CMD ["/srvr", "-log-level=debug"]
