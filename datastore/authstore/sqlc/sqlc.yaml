@@ -1,0 +1,12 @@
+version: 1
+packages:
+  - name: "authstore"
+    path: "../"
+    queries: "query.sql"
+    schema:
+      - "../../../scripts/db/objects/demo/permission.sql"
+      - "../../../scripts/db/objects/demo/role.sql"
+      - "../../../scripts/db/objects/demo/role_permission.sql"
+      - "../../../scripts/db/objects/demo/role_user.sql"
+    engine: "postgresql"
+    sql_package: "pgx/v4"
