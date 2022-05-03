@@ -16,6 +16,8 @@ const (
 	// enough pattern in these services, that I've chosen to make it
 	// a constant
 	extlIDPathDir string = "/{extlID}"
+	// movies V1 Path root
+	moviesV1PathRoot string = "/v1/movies"
 	// organization V1 Path root
 	orgsV1PathRoot string = "/v1/orgs"
 	// app V1 Path root
@@ -28,8 +30,8 @@ const (
 	pingV1PathRoot string = "/v1/ping"
 	// genesis V1 Path root
 	genesisV1PathRoot string = "/v1/genesis"
-	// movies V1 Path root
-	moviesV1PathRoot string = "/v1/movies"
+	// permissions V1 Path root
+	permissionV1PathRoot = "/v1/permissions"
 )
 
 // register routes/middleware/handlers to the Server router
