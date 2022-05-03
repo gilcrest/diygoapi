@@ -2,16 +2,11 @@
 package auth
 
 import (
-	"fmt"
-	"net/http"
 	"strings"
 
-	"github.com/casbin/casbin/v2"
-	"github.com/gorilla/mux"
-	"github.com/rs/zerolog"
+	"github.com/google/uuid"
 
-	"github.com/gilcrest/go-api-basic/domain/audit"
-	"github.com/gilcrest/go-api-basic/domain/errs"
+	"github.com/gilcrest/go-api-basic/domain/secure"
 )
 
 // BearerTokenType is used in authorization to access a resource
@@ -39,8 +34,8 @@ func (p Provider) String() string {
 	return "invalid_provider"
 }
 
-// NewProvider initializes a Provider given a case-insensitive string
-func NewProvider(s string) Provider {
+// ParseProvider initializes a Provider given a case-insensitive string
+func ParseProvider(s string) Provider {
 	switch strings.ToLower(s) {
 	case "google":
 		return Google
@@ -50,62 +45,32 @@ func NewProvider(s string) Provider {
 	return Invalid
 }
 
-// CasbinAuthorizer holds the casbin.Enforcer struct
-type CasbinAuthorizer struct {
-	Enforcer *casbin.Enforcer
+// Permission stores an approval of a mode of access to a resource.
+type Permission struct {
+	// The unique ID for the Permission.
+	ID uuid.UUID `json:"-"`
+	// Unique External ID to be given to outside callers.
+	ExternalID secure.Identifier `json:"external_id"`
+	// A human-readable string which represents a resource (e.g. an HTTP route or document, etc.).
+	Resource string `json:"resource"`
+	// A string representing the action taken on the resource (e.g. POST, GET, edit, etc.)
+	Operation string `json:"operation"`
+	// A description of what the permission is granting, e.g. "grants ability to edit a billing document".
+	Description string `json:"description"`
+	// A boolean denoting whether the permission is active (true) or not (false).
+	Active bool `json:"active"`
 }
 
-// Authorize ensures that a subject (user.User) can perform a
-// particular action on an object. e.g. subject otto.maddox711@gmail.com
-// can read (GET) the object (resource) at the /api/v1/movies path.
-// Casbin is set up to use an RBAC (Role-Based Access Control) model
-// Users with the admin role can *write* (GET, PUT, POST, DELETE).
-// Users with the user role can only *read* (GET)
-func (a CasbinAuthorizer) Authorize(lgr zerolog.Logger, r *http.Request, adt audit.Audit) error {
-	// subject: Username
-	sub := adt.User.Username
-
-	// object: current route path
-	route := mux.CurrentRoute(r)
-
-	// CurrentRoute can return a nil if route not setup properly or
-	// is being called outside the handler of the matched route
-	if route == nil {
-		return errs.E(errs.Unauthorized, "nil route returned from mux.CurrentRoute")
-	}
-
-	obj, err := route.GetPathTemplate()
-	if err != nil {
-		return errs.E(errs.Unauthorized, err)
-	}
-
-	// action: based on http method
-	var act string
-	switch r.Method {
-	case http.MethodGet:
-		act = "read"
-	case http.MethodDelete:
-		act = "delete"
-	default:
-		act = "write"
-	}
-
-	authorized, err := a.Enforcer.Enforce(sub, obj, act)
-	if err != nil {
-		return errs.E(errs.Unauthorized, err)
-	}
-	if !authorized {
-		lgr.Info().Str("sub", sub).Str("obj", obj).Str("act", act).Msgf("Unauthorized (sub: %s, obj: %s, act: %s)", sub, obj, act)
-
-		// "In summary, a 401 Unauthorized response should be used for missing or
-		// bad authentication, and a 403 Forbidden response should be used afterwards,
-		// when the user is authenticated but isn’t authorized to perform the
-		// requested operation on the given resource."
-		// If the user has gotten here, they have gotten through authentication
-		// but do have the right access, this they are Unauthorized
-		return errs.E(errs.Unauthorized, fmt.Sprintf("user %s does not have %s permission for %s", sub, act, obj))
-	}
-
-	lgr.Debug().Str("sub", sub).Str("obj", obj).Str("act", act).Msgf("Authorized (sub: %s, obj: %s, act: %s)", sub, obj, act)
-	return nil
+// Role is a job function or title which defines an authority level.
+type Role struct {
+	// The unique ID for the Role.
+	ID uuid.UUID `json:"-"`
+	// Unique External ID to be given to outside callers.
+	ExternalID secure.Identifier `json:"external_id"`
+	// A human-readable code which represents the role.
+	Code string `json:"role_cd"`
+	// A longer description of the role.
+	Description string `json:"role_description"`
+	// A boolean denoting whether the role is active (true) or not (false).
+	Active bool `json:"active"`
 }
