@@ -1,0 +1,1 @@
+drop table if exists role_permission cascade;
