@@ -10,12 +10,12 @@ import (
 	"github.com/gilcrest/go-api-basic/command"
 )
 
-// DBUp uses the psql command line interface to execute DDL scripts
-// in the up directory and create all required DB objects. All files
-// will be executed, regardless of errors within an individual file.
-// Check output to determine if any errors occurred.
-// Eventually, I will write this to stop on errors, but for now it is
-// what it is.
+// DBUp uses the psql cli to execute DDL scripts in the up directory
+// and creates all required DB objects,
+// example: mage -v dbup local.
+// All files will be executed, regardless of errors within an individual
+// file. Check output to determine if any errors occurred. Eventually,
+// I will write this to stop on errors, but for now it is what it is.
 func DBUp(env string) (err error) {
 	var args []string
 
@@ -37,8 +37,9 @@ func DBUp(env string) (err error) {
 	return nil
 }
 
-// DBDown uses the psql command line interface to execute DDL scripts
-// in the down directory and drops all project-specific DB objects.
+// DBDown uses the psql cli to execute DDL scripts
+// in the down directory and drops all project-specific DB objects,
+// example: mage -v dbdown local.
 // All files will be executed, regardless of errors within
 // an individual file. Check output to determine if any errors occurred.
 // Eventually, I will write this to stop on errors, but for now it is
@@ -64,14 +65,22 @@ func DBDown(env string) (err error) {
 	return nil
 }
 
-// TestAll runs all tests for the app
-func TestAll(env string) (err error) {
+// TestAll runs all tests for the app,
+// example: mage -v testall false local.
+// If verbose is passed, tests will be run in verbose mode.
+func TestAll(verbose bool, env string) (err error) {
 	err = command.LoadEnv(command.ParseEnv(env))
 	if err != nil {
 		return err
 	}
 
-	err = sh.Run("go", "test", "-v", "./...")
+	args := []string{"test"}
+	if verbose {
+		args = append(args, "-v")
+	}
+	args = append(args, "./...")
+
+	err = sh.Run("go", args...)
 	if err != nil {
 		return err
 	}
@@ -79,7 +88,8 @@ func TestAll(env string) (err error) {
 	return nil
 }
 
-// Run runs program using the given environment configuration
+// Run runs program using the given environment configuration,
+// example: mage -v run local
 func Run(env string) (err error) {
 	err = command.LoadEnv(command.ParseEnv(env))
 	if err != nil {
@@ -94,7 +104,8 @@ func Run(env string) (err error) {
 	return nil
 }
 
-// Genesis runs all tests including executing the Genesis service
+// Genesis runs all tests including executing the Genesis service,
+// example: mage -v genesis local
 func Genesis(env string) (err error) {
 	err = command.LoadEnv(command.ParseEnv(env))
 	if err != nil {
@@ -109,12 +120,14 @@ func Genesis(env string) (err error) {
 	return nil
 }
 
-// NewKey generates a new encryption key
+// NewKey generates a new encryption key,
+// example: mage -v newkey
 func NewKey() {
 	command.NewEncryptionKey()
 }
 
-// GCP deploys the app to Google Cloud Run
+// GCP builds the app as a Docker container image to GCP Artifact Registry
+// and then deploys it to Google Cloud Run, example: mage -v gcp staging
 func GCP(env string) error {
 
 	f, err := command.NewConfigFile(command.ParseEnv(env))
@@ -124,10 +137,10 @@ func GCP(env string) error {
 
 	image := command.GCPArtifactRegistryContainerImage{
 		ProjectID:          f.Config.GCP.ProjectID,
-		RepositoryLocation: f.Config.GCP.ArtifactoryRegistry.RepoLocation,
-		RepositoryName:     f.Config.GCP.ArtifactoryRegistry.RepoName,
-		ImageName:          f.Config.GCP.ArtifactoryRegistry.ImageID,
-		ImageTag:           f.Config.GCP.ArtifactoryRegistry.Tag,
+		RepositoryLocation: f.Config.GCP.ArtifactRegistry.RepoLocation,
+		RepositoryName:     f.Config.GCP.ArtifactRegistry.RepoName,
+		ImageName:          f.Config.GCP.ArtifactRegistry.ImageID,
+		ImageTag:           f.Config.GCP.ArtifactRegistry.Tag,
 	}
 
 	err = gcpArtifactRegistryBuild(image)
@@ -192,7 +205,8 @@ func gcpArtifactRegistryBuild(image command.GCPArtifactRegistryContainerImage) e
 	return nil
 }
 
-// GenConfig generates configuration files for the given environment.
+// GenConfig generates configuration files for the given environment,
+// example: mage -v genconfig local.
 // The files are run through cue vet first to ensure they are acceptable
 // given the schema.
 //
@@ -230,7 +244,8 @@ func GenConfig(env string) (err error) {
 	return nil
 }
 
-// StartGCPDB starts the GCP Cloud SQL database for the environment/config given
+// StartGCPDB starts the GCP Cloud SQL database for the environment/config given,
+// example: mage -v startgcpdb staging
 func StartGCPDB(env string) (err error) {
 	var f command.ConfigFile
 	f, err = command.NewConfigFile(command.ParseEnv(env))
@@ -248,7 +263,8 @@ func StartGCPDB(env string) (err error) {
 	return nil
 }
 
-// StopGCPDB stops the GCP Cloud SQL database for the environment/config given
+// StopGCPDB stops the GCP Cloud SQL database for the environment/config given,
+// example: mage -v stopgcpdb staging
 func StopGCPDB(env string) (err error) {
 	var f command.ConfigFile
 	f, err = command.NewConfigFile(command.ParseEnv(env))
