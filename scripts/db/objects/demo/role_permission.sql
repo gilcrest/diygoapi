@@ -47,5 +47,5 @@ comment on column role_permission.update_user_id is 'The user which performed th
 comment on column role_permission.update_timestamp is 'The timestamp when the record was updated most recently.';
 
 alter table role_permission
-    owner to gilcrest;
+    owner to demo_user;
 

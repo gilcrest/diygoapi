@@ -54,5 +54,5 @@ comment on column role.update_user_id is 'The user which performed the most rece
 comment on column role.update_timestamp is 'The timestamp when the record was updated most recently.';
 
 alter table role
-    owner to gilcrest;
+    owner to demo_user;
 
