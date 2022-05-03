@@ -1,12 +1,16 @@
 # DIY Go API
 
-v0.42.0 - 4/5/2022 - I renamed the repo from go-api-basic to diy-go-api today, it just seemed more in the spirit of what I'm doing here... Things are still coming back together, a ton of work recently. **The docs below are out of date in many cases**. Hoping to have everything sorted soon, but if you look at the code, you can start to see the structure coming together. I am currently building a simple RBAC implementation as part of this as well. After that is completed, README documentation will be my focus. I will get this updated!
+v0.43.0 - 5/3/2022 - I have refactored large swaths of the app recently around the way I was doing db rollbacks... I have started to implement a DIY RBAC, but am still wrapping up some of the administration services (update role, update permission, etc.). I am going to update the module name with the next commit to be consistent with the repo name.
+
+Things are still coming back together, a ton of work recently. **The docs below are out of date in many cases**. Hoping to have everything sorted soon, but if you look at the code, you can start to see the structure. I am currently building a simple RBAC implementation as part of this as well. After that is completed, README documentation will be my focus. I will get this updated!
+
+--------
 
 A RESTful API template (built with Go)
 
 The goal of this project is to be an example of a relational database-backed REST HTTP API that has characteristics needed to ensure success in a high volume environment. I struggled a lot with parsing all of the different ideas people have for package layouts over the past few years and would like to help others who may be having a similar struggle. I'd like to see Go as accessible as possible for everyone. If you have any questions or would like help, open an issue or send me a note - I'm happy to help! Also, if you have disagree or have suggestions about this repo, please do the same, I really enjoy getting both positive and negative feedback.
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/gilcrest/go-api-basic.svg)](https://pkg.go.dev/github.com/gilcrest/go-api-basic) [![Go Report Card](https://goreportcard.com/badge/github.com/gilcrest/go-api-basic)](https://goreportcard.com/report/github.com/gilcrest/go-api-basic)
+[![Go Reference](https://pkg.go.dev/badge/github.com/gilcrest/go-api-basic.svg)](https://pkg.go.dev/github.com/gilcrest/go-api-basic) [![Go Report Card](https://goreportcard.com/badge/github.com/gilcrest/diy-go-api)](https://goreportcard.com/report/github.com/gilcrest/diy-go-api)
 
 ## API Walkthrough
 
