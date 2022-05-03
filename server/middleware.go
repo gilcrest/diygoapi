@@ -148,7 +148,7 @@ func newUser(ctx context.Context, s MiddlewareService, r *http.Request, retrieve
 	if err != nil {
 		return user.User{}, err
 	}
-	provider := auth.NewProvider(providerVal)
+	provider := auth.ParseProvider(providerVal)
 
 	var token oauth2.Token
 	token, err = authHeader(defaultRealm, r.Header)
