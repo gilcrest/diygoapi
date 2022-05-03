@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/rs/zerolog"
 
 	"github.com/gilcrest/go-api-basic/datastore"
+	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/logger"
 	"github.com/gilcrest/go-api-basic/domain/secure"
 	"github.com/gilcrest/go-api-basic/domain/secure/random"
@@ -17,12 +19,11 @@ import (
 )
 
 // Genesis command runs the Genesis service and seeds the database.
-func Genesis() error {
+func Genesis() (err error) {
 	var (
 		flgs        flags
 		minlvl, lvl zerolog.Level
 		ek          *[32]byte
-		err         error
 	)
 
 	// newFlags will retrieve the database info from the environment using ff
@@ -78,7 +79,11 @@ func Genesis() error {
 	ctx := context.Background()
 
 	// initialize PostgreSQL database
-	dbpool, cleanup, err := datastore.NewPostgreSQLPool(ctx, newPostgreSQLDSN(flgs), lgr)
+	var (
+		dbpool  *pgxpool.Pool
+		cleanup func()
+	)
+	dbpool, cleanup, err = datastore.NewPostgreSQLPool(ctx, newPostgreSQLDSN(flgs), lgr)
 	if err != nil {
 		lgr.Fatal().Err(err).Msg("datastore.NewPostgreSQLPool error")
 	}
@@ -90,8 +95,19 @@ func Genesis() error {
 		EncryptionKey:         ek,
 	}
 
+	var b []byte
+	b, err = os.ReadFile(service.LocalJSONGenesisRequestFile)
+	if err != nil {
+		return errs.E(err)
+	}
+	f := service.GenesisRequest{}
+	err = json.Unmarshal(b, &f)
+	if err != nil {
+		return errs.E(err)
+	}
+
 	var response service.FullGenesisResponse
-	response, err = s.Seed(ctx)
+	response, err = s.Seed(ctx, &f)
 	if err != nil {
 		return err
 	}
@@ -101,6 +117,12 @@ func Genesis() error {
 	if err != nil {
 		return err
 	}
+
+	err = os.WriteFile(service.LocalJSONGenesisResponseFile, responseJSON, 0644)
+	if err != nil {
+		return err
+	}
+
 	fmt.Println(string(responseJSON))
 
 	return nil
