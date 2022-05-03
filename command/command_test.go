@@ -7,6 +7,7 @@ import (
 	qt "github.com/frankban/quicktest"
 	"github.com/google/go-cmp/cmp"
 
+	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/gilcrest/go-api-basic/domain/errs"
 )
 
@@ -46,12 +47,12 @@ func Test_newFlags(t *testing.T) {
 		c.Setenv(logLevelMinEnv, "debug")
 		c.Setenv(logErrorStackEnv, "false")
 		c.Setenv(portEnv, "8081")
-		c.Setenv(dbHostEnv, "hostwiththemost")
-		c.Setenv(dbPortEnv, "5150")
-		c.Setenv(dbNameEnv, "whatisinaname")
-		c.Setenv(dbUserEnv, "usersarelosers")
-		c.Setenv(dbPasswordEnv, "yeet")
-		c.Setenv(dbSearchPathEnv, "u2")
+		c.Setenv(datastore.DBHostEnv, "hostwiththemost")
+		c.Setenv(datastore.DBPortEnv, "5150")
+		c.Setenv(datastore.DBNameEnv, "whatisinaname")
+		c.Setenv(datastore.DBUserEnv, "usersarelosers")
+		c.Setenv(datastore.DBPasswordEnv, "yeet")
+		c.Setenv(datastore.DBSearchPathEnv, "u2")
 		c.Setenv(encryptKeyEnv, "reallyGoodKey")
 		c.Log("Environment setup completed")
 	}
@@ -62,12 +63,12 @@ func Test_newFlags(t *testing.T) {
 		c.Setenv(logLevelMinEnv, "")
 		c.Setenv(logErrorStackEnv, "")
 		c.Setenv(portEnv, "")
-		c.Setenv(dbHostEnv, "")
-		c.Setenv(dbPortEnv, "")
-		c.Setenv(dbNameEnv, "")
-		c.Setenv(dbUserEnv, "")
-		c.Setenv(dbPasswordEnv, "")
-		c.Setenv(dbSearchPathEnv, "")
+		c.Setenv(datastore.DBHostEnv, "")
+		c.Setenv(datastore.DBPortEnv, "")
+		c.Setenv(datastore.DBNameEnv, "")
+		c.Setenv(datastore.DBUserEnv, "")
+		c.Setenv(datastore.DBPasswordEnv, "")
+		c.Setenv(datastore.DBSearchPathEnv, "")
 		c.Setenv(encryptKeyEnv, "")
 		c.Log("Environment setup completed")
 	}

@@ -10,13 +10,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/casbin/casbin/v2"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/peterbourgon/ff/v3"
 	"github.com/rs/zerolog"
 
 	"github.com/gilcrest/go-api-basic/datastore"
-	"github.com/gilcrest/go-api-basic/domain/auth"
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/logger"
 	"github.com/gilcrest/go-api-basic/domain/secure"
@@ -35,18 +33,6 @@ const (
 	logErrorStackEnv string = "LOG_ERROR_STACK"
 	// server port environment variable name
 	portEnv string = "PORT"
-	// database host environment variable name
-	dbHostEnv string = "DB_HOST"
-	// database port environment variable name
-	dbPortEnv string = "DB_PORT"
-	// database name environment variable name
-	dbNameEnv string = "DB_NAME"
-	// database user environment variable name
-	dbUserEnv string = "DB_USER"
-	// database user password environment variable name
-	dbPasswordEnv string = "DB_PASSWORD"
-	// database search path environment variable name
-	dbSearchPathEnv string = "DB_SEARCH_PATH"
 	// encryption key environment variable name
 	encryptKeyEnv string = "ENCRYPT_KEY"
 )
@@ -106,12 +92,12 @@ func newFlags(args []string) (flags, error) {
 		loglvl        = flagSet.String("log-level", "info", fmt.Sprintf("sets log level (trace, debug, info, warn, error, fatal, panic, disabled), (also via %s)", loglevelEnv))
 		logErrorStack = flagSet.Bool("log-error-stack", true, fmt.Sprintf("if true, log full error stacktrace, else just log error, (also via %s)", logErrorStackEnv))
 		port          = flagSet.Int("port", 8080, fmt.Sprintf("listen port for server (also via %s)", portEnv))
-		dbhost        = flagSet.String("db-host", "", fmt.Sprintf("postgresql database host (also via %s)", dbHostEnv))
-		dbport        = flagSet.Int("db-port", 5432, fmt.Sprintf("postgresql database port (also via %s)", dbPortEnv))
-		dbname        = flagSet.String("db-name", "", fmt.Sprintf("postgresql database name (also via %s)", dbNameEnv))
-		dbuser        = flagSet.String("db-user", "", fmt.Sprintf("postgresql database user (also via %s)", dbUserEnv))
-		dbpassword    = flagSet.String("db-password", "", fmt.Sprintf("postgresql database password (also via %s)", dbPasswordEnv))
-		dbsearchpath  = flagSet.String("db-search-path", "", fmt.Sprintf("postgresql database search path (also via %s)", dbSearchPathEnv))
+		dbhost        = flagSet.String("db-host", "", fmt.Sprintf("postgresql database host (also via %s)", datastore.DBHostEnv))
+		dbport        = flagSet.Int("db-port", 5432, fmt.Sprintf("postgresql database port (also via %s)", datastore.DBPortEnv))
+		dbname        = flagSet.String("db-name", "", fmt.Sprintf("postgresql database name (also via %s)", datastore.DBNameEnv))
+		dbuser        = flagSet.String("db-user", "", fmt.Sprintf("postgresql database user (also via %s)", datastore.DBUserEnv))
+		dbpassword    = flagSet.String("db-password", "", fmt.Sprintf("postgresql database password (also via %s)", datastore.DBPasswordEnv))
+		dbsearchpath  = flagSet.String("db-search-path", "", fmt.Sprintf("postgresql database search path (also via %s)", datastore.DBSearchPathEnv))
 		encryptkey    = flagSet.String("encrypt-key", "", fmt.Sprintf("encryption key (also via %s)", encryptKeyEnv))
 	)
 
@@ -219,13 +205,6 @@ func Run(args []string) (err error) {
 	// initialize Datastore
 	ds := datastore.NewDatastore(dbpool)
 
-	// initialize casbin enforcer (using config files for now, will migrate to db)
-	var casbinEnforcer *casbin.Enforcer
-	casbinEnforcer, err = casbin.NewEnforcer("config/rbac_model.conf", "config/rbac_policy.csv")
-	if err != nil {
-		lgr.Fatal().Err(err).Msg("casbin.NewEnforcer error")
-	}
-
 	s.Services = server.Services{
 		CreateMovieService: service.CreateMovieService{Datastorer: ds},
 		UpdateMovieService: service.UpdateMovieService{Datastorer: ds},
@@ -247,9 +226,10 @@ func Run(args []string) (err error) {
 		MiddlewareService: service.MiddlewareService{
 			Datastorer:                 ds,
 			GoogleOauth2TokenConverter: authgateway.GoogleOauth2TokenConverter{},
-			Authorizer:                 auth.CasbinAuthorizer{Enforcer: casbinEnforcer},
+			Authorizer:                 service.DBAuthorizer{Datastorer: ds},
 			EncryptionKey:              ek,
 		},
+		PermissionService: service.PermissionService{Datastorer: ds},
 	}
 
 	return s.ListenAndServe()
