@@ -28,10 +28,10 @@ package config
 
 #GCP: {
 	// Google Cloud project ID
-	projectID:           !="" // must be specified and non-empty
-	artifactoryRegistry: #ArtifactRegistry
-	cloudSQL:            #CloudSQL
-	cloudRun:            #CloudRun
+	projectID:        !="" // must be specified and non-empty
+	artifactRegistry: #ArtifactRegistry
+	cloudSQL:         #CloudSQL
+	cloudRun:         #CloudRun
 }
 
 #ArtifactRegistry: {
