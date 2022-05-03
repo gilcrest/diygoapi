@@ -176,11 +176,11 @@ func (s *Server) handleFindAllMovies(w http.ResponseWriter, r *http.Request) {
 
 // handleOrgCreate is a HandlerFunc used to create an Org
 func (s *Server) handleOrgCreate(w http.ResponseWriter, r *http.Request) {
-	logger := *hlog.FromRequest(r)
+	lgr := *hlog.FromRequest(r)
 
 	adt, err := audit.FromRequest(r)
 	if err != nil {
-		errs.HTTPErrorResponse(w, logger, err)
+		errs.HTTPErrorResponse(w, lgr, err)
 		return
 	}
 
@@ -196,31 +196,32 @@ func (s *Server) handleOrgCreate(w http.ResponseWriter, r *http.Request) {
 	// or any other error
 	err = decoderErr(err)
 	if err != nil {
-		errs.HTTPErrorResponse(w, logger, err)
+		errs.HTTPErrorResponse(w, lgr, err)
 		return
 	}
 
-	response, err := s.OrgService.Create(r.Context(), rb, adt)
+	var response service.OrgResponse
+	response, err = s.OrgService.Create(r.Context(), rb, adt)
 	if err != nil {
-		errs.HTTPErrorResponse(w, logger, err)
+		errs.HTTPErrorResponse(w, lgr, err)
 		return
 	}
 
 	// Encode response struct to JSON for the response body
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
-		errs.HTTPErrorResponse(w, logger, errs.E(errs.Internal, err))
+		errs.HTTPErrorResponse(w, lgr, errs.E(errs.Internal, err))
 		return
 	}
 }
 
 // handleOrgUpdate is a HandlerFunc used to update an Org
 func (s *Server) handleOrgUpdate(w http.ResponseWriter, r *http.Request) {
-	logger := *hlog.FromRequest(r)
+	lgr := *hlog.FromRequest(r)
 
 	adt, err := audit.FromRequest(r)
 	if err != nil {
-		errs.HTTPErrorResponse(w, logger, err)
+		errs.HTTPErrorResponse(w, lgr, err)
 		return
 	}
 
@@ -236,7 +237,7 @@ func (s *Server) handleOrgUpdate(w http.ResponseWriter, r *http.Request) {
 	// or any other error
 	err = decoderErr(err)
 	if err != nil {
-		errs.HTTPErrorResponse(w, logger, err)
+		errs.HTTPErrorResponse(w, lgr, err)
 		return
 	}
 
@@ -245,16 +246,17 @@ func (s *Server) handleOrgUpdate(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	rb.ExternalID = vars["extlID"]
 
-	response, err := s.OrgService.Update(r.Context(), rb, adt)
+	var response service.OrgResponse
+	response, err = s.OrgService.Update(r.Context(), rb, adt)
 	if err != nil {
-		errs.HTTPErrorResponse(w, logger, err)
+		errs.HTTPErrorResponse(w, lgr, err)
 		return
 	}
 
 	// Encode response struct to JSON for the response body
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
-		errs.HTTPErrorResponse(w, logger, errs.E(errs.Internal, err))
+		errs.HTTPErrorResponse(w, lgr, errs.E(errs.Internal, err))
 		return
 	}
 }
@@ -326,11 +328,11 @@ func (s *Server) handleOrgFindByExtlID(w http.ResponseWriter, r *http.Request) {
 
 // handleAppCreate is a HandlerFunc used to create an App
 func (s *Server) handleAppCreate(w http.ResponseWriter, r *http.Request) {
-	logger := *hlog.FromRequest(r)
+	lgr := *hlog.FromRequest(r)
 
 	adt, err := audit.FromRequest(r)
 	if err != nil {
-		errs.HTTPErrorResponse(w, logger, err)
+		errs.HTTPErrorResponse(w, lgr, err)
 		return
 	}
 
@@ -346,37 +348,38 @@ func (s *Server) handleAppCreate(w http.ResponseWriter, r *http.Request) {
 	// or any other error
 	err = decoderErr(err)
 	if err != nil {
-		errs.HTTPErrorResponse(w, logger, err)
+		errs.HTTPErrorResponse(w, lgr, err)
 		return
 	}
 
-	response, err := s.AppService.Create(r.Context(), rb, adt)
+	var response service.AppResponse
+	response, err = s.AppService.Create(r.Context(), rb, adt)
 	if err != nil {
-		errs.HTTPErrorResponse(w, logger, err)
+		errs.HTTPErrorResponse(w, lgr, err)
 		return
 	}
 
 	// Encode response struct to JSON for the response body
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
-		errs.HTTPErrorResponse(w, logger, errs.E(errs.Internal, err))
+		errs.HTTPErrorResponse(w, lgr, errs.E(errs.Internal, err))
 		return
 	}
 }
 
 // handleRegister is a HandlerFunc used to register a User
 func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
-	logger := *hlog.FromRequest(r)
+	lgr := *hlog.FromRequest(r)
 
 	adt, err := audit.FromRequest(r)
 	if err != nil {
-		errs.HTTPErrorResponse(w, logger, err)
+		errs.HTTPErrorResponse(w, lgr, err)
 		return
 	}
 
 	err = s.RegisterUserService.SelfRegister(r.Context(), adt)
 	if err != nil {
-		errs.HTTPErrorResponse(w, logger, err)
+		errs.HTTPErrorResponse(w, lgr, err)
 		return
 	}
 }
@@ -415,7 +418,8 @@ func (s *Server) handleLoggerUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response, err := s.LoggerService.Update(rb)
+	var response service.LoggerResponse
+	response, err = s.LoggerService.Update(rb)
 	if err != nil {
 		errs.HTTPErrorResponse(w, lgr, err)
 		return
@@ -448,11 +452,110 @@ func (s *Server) handlePing(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleGenesis handles POST requests for the /genesis endpoint
-// and updates the logger globals
 func (s *Server) handleGenesis(w http.ResponseWriter, r *http.Request) {
 	lgr := *hlog.FromRequest(r)
 
-	response, err := s.GenesisService.Seed(r.Context())
+	// Declare rb as an instance of service.LoggerRequest
+	rb := new(service.GenesisRequest)
+
+	// Decode JSON HTTP request body into a json.Decoder type
+	// and unmarshal that into rb
+	err := json.NewDecoder(r.Body).Decode(&rb)
+	defer r.Body.Close()
+	// Call DecoderErr to determine if body is nil, json is malformed
+	// or any other error
+	err = decoderErr(err)
+	if err != nil {
+		errs.HTTPErrorResponse(w, lgr, err)
+		return
+	}
+
+	var response service.FullGenesisResponse
+	response, err = s.GenesisService.Seed(r.Context(), rb)
+	if err != nil {
+		errs.HTTPErrorResponse(w, lgr, err)
+		return
+	}
+
+	// Encode response struct to JSON for the response body
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		errs.HTTPErrorResponse(w, lgr, errs.E(errs.Internal, err))
+		return
+	}
+}
+
+// handleGenesis handles GET requests for the /genesis endpoint
+func (s *Server) handleGenesisRead(w http.ResponseWriter, r *http.Request) {
+	lgr := *hlog.FromRequest(r)
+
+	var (
+		response service.FullGenesisResponse
+		err      error
+	)
+	response, err = s.GenesisService.ReadConfig()
+	if err != nil {
+		errs.HTTPErrorResponse(w, lgr, err)
+		return
+	}
+
+	// Encode response struct to JSON for the response body
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		errs.HTTPErrorResponse(w, lgr, errs.E(errs.Internal, err))
+		return
+	}
+}
+
+// handlePermissionCreate handles POST requests for the /permission endpoint
+func (s *Server) handlePermissionCreate(w http.ResponseWriter, r *http.Request) {
+	lgr := *hlog.FromRequest(r)
+
+	var (
+		err error
+		adt audit.Audit
+	)
+	adt, err = audit.FromRequest(r)
+	if err != nil {
+		errs.HTTPErrorResponse(w, lgr, err)
+		return
+	}
+
+	// Declare rb as an instance of auth.Permission
+	rb := new(auth.Permission)
+
+	// Decode JSON HTTP request body into a json.Decoder type
+	// and unmarshal that into rb
+	err = json.NewDecoder(r.Body).Decode(&rb)
+	defer r.Body.Close()
+	// Call DecoderErr to determine if body is nil, json is malformed
+	// or any other error
+	err = decoderErr(err)
+	if err != nil {
+		errs.HTTPErrorResponse(w, lgr, err)
+		return
+	}
+
+	var response auth.Permission
+	response, err = s.PermissionService.Create(r.Context(), rb, adt)
+	if err != nil {
+		errs.HTTPErrorResponse(w, lgr, err)
+		return
+	}
+
+	// Encode response struct to JSON for the response body
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		errs.HTTPErrorResponse(w, lgr, errs.E(errs.Internal, err))
+		return
+	}
+}
+
+// handlePermissionFindAll handles GET requests for the /permission endpoint
+func (s *Server) handlePermissionFindAll(w http.ResponseWriter, r *http.Request) {
+	lgr := *hlog.FromRequest(r)
+
+	response, err := s.PermissionService.FindAll(r.Context())
 	if err != nil {
 		errs.HTTPErrorResponse(w, lgr, err)
 		return
