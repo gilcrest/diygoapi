@@ -8,15 +8,17 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gilcrest/go-api-basic/domain/audit"
-	"github.com/gilcrest/go-api-basic/domain/auth"
-	"github.com/gilcrest/go-api-basic/domain/errs"
-	"github.com/gilcrest/go-api-basic/domain/secure"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
 	"github.com/rs/zerolog"
+
+	"github.com/gilcrest/go-api-basic/datastore/authstore"
+	"github.com/gilcrest/go-api-basic/domain/audit"
+	"github.com/gilcrest/go-api-basic/domain/auth"
+	"github.com/gilcrest/go-api-basic/domain/errs"
+	"github.com/gilcrest/go-api-basic/domain/secure"
 )
 
 // DBAuthorizer determines authorization for a user
