@@ -38,5 +38,5 @@ tasks.json
 # IntelliJ Goland directory and files
 .idea/
 
-# Docker env files
-*.env
+# Genesis response file contains sensitive info
+/config/genesis/response.json
