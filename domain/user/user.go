@@ -12,7 +12,7 @@ import (
 	"github.com/gilcrest/go-api-basic/domain/person"
 )
 
-// User holds details of a User from Google
+// User holds details of a User from various providers
 type User struct {
 	// ID: unique identifier of the User
 	ID uuid.UUID
@@ -25,6 +25,17 @@ type User struct {
 
 	// profile: The profile of the user
 	Profile person.Profile
+}
+
+// NullID returns ID as uuid.NullUUID
+func (u User) NullID() uuid.NullUUID {
+	if u.ID == uuid.Nil {
+		return uuid.NullUUID{}
+	}
+	return uuid.NullUUID{
+		UUID:  u.ID,
+		Valid: true,
+	}
 }
 
 // IsValid determines whether the User has proper data to be considered valid
