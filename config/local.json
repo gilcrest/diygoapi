@@ -1,0 +1,21 @@
+{
+    "config": {
+        "httpServer": {
+            "listenPort": 8080
+        },
+        "logger": {
+            "minLogLevel": "trace",
+            "logLevel": "debug",
+            "logErrorStack": true
+        },
+        "encryptionKey": "9e44fd332e8060025eb7de13c56c2cc260286ca22241a2ac87fc97a5e4a185ac",
+        "database": {
+            "host": "localhost",
+            "port": 5432,
+            "name": "gab_local",
+            "user": "demo_user",
+            "password": "REPLACE_ME",
+            "searchPath": "demo"
+        }
+    }
+}
