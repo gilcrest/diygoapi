@@ -74,23 +74,19 @@ func (c GoogleOauth2TokenConverter) Convert(ctx context.Context, realm string, t
 		return ProviderUserInfo{}, errs.E(errs.Unauthenticated, errs.Realm(realm), err)
 	}
 
-	return newProviderUserInfoFromGoogle(uInfo), nil
-}
-
-// newUserInfo initializes the Userinfo struct given a Userinfo struct
-// from Google
-func newProviderUserInfoFromGoogle(g *googleoauth.Userinfo) ProviderUserInfo {
-	return ProviderUserInfo{
-		Username:   g.Email,
-		Email:      g.Email,
-		FamilyName: g.FamilyName,
-		Gender:     g.Gender,
-		GivenName:  g.GivenName,
-		Hd:         g.Hd,
-		Id:         g.Id,
-		Link:       g.Link,
-		Locale:     g.Locale,
-		Name:       g.Name,
-		Picture:    g.Picture,
+	pui := ProviderUserInfo{
+		Username:   uInfo.Email,
+		Email:      uInfo.Email,
+		FamilyName: uInfo.FamilyName,
+		Gender:     uInfo.Gender,
+		GivenName:  uInfo.GivenName,
+		Hd:         uInfo.Hd,
+		Id:         uInfo.Id,
+		Link:       uInfo.Link,
+		Locale:     uInfo.Locale,
+		Name:       uInfo.Name,
+		Picture:    uInfo.Picture,
 	}
+
+	return pui, nil
 }
