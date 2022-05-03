@@ -1,4 +1,4 @@
-create table demo.movie
+create table movie
 (
     movie_id         uuid                     not null,
     extl_id          varchar(250)             not null,
@@ -17,22 +17,19 @@ create table demo.movie
     constraint movie_pk
         primary key (movie_id),
     constraint movie_create_user_fk
-        foreign key (create_user_id) references demo.org_user
+        foreign key (create_user_id) references org_user
             deferrable initially deferred,
     constraint movie_update_user_fk
-        foreign key (update_user_id) references demo.org_user
+        foreign key (update_user_id) references org_user
             deferrable initially deferred,
     constraint movie_create_app_fk
-        foreign key (create_app_id) references demo.app
+        foreign key (create_app_id) references app
             deferrable initially deferred,
     constraint movie_update_app_fk
-        foreign key (update_app_id) references demo.app
+        foreign key (update_app_id) references app
             deferrable initially deferred
 );
 
-alter table demo.movie
-    owner to demo_user;
-
 create unique index movie_extl_id_uindex
-    on demo.movie (extl_id);
+    on movie (extl_id);
 

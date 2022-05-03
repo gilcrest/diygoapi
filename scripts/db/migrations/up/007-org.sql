@@ -1,4 +1,4 @@
-create table demo.org
+create table org
 (
     org_id           uuid                     not null,
     org_extl_id      varchar                  not null,
@@ -14,63 +14,60 @@ create table demo.org
     constraint org_pk
         primary key (org_id),
     constraint org_create_user_fk
-        foreign key (create_user_id) references demo.org_user
+        foreign key (create_user_id) references org_user
             deferrable initially deferred,
     constraint org_update_user_fk
-        foreign key (update_user_id) references demo.org_user
+        foreign key (update_user_id) references org_user
             deferrable initially deferred,
     constraint org_create_app_fk
-        foreign key (create_app_id) references demo.app
+        foreign key (create_app_id) references app
             deferrable initially deferred,
     constraint org_update_app_fk
-        foreign key (update_app_id) references demo.app
+        foreign key (update_app_id) references app
             deferrable initially deferred,
     constraint org_org_kind_fk
-        foreign key (org_kind_id) references demo.org_kind
+        foreign key (org_kind_id) references org_kind
             deferrable initially deferred
 );
 
-comment on column demo.org.org_id is 'Organization ID - Unique ID for table';
+comment on column org.org_id is 'Organization ID - Unique ID for table';
 
-comment on column demo.org.org_extl_id is 'Organization Unique External ID to be given to outside callers.';
+comment on column org.org_extl_id is 'Organization Unique External ID to be given to outside callers.';
 
-comment on column demo.org.org_name is 'Organization Name - a short name for the organization';
+comment on column org.org_name is 'Organization Name - a short name for the organization';
 
-comment on column demo.org.org_description is 'Organization Description - several sentences to describe the organization';
+comment on column org.org_description is 'Organization Description - several sentences to describe the organization';
 
-comment on column demo.org.org_kind_id is 'Foreign Key to org_kind table.';
+comment on column org.org_kind_id is 'Foreign Key to org_kind table.';
 
-comment on column demo.org.create_app_id is 'The application which created this record.';
+comment on column org.create_app_id is 'The application which created this record.';
 
-comment on column demo.org.create_user_id is 'The user which created this record.';
+comment on column org.create_user_id is 'The user which created this record.';
 
-comment on column demo.org.create_timestamp is 'The timestamp when this record was created.';
+comment on column org.create_timestamp is 'The timestamp when this record was created.';
 
-comment on column demo.org.update_app_id is 'The application which performed the most recent update to this record.';
+comment on column org.update_app_id is 'The application which performed the most recent update to this record.';
 
-comment on column demo.org.update_user_id is 'The user which performed the most recent update to this record.';
+comment on column org.update_user_id is 'The user which performed the most recent update to this record.';
 
-comment on column demo.org.update_timestamp is 'The timestamp when the record was updated most recently.';
+comment on column org.update_timestamp is 'The timestamp when the record was updated most recently.';
 
-alter table demo.org
-    owner to demo_user;
-
-alter table demo.app
+alter table app
     add constraint app_org_org_id_fk
-        foreign key (org_id) references demo.org
+        foreign key (org_id) references org
             deferrable initially deferred;
 
-alter table demo.org_user
+alter table org_user
     add constraint user_org_fk
-        foreign key (org_id) references demo.org
+        foreign key (org_id) references org
             deferrable initially deferred;
 
 create unique index org_org_id_uindex
-    on demo.org (org_id);
+    on org (org_id);
 
 create unique index org_org_name_uindex
-    on demo.org (org_name);
+    on org (org_name);
 
 create unique index org_org_extl_id_uindex
-    on demo.org (org_extl_id);
+    on org (org_extl_id);
 

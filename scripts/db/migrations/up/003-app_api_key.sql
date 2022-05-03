@@ -1,4 +1,4 @@
-create table demo.app_api_key
+create table app_api_key
 (
     api_key          varchar                  not null,
     app_id           uuid                     not null,
@@ -12,25 +12,21 @@ create table demo.app_api_key
     constraint app_key_pk
         primary key (api_key),
     constraint app_key_app_app_id_fk
-        foreign key (app_id) references demo.app,
+        foreign key (app_id) references app,
     constraint app_api_key_app_fk1
-        foreign key (create_app_id) references demo.app
+        foreign key (create_app_id) references app
             deferrable initially deferred,
     constraint app_api_key_org_user_fk1
-        foreign key (create_user_id) references demo.org_user
+        foreign key (create_user_id) references org_user
             deferrable initially deferred,
     constraint app_api_key_app_fk2
-        foreign key (update_app_id) references demo.app
+        foreign key (update_app_id) references app
             deferrable initially deferred,
     constraint app_api_key_org_user_fk2
-        foreign key (update_user_id) references demo.org_user
+        foreign key (update_user_id) references org_user
             deferrable initially deferred
 );
 
-comment on column demo.app_api_key.api_key is 'app_key is a hash of a key given to a user for an app';
+comment on column app_api_key.api_key is 'app_key is a hash of a key given to a user for an app';
 
-comment on column demo.app_api_key.app_id is 'foreign key to app table';
-
-alter table demo.app_api_key
-    owner to demo_user;
-
+comment on column app_api_key.app_id is 'foreign key to app table';

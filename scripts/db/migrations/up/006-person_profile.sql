@@ -1,4 +1,4 @@
-create table demo.person_profile
+create table person_profile
 (
     person_profile_id uuid                     not null,
     person_id         uuid                     not null,
@@ -25,22 +25,18 @@ create table demo.person_profile
     constraint person_profile_pk
         primary key (person_profile_id),
     constraint person_profile_person_fk
-        foreign key (person_id) references demo.person
+        foreign key (person_id) references person
             deferrable initially deferred,
     constraint person_profile_create_app_fk
-        foreign key (create_app_id) references demo.app
+        foreign key (create_app_id) references app
             deferrable initially deferred,
     constraint person_profile_create_user_fk
-        foreign key (create_user_id) references demo.org_user
+        foreign key (create_user_id) references org_user
             deferrable initially deferred,
     constraint person_profile_update_app_fk
-        foreign key (update_app_id) references demo.app
+        foreign key (update_app_id) references app
             deferrable initially deferred,
     constraint person_profile_update_user_fk
-        foreign key (update_user_id) references demo.org_user
+        foreign key (update_user_id) references org_user
             deferrable initially deferred
 );
-
-alter table demo.person_profile
-    owner to demo_user;
-
