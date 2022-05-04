@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 
-	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/gilcrest/go-api-basic/datastore/appstore"
 	"github.com/gilcrest/go-api-basic/domain/app"
 	"github.com/gilcrest/go-api-basic/domain/audit"
@@ -115,10 +114,10 @@ func (s AppService) Create(ctx context.Context, r *CreateAppRequest, adt audit.A
 		AppName:         a.Name,
 		AppDescription:  a.Description,
 		CreateAppID:     adt.App.ID,
-		CreateUserID:    datastore.NewNullUUID(adt.User.ID),
+		CreateUserID:    adt.User.NullUUID(),
 		CreateTimestamp: adt.Moment,
 		UpdateAppID:     adt.App.ID,
-		UpdateUserID:    datastore.NewNullUUID(adt.User.ID),
+		UpdateUserID:    adt.User.NullUUID(),
 		UpdateTimestamp: adt.Moment,
 	}
 
@@ -151,10 +150,10 @@ func (s AppService) Create(ctx context.Context, r *CreateAppRequest, adt audit.A
 			AppID:           a.ID,
 			DeactvDate:      key.DeactivationDate(),
 			CreateAppID:     adt.App.ID,
-			CreateUserID:    datastore.NewNullUUID(adt.User.ID),
+			CreateUserID:    adt.User.NullUUID(),
 			CreateTimestamp: adt.Moment,
 			UpdateAppID:     adt.App.ID,
-			UpdateUserID:    datastore.NewNullUUID(adt.User.ID),
+			UpdateUserID:    adt.User.NullUUID(),
 			UpdateTimestamp: adt.Moment,
 		}
 
@@ -210,7 +209,7 @@ func (s AppService) Update(ctx context.Context, r *UpdateAppRequest, adt audit.A
 		AppName:         aa.App.Name,
 		AppDescription:  aa.App.Description,
 		UpdateAppID:     adt.App.ID,
-		UpdateUserID:    datastore.NewNullUUID(adt.User.ID),
+		UpdateUserID:    adt.User.NullUUID(),
 		UpdateTimestamp: adt.Moment,
 		AppID:           aa.App.ID,
 	}
