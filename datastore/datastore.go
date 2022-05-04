@@ -12,7 +12,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -234,18 +233,6 @@ func NewNullInt32(i int32) sql.NullInt32 {
 	}
 	return sql.NullInt32{
 		Int32: i,
-		Valid: true,
-	}
-}
-
-// NewNullUUID returns a null if id == uuid.Nil, otherwise it returns
-// the uuid.UUID which was input, with Valid set to true.
-func NewNullUUID(id uuid.UUID) uuid.NullUUID {
-	if id == uuid.Nil {
-		return uuid.NullUUID{}
-	}
-	return uuid.NullUUID{
-		UUID:  id,
 		Valid: true,
 	}
 }
