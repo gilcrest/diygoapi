@@ -25,7 +25,7 @@ type UpdateMovieService interface {
 
 // DeleteMovieService is a service for deleting a Movie
 type DeleteMovieService interface {
-	Delete(ctx context.Context, extlID string) (service.DeleteMovieResponse, error)
+	Delete(ctx context.Context, extlID string) (service.DeleteResponse, error)
 }
 
 // FindMovieService interface reads a Movie form the database
