@@ -1,6 +1,6 @@
 # DIY Go API
 
-v0.43.0 - 5/3/2022 - I have refactored large swaths of the app recently around the way I was doing db rollbacks... I have started to implement a DIY RBAC, but am still wrapping up some of the administration services (update role, update permission, etc.). I am going to update the module name with the next commit to be consistent with the repo name.
+v0.44.0 - 5/4/2022 - I have refactored large swaths of the app recently around the way I was doing db rollbacks... I have started to implement a DIY RBAC, but am still wrapping up some of the administration services (update role, update permission, etc.). I am going to update the module name with the next commit to be consistent with the repo name.
 
 Things are still coming back together, a ton of work recently. **The docs below are out of date in many cases**. Hoping to have everything sorted soon, but if you look at the code, you can start to see the structure. I am currently building a simple RBAC implementation as part of this as well. After that is completed, README documentation will be my focus. I will get this updated!
 
