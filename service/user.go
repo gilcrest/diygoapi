@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 
-	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/gilcrest/go-api-basic/datastore/personstore"
 	"github.com/gilcrest/go-api-basic/datastore/userstore"
 	"github.com/gilcrest/go-api-basic/domain/audit"
@@ -64,10 +63,10 @@ func createUserDB(ctx context.Context, tx pgx.Tx, u user.User, adt audit.Audit) 
 		PersonID:        u.Profile.Person.ID,
 		OrgID:           u.Profile.Person.Org.ID,
 		CreateAppID:     adt.App.ID,
-		CreateUserID:    datastore.NewNullUUID(adt.User.ID),
+		CreateUserID:    adt.User.NullUUID(),
 		CreateTimestamp: adt.Moment,
 		UpdateAppID:     adt.App.ID,
-		UpdateUserID:    datastore.NewNullUUID(adt.User.ID),
+		UpdateUserID:    adt.User.NullUUID(),
 		UpdateTimestamp: adt.Moment,
 	}
 
@@ -101,10 +100,10 @@ func createUserDB(ctx context.Context, tx pgx.Tx, u user.User, adt audit.Audit) 
 		BirthDay:        sql.NullInt64{},
 		LanguageID:      uuid.NullUUID{},
 		CreateAppID:     adt.App.ID,
-		CreateUserID:    datastore.NewNullUUID(adt.User.ID),
+		CreateUserID:    adt.User.NullUUID(),
 		CreateTimestamp: adt.Moment,
 		UpdateAppID:     adt.App.ID,
-		UpdateUserID:    datastore.NewNullUUID(adt.User.ID),
+		UpdateUserID:    adt.User.NullUUID(),
 		UpdateTimestamp: adt.Moment,
 	}
 
@@ -124,10 +123,10 @@ func createUserDB(ctx context.Context, tx pgx.Tx, u user.User, adt audit.Audit) 
 		OrgID:           u.Org.ID,
 		PersonProfileID: u.Profile.ID,
 		CreateAppID:     adt.App.ID,
-		CreateUserID:    datastore.NewNullUUID(adt.User.ID),
+		CreateUserID:    adt.User.NullUUID(),
 		CreateTimestamp: adt.Moment,
 		UpdateAppID:     adt.App.ID,
-		UpdateUserID:    datastore.NewNullUUID(adt.User.ID),
+		UpdateUserID:    adt.User.NullUUID(),
 		UpdateTimestamp: adt.Moment,
 	}
 
