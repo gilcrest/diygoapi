@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 
-	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/gilcrest/go-api-basic/datastore/orgstore"
 	"github.com/gilcrest/go-api-basic/domain/app"
 	"github.com/gilcrest/go-api-basic/domain/audit"
@@ -174,10 +173,10 @@ func newCreateOrgParams(oa orgAudit) orgstore.CreateOrgParams {
 		OrgDescription:  oa.Org.Description,
 		OrgKindID:       oa.Org.Kind.ID,
 		CreateAppID:     oa.SimpleAudit.First.App.ID,
-		CreateUserID:    datastore.NewNullUUID(oa.SimpleAudit.First.User.ID),
+		CreateUserID:    oa.SimpleAudit.First.User.NullUUID(),
 		CreateTimestamp: oa.SimpleAudit.First.Moment,
 		UpdateAppID:     oa.SimpleAudit.Last.App.ID,
-		UpdateUserID:    datastore.NewNullUUID(oa.SimpleAudit.Last.User.ID),
+		UpdateUserID:    oa.SimpleAudit.Last.User.NullUUID(),
 		UpdateTimestamp: oa.SimpleAudit.Last.Moment,
 	}
 }
@@ -215,7 +214,7 @@ func (s OrgService) Update(ctx context.Context, r *UpdateOrgRequest, adt audit.A
 		OrgName:         oa.Org.Name,
 		OrgDescription:  oa.Org.Description,
 		UpdateAppID:     adt.App.ID,
-		UpdateUserID:    datastore.NewNullUUID(adt.User.ID),
+		UpdateUserID:    adt.User.NullUUID(),
 		UpdateTimestamp: adt.Moment,
 	}
 
@@ -529,10 +528,10 @@ func createGenesisOrgKind(ctx context.Context, tx pgx.Tx, adt audit.Audit) (orgs
 		OrgKindExtlID:   genesisOrgKind,
 		OrgKindDesc:     "The Genesis org represents the first organization created in the database and exists purely for the administrative purpose of creating other organizations, apps and users.",
 		CreateAppID:     adt.App.ID,
-		CreateUserID:    datastore.NewNullUUID(adt.User.ID),
+		CreateUserID:    adt.User.NullUUID(),
 		CreateTimestamp: adt.Moment,
 		UpdateAppID:     adt.App.ID,
-		UpdateUserID:    datastore.NewNullUUID(adt.User.ID),
+		UpdateUserID:    adt.User.NullUUID(),
 		UpdateTimestamp: adt.Moment,
 	}
 
@@ -559,10 +558,10 @@ func createTestOrgKind(ctx context.Context, tx pgx.Tx, adt audit.Audit) (orgstor
 		OrgKindExtlID:   "test",
 		OrgKindDesc:     "The test org is used strictly for testing",
 		CreateAppID:     adt.App.ID,
-		CreateUserID:    datastore.NewNullUUID(adt.User.ID),
+		CreateUserID:    adt.User.NullUUID(),
 		CreateTimestamp: adt.Moment,
 		UpdateAppID:     adt.App.ID,
-		UpdateUserID:    datastore.NewNullUUID(adt.User.ID),
+		UpdateUserID:    adt.User.NullUUID(),
 		UpdateTimestamp: adt.Moment,
 	}
 
@@ -589,10 +588,10 @@ func createStandardOrgKind(ctx context.Context, tx pgx.Tx, adt audit.Audit) erro
 		OrgKindExtlID:   "standard",
 		OrgKindDesc:     "The standard org is used for myriad business purposes",
 		CreateAppID:     adt.App.ID,
-		CreateUserID:    datastore.NewNullUUID(adt.User.ID),
+		CreateUserID:    adt.User.NullUUID(),
 		CreateTimestamp: adt.Moment,
 		UpdateAppID:     adt.App.ID,
-		UpdateUserID:    datastore.NewNullUUID(adt.User.ID),
+		UpdateUserID:    adt.User.NullUUID(),
 		UpdateTimestamp: adt.Moment,
 	}
 
