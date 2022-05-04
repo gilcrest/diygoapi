@@ -3,7 +3,7 @@ module github.com/gilcrest/go-api-basic
 go 1.17
 
 require (
-	github.com/frankban/quicktest v1.14.2
+	github.com/frankban/quicktest v1.14.3
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/google/go-cmp v0.5.8
 	github.com/google/uuid v1.3.0
