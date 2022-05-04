@@ -27,8 +27,8 @@ type User struct {
 	Profile person.Profile
 }
 
-// NullID returns ID as uuid.NullUUID
-func (u User) NullID() uuid.NullUUID {
+// NullUUID returns ID as uuid.NullUUID
+func (u User) NullUUID() uuid.NullUUID {
 	if u.ID == uuid.Nil {
 		return uuid.NullUUID{}
 	}
