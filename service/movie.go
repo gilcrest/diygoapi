@@ -4,20 +4,19 @@ import (
 	"context"
 	"time"
 
-	"github.com/gilcrest/go-api-basic/domain/app"
-	"github.com/gilcrest/go-api-basic/domain/org"
-	"github.com/gilcrest/go-api-basic/domain/person"
-	"github.com/gilcrest/go-api-basic/domain/user"
-
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 
 	"github.com/gilcrest/go-api-basic/datastore"
 	"github.com/gilcrest/go-api-basic/datastore/moviestore"
+	"github.com/gilcrest/go-api-basic/domain/app"
 	"github.com/gilcrest/go-api-basic/domain/audit"
 	"github.com/gilcrest/go-api-basic/domain/errs"
 	"github.com/gilcrest/go-api-basic/domain/movie"
+	"github.com/gilcrest/go-api-basic/domain/org"
+	"github.com/gilcrest/go-api-basic/domain/person"
 	"github.com/gilcrest/go-api-basic/domain/secure"
+	"github.com/gilcrest/go-api-basic/domain/user"
 )
 
 // movieAudit is the combination of a domain Movie and its audit data
@@ -84,11 +83,10 @@ type CreateMovieService struct {
 	Datastorer Datastorer
 }
 
-// Create is used to create an Movie
-func (s CreateMovieService) Create(ctx context.Context, r *CreateMovieRequest, adt audit.Audit) (MovieResponse, error) {
-	var err error
-
-	released, err := time.Parse(time.RFC3339, r.Released)
+// Create is used to create a Movie
+func (s CreateMovieService) Create(ctx context.Context, r *CreateMovieRequest, adt audit.Audit) (mr MovieResponse, err error) {
+	var released time.Time
+	released, err = time.Parse(time.RFC3339, r.Released)
 	if err != nil {
 		return MovieResponse{}, errs.E(errs.Validation,
 			errs.Code("invalid_date_format"),
@@ -128,22 +126,27 @@ func (s CreateMovieService) Create(ctx context.Context, r *CreateMovieRequest, a
 		Director:        datastore.NewNullString(m.Director),
 		Writer:          datastore.NewNullString(m.Writer),
 		CreateAppID:     sa.First.App.ID,
-		CreateUserID:    datastore.NewNullUUID(sa.First.User.ID),
+		CreateUserID:    sa.First.User.NullUUID(),
 		CreateTimestamp: sa.First.Moment,
 		UpdateAppID:     sa.Last.App.ID,
-		UpdateUserID:    datastore.NewNullUUID(sa.Last.User.ID),
+		UpdateUserID:    sa.Last.User.NullUUID(),
 		UpdateTimestamp: sa.Last.Moment,
 	}
 
 	// start db txn using pgxpool
-	tx, err := s.Datastorer.BeginTx(ctx)
+	var tx pgx.Tx
+	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
 		return MovieResponse{}, err
 	}
+	// defer transaction rollback and handle error, if any
+	defer func() {
+		err = s.Datastorer.RollbackTx(ctx, tx, err)
+	}()
 
 	_, err = moviestore.New(tx).CreateMovie(ctx, createMovieParams)
 	if err != nil {
-		return MovieResponse{}, errs.E(errs.Database, s.Datastorer.RollbackTx(ctx, tx, err))
+		return MovieResponse{}, errs.E(errs.Database, err)
 	}
 
 	// commit db txn using pgxpool
@@ -152,7 +155,9 @@ func (s CreateMovieService) Create(ctx context.Context, r *CreateMovieRequest, a
 		return MovieResponse{}, err
 	}
 
-	return newMovieResponse(movieAudit{m, sa}), nil
+	mr = newMovieResponse(movieAudit{m, sa})
+
+	return mr, nil
 }
 
 // UpdateMovieRequest is the request struct for updating a Movie
@@ -172,13 +177,7 @@ type UpdateMovieService struct {
 }
 
 // Update is used to update a movie
-func (s UpdateMovieService) Update(ctx context.Context, r *UpdateMovieRequest, adt audit.Audit) (MovieResponse, error) {
-
-	// retrieve existing Movie
-	var (
-		row moviestore.FindMovieByExternalIDWithAuditRow
-		err error
-	)
+func (s UpdateMovieService) Update(ctx context.Context, r *UpdateMovieRequest, adt audit.Audit) (mr MovieResponse, err error) {
 
 	var released time.Time
 	released, err = time.Parse(time.RFC3339, r.Released)
@@ -189,6 +188,8 @@ func (s UpdateMovieService) Update(ctx context.Context, r *UpdateMovieRequest, a
 			err)
 	}
 
+	// retrieve existing Movie
+	var row moviestore.FindMovieByExternalIDWithAuditRow
 	row, err = moviestore.New(s.Datastorer.Pool()).FindMovieByExternalIDWithAudit(ctx, r.ExternalID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -254,20 +255,25 @@ func (s UpdateMovieService) Update(ctx context.Context, r *UpdateMovieRequest, a
 		Director:        datastore.NewNullString(m.Director),
 		Writer:          datastore.NewNullString(m.Writer),
 		UpdateAppID:     adt.App.ID,
-		UpdateUserID:    datastore.NewNullUUID(adt.User.ID),
+		UpdateUserID:    adt.User.NullUUID(),
 		UpdateTimestamp: adt.Moment,
 		MovieID:         m.ID,
 	}
 
 	// start db txn using pgxpool
-	tx, err := s.Datastorer.BeginTx(ctx)
+	var tx pgx.Tx
+	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
 		return MovieResponse{}, err
 	}
+	// defer transaction rollback and handle error, if any
+	defer func() {
+		err = s.Datastorer.RollbackTx(ctx, tx, err)
+	}()
 
 	err = moviestore.New(tx).UpdateMovie(ctx, updateMovieParams)
 	if err != nil {
-		return MovieResponse{}, errs.E(errs.Database, s.Datastorer.RollbackTx(ctx, tx, err))
+		return MovieResponse{}, errs.E(errs.Database, err)
 	}
 
 	// commit db txn using pgxpool
@@ -276,13 +282,9 @@ func (s UpdateMovieService) Update(ctx context.Context, r *UpdateMovieRequest, a
 		return MovieResponse{}, err
 	}
 
-	return newMovieResponse(movieAudit{m, sa}), nil
-}
+	mr = newMovieResponse(movieAudit{m, sa})
 
-// DeleteMovieResponse is the response struct for deleted Movies
-type DeleteMovieResponse struct {
-	ExternalID string `json:"extl_id"`
-	Deleted    bool   `json:"deleted"`
+	return mr, nil
 }
 
 // DeleteMovieService is a service for deleting a Movie
@@ -291,40 +293,37 @@ type DeleteMovieService struct {
 }
 
 // Delete is used to delete a movie
-func (s DeleteMovieService) Delete(ctx context.Context, extlID string) (DeleteMovieResponse, error) {
+func (s DeleteMovieService) Delete(ctx context.Context, extlID string) (dr DeleteResponse, err error) {
 
 	// retrieve existing Movie
-	var (
-		dbm moviestore.Movie
-		err error
-	)
+	var dbm moviestore.Movie
 	dbm, err = moviestore.New(s.Datastorer.Pool()).FindMovieByExternalID(ctx, extlID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return DeleteMovieResponse{}, errs.E(errs.Validation, "No movie exists for the given external ID")
+			return DeleteResponse{}, errs.E(errs.Validation, "No movie exists for the given external ID")
 		}
-		return DeleteMovieResponse{}, errs.E(errs.Database, err)
+		return DeleteResponse{}, errs.E(errs.Database, err)
 	}
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
 	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
-		return DeleteMovieResponse{}, err
+		return DeleteResponse{}, err
 	}
 
 	err = moviestore.New(tx).DeleteMovie(ctx, dbm.MovieID)
 	if err != nil {
-		return DeleteMovieResponse{}, errs.E(errs.Database, s.Datastorer.RollbackTx(ctx, tx, err))
+		return DeleteResponse{}, errs.E(errs.Database, err)
 	}
 
 	// commit db txn using pgxpool
 	err = s.Datastorer.CommitTx(ctx, tx)
 	if err != nil {
-		return DeleteMovieResponse{}, err
+		return DeleteResponse{}, err
 	}
 
-	response := DeleteMovieResponse{
+	response := DeleteResponse{
 		ExternalID: dbm.ExtlID,
 		Deleted:    true,
 	}
@@ -338,13 +337,9 @@ type FindMovieService struct {
 }
 
 // FindMovieByID is used to find an individual movie
-func (s FindMovieService) FindMovieByID(ctx context.Context, extlID string) (MovieResponse, error) {
+func (s FindMovieService) FindMovieByID(ctx context.Context, extlID string) (mr MovieResponse, err error) {
 
-	var (
-		row moviestore.FindMovieByExternalIDWithAuditRow
-		err error
-	)
-
+	var row moviestore.FindMovieByExternalIDWithAuditRow
 	row, err = moviestore.New(s.Datastorer.Pool()).FindMovieByExternalIDWithAudit(ctx, extlID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -407,15 +402,16 @@ func (s FindMovieService) FindMovieByID(ctx context.Context, extlID string) (Mov
 		},
 	}
 
-	return newMovieResponse(movieAudit{m, sa}), nil
+	mr = newMovieResponse(movieAudit{m, sa})
+
+	return mr, nil
 }
 
 // FindAllMovies is used to list all movies in the db
-func (s FindMovieService) FindAllMovies(ctx context.Context) ([]MovieResponse, error) {
+func (s FindMovieService) FindAllMovies(ctx context.Context) (smr []MovieResponse, err error) {
 
-	var response []MovieResponse
-
-	movies, err := moviestore.New(s.Datastorer.Pool()).FindMovies(ctx)
+	var rows []moviestore.FindMoviesRow
+	rows, err = moviestore.New(s.Datastorer.Pool()).FindMovies(ctx)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, errs.E(errs.Validation, "no movies exists")
@@ -423,7 +419,7 @@ func (s FindMovieService) FindAllMovies(ctx context.Context) ([]MovieResponse, e
 		return nil, errs.E(errs.Database, err)
 	}
 
-	for _, row := range movies {
+	for _, row := range rows {
 		m := movie.Movie{
 			ID:         row.MovieID,
 			ExternalID: secure.MustParseIdentifier(row.ExtlID),
@@ -477,8 +473,8 @@ func (s FindMovieService) FindAllMovies(ctx context.Context) ([]MovieResponse, e
 			},
 		}
 		mr := newMovieResponse(movieAudit{m, sa})
-		response = append(response, mr)
+		smr = append(smr, mr)
 	}
 
-	return response, nil
+	return smr, nil
 }
