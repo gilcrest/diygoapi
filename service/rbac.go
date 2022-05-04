@@ -107,10 +107,10 @@ func (s PermissionService) Create(ctx context.Context, r *auth.Permission, adt a
 		PermissionDescription: r.Description,
 		Active:                sql.NullBool{Bool: r.Active, Valid: true},
 		CreateAppID:           adt.App.ID,
-		CreateUserID:          adt.User.NullID(),
+		CreateUserID:          adt.User.NullUUID(),
 		CreateTimestamp:       time.Now(),
 		UpdateAppID:           adt.App.ID,
-		UpdateUserID:          adt.User.NullID(),
+		UpdateUserID:          adt.User.NullUUID(),
 		UpdateTimestamp:       time.Now(),
 	}
 
@@ -193,10 +193,10 @@ func (s RoleService) Create(ctx context.Context, r *auth.Role, adt audit.Audit) 
 		RoleCd:          r.Code,
 		Active:          sql.NullBool{Bool: r.Active, Valid: true},
 		CreateAppID:     adt.App.ID,
-		CreateUserID:    adt.User.NullID(),
+		CreateUserID:    adt.User.NullUUID(),
 		CreateTimestamp: time.Now(),
 		UpdateAppID:     adt.App.ID,
-		UpdateUserID:    adt.User.NullID(),
+		UpdateUserID:    adt.User.NullUUID(),
 		UpdateTimestamp: time.Now(),
 	}
 
