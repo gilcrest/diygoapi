@@ -17,6 +17,9 @@ const (
 	stagingJSONConfigFile = "./config/staging.json"
 	// production JSON Config File path - relative to project root
 	productionJSONConfigFile = "./config/production.json"
+	// genesisRequestFile is the local JSON Genesis Request File path
+	// (relative to project root)
+	genesisRequestFile = "./config/genesis/request.json"
 )
 
 // ConfigFile defines the configuration file. It is the superset of
@@ -282,5 +285,19 @@ func CUEPaths(env Env) (ConfigCueFilePaths, error) {
 		}, nil
 	default:
 		return ConfigCueFilePaths{}, errs.E(fmt.Sprintf("There is no path configuration for the %s environment", env))
+	}
+}
+
+// CUEGenesisPaths returns the ConfigCueFilePaths for the Genesis config.
+// Paths are relative to the project root.
+func CUEGenesisPaths() ConfigCueFilePaths {
+	const (
+		schemaInput  = "./config/genesis/cue/schema.cue"
+		genesisInput = "./config/genesis/cue/genesis.cue"
+	)
+
+	return ConfigCueFilePaths{
+		Input:  []string{schemaInput, genesisInput},
+		Output: genesisRequestFile,
 	}
 }
