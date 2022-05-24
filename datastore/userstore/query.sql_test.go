@@ -7,7 +7,7 @@ import (
 	qt "github.com/frankban/quicktest"
 	"github.com/jackc/pgx/v4"
 
-	"github.com/gilcrest/go-api-basic/datastore/datastoretest"
+	"github.com/gilcrest/diy-go-api/datastore/datastoretest"
 	"github.com/google/uuid"
 )
 

@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/gilcrest/go-api-basic/domain/logger"
+	"github.com/gilcrest/diy-go-api/domain/logger"
 
 	qt "github.com/frankban/quicktest"
 	"github.com/rs/zerolog"

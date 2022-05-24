@@ -14,14 +14,14 @@ import (
 	"github.com/peterbourgon/ff/v3"
 	"github.com/rs/zerolog"
 
-	"github.com/gilcrest/go-api-basic/datastore"
-	"github.com/gilcrest/go-api-basic/domain/errs"
-	"github.com/gilcrest/go-api-basic/domain/logger"
-	"github.com/gilcrest/go-api-basic/domain/secure"
-	"github.com/gilcrest/go-api-basic/domain/secure/random"
-	"github.com/gilcrest/go-api-basic/gateway/authgateway"
-	"github.com/gilcrest/go-api-basic/server"
-	"github.com/gilcrest/go-api-basic/service"
+	"github.com/gilcrest/diy-go-api/datastore"
+	"github.com/gilcrest/diy-go-api/domain/errs"
+	"github.com/gilcrest/diy-go-api/domain/logger"
+	"github.com/gilcrest/diy-go-api/domain/secure"
+	"github.com/gilcrest/diy-go-api/domain/secure/random"
+	"github.com/gilcrest/diy-go-api/gateway/authgateway"
+	"github.com/gilcrest/diy-go-api/server"
+	"github.com/gilcrest/diy-go-api/service"
 )
 
 const (

@@ -39,8 +39,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
 
-	"github.com/gilcrest/go-api-basic/domain/errs"
-	"github.com/gilcrest/go-api-basic/server/driver"
+	"github.com/gilcrest/diy-go-api/domain/errs"
+	"github.com/gilcrest/diy-go-api/server/driver"
 )
 
 const pathPrefix string = "/api"

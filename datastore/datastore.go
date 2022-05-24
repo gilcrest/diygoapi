@@ -16,7 +16,7 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 
-	"github.com/gilcrest/go-api-basic/domain/errs"
+	"github.com/gilcrest/diy-go-api/domain/errs"
 )
 
 const (

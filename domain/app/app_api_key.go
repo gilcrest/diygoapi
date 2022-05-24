@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gilcrest/go-api-basic/domain/errs"
-	"github.com/gilcrest/go-api-basic/domain/secure"
+	"github.com/gilcrest/diy-go-api/domain/errs"
+	"github.com/gilcrest/diy-go-api/domain/secure"
 )
 
 // APIKeyStringGenerator creates a random, 128 API key string

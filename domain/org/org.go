@@ -1,7 +1,7 @@
 package org
 
 import (
-	"github.com/gilcrest/go-api-basic/domain/secure"
+	"github.com/gilcrest/diy-go-api/domain/secure"
 	"github.com/google/uuid"
 )
 

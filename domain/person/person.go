@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/gilcrest/go-api-basic/domain/org"
+	"github.com/gilcrest/diy-go-api/domain/org"
 )
 
 // Person is a single person that exists within the system for an Org

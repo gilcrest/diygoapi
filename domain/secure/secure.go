@@ -8,9 +8,9 @@ import (
 	"encoding/hex"
 	"io"
 
-	"github.com/gilcrest/go-api-basic/domain/secure/random"
+	"github.com/gilcrest/diy-go-api/domain/secure/random"
 
-	"github.com/gilcrest/go-api-basic/domain/errs"
+	"github.com/gilcrest/diy-go-api/domain/errs"
 )
 
 const defaultIDByteLength int = 12

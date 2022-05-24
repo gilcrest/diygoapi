@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	qt "github.com/frankban/quicktest"
-	"github.com/gilcrest/go-api-basic/domain/auth"
+	"github.com/gilcrest/diy-go-api/domain/auth"
 )
 
 func TestNewProvider(t *testing.T) {

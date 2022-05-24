@@ -13,8 +13,8 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/rs/zerolog"
 
-	"github.com/gilcrest/go-api-basic/datastore"
-	"github.com/gilcrest/go-api-basic/domain/logger"
+	"github.com/gilcrest/diy-go-api/datastore"
+	"github.com/gilcrest/diy-go-api/domain/logger"
 )
 
 // newPGDatasourceName is a test helper to get a PGDatasourceName

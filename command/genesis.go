@@ -10,12 +10,12 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/rs/zerolog"
 
-	"github.com/gilcrest/go-api-basic/datastore"
-	"github.com/gilcrest/go-api-basic/domain/errs"
-	"github.com/gilcrest/go-api-basic/domain/logger"
-	"github.com/gilcrest/go-api-basic/domain/secure"
-	"github.com/gilcrest/go-api-basic/domain/secure/random"
-	"github.com/gilcrest/go-api-basic/service"
+	"github.com/gilcrest/diy-go-api/datastore"
+	"github.com/gilcrest/diy-go-api/domain/errs"
+	"github.com/gilcrest/diy-go-api/domain/logger"
+	"github.com/gilcrest/diy-go-api/domain/secure"
+	"github.com/gilcrest/diy-go-api/domain/secure/random"
+	"github.com/gilcrest/diy-go-api/service"
 )
 
 // Genesis command runs the Genesis service and seeds the database.

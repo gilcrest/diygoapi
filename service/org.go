@@ -8,14 +8,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 
-	"github.com/gilcrest/go-api-basic/datastore/orgstore"
-	"github.com/gilcrest/go-api-basic/domain/app"
-	"github.com/gilcrest/go-api-basic/domain/audit"
-	"github.com/gilcrest/go-api-basic/domain/errs"
-	"github.com/gilcrest/go-api-basic/domain/org"
-	"github.com/gilcrest/go-api-basic/domain/person"
-	"github.com/gilcrest/go-api-basic/domain/secure"
-	"github.com/gilcrest/go-api-basic/domain/user"
+	"github.com/gilcrest/diy-go-api/datastore/orgstore"
+	"github.com/gilcrest/diy-go-api/domain/app"
+	"github.com/gilcrest/diy-go-api/domain/audit"
+	"github.com/gilcrest/diy-go-api/domain/errs"
+	"github.com/gilcrest/diy-go-api/domain/org"
+	"github.com/gilcrest/diy-go-api/domain/person"
+	"github.com/gilcrest/diy-go-api/domain/secure"
+	"github.com/gilcrest/diy-go-api/domain/user"
 )
 
 // orgAudit is the combination of a domain Org and its audit data

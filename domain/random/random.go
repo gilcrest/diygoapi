@@ -5,7 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 
-	"github.com/gilcrest/go-api-basic/domain/errs"
+	"github.com/gilcrest/diy-go-api/domain/errs"
 )
 
 // GenerateRandomBytes returns securely generated random bytes.

@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/gilcrest/go-api-basic/domain/secure"
+	"github.com/gilcrest/diy-go-api/domain/secure"
 )
 
 // BearerTokenType is used in authorization to access a resource

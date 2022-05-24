@@ -10,8 +10,8 @@ import (
 	qt "github.com/frankban/quicktest"
 	"github.com/google/uuid"
 
-	"github.com/gilcrest/go-api-basic/domain/org"
-	"github.com/gilcrest/go-api-basic/domain/person"
+	"github.com/gilcrest/diy-go-api/domain/org"
+	"github.com/gilcrest/diy-go-api/domain/person"
 )
 
 // TODO - these tests were built before I had the concept of Profiles, Orgs, etc. - need updating

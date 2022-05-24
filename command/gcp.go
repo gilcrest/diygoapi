@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gilcrest/go-api-basic/datastore"
+	"github.com/gilcrest/diy-go-api/datastore"
 )
 
 // GCPCloudRunDeployImage builds arguments for running a service on

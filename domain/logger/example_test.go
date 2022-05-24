@@ -3,7 +3,7 @@ package logger_test
 import (
 	"os"
 
-	"github.com/gilcrest/go-api-basic/domain/logger"
+	"github.com/gilcrest/diy-go-api/domain/logger"
 
 	"github.com/rs/zerolog"
 )

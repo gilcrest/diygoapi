@@ -7,8 +7,8 @@ import (
 	qt "github.com/frankban/quicktest"
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/gilcrest/go-api-basic/datastore"
-	"github.com/gilcrest/go-api-basic/domain/errs"
+	"github.com/gilcrest/diy-go-api/datastore"
+	"github.com/gilcrest/diy-go-api/domain/errs"
 )
 
 func Test_portRange(t *testing.T) {

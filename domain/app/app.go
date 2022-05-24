@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gilcrest/go-api-basic/domain/errs"
-	"github.com/gilcrest/go-api-basic/domain/org"
-	"github.com/gilcrest/go-api-basic/domain/secure"
+	"github.com/gilcrest/diy-go-api/domain/errs"
+	"github.com/gilcrest/diy-go-api/domain/org"
+	"github.com/gilcrest/diy-go-api/domain/secure"
 	"github.com/google/uuid"
 )
 

@@ -9,7 +9,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/gilcrest/go-api-basic/domain/errs"
+	"github.com/gilcrest/diy-go-api/domain/errs"
 	"github.com/rs/zerolog"
 )
 

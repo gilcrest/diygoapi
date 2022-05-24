@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 
-	"github.com/gilcrest/go-api-basic/datastore/pingstore"
+	"github.com/gilcrest/diy-go-api/datastore/pingstore"
 
 	"github.com/rs/zerolog"
 )

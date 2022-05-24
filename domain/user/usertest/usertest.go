@@ -11,9 +11,9 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/gilcrest/go-api-basic/domain/org"
-	"github.com/gilcrest/go-api-basic/domain/person"
-	"github.com/gilcrest/go-api-basic/domain/user"
+	"github.com/gilcrest/diy-go-api/domain/org"
+	"github.com/gilcrest/diy-go-api/domain/person"
+	"github.com/gilcrest/diy-go-api/domain/user"
 )
 
 // Setup returns a User and teardown function for testing

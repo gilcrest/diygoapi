@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gilcrest/go-api-basic/domain/app"
-	"github.com/gilcrest/go-api-basic/domain/user"
+	"github.com/gilcrest/diy-go-api/domain/app"
+	"github.com/gilcrest/diy-go-api/domain/user"
 )
 
 // Audit represents the moment an app/user interacted with the system

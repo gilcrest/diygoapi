@@ -8,16 +8,16 @@ import (
 	"github.com/rs/zerolog"
 	"golang.org/x/oauth2"
 
-	"github.com/gilcrest/go-api-basic/datastore/appstore"
-	"github.com/gilcrest/go-api-basic/datastore/userstore"
-	"github.com/gilcrest/go-api-basic/domain/app"
-	"github.com/gilcrest/go-api-basic/domain/audit"
-	"github.com/gilcrest/go-api-basic/domain/auth"
-	"github.com/gilcrest/go-api-basic/domain/errs"
-	"github.com/gilcrest/go-api-basic/domain/org"
-	"github.com/gilcrest/go-api-basic/domain/secure"
-	"github.com/gilcrest/go-api-basic/domain/user"
-	"github.com/gilcrest/go-api-basic/gateway/authgateway"
+	"github.com/gilcrest/diy-go-api/datastore/appstore"
+	"github.com/gilcrest/diy-go-api/datastore/userstore"
+	"github.com/gilcrest/diy-go-api/domain/app"
+	"github.com/gilcrest/diy-go-api/domain/audit"
+	"github.com/gilcrest/diy-go-api/domain/auth"
+	"github.com/gilcrest/diy-go-api/domain/errs"
+	"github.com/gilcrest/diy-go-api/domain/org"
+	"github.com/gilcrest/diy-go-api/domain/secure"
+	"github.com/gilcrest/diy-go-api/domain/user"
+	"github.com/gilcrest/diy-go-api/gateway/authgateway"
 )
 
 // Authorizer determines if an app/user (as part of an Audit) is

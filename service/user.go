@@ -9,15 +9,15 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 
-	"github.com/gilcrest/go-api-basic/datastore/personstore"
-	"github.com/gilcrest/go-api-basic/datastore/userstore"
-	"github.com/gilcrest/go-api-basic/domain/audit"
-	"github.com/gilcrest/go-api-basic/domain/errs"
-	"github.com/gilcrest/go-api-basic/domain/org"
-	"github.com/gilcrest/go-api-basic/domain/person"
-	"github.com/gilcrest/go-api-basic/domain/secure"
-	"github.com/gilcrest/go-api-basic/domain/user"
-	"github.com/gilcrest/go-api-basic/gateway/authgateway"
+	"github.com/gilcrest/diy-go-api/datastore/personstore"
+	"github.com/gilcrest/diy-go-api/datastore/userstore"
+	"github.com/gilcrest/diy-go-api/domain/audit"
+	"github.com/gilcrest/diy-go-api/domain/errs"
+	"github.com/gilcrest/diy-go-api/domain/org"
+	"github.com/gilcrest/diy-go-api/domain/person"
+	"github.com/gilcrest/diy-go-api/domain/secure"
+	"github.com/gilcrest/diy-go-api/domain/user"
+	"github.com/gilcrest/diy-go-api/gateway/authgateway"
 )
 
 // RegisterUserService represents a service for managing new User

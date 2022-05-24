@@ -11,9 +11,9 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
 
-	"github.com/gilcrest/go-api-basic/datastore/datastoretest"
-	"github.com/gilcrest/go-api-basic/domain/logger"
-	"github.com/gilcrest/go-api-basic/service"
+	"github.com/gilcrest/diy-go-api/datastore/datastoretest"
+	"github.com/gilcrest/diy-go-api/domain/logger"
+	"github.com/gilcrest/diy-go-api/service"
 )
 
 func TestDBAuthorizer_Authorize(t *testing.T) {

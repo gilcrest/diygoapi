@@ -7,10 +7,10 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog/hlog"
 
-	"github.com/gilcrest/go-api-basic/domain/audit"
-	"github.com/gilcrest/go-api-basic/domain/auth"
-	"github.com/gilcrest/go-api-basic/domain/errs"
-	"github.com/gilcrest/go-api-basic/service"
+	"github.com/gilcrest/diy-go-api/domain/audit"
+	"github.com/gilcrest/diy-go-api/domain/auth"
+	"github.com/gilcrest/diy-go-api/domain/errs"
+	"github.com/gilcrest/diy-go-api/service"
 )
 
 // CreateMovie is a HandlerFunc used to create a Movie

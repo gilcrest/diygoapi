@@ -7,7 +7,7 @@ import (
 	"github.com/magefile/mage/sh"
 	"github.com/pkg/errors"
 
-	"github.com/gilcrest/go-api-basic/command"
+	"github.com/gilcrest/diy-go-api/command"
 )
 
 // DBUp uses the psql cli to execute DDL scripts in the up directory

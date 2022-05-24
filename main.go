@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/gilcrest/go-api-basic/command"
+	"github.com/gilcrest/diy-go-api/command"
 )
 
 func main() {

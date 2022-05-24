@@ -6,8 +6,8 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/gilcrest/go-api-basic/datastore"
-	"github.com/gilcrest/go-api-basic/domain/errs"
+	"github.com/gilcrest/diy-go-api/datastore"
+	"github.com/gilcrest/diy-go-api/domain/errs"
 )
 
 const (
