@@ -11,7 +11,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 
-	"github.com/gilcrest/diy-go-api/datastore"
 	"github.com/gilcrest/diy-go-api/datastore/appstore"
 	"github.com/gilcrest/diy-go-api/datastore/orgstore"
 	"github.com/gilcrest/diy-go-api/domain/app"
@@ -52,9 +51,6 @@ const (
 	testUserLastName  = "Hackett"
 
 	genesisOrgKind string = "genesis"
-	// LocalJSONGenesisRequestFile is the local JSON Genesis Request File path
-	// (relative to project root)
-	LocalJSONGenesisRequestFile = "./config/genesis/request.json"
 	// LocalJSONGenesisResponseFile is the local JSON Genesis Response File path
 	// (relative to project root)
 	LocalJSONGenesisResponseFile = "./config/genesis/response.json"
@@ -68,14 +64,20 @@ type FullGenesisResponse struct {
 
 // GenesisRequest is the request struct for the genesis service
 type GenesisRequest struct {
-	// Email: The user's email address.
+	// Email: The Genesis user email address.
 	Email string `json:"email"`
 
-	// FirstName: The user's first name.
+	// FirstName: The Genesis user first name.
 	FirstName string `json:"first_name"`
 
-	// LastName: The user's last name.
+	// LastName: The Genesis user last name.
 	LastName string `json:"last_name"`
+
+	// Permissions: The list of permissions to be created as part of Genesis
+	Permissions []PermissionRequest `json:"permissions"`
+
+	// Roles: The list of Roles to be created as part of Genesis
+	Roles []CreateRoleRequest `json:"roles"`
 }
 
 // GenesisResponse is the response struct for the genesis org and app
@@ -143,6 +145,18 @@ func (s GenesisService) Seed(ctx context.Context, r *GenesisRequest) (fgr FullGe
 		return FullGenesisResponse{}, err
 	}
 
+	// seed Permissions
+	err = seedPermissions(ctx, tx, r, genesisSet.audit)
+	if err != nil {
+		return FullGenesisResponse{}, err
+	}
+
+	// seed Roles
+	err = seedRoles(ctx, tx, r, genesisSet.audit)
+	if err != nil {
+		return FullGenesisResponse{}, err
+	}
+
 	// commit db txn using pgxpool
 	err = s.Datastorer.CommitTx(ctx, tx)
 	if err != nil {
@@ -197,9 +211,10 @@ func (s GenesisService) seedGenesis(ctx context.Context, tx pgx.Tx, r *GenesisRe
 
 	// initialize Peter Gabriel test user in Genesis org
 	pgUser := user.User{
-		ID:       uuid.New(),
-		Username: strings.TrimSpace(PrincipalTestUsername),
-		Org:      o,
+		ID:         uuid.New(),
+		ExternalID: secure.NewID(),
+		Username:   strings.TrimSpace(PrincipalTestUsername),
+		Org:        o,
 		Profile: person.Profile{
 			ID:        uuid.New(),
 			Person:    person.Person{ID: uuid.New(), Org: o},
@@ -210,9 +225,10 @@ func (s GenesisService) seedGenesis(ctx context.Context, tx pgx.Tx, r *GenesisRe
 
 	// initialize Genesis user from request data
 	gUser := user.User{
-		ID:       uuid.New(),
-		Username: strings.TrimSpace(r.Email),
-		Org:      o,
+		ID:         uuid.New(),
+		ExternalID: secure.NewID(),
+		Username:   strings.TrimSpace(r.Email),
+		Org:        o,
 		Profile: person.Profile{
 			ID:        uuid.New(),
 			Person:    person.Person{ID: uuid.New(), Org: o},
@@ -221,7 +237,7 @@ func (s GenesisService) seedGenesis(ctx context.Context, tx pgx.Tx, r *GenesisRe
 		},
 	}
 
-	aud := audit.Audit{
+	adt := audit.Audit{
 		App:    a,
 		User:   gUser,
 		Moment: time.Now(),
@@ -229,7 +245,7 @@ func (s GenesisService) seedGenesis(ctx context.Context, tx pgx.Tx, r *GenesisRe
 
 	// create Genesis org kind
 	var genesisKindParams orgstore.CreateOrgKindParams
-	genesisKindParams, err = createGenesisOrgKind(ctx, tx, aud)
+	genesisKindParams, err = createGenesisOrgKind(ctx, tx, adt)
 	if err != nil {
 		return seedSet{}, org.Kind{}, errs.E(errs.Database, err)
 	}
@@ -241,7 +257,7 @@ func (s GenesisService) seedGenesis(ctx context.Context, tx pgx.Tx, r *GenesisRe
 
 	// create other org kinds (test, standard)
 	var testKindParams orgstore.CreateOrgKindParams
-	testKindParams, err = createTestOrgKind(ctx, tx, aud)
+	testKindParams, err = createTestOrgKind(ctx, tx, adt)
 	if err != nil {
 		return seedSet{}, org.Kind{}, errs.E(errs.Database, err)
 	}
@@ -251,14 +267,14 @@ func (s GenesisService) seedGenesis(ctx context.Context, tx pgx.Tx, r *GenesisRe
 		Description: testKindParams.OrgKindDesc,
 	}
 
-	err = createStandardOrgKind(ctx, tx, aud)
+	err = createStandardOrgKind(ctx, tx, adt)
 	if err != nil {
 		return seedSet{}, org.Kind{}, errs.E(errs.Database, err)
 	}
 
 	sa := audit.SimpleAudit{
-		First: aud,
-		Last:  aud,
+		First: adt,
+		Last:  adt,
 	}
 
 	// write the Org to the database
@@ -273,12 +289,12 @@ func (s GenesisService) seedGenesis(ctx context.Context, tx pgx.Tx, r *GenesisRe
 		AppExtlID:       a.ExternalID.String(),
 		AppName:         a.Name,
 		AppDescription:  a.Description,
-		CreateAppID:     aud.App.ID,
-		CreateUserID:    datastore.NewNullUUID(aud.User.ID),
-		CreateTimestamp: aud.Moment,
-		UpdateAppID:     aud.App.ID,
-		UpdateUserID:    datastore.NewNullUUID(aud.User.ID),
-		UpdateTimestamp: aud.Moment,
+		CreateAppID:     adt.App.ID,
+		CreateUserID:    adt.User.NullUUID(),
+		CreateTimestamp: adt.Moment,
+		UpdateAppID:     adt.App.ID,
+		UpdateUserID:    adt.User.NullUUID(),
+		UpdateTimestamp: adt.Moment,
 	}
 
 	// create app database record using appstore
@@ -298,12 +314,12 @@ func (s GenesisService) seedGenesis(ctx context.Context, tx pgx.Tx, r *GenesisRe
 			ApiKey:          key.Ciphertext(),
 			AppID:           a.ID,
 			DeactvDate:      key.DeactivationDate(),
-			CreateAppID:     aud.App.ID,
-			CreateUserID:    datastore.NewNullUUID(aud.User.ID),
-			CreateTimestamp: aud.Moment,
-			UpdateAppID:     aud.App.ID,
-			UpdateUserID:    datastore.NewNullUUID(aud.User.ID),
-			UpdateTimestamp: aud.Moment,
+			CreateAppID:     adt.App.ID,
+			CreateUserID:    adt.User.NullUUID(),
+			CreateTimestamp: adt.Moment,
+			UpdateAppID:     adt.App.ID,
+			UpdateUserID:    adt.User.NullUUID(),
+			UpdateTimestamp: adt.Moment,
 		}
 
 		// create app API key database record using appstore
@@ -319,21 +335,21 @@ func (s GenesisService) seedGenesis(ctx context.Context, tx pgx.Tx, r *GenesisRe
 	}
 
 	// write user from request to the database
-	err = createUserDB(ctx, tx, gUser, aud)
+	err = createUserTx(ctx, tx, gUser, adt)
 	if err != nil {
 		return seedSet{}, org.Kind{}, err
 	}
 
 	// write user to the database
-	err = createUserDB(ctx, tx, pgUser, aud)
+	err = createUserTx(ctx, tx, pgUser, adt)
 	if err != nil {
 		return seedSet{}, org.Kind{}, err
 	}
 
-	return seedSet{org: o, app: a, audit: aud}, tk, nil
+	return seedSet{org: o, app: a, audit: adt}, tk, nil
 }
 
-func (s GenesisService) seedTest(ctx context.Context, tx pgx.Tx, k org.Kind, aud audit.Audit) (seedSet, error) {
+func (s GenesisService) seedTest(ctx context.Context, tx pgx.Tx, k org.Kind, adt audit.Audit) (seedSet, error) {
 	var err error
 
 	// create Org
@@ -374,15 +390,16 @@ func (s GenesisService) seedTest(ctx context.Context, tx pgx.Tx, k org.Kind, aud
 
 	// create User
 	u := user.User{
-		ID:       uuid.New(),
-		Username: TestUsername,
-		Org:      o,
-		Profile:  pfl,
+		ID:         uuid.New(),
+		ExternalID: secure.NewID(),
+		Username:   TestUsername,
+		Org:        o,
+		Profile:    pfl,
 	}
 
 	sa := audit.SimpleAudit{
-		First: aud,
-		Last:  aud,
+		First: adt,
+		Last:  adt,
 	}
 
 	// write the Org to the database
@@ -397,12 +414,12 @@ func (s GenesisService) seedTest(ctx context.Context, tx pgx.Tx, k org.Kind, aud
 		AppExtlID:       a.ExternalID.String(),
 		AppName:         a.Name,
 		AppDescription:  a.Description,
-		CreateAppID:     aud.App.ID,
-		CreateUserID:    datastore.NewNullUUID(aud.User.ID),
-		CreateTimestamp: aud.Moment,
-		UpdateAppID:     aud.App.ID,
-		UpdateUserID:    datastore.NewNullUUID(aud.User.ID),
-		UpdateTimestamp: aud.Moment,
+		CreateAppID:     adt.App.ID,
+		CreateUserID:    adt.User.NullUUID(),
+		CreateTimestamp: adt.Moment,
+		UpdateAppID:     adt.App.ID,
+		UpdateUserID:    adt.User.NullUUID(),
+		UpdateTimestamp: adt.Moment,
 	}
 
 	// create app database record using appstore
@@ -422,12 +439,12 @@ func (s GenesisService) seedTest(ctx context.Context, tx pgx.Tx, k org.Kind, aud
 			ApiKey:          key.Ciphertext(),
 			AppID:           a.ID,
 			DeactvDate:      key.DeactivationDate(),
-			CreateAppID:     aud.App.ID,
-			CreateUserID:    datastore.NewNullUUID(aud.User.ID),
-			CreateTimestamp: aud.Moment,
-			UpdateAppID:     aud.App.ID,
-			UpdateUserID:    datastore.NewNullUUID(aud.User.ID),
-			UpdateTimestamp: aud.Moment,
+			CreateAppID:     adt.App.ID,
+			CreateUserID:    adt.User.NullUUID(),
+			CreateTimestamp: adt.Moment,
+			UpdateAppID:     adt.App.ID,
+			UpdateUserID:    adt.User.NullUUID(),
+			UpdateTimestamp: adt.Moment,
 		}
 
 		// create app API key database record using appstore
@@ -443,12 +460,12 @@ func (s GenesisService) seedTest(ctx context.Context, tx pgx.Tx, k org.Kind, aud
 	}
 
 	// write the User to the database
-	err = createUserDB(ctx, tx, u, aud)
+	err = createUserTx(ctx, tx, u, adt)
 	if err != nil {
 		return seedSet{}, err
 	}
 
-	return seedSet{org: o, app: a, audit: aud}, nil
+	return seedSet{org: o, app: a, audit: adt}, nil
 }
 
 func genesisHasOccurred(ctx context.Context, dbtx orgstore.DBTX) (err error) {
@@ -502,4 +519,27 @@ func (s GenesisService) ReadConfig() (FullGenesisResponse, error) {
 	}
 
 	return f, nil
+}
+
+func seedPermissions(ctx context.Context, tx pgx.Tx, r *GenesisRequest, adt audit.Audit) (err error) {
+	for _, p := range r.Permissions {
+		_, err = createPermissionTx(ctx, tx, &p, adt)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func seedRoles(ctx context.Context, tx pgx.Tx, r *GenesisRequest, adt audit.Audit) (err error) {
+	for _, crr := range r.Roles {
+		crr.UserExternals = append(crr.UserExternals, adt.User.ExternalID.String())
+		_, err = createRoleTx(ctx, tx, &crr, adt)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
