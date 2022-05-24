@@ -7,15 +7,19 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/gilcrest/go-api-basic/domain/errs"
-	"github.com/gilcrest/go-api-basic/domain/org"
-	"github.com/gilcrest/go-api-basic/domain/person"
+	"github.com/gilcrest/diy-go-api/domain/errs"
+	"github.com/gilcrest/diy-go-api/domain/org"
+	"github.com/gilcrest/diy-go-api/domain/person"
+	"github.com/gilcrest/diy-go-api/domain/secure"
 )
 
 // User holds details of a User from various providers
 type User struct {
 	// ID: unique identifier of the User
 	ID uuid.UUID
+
+	// ExternalID: unique external identifier of the User
+	ExternalID secure.Identifier
 
 	// username: unique (within an Org) username of the User
 	Username string
