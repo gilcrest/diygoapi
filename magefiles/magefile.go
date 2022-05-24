@@ -229,6 +229,59 @@ func GenConfig(env string) (err error) {
 		return err
 	}
 
+	// format input files
+	fmtArgs := []string{"fmt"}
+	for _, path := range paths.Input {
+		fmtArgs = append(fmtArgs, path)
+	}
+	err = sh.Run("cue", fmtArgs...)
+	if err != nil {
+		return err
+	}
+
+	// Export output files
+	exportArgs := []string{"export"}
+	for _, path := range paths.Input {
+		exportArgs = append(exportArgs, path)
+	}
+	exportArgs = append(exportArgs, "--force", "--out", "json", "--outfile", paths.Output)
+
+	err = sh.Run("cue", exportArgs...)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// GenGenesisConfig generates Genesis configuration files,
+// example: mage -v gengenesisconfig.
+// The files are run through cue vet first to ensure they are acceptable
+// given the schema.
+func GenGenesisConfig() (err error) {
+
+	paths := command.CUEGenesisPaths()
+
+	// Vet input files
+	vetArgs := []string{"vet"}
+	for _, path := range paths.Input {
+		vetArgs = append(vetArgs, path)
+	}
+	err = sh.Run("cue", vetArgs...)
+	if err != nil {
+		return err
+	}
+
+	// format input files
+	fmtArgs := []string{"fmt"}
+	for _, path := range paths.Input {
+		fmtArgs = append(fmtArgs, path)
+	}
+	err = sh.Run("cue", fmtArgs...)
+	if err != nil {
+		return err
+	}
+
 	// Export output files
 	exportArgs := []string{"export"}
 	for _, path := range paths.Input {
