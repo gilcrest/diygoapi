@@ -40,7 +40,7 @@ func (s RegisterUserService) SelfRegister(ctx context.Context, adt audit.Audit) 
 		err = s.Datastorer.RollbackTx(ctx, tx, err)
 	}()
 
-	err = createUserDB(ctx, tx, adt.User, adt)
+	err = createUserTx(ctx, tx, adt.User, adt)
 	if err != nil {
 		return err
 	}
@@ -54,9 +54,9 @@ func (s RegisterUserService) SelfRegister(ctx context.Context, adt audit.Audit) 
 	return nil
 }
 
-// createUserDB creates a user in the database given a domain user.User and audit.Audit
+// createUserTx creates a user in the database given a domain user.User and audit.Audit
 // If it is a self registration, u and adt.User will be the same
-func createUserDB(ctx context.Context, tx pgx.Tx, u user.User, adt audit.Audit) error {
+func createUserTx(ctx context.Context, tx pgx.Tx, u user.User, adt audit.Audit) error {
 	var err error
 
 	createPersonParams := personstore.CreatePersonParams{
@@ -119,6 +119,7 @@ func createUserDB(ctx context.Context, tx pgx.Tx, u user.User, adt audit.Audit) 
 
 	createUserParams := userstore.CreateUserParams{
 		UserID:          u.ID,
+		UserExtlID:      u.ExternalID.String(),
 		Username:        u.Username,
 		OrgID:           u.Org.ID,
 		PersonProfileID: u.Profile.ID,
@@ -226,20 +227,67 @@ func findUserByID(ctx context.Context, dbtx DBTX, id uuid.UUID) (user.User, erro
 	return u, nil
 }
 
-func hydrateUserFromDB(row userstore.FindUserByUsernameRow) user.User {
+func hydrateUserFromUsernameRow(row userstore.FindUserByUsernameRow) user.User {
 	u := user.User{}
 	u.ID = row.UserID
+	u.ExternalID = secure.MustParseIdentifier(row.UserExtlID)
 	u.Username = row.Username
+
 	o := org.Org{
 		ID:          row.OrgID,
 		ExternalID:  secure.MustParseIdentifier(row.OrgExtlID),
 		Name:        row.OrgName,
 		Description: row.OrgDescription,
 	}
+
 	p := person.Person{
 		ID:  row.PersonID,
 		Org: o,
 	}
+
+	pp := person.Profile{
+		ID:                row.PersonProfileID,
+		Person:            p,
+		NamePrefix:        row.NamePrefix.String,
+		FirstName:         row.FirstName,
+		MiddleName:        row.MiddleName.String,
+		LastName:          row.LastName,
+		NameSuffix:        row.NameSuffix.String,
+		Nickname:          row.Nickname.String,
+		CompanyName:       row.CompanyName.String,
+		CompanyDepartment: row.CompanyDept.String,
+		JobTitle:          row.JobTitle.String,
+		BirthDate:         time.Time{},
+		LanguageID:        row.LanguageID.UUID,
+		HostedDomain:      "",
+		PictureURL:        "",
+		ProfileLink:       "",
+		ProfileSource:     "",
+	}
+	u.Org = o
+	u.Profile = pp
+
+	return u
+}
+
+func hydrateUserFromExternalIDRow(row userstore.FindUserByExternalIDRow) user.User {
+	u := user.User{}
+	u.ID = row.UserID
+	u.ExternalID = secure.MustParseIdentifier(row.UserExtlID)
+	u.Username = row.Username
+
+	o := org.Org{
+		ID:          row.OrgID,
+		ExternalID:  secure.MustParseIdentifier(row.OrgExtlID),
+		Name:        row.OrgName,
+		Description: row.OrgDescription,
+	}
+
+	p := person.Person{
+		ID:  row.PersonID,
+		Org: o,
+	}
+
 	pp := person.Profile{
 		ID:                row.PersonProfileID,
 		Person:            p,
