@@ -523,7 +523,7 @@ func (s *Server) handlePermissionCreate(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Declare rb as an instance of auth.Permission
-	rb := new(auth.Permission)
+	rb := new(service.PermissionRequest)
 
 	// Decode JSON HTTP request body into a json.Decoder type
 	// and unmarshal that into rb

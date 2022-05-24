@@ -63,7 +63,7 @@ type MiddlewareService interface {
 
 // PermissionService allows for creating, updating, reading and deleting a Permission
 type PermissionService interface {
-	Create(ctx context.Context, r *auth.Permission, adt audit.Audit) (auth.Permission, error)
+	Create(ctx context.Context, r *service.PermissionRequest, adt audit.Audit) (auth.Permission, error)
 	FindAll(ctx context.Context) ([]auth.Permission, error)
 }
 
