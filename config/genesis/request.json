@@ -1,5 +1,150 @@
 {
-  "email": "otto.maddox711@gmail.com",
-  "first_name": "Otto",
-  "last_name": "Maddox"
+    "user": {
+        "email": "otto.maddox@gmail.com",
+        "first_name": "Otto",
+        "last_name": "Maddox"
+    },
+    "permissions": [
+        {
+            "resource": "/api/v1/ping",
+            "operation": "GET",
+            "description": "allows for calling the ping service to determine if system is up and running",
+            "active": true
+        },
+        {
+            "resource": "/api/v1/logger",
+            "operation": "GET",
+            "description": "allows for reading the logger state",
+            "active": true
+        },
+        {
+            "resource": "/api/v1/logger",
+            "operation": "PUT",
+            "description": "allows for updating the logger state",
+            "active": true
+        },
+        {
+            "resource": "/api/v1/orgs",
+            "operation": "POST",
+            "description": "allows for creating an organization",
+            "active": true
+        },
+        {
+            "resource": "/api/v1/orgs",
+            "operation": "PUT",
+            "description": "allows for updating an organization",
+            "active": true
+        },
+        {
+            "resource": "/api/v1/orgs",
+            "operation": "DELETE",
+            "description": "allows for deleting an organization",
+            "active": true
+        },
+        {
+            "resource": "/api/v1/orgs",
+            "operation": "GET",
+            "description": "allows for finding all organizations",
+            "active": true
+        },
+        {
+            "resource": "/api/v1/orgs/{extlID}",
+            "operation": "GET",
+            "description": "allows for finding an organization by external ID",
+            "active": true
+        },
+        {
+            "resource": "/api/v1/apps",
+            "operation": "POST",
+            "description": "allows for creating an app",
+            "active": true
+        },
+        {
+            "resource": "/api/v1/permissions",
+            "operation": "POST",
+            "description": "allows for creating a permission",
+            "active": true
+        },
+        {
+            "resource": "/api/v1/permissions",
+            "operation": "GET",
+            "description": "allows for finding all permissions",
+            "active": true
+        }
+    ],
+    "roles": [
+        {
+            "role_cd": "sysAdmin",
+            "role_description": "System administrator role.",
+            "active": true,
+            "permissions": [
+                {
+                    "resource": "/api/v1/ping",
+                    "operation": "GET",
+                    "description": "allows for calling the ping service to determine if system is up and running",
+                    "active": true
+                },
+                {
+                    "resource": "/api/v1/logger",
+                    "operation": "GET",
+                    "description": "allows for reading the logger state",
+                    "active": true
+                },
+                {
+                    "resource": "/api/v1/logger",
+                    "operation": "PUT",
+                    "description": "allows for updating the logger state",
+                    "active": true
+                },
+                {
+                    "resource": "/api/v1/orgs",
+                    "operation": "POST",
+                    "description": "allows for creating an organization",
+                    "active": true
+                },
+                {
+                    "resource": "/api/v1/orgs",
+                    "operation": "PUT",
+                    "description": "allows for updating an organization",
+                    "active": true
+                },
+                {
+                    "resource": "/api/v1/orgs",
+                    "operation": "DELETE",
+                    "description": "allows for deleting an organization",
+                    "active": true
+                },
+                {
+                    "resource": "/api/v1/orgs",
+                    "operation": "GET",
+                    "description": "allows for finding all organizations",
+                    "active": true
+                },
+                {
+                    "resource": "/api/v1/orgs/{extlID}",
+                    "operation": "GET",
+                    "description": "allows for finding an organization by external ID",
+                    "active": true
+                },
+                {
+                    "resource": "/api/v1/apps",
+                    "operation": "POST",
+                    "description": "allows for creating an app",
+                    "active": true
+                },
+                {
+                    "resource": "/api/v1/permissions",
+                    "operation": "POST",
+                    "description": "allows for creating a permission",
+                    "active": true
+                },
+                {
+                    "resource": "/api/v1/permissions",
+                    "operation": "GET",
+                    "description": "allows for finding all permissions",
+                    "active": true
+                }
+            ]
+        }
+    ]
 }
