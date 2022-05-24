@@ -7,7 +7,7 @@ create table permission
     resource               varchar                  not null,
     operation              varchar                  not null,
     permission_description varchar                  not null,
-    active                 boolean,
+    active                 boolean                  not null,
     create_app_id          uuid                     not null
         constraint permission_create_app_fk
             references app

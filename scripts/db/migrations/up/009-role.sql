@@ -4,7 +4,7 @@ create table role
     role_extl_id     varchar                  not null,
     role_cd          varchar                  not null,
     role_description varchar                  not null,
-    active           boolean,
+    active           boolean                  not null,
     create_app_id    uuid                     not null,
     create_user_id   uuid,
     create_timestamp timestamp with time zone not null,

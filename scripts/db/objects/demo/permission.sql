@@ -5,7 +5,7 @@ create table permission
     resource               varchar                  not null,
     operation              varchar                  not null,
     permission_description varchar                  not null,
-    active                 boolean,
+    active                 boolean                  not null,
     create_app_id          uuid                     not null,
     create_user_id         uuid,
     create_timestamp       timestamp with time zone not null,
