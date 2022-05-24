@@ -147,7 +147,7 @@ func (s MiddlewareService) FindUserByOauth2Token(ctx context.Context, params Fin
 			return user.User{}, errs.E(errs.Unauthenticated, errs.Realm(params.Realm), err)
 		}
 
-		return hydrateUserFromDB(findUserByUsernameRow), nil
+		return hydrateUserFromUsernameRow(findUserByUsernameRow), nil
 	}
 
 	return hydrateUserFromProviderUserInfo(params, uInfo), nil
