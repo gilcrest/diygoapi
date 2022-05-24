@@ -1,6 +1,7 @@
 create table org_user
 (
     user_id           uuid                     not null,
+    user_extl_id      varchar                  not null,
     username          varchar                  not null,
     org_id            uuid                     not null,
     person_profile_id uuid                     not null,
@@ -29,6 +30,8 @@ create table org_user
 
 comment on column org_user.user_id is 'The user ID is the unique ID for user (pk for table)';
 
+comment on column org_user.user_extl_id is 'The unique user external ID to be given to outside callers.';
+
 comment on column org_user.username is 'The username is a unique, human readable username.';
 
 comment on column org_user.org_id is 'The organization ID for the organization that the user belongs to.';
@@ -50,6 +53,9 @@ comment on column org_user.update_timestamp is 'The timestamp when the record wa
 alter table org_user
     owner to demo_user;
 
-create unique index user_org_uindex
+create unique index org_user_extl_id_uindex
+    on org_user (user_extl_id);
+
+create unique index org_user_username_org_uindex
     on org_user (username, org_id);
 
