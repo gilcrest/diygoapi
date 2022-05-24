@@ -6,7 +6,9 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/gilcrest/diy-go-api/domain/errs"
 	"github.com/gilcrest/diy-go-api/domain/secure"
+	"github.com/gilcrest/diy-go-api/domain/user"
 )
 
 // BearerTokenType is used in authorization to access a resource
@@ -61,6 +63,21 @@ type Permission struct {
 	Active bool `json:"active"`
 }
 
+// IsValid determines if the Permission is valid
+func (p Permission) IsValid() error {
+	switch {
+	case p.ID == uuid.Nil:
+		return errs.E(errs.Validation, "ID is required")
+	case p.ExternalID.String() == "":
+		return errs.E(errs.Validation, "External ID is required")
+	case p.Resource == "":
+		return errs.E(errs.Validation, "Resource is required")
+	case p.Description == "":
+		return errs.E(errs.Validation, "Description is required")
+	}
+	return nil
+}
+
 // Role is a job function or title which defines an authority level.
 type Role struct {
 	// The unique ID for the Role.
@@ -73,4 +90,23 @@ type Role struct {
 	Description string `json:"role_description"`
 	// A boolean denoting whether the role is active (true) or not (false).
 	Active bool `json:"active"`
+	// Permissions is the list of permissions allowed for the role.
+	Permissions []Permission
+	// Users is the list of users for assigned to the role
+	Users []user.User
+}
+
+// IsValid determines if the Role is valid.
+func (r Role) IsValid() error {
+	switch {
+	case r.ID == uuid.Nil:
+		return errs.E(errs.Validation, "ID is required")
+	case r.ExternalID.String() == "":
+		return errs.E(errs.Validation, "External ID is required")
+	case r.Code == "":
+		return errs.E(errs.Validation, "Code is required")
+	case r.Description == "":
+		return errs.E(errs.Validation, "Description is required")
+	}
+	return nil
 }
