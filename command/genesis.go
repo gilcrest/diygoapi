@@ -96,7 +96,7 @@ func Genesis() (err error) {
 	}
 
 	var b []byte
-	b, err = os.ReadFile(service.LocalJSONGenesisRequestFile)
+	b, err = os.ReadFile(genesisRequestFile)
 	if err != nil {
 		return errs.E(err)
 	}
