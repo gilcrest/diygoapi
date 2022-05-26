@@ -1,4 +1,4 @@
-create table org_user
+create table if not exists org_user
 (
     user_id           uuid                     not null,
     user_extl_id      varchar                  not null,
@@ -57,9 +57,9 @@ alter table app
         foreign key (update_user_id) references org_user
             deferrable initially deferred;
 
-create unique index org_user_extl_id_uindex
+create unique index if not exists org_user_extl_id_uindex
     on org_user (user_extl_id);
 
-create unique index org_user_username_org_uindex
+create unique index if not exists org_user_username_org_uindex
     on org_user (username, org_id);
 

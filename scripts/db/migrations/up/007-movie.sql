@@ -1,4 +1,4 @@
-create table movie
+create table if not exists movie
 (
     movie_id         uuid                     not null,
     extl_id          varchar(250)             not null,
@@ -30,6 +30,6 @@ create table movie
             deferrable initially deferred
 );
 
-create unique index movie_extl_id_uindex
+create unique index if not exists movie_extl_id_uindex
     on movie (extl_id);
 

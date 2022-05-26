@@ -1,4 +1,4 @@
-create table app
+create table if not exists app
 (
     app_id           uuid                     not null,
     org_id           uuid                     not null,
@@ -43,9 +43,9 @@ comment on column app.update_user_id is 'The user which performed the most recen
 
 comment on column app.update_timestamp is 'The timestamp when the record was updated most recently.';
 
-create unique index app_app_extl_id_uindex
+create unique index if not exists app_app_extl_id_uindex
     on app (app_extl_id);
 
-create unique index app_name_uindex
+create unique index if not exists app_name_uindex
     on app (org_id, app_name);
 

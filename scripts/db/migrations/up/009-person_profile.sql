@@ -1,4 +1,4 @@
-create table person_profile
+create table if not exists person_profile
 (
     person_profile_id uuid                     not null,
     person_id         uuid                     not null,
@@ -40,3 +40,4 @@ create table person_profile
         foreign key (update_user_id) references org_user
             deferrable initially deferred
 );
+

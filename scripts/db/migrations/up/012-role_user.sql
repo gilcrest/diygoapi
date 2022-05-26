@@ -1,4 +1,4 @@
-create table role_user
+create table if not exists role_user
 (
     role_id          uuid                     not null,
     user_id          uuid                     not null,
@@ -45,3 +45,4 @@ comment on column role_user.update_app_id is 'The application which performed th
 comment on column role_user.update_user_id is 'The user which performed the most recent update to this record.';
 
 comment on column role_user.update_timestamp is 'The timestamp when the record was updated most recently.';
+

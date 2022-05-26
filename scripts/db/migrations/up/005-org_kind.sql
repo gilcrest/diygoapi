@@ -1,4 +1,4 @@
-create table org_kind
+create table if not exists org_kind
 (
     org_kind_id      uuid                     not null,
     org_kind_extl_id varchar                  not null,
@@ -45,6 +45,6 @@ comment on column org_kind.update_user_id is 'The user which performed the most 
 
 comment on column org_kind.update_timestamp is 'The timestamp when the record was updated most recently.';
 
-create unique index org_kind_org_extl_id_uindex
+create unique index if not exists org_kind_org_extl_id_uindex
     on org_kind (org_kind_extl_id);
 

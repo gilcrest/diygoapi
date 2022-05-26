@@ -1,4 +1,4 @@
-create table app_api_key
+create table if not exists app_api_key
 (
     api_key          varchar                  not null,
     app_id           uuid                     not null,
@@ -30,3 +30,4 @@ create table app_api_key
 comment on column app_api_key.api_key is 'app_key is a hash of a key given to a user for an app';
 
 comment on column app_api_key.app_id is 'foreign key to app table';
+

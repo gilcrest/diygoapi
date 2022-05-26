@@ -1,35 +1,33 @@
-create table permission
+create table if not exists permission
 (
-    permission_id          uuid                     not null
-        constraint permission_pk
-            primary key,
+    permission_id          uuid                     not null,
     permission_extl_id     varchar                  not null,
     resource               varchar                  not null,
     operation              varchar                  not null,
     permission_description varchar                  not null,
     active                 boolean                  not null,
-    create_app_id          uuid                     not null
-        constraint permission_create_app_fk
-            references app
-            deferrable initially deferred,
-    create_user_id         uuid
-        constraint permission_create_user_fk
-            references org_user
-            deferrable initially deferred,
+    create_app_id          uuid                     not null,
+    create_user_id         uuid,
     create_timestamp       timestamp with time zone not null,
-    update_app_id          uuid                     not null
-        constraint permission_update_app_fk
-            references app
-            deferrable initially deferred,
-    update_user_id         uuid
-        constraint permission_update_user_fk
-            references org_user
-            deferrable initially deferred,
+    update_app_id          uuid                     not null,
+    update_user_id         uuid,
     update_timestamp       timestamp with time zone not null,
-    constraint permission_ui
-        unique (permission_id),
+    constraint permission_pk
+        primary key (permission_id),
     constraint permission_resource_ui
-        unique (resource, operation)
+        unique (resource, operation),
+    constraint permission_create_app_fk
+        foreign key (create_app_id) references app
+            deferrable initially deferred,
+    constraint permission_create_user_fk
+        foreign key (create_user_id) references org_user
+            deferrable initially deferred,
+    constraint permission_update_app_fk
+        foreign key (update_app_id) references app
+            deferrable initially deferred,
+    constraint permission_update_user_fk
+        foreign key (update_user_id) references org_user
+            deferrable initially deferred
 );
 
 comment on table permission is 'The permission table stores an approval of a mode of access to a resource.';
@@ -58,5 +56,6 @@ comment on column permission.update_user_id is 'The user which performed the mos
 
 comment on column permission.update_timestamp is 'The timestamp when the record was updated most recently.';
 
-create unique index permission_extl_id_uindex
+create unique index if not exists permission_extl_id_uindex
     on permission (permission_extl_id);
+

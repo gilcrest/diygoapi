@@ -1,4 +1,4 @@
-create table person
+create table if not exists person
 (
     person_id        uuid                     not null,
     org_id           uuid                     not null,
@@ -23,3 +23,4 @@ create table person
         foreign key (update_user_id) references org_user
             deferrable initially deferred
 );
+
