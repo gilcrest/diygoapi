@@ -1,4 +1,4 @@
-create table role
+create table if not exists role
 (
     role_id          uuid                     not null,
     role_extl_id     varchar                  not null,
@@ -52,7 +52,4 @@ comment on column role.update_app_id is 'The application which performed the mos
 comment on column role.update_user_id is 'The user which performed the most recent update to this record.';
 
 comment on column role.update_timestamp is 'The timestamp when the record was updated most recently.';
-
-alter table role
-    owner to demo_user;
 

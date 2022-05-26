@@ -1,4 +1,4 @@
-create function create_movie(p_id uuid, p_extl_id character varying, p_title character varying, p_rated character varying, p_released date, p_run_time integer, p_director character varying, p_writer character varying, p_create_client_id uuid, p_create_username character varying)
+create or replace function create_movie(p_id uuid, p_extl_id character varying, p_title character varying, p_rated character varying, p_released date, p_run_time integer, p_director character varying, p_writer character varying, p_create_client_id uuid, p_create_username character varying)
     returns TABLE(o_create_timestamp timestamp without time zone, o_update_timestamp timestamp without time zone)
     language plpgsql
 as
@@ -50,6 +50,4 @@ BEGIN
 END;
 
 $$;
-
-alter function create_movie(uuid, varchar, varchar, varchar, date, integer, varchar, varchar, uuid, varchar) owner to demo_user;
 

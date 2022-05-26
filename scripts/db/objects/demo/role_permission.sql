@@ -1,4 +1,4 @@
-create table role_permission
+create table if not exists role_permission
 (
     role_id          uuid                     not null,
     permission_id    uuid                     not null,
@@ -45,7 +45,4 @@ comment on column role_permission.update_app_id is 'The application which perfor
 comment on column role_permission.update_user_id is 'The user which performed the most recent update to this record.';
 
 comment on column role_permission.update_timestamp is 'The timestamp when the record was updated most recently.';
-
-alter table role_permission
-    owner to demo_user;
 

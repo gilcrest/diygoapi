@@ -1,4 +1,4 @@
-create table org_user
+create table if not exists org_user
 (
     user_id           uuid                     not null,
     user_extl_id      varchar                  not null,
@@ -50,12 +50,9 @@ comment on column org_user.update_user_id is 'The user which performed the most 
 
 comment on column org_user.update_timestamp is 'The timestamp when the record was updated most recently.';
 
-alter table org_user
-    owner to demo_user;
-
-create unique index org_user_extl_id_uindex
+create unique index if not exists org_user_extl_id_uindex
     on org_user (user_extl_id);
 
-create unique index org_user_username_org_uindex
+create unique index if not exists org_user_username_org_uindex
     on org_user (username, org_id);
 

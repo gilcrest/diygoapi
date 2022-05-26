@@ -1,4 +1,4 @@
-create table permission
+create table if not exists permission
 (
     permission_id          uuid                     not null,
     permission_extl_id     varchar                  not null,
@@ -56,9 +56,6 @@ comment on column permission.update_user_id is 'The user which performed the mos
 
 comment on column permission.update_timestamp is 'The timestamp when the record was updated most recently.';
 
-alter table permission
-    owner to demo_user;
-
-create unique index permission_extl_id_uindex
+create unique index if not exists permission_extl_id_uindex
     on permission (permission_extl_id);
 
