@@ -292,12 +292,13 @@ func CUEPaths(env Env) (ConfigCueFilePaths, error) {
 // Paths are relative to the project root.
 func CUEGenesisPaths() ConfigCueFilePaths {
 	const (
-		schemaInput  = "./config/genesis/cue/schema.cue"
-		genesisInput = "./config/genesis/cue/genesis.cue"
+		schemaInput = "./config/genesis/cue/schema.cue"
+		authInput   = "./config/genesis/cue/auth.cue"
+		userInput   = "./config/genesis/cue/user.cue"
 	)
 
 	return ConfigCueFilePaths{
-		Input:  []string{schemaInput, genesisInput},
+		Input:  []string{schemaInput, authInput, userInput},
 		Output: genesisRequestFile,
 	}
 }

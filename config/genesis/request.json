@@ -1,9 +1,4 @@
 {
-    "user": {
-        "email": "otto.maddox@gmail.com",
-        "first_name": "Otto",
-        "last_name": "Maddox"
-    },
     "permissions": [
         {
             "resource": "/api/v1/ping",
@@ -146,5 +141,10 @@
                 }
             ]
         }
-    ]
+    ],
+    "user": {
+        "email": "otto.maddox@gmail.com",
+        "first_name": "Otto",
+        "last_name": "Maddox"
+    }
 }

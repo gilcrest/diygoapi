@@ -1,5 +1,8 @@
 package genesis
 
+permissions: [_pingV1Get, _loggerV1Get, _loggerV1Put, _orgsV1Post, _orgsV1Put, _orgsV1Delete, _orgsV1Get, _orgsV1GetByExtlID, _appsV1Post, _permissionsV1Post, _permissionsV1Get]
+roles: [_sysAdmin]
+
 _pingV1Get: #Permission & {
 	resource:    "/api/v1/ping"
 	operation:   "GET"
@@ -92,12 +95,3 @@ _sysAdmin: #Role & {
 	active:           true
 	permissions: [_pingV1Get, _loggerV1Get, _loggerV1Put, _orgsV1Post, _orgsV1Put, _orgsV1Delete, _orgsV1Get, _orgsV1GetByExtlID, _appsV1Post, _permissionsV1Post, _permissionsV1Get]
 }
-
-user: #User & {
-	email:      "otto.maddox@gmail.com"
-	first_name: "Otto"
-	last_name:  "Maddox"
-}
-
-permissions: [_pingV1Get, _loggerV1Get, _loggerV1Put, _orgsV1Post, _orgsV1Put, _orgsV1Delete, _orgsV1Get, _orgsV1GetByExtlID, _appsV1Post, _permissionsV1Post, _permissionsV1Get]
-roles: [_sysAdmin]

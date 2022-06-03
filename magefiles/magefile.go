@@ -10,6 +10,104 @@ import (
 	"github.com/gilcrest/diy-go-api/command"
 )
 
+// NewKey generates a new encryption key,
+// example: mage -v newkey
+func NewKey() {
+	command.NewEncryptionKey()
+}
+
+// CueGenerateConfig generates configuration files for the given environment,
+// example: mage -v cueGenerateConfig local.
+// The files are run through cue vet to ensure they are acceptable given
+// the schema and are then run through cue "fmt" to format the files
+//
+// Acceptable environment values are: local, staging, production
+func CueGenerateConfig(env string) (err error) {
+
+	var paths command.ConfigCueFilePaths
+	paths, err = command.CUEPaths(command.ParseEnv(env))
+	if err != nil {
+		return err
+	}
+
+	// Vet input files
+	vetArgs := []string{"vet"}
+	for _, path := range paths.Input {
+		vetArgs = append(vetArgs, path)
+	}
+	err = sh.Run("cue", vetArgs...)
+	if err != nil {
+		return err
+	}
+
+	// format input files
+	fmtArgs := []string{"fmt"}
+	for _, path := range paths.Input {
+		fmtArgs = append(fmtArgs, path)
+	}
+	err = sh.Run("cue", fmtArgs...)
+	if err != nil {
+		return err
+	}
+
+	// Export output files
+	exportArgs := []string{"export"}
+	for _, path := range paths.Input {
+		exportArgs = append(exportArgs, path)
+	}
+	exportArgs = append(exportArgs, "--force", "--out", "json", "--outfile", paths.Output)
+
+	err = sh.Run("cue", exportArgs...)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// CueGenerateGenesisConfig generates the Genesis configuration file,
+// example: mage -v cueGenerateGenesisConfig.
+// The files are run through cue vet to ensure they are acceptable given
+// the schema and are then run through cue "fmt" to format the files
+func CueGenerateGenesisConfig() (err error) {
+
+	paths := command.CUEGenesisPaths()
+
+	// Vet input files
+	vetArgs := []string{"vet"}
+	for _, path := range paths.Input {
+		vetArgs = append(vetArgs, path)
+	}
+	err = sh.Run("cue", vetArgs...)
+	if err != nil {
+		return err
+	}
+
+	// format input files
+	fmtArgs := []string{"fmt"}
+	for _, path := range paths.Input {
+		fmtArgs = append(fmtArgs, path)
+	}
+	err = sh.Run("cue", fmtArgs...)
+	if err != nil {
+		return err
+	}
+
+	// Export output files
+	exportArgs := []string{"export"}
+	for _, path := range paths.Input {
+		exportArgs = append(exportArgs, path)
+	}
+	exportArgs = append(exportArgs, "--force", "--out", "json", "--outfile", paths.Output)
+
+	err = sh.Run("cue", exportArgs...)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // DBUp uses the psql cli to execute DDL scripts in the up directory
 // and creates all required DB objects,
 // example: mage -v dbup local.
@@ -65,6 +163,22 @@ func DBDown(env string) (err error) {
 	return nil
 }
 
+// Genesis runs all tests including executing the Genesis service,
+// example: mage -v genesis local
+func Genesis(env string) (err error) {
+	err = command.LoadEnv(command.ParseEnv(env))
+	if err != nil {
+		return err
+	}
+
+	err = command.Genesis()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // TestAll runs all tests for the app,
 // example: mage -v testall false local.
 // If verbose is passed, tests will be run in verbose mode.
@@ -102,28 +216,6 @@ func Run(env string) (err error) {
 	}
 
 	return nil
-}
-
-// Genesis runs all tests including executing the Genesis service,
-// example: mage -v genesis local
-func Genesis(env string) (err error) {
-	err = command.LoadEnv(command.ParseEnv(env))
-	if err != nil {
-		return err
-	}
-
-	err = command.Genesis()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// NewKey generates a new encryption key,
-// example: mage -v newkey
-func NewKey() {
-	command.NewEncryptionKey()
 }
 
 // GCP builds the app as a Docker container image to GCP Artifact Registry
@@ -198,98 +290,6 @@ func gcpArtifactRegistryBuild(image command.GCPArtifactRegistryContainerImage) e
 	args := []string{"builds", "submit", "--tag", image.String()}
 
 	err = sh.Run("gcloud", args...)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// GenConfig generates configuration files for the given environment,
-// example: mage -v genconfig local.
-// The files are run through cue vet first to ensure they are acceptable
-// given the schema.
-//
-// Acceptable environment values are: local, staging, production
-func GenConfig(env string) (err error) {
-
-	var paths command.ConfigCueFilePaths
-	paths, err = command.CUEPaths(command.ParseEnv(env))
-	if err != nil {
-		return err
-	}
-
-	// Vet input files
-	vetArgs := []string{"vet"}
-	for _, path := range paths.Input {
-		vetArgs = append(vetArgs, path)
-	}
-	err = sh.Run("cue", vetArgs...)
-	if err != nil {
-		return err
-	}
-
-	// format input files
-	fmtArgs := []string{"fmt"}
-	for _, path := range paths.Input {
-		fmtArgs = append(fmtArgs, path)
-	}
-	err = sh.Run("cue", fmtArgs...)
-	if err != nil {
-		return err
-	}
-
-	// Export output files
-	exportArgs := []string{"export"}
-	for _, path := range paths.Input {
-		exportArgs = append(exportArgs, path)
-	}
-	exportArgs = append(exportArgs, "--force", "--out", "json", "--outfile", paths.Output)
-
-	err = sh.Run("cue", exportArgs...)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// GenGenesisConfig generates Genesis configuration files,
-// example: mage -v gengenesisconfig.
-// The files are run through cue vet first to ensure they are acceptable
-// given the schema.
-func GenGenesisConfig() (err error) {
-
-	paths := command.CUEGenesisPaths()
-
-	// Vet input files
-	vetArgs := []string{"vet"}
-	for _, path := range paths.Input {
-		vetArgs = append(vetArgs, path)
-	}
-	err = sh.Run("cue", vetArgs...)
-	if err != nil {
-		return err
-	}
-
-	// format input files
-	fmtArgs := []string{"fmt"}
-	for _, path := range paths.Input {
-		fmtArgs = append(fmtArgs, path)
-	}
-	err = sh.Run("cue", fmtArgs...)
-	if err != nil {
-		return err
-	}
-
-	// Export output files
-	exportArgs := []string{"export"}
-	for _, path := range paths.Input {
-		exportArgs = append(exportArgs, path)
-	}
-	exportArgs = append(exportArgs, "--force", "--out", "json", "--outfile", paths.Output)
-
-	err = sh.Run("cue", exportArgs...)
 	if err != nil {
 		return err
 	}
