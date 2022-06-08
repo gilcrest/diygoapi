@@ -15,7 +15,7 @@ require (
 	github.com/magefile/mage v1.13.0
 	github.com/peterbourgon/ff/v3 v3.1.2
 	github.com/pkg/errors v0.9.1
-	github.com/rs/zerolog v1.26.1
+	github.com/rs/zerolog v1.27.0
 	golang.org/x/net v0.0.0-20220524220425-1d687d428aca // indirect
 	golang.org/x/oauth2 v0.0.0-20220524215830-622c5d57e401
 	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
@@ -36,6 +36,8 @@ require (
 	github.com/kr/pretty v0.3.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/lib/pq v1.10.3 // indirect
+	github.com/mattn/go-colorable v0.1.12 // indirect
+	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/rogpeppe/go-internal v1.8.1 // indirect
 	github.com/rs/xid v1.4.0 // indirect
 	go.opencensus.io v0.23.0 // indirect
