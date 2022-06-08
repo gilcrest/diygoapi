@@ -43,16 +43,20 @@ func (u User) NullUUID() uuid.NullUUID {
 }
 
 // IsValid determines whether the User has proper data to be considered valid
-func (u User) IsValid() bool {
+func (u User) IsValid() error {
 	switch {
+	case u.Org.ID == uuid.Nil:
+		return errs.E(errs.Validation, "org ID cannot be nil")
+	case u.ExternalID.String() == "":
+		return errs.E(errs.Validation, "external ID cannot be empty")
 	case u.Username == "":
-		return false
+		return errs.E(errs.Validation, "username cannot be empty")
 	case u.Profile.FirstName == "":
-		return false
+		return errs.E(errs.Validation, "FirstName cannot be empty")
 	case u.Profile.LastName == "":
-		return false
+		return errs.E(errs.Validation, "LastName cannot be empty")
 	}
-	return true
+	return nil
 }
 
 type contextKey string
@@ -60,13 +64,14 @@ type contextKey string
 const contextKeyUser = contextKey("user")
 
 // FromRequest gets the User from the request
-func FromRequest(r *http.Request) (User, error) {
-	u, ok := r.Context().Value(contextKeyUser).(User)
+func FromRequest(r *http.Request) (u User, err error) {
+	var ok bool
+	u, ok = r.Context().Value(contextKeyUser).(User)
 	if !ok {
-		return u, errs.E(errs.Internal, "User not set properly to context")
+		return User{}, errs.E(errs.Internal, "User not set properly to context")
 	}
-	if !u.IsValid() {
-		return u, errs.E(errs.Internal, "User empty in context")
+	if err = u.IsValid(); err != nil {
+		return User{}, err
 	}
 	return u, nil
 }
