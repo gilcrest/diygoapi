@@ -8,14 +8,19 @@ import (
 	"time"
 
 	qt "github.com/frankban/quicktest"
+	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 
+	"github.com/gilcrest/diy-go-api/domain/errs"
 	"github.com/gilcrest/diy-go-api/domain/org"
 	"github.com/gilcrest/diy-go-api/domain/person"
+	"github.com/gilcrest/diy-go-api/domain/secure"
 )
 
 // TODO - these tests were built before I had the concept of Profiles, Orgs, etc. - need updating
 func TestUser_IsValid(t *testing.T) {
+	c := qt.New(t)
+
 	type fields struct {
 		Email        string
 		LastName     string
@@ -67,21 +72,22 @@ func TestUser_IsValid(t *testing.T) {
 	}
 
 	tests := []struct {
-		name   string
-		fields fields
-		want   bool
+		name    string
+		fields  fields
+		wantErr error
 	}{
-		{"typical", otto, true},
-		{"no email", noEmail, false},
-		{"no last name", noLastName, false},
-		{"no first name", noFirstName, false},
+		{"typical", otto, nil},
+		{"no email", noEmail, errs.E(errs.Validation, "username cannot be empty")},
+		{"no last name", noLastName, errs.E(errs.Validation, "LastName cannot be empty")},
+		{"no first name", noFirstName, errs.E(errs.Validation, "FirstName cannot be empty")},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			u := User{
-				ID:       uuid.New(),
-				Username: tt.fields.Email,
-				Org:      org.Org{},
+				ID:         uuid.New(),
+				ExternalID: secure.NewID(),
+				Username:   tt.fields.Email,
+				Org:        org.Org{ID: uuid.New()},
 				Profile: person.Profile{
 					ID:                uuid.New(),
 					Person:            person.Person{},
@@ -103,67 +109,67 @@ func TestUser_IsValid(t *testing.T) {
 					ProfileSource:     "",
 				},
 			}
-			if got := u.IsValid(); got != tt.want {
-				t.Errorf("IsValid() = %v, want %v", got, tt.want)
-			}
+			err := u.IsValid()
+			c.Assert(err, qt.CmpEquals(cmp.Comparer(errs.Match)), tt.wantErr)
 		})
 	}
 }
 
 func TestFromRequest(t *testing.T) {
-	c := qt.New(t)
+	t.Run("typical", func(t *testing.T) {
+		c := qt.New(t)
 
-	type args struct {
-		r *http.Request
-	}
+		r := httptest.NewRequest(http.MethodGet, "/api/v1/movies", nil)
 
-	r := httptest.NewRequest(http.MethodGet, "/api/v1/movies", nil)
+		want := User{}
+		want.Org.ID = uuid.New()
+		want.ExternalID = secure.NewID()
+		want.Username = "otto.maddox@helpinghandacceptanceco.com"
+		want.Profile.LastName = "Maddox"
+		want.Profile.FirstName = "Otto"
+		want.Profile.FullName = "Otto Maddox"
 
-	otto := User{}
-	otto.Username = "otto.maddox@helpinghandacceptanceco.com"
-	otto.Profile.LastName = "Maddox"
-	otto.Profile.FirstName = "Otto"
-	otto.Profile.FullName = "Otto Maddox"
+		ctx := CtxWithUser(context.Background(), want)
+		r = r.WithContext(ctx)
 
-	invalidOtto := User{}
-	invalidOtto.Username = "otto.maddox@helpinghandacceptanceco.com"
-	invalidOtto.Profile.LastName = ""
-	invalidOtto.Profile.FirstName = "Otto"
-	invalidOtto.Profile.FullName = "Otto Maddox"
+		got, err := FromRequest(r)
+		c.Assert(err, qt.IsNil)
+		c.Assert(got, qt.DeepEquals, want)
+	})
+	t.Run("no User added to Request context", func(t *testing.T) {
+		c := qt.New(t)
 
-	ctx := context.Background()
-	ctx = CtxWithUser(ctx, otto)
-	r = r.WithContext(ctx)
+		r := httptest.NewRequest(http.MethodGet, "/api/v1/ping", nil)
 
-	noUserRequest, err := http.NewRequest(http.MethodGet, "/api/v1/ping", nil)
-	if err != nil {
-		t.Fatalf("http.NewRequest() error = %v", err)
-	}
+		wantErr := errs.E(errs.Internal, "User not set properly to context")
+		want := User{}
 
-	invalidUserRequest := httptest.NewRequest(http.MethodGet, "/api/v1/movies", nil)
+		got, err := FromRequest(r)
+		c.Assert(err, qt.CmpEquals(cmp.Comparer(errs.Match)), wantErr)
+		c.Assert(got, qt.DeepEquals, want)
+	})
+	t.Run("user added but invalid", func(t *testing.T) {
+		c := qt.New(t)
 
-	ctx2 := context.Background()
-	ctx2 = CtxWithUser(ctx2, invalidOtto)
-	invalidUserRequest = invalidUserRequest.WithContext(ctx2)
+		r := httptest.NewRequest(http.MethodGet, "/api/v1/movies", nil)
 
-	tests := []struct {
-		name    string
-		args    args
-		want    User
-		wantErr bool
-	}{
-		{"typical", args{r: r}, otto, false},
-		{"no User added to Request context", args{r: noUserRequest}, User{}, true},
-		{"user added but invalid", args{r: invalidUserRequest}, invalidOtto, true},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := FromRequest(tt.args.r)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("FromRequest() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			c.Assert(got, qt.DeepEquals, tt.want)
-		})
-	}
+		wantErr := errs.E(errs.Validation, "LastName cannot be empty")
+
+		want := User{}
+
+		invalidOtto := User{}
+		invalidOtto.Org.ID = uuid.New()
+		invalidOtto.ExternalID = secure.NewID()
+		invalidOtto.Username = "otto.maddox@helpinghandacceptanceco.com"
+		invalidOtto.Profile.LastName = ""
+		invalidOtto.Profile.FirstName = "Otto"
+		invalidOtto.Profile.FullName = "Otto Maddox"
+
+		ctx := CtxWithUser(context.Background(), invalidOtto)
+		r = r.WithContext(ctx)
+
+		got, err := FromRequest(r)
+		c.Assert(err, qt.CmpEquals(cmp.Comparer(errs.Match)), wantErr)
+		c.Assert(got, qt.DeepEquals, want)
+	})
 }
