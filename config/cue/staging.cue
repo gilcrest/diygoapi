@@ -12,7 +12,7 @@ config: logger: logErrorStack: true
 
 config: database: host:       "/cloudsql/diy-go-api:us-central1:diy-go-api-db"
 config: database: port:       5432
-config: database: name:       "gab_local"
+config: database: name:       "dga_staging"
 config: database: user:       "demo_user"
 config: database: password:   "REPLACE_ME"
 config: database: searchPath: "demo"
