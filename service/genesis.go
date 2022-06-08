@@ -64,14 +64,16 @@ type FullGenesisResponse struct {
 
 // GenesisRequest is the request struct for the genesis service
 type GenesisRequest struct {
-	// Email: The Genesis user email address.
-	Email string `json:"email"`
+	User struct {
+		// Email: The Genesis user email address.
+		Email string `json:"email"`
 
-	// FirstName: The Genesis user first name.
-	FirstName string `json:"first_name"`
+		// FirstName: The Genesis user first name.
+		FirstName string `json:"first_name"`
 
-	// LastName: The Genesis user last name.
-	LastName string `json:"last_name"`
+		// LastName: The Genesis user last name.
+		LastName string `json:"last_name"`
+	} `json:"user"`
 
 	// Permissions: The list of permissions to be created as part of Genesis
 	Permissions []PermissionRequest `json:"permissions"`
@@ -238,14 +240,19 @@ func (s GenesisService) seedGenesis(ctx context.Context, tx pgx.Tx, r *GenesisRe
 	gUser := user.User{
 		ID:         uuid.New(),
 		ExternalID: secure.NewID(),
-		Username:   strings.TrimSpace(r.Email),
+		Username:   strings.TrimSpace(r.User.Email),
 		Org:        o,
 		Profile: person.Profile{
 			ID:        uuid.New(),
 			Person:    person.Person{ID: uuid.New(), Org: o},
-			FirstName: strings.TrimSpace(r.FirstName),
-			LastName:  strings.TrimSpace(r.LastName),
+			FirstName: strings.TrimSpace(r.User.FirstName),
+			LastName:  strings.TrimSpace(r.User.LastName),
 		},
+	}
+
+	err = gUser.IsValid()
+	if err != nil {
+		return seedGenesisReturnParams{}, err
 	}
 
 	adt := audit.Audit{
@@ -558,7 +565,6 @@ func seedPermissions(ctx context.Context, tx pgx.Tx, r *GenesisRequest, adt audi
 }
 
 func seedRoles(ctx context.Context, tx pgx.Tx, r *GenesisRequest, testUser user.User, genesisAudit audit.Audit) (err error) {
-
 	for _, crr := range r.Roles {
 		crr.UserExternals = append(crr.UserExternals, testUser.ExternalID.String(), genesisAudit.User.ExternalID.String())
 		_, err = createRoleTx(ctx, tx, &crr, genesisAudit)
