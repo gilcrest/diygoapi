@@ -26,44 +26,46 @@ type orgAudit struct {
 
 // CreateOrgRequest is the request struct for Creating an Org
 type CreateOrgRequest struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Kind        string `json:"kind"`
+	Name        string           `json:"name"`
+	Description string           `json:"description"`
+	Kind        string           `json:"kind"`
+	App         CreateAppRequest `json:"app"`
 }
 
 func (r CreateOrgRequest) isValid() error {
 	switch {
 	case r.Name == "":
-		return errs.E(errs.Validation, "name is required")
+		return errs.E(errs.Validation, "org name is required")
 	case r.Description == "":
-		return errs.E(errs.Validation, "description is required")
+		return errs.E(errs.Validation, "org description is required")
 	case r.Kind == "":
-		return errs.E(errs.Validation, "kind is required")
+		return errs.E(errs.Validation, "org kind is required")
 	}
 	return nil
 }
 
 // OrgResponse is the response struct for an Org
 type OrgResponse struct {
-	ExternalID          string `json:"external_id"`
-	Name                string `json:"name"`
-	KindExternalID      string `json:"kind_description"`
-	Description         string `json:"description"`
-	CreateAppExtlID     string `json:"create_app_extl_id"`
-	CreateUsername      string `json:"create_username"`
-	CreateUserFirstName string `json:"create_user_first_name"`
-	CreateUserLastName  string `json:"create_user_last_name"`
-	CreateDateTime      string `json:"create_date_time"`
-	UpdateAppExtlID     string `json:"update_app_extl_id"`
-	UpdateUsername      string `json:"update_username"`
-	UpdateUserFirstName string `json:"update_user_first_name"`
-	UpdateUserLastName  string `json:"update_user_last_name"`
-	UpdateDateTime      string `json:"update_date_time"`
+	ExternalID          string      `json:"external_id"`
+	Name                string      `json:"name"`
+	KindExternalID      string      `json:"kind_description"`
+	Description         string      `json:"description"`
+	CreateAppExtlID     string      `json:"create_app_extl_id"`
+	CreateUsername      string      `json:"create_username"`
+	CreateUserFirstName string      `json:"create_user_first_name"`
+	CreateUserLastName  string      `json:"create_user_last_name"`
+	CreateDateTime      string      `json:"create_date_time"`
+	UpdateAppExtlID     string      `json:"update_app_extl_id"`
+	UpdateUsername      string      `json:"update_username"`
+	UpdateUserFirstName string      `json:"update_user_first_name"`
+	UpdateUserLastName  string      `json:"update_user_last_name"`
+	UpdateDateTime      string      `json:"update_date_time"`
+	App                 AppResponse `json:"app"`
 }
 
 // newOrgResponse initializes OrgResponse given an org.Org.
-func newOrgResponse(oa orgAudit) OrgResponse {
-	return OrgResponse{
+func newOrgResponse(oa orgAudit, aa appAudit) OrgResponse {
+	r := OrgResponse{
 		ExternalID:          oa.Org.ExternalID.String(),
 		Name:                oa.Org.Name,
 		Description:         oa.Org.Description,
@@ -79,18 +81,31 @@ func newOrgResponse(oa orgAudit) OrgResponse {
 		UpdateUserLastName:  oa.SimpleAudit.Last.User.Profile.LastName,
 		UpdateDateTime:      oa.SimpleAudit.Last.Moment.Format(time.RFC3339),
 	}
+
+	if aa.App.ID != uuid.Nil {
+		r.App = newAppResponse(aa)
+	}
+
+	return r
 }
 
-// OrgService is a service for creating, reading, updating and deleting an Org
-type OrgService struct {
-	Datastorer Datastorer
+// CreateOrgService is a service for creating an Org (and optionally an App with it)
+type CreateOrgService struct {
+	Datastorer            Datastorer
+	RandomStringGenerator CryptoRandomGenerator
+	EncryptionKey         *[32]byte
 }
 
 // Create is used to create an Org
-func (s OrgService) Create(ctx context.Context, r *CreateOrgRequest, adt audit.Audit) (or OrgResponse, err error) {
+func (s CreateOrgService) Create(ctx context.Context, r *CreateOrgRequest, adt audit.Audit) (or OrgResponse, err error) {
 	err = r.isValid()
 	if err != nil {
 		return OrgResponse{}, err
+	}
+
+	sa := audit.SimpleAudit{
+		First: adt,
+		Last:  adt,
 	}
 
 	var kind org.Kind
@@ -107,15 +122,37 @@ func (s OrgService) Create(ctx context.Context, r *CreateOrgRequest, adt audit.A
 		Description: r.Description,
 		Kind:        kind,
 	}
-
-	sa := audit.SimpleAudit{
-		First: adt,
-		Last:  adt,
-	}
-
 	oa := orgAudit{
 		Org:         o,
 		SimpleAudit: sa,
+	}
+
+	// if there is an app request along with the Org request, process it as well
+	var (
+		car CreateAppRequest
+		a   app.App
+		aa  appAudit
+	)
+	if r.App != car {
+		err = r.App.isValid()
+		if err != nil {
+			return OrgResponse{}, err
+		}
+		nap := newAppParams{
+			r:                     &r.App,
+			org:                   o,
+			adt:                   adt,
+			randomStringGenerator: s.RandomStringGenerator,
+			encryptionKey:         s.EncryptionKey,
+		}
+		a, err = newApp(nap)
+		if err != nil {
+			return OrgResponse{}, err
+		}
+		aa = appAudit{
+			App:         a,
+			SimpleAudit: sa,
+		}
 	}
 
 	// start db txn using pgxpool
@@ -129,9 +166,18 @@ func (s OrgService) Create(ctx context.Context, r *CreateOrgRequest, adt audit.A
 		err = s.Datastorer.RollbackTx(ctx, tx, err)
 	}()
 
-	err = createOrgDB(ctx, tx, oa)
+	// write org to the db
+	err = createOrgTx(ctx, tx, oa)
 	if err != nil {
 		return OrgResponse{}, err
+	}
+
+	// if app is also to be created, write it to the db
+	if aa.App.ID != uuid.Nil {
+		err = createAppTx(ctx, tx, aa)
+		if err != nil {
+			return OrgResponse{}, err
+		}
 	}
 
 	// commit db txn using pgxpool
@@ -140,12 +186,14 @@ func (s OrgService) Create(ctx context.Context, r *CreateOrgRequest, adt audit.A
 		return OrgResponse{}, err
 	}
 
-	return newOrgResponse(oa), nil
+	response := newOrgResponse(oa, aa)
+
+	return response, nil
 }
 
-// createOrgDB writes an Org and its audit information to the database.
+// createOrgTx writes an Org and its audit information to the database.
 // separate function as it's used by genesis service as well
-func createOrgDB(ctx context.Context, tx pgx.Tx, oa orgAudit) error {
+func createOrgTx(ctx context.Context, tx pgx.Tx, oa orgAudit) error {
 	if oa.Org.Kind.ID == uuid.Nil {
 		return errs.E("org Kind is required")
 	}
@@ -179,6 +227,11 @@ func newCreateOrgParams(oa orgAudit) orgstore.CreateOrgParams {
 		UpdateUserID:    oa.SimpleAudit.Last.User.NullUUID(),
 		UpdateTimestamp: oa.SimpleAudit.Last.Moment,
 	}
+}
+
+// OrgService is a service for updating, reading and deleting an Org
+type OrgService struct {
+	Datastorer Datastorer
 }
 
 // UpdateOrgRequest is the request struct for Updating an Org
@@ -247,7 +300,7 @@ func (s OrgService) Update(ctx context.Context, r *UpdateOrgRequest, adt audit.A
 		return OrgResponse{}, err
 	}
 
-	return newOrgResponse(oa), nil
+	return newOrgResponse(oa, appAudit{}), nil
 }
 
 // Delete is used to delete an Org
@@ -369,7 +422,7 @@ func (s OrgService) FindAll(ctx context.Context) ([]OrgResponse, error) {
 				Moment: row.UpdateTimestamp,
 			},
 		}
-		or := newOrgResponse(orgAudit{Org: o, SimpleAudit: sa})
+		or := newOrgResponse(orgAudit{Org: o, SimpleAudit: sa}, appAudit{})
 
 		responses = append(responses, or)
 	}
@@ -387,7 +440,7 @@ func (s OrgService) FindByExternalID(ctx context.Context, extlID string) (OrgRes
 		return OrgResponse{}, err
 	}
 
-	return newOrgResponse(oa), nil
+	return newOrgResponse(oa, appAudit{}), nil
 }
 
 // findOrgByID retrieves an Org from the datastore given a unique ID
@@ -582,7 +635,7 @@ func createTestOrgKind(ctx context.Context, tx pgx.Tx, adt audit.Audit) (orgstor
 }
 
 // createStandardOrgKind initializes the org_kind lookup table with the standard kind record
-func createStandardOrgKind(ctx context.Context, tx pgx.Tx, adt audit.Audit) error {
+func createStandardOrgKind(ctx context.Context, tx pgx.Tx, adt audit.Audit) (orgstore.CreateOrgKindParams, error) {
 	standardParams := orgstore.CreateOrgKindParams{
 		OrgKindID:       uuid.New(),
 		OrgKindExtlID:   "standard",
@@ -601,12 +654,12 @@ func createStandardOrgKind(ctx context.Context, tx pgx.Tx, adt audit.Audit) erro
 	)
 	rowsAffected, err = orgstore.New(tx).CreateOrgKind(ctx, standardParams)
 	if err != nil {
-		return errs.E(errs.Database, err)
+		return orgstore.CreateOrgKindParams{}, errs.E(errs.Database, err)
 	}
 
 	if rowsAffected != 1 {
-		return errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
+		return orgstore.CreateOrgKindParams{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
 	}
 
-	return nil
+	return standardParams, nil
 }

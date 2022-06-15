@@ -34,9 +34,13 @@ type FindMovieService interface {
 	FindAllMovies(ctx context.Context) ([]service.MovieResponse, error)
 }
 
+// CreateOrgService manages the creation of an Org (and optional app)
+type CreateOrgService interface {
+	Create(ctx context.Context, r *service.CreateOrgRequest, adt audit.Audit) (service.OrgResponse, error)
+}
+
 // OrgService manages the retrieval and manipulation of an Org
 type OrgService interface {
-	Create(ctx context.Context, r *service.CreateOrgRequest, adt audit.Audit) (service.OrgResponse, error)
 	Update(ctx context.Context, r *service.UpdateOrgRequest, adt audit.Audit) (service.OrgResponse, error)
 	Delete(ctx context.Context, extlID string) (service.DeleteResponse, error)
 	FindAll(ctx context.Context) ([]service.OrgResponse, error)
@@ -93,10 +97,10 @@ type PingService interface {
 // GenesisService initializes the database with dependent data
 type GenesisService interface {
 	// Seed initializes required dependent data in database
-	Seed(ctx context.Context, r *service.GenesisRequest) (service.FullGenesisResponse, error)
+	Seed(ctx context.Context, r *service.GenesisRequest) (service.GenesisResponse, error)
 	// ReadConfig reads the local config file generated as part of Seed (when run locally).
 	// Is only a utility to help with local testing.
-	ReadConfig() (service.FullGenesisResponse, error)
+	ReadConfig() (service.GenesisResponse, error)
 }
 
 // Services are used by the application service handlers
@@ -105,6 +109,7 @@ type Services struct {
 	UpdateMovieService  UpdateMovieService
 	DeleteMovieService  DeleteMovieService
 	FindMovieService    FindMovieService
+	CreateOrgService    CreateOrgService
 	OrgService          OrgService
 	AppService          AppService
 	RegisterUserService RegisterUserService

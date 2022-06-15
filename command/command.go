@@ -210,7 +210,11 @@ func Run(args []string) (err error) {
 		UpdateMovieService: service.UpdateMovieService{Datastorer: ds},
 		DeleteMovieService: service.DeleteMovieService{Datastorer: ds},
 		FindMovieService:   service.FindMovieService{Datastorer: ds},
-		OrgService:         service.OrgService{Datastorer: ds},
+		CreateOrgService: service.CreateOrgService{
+			Datastorer:            ds,
+			RandomStringGenerator: random.CryptoGenerator{},
+			EncryptionKey:         ek},
+		OrgService: service.OrgService{Datastorer: ds},
 		AppService: service.AppService{
 			Datastorer:            ds,
 			RandomStringGenerator: random.CryptoGenerator{},

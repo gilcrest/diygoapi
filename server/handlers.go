@@ -202,7 +202,7 @@ func (s *Server) handleOrgCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var response service.OrgResponse
-	response, err = s.OrgService.Create(r.Context(), rb, adt)
+	response, err = s.CreateOrgService.Create(r.Context(), rb, adt)
 	if err != nil {
 		errs.HTTPErrorResponse(w, lgr, err)
 		return
@@ -471,7 +471,7 @@ func (s *Server) handleGenesis(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var response service.FullGenesisResponse
+	var response service.GenesisResponse
 	response, err = s.GenesisService.Seed(r.Context(), rb)
 	if err != nil {
 		errs.HTTPErrorResponse(w, lgr, err)
@@ -491,7 +491,7 @@ func (s *Server) handleGenesisRead(w http.ResponseWriter, r *http.Request) {
 	lgr := *hlog.FromRequest(r)
 
 	var (
-		response service.FullGenesisResponse
+		response service.GenesisResponse
 		err      error
 	)
 	response, err = s.GenesisService.ReadConfig()
