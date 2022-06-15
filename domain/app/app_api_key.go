@@ -27,12 +27,17 @@ type APIKey struct {
 // NewAPIKey initializes an APIKey. It generates both a 128-bit (16 byte)
 // random string as an API key and its corresponding ciphertext bytes
 func NewAPIKey(g APIKeyStringGenerator, ek *[32]byte) (APIKey, error) {
-	k, err := g.RandomString(18)
+	var (
+		k   string
+		err error
+	)
+	k, err = g.RandomString(18)
 	if err != nil {
 		return APIKey{}, err
 	}
 
-	ct, err := secure.Encrypt([]byte(k), ek)
+	var ct []byte
+	ct, err = secure.Encrypt([]byte(k), ek)
 	if err != nil {
 		return APIKey{}, err
 	}
