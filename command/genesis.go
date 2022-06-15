@@ -106,7 +106,7 @@ func Genesis() (err error) {
 		return errs.E(err)
 	}
 
-	var response service.FullGenesisResponse
+	var response service.GenesisResponse
 	response, err = s.Seed(ctx, &f)
 	if err != nil {
 		return err
