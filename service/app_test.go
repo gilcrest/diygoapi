@@ -36,7 +36,6 @@ func TestAppService(t *testing.T) {
 		c := qt.New(t)
 
 		eks := os.Getenv("ENCRYPT_KEY")
-
 		if eks == "" {
 			t.Fatal("no encryption key found")
 		}

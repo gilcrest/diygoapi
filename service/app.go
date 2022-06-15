@@ -30,6 +30,16 @@ type CreateAppRequest struct {
 	Description string `json:"description"`
 }
 
+func (r CreateAppRequest) isValid() error {
+	switch {
+	case r.Name == "":
+		return errs.E(errs.Validation, "app name is required")
+	case r.Description == "":
+		return errs.E(errs.Validation, "app description is required")
+	}
+	return nil
+}
+
 // AppResponse is the response struct for an App
 type AppResponse struct {
 	ExternalID          string           `json:"external_id"`
@@ -94,31 +104,30 @@ type AppService struct {
 
 // Create is used to create an App
 func (s AppService) Create(ctx context.Context, r *CreateAppRequest, adt audit.Audit) (ar AppResponse, err error) {
-	var a app.App
-	a.ID = uuid.New()
-	a.ExternalID = secure.NewID()
-	a.Org = adt.App.Org
-	a.Name = r.Name
-	a.Description = r.Description
 
-	keyDeactivation := time.Date(2099, 12, 31, 0, 0, 0, 0, time.UTC)
-	err = a.AddNewKey(s.RandomStringGenerator, s.EncryptionKey, keyDeactivation)
+	var (
+		a  app.App
+		aa appAudit
+	)
+	nap := newAppParams{
+		r: r,
+		// when creating an app, the org the app belongs to must be
+		// the same as the org which the user is transacting.
+		org:                   adt.App.Org,
+		adt:                   adt,
+		randomStringGenerator: s.RandomStringGenerator,
+		encryptionKey:         s.EncryptionKey,
+	}
+	a, err = newApp(nap)
 	if err != nil {
 		return AppResponse{}, err
 	}
-
-	createAppParams := appstore.CreateAppParams{
-		AppID:           a.ID,
-		OrgID:           a.Org.ID,
-		AppExtlID:       a.ExternalID.String(),
-		AppName:         a.Name,
-		AppDescription:  a.Description,
-		CreateAppID:     adt.App.ID,
-		CreateUserID:    adt.User.NullUUID(),
-		CreateTimestamp: adt.Moment,
-		UpdateAppID:     adt.App.ID,
-		UpdateUserID:    adt.User.NullUUID(),
-		UpdateTimestamp: adt.Moment,
+	aa = appAudit{
+		App: a,
+		SimpleAudit: audit.SimpleAudit{
+			First: adt,
+			Last:  adt,
+		},
 	}
 
 	// start db txn using pgxpool
@@ -132,42 +141,9 @@ func (s AppService) Create(ctx context.Context, r *CreateAppRequest, adt audit.A
 		err = s.Datastorer.RollbackTx(ctx, tx, err)
 	}()
 
-	// create app database record using appstore
-	var rowsAffected int64
-	rowsAffected, err = appstore.New(tx).CreateApp(ctx, createAppParams)
+	err = createAppTx(ctx, tx, aa)
 	if err != nil {
-		return AppResponse{}, errs.E(errs.Database, err)
-	}
-
-	if rowsAffected != 1 {
-		return AppResponse{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
-	}
-
-	for _, key := range a.APIKeys {
-
-		createAppAPIKeyParams := appstore.CreateAppAPIKeyParams{
-			ApiKey:          key.Ciphertext(),
-			AppID:           a.ID,
-			DeactvDate:      key.DeactivationDate(),
-			CreateAppID:     adt.App.ID,
-			CreateUserID:    adt.User.NullUUID(),
-			CreateTimestamp: adt.Moment,
-			UpdateAppID:     adt.App.ID,
-			UpdateUserID:    adt.User.NullUUID(),
-			UpdateTimestamp: adt.Moment,
-		}
-
-		// create app API key database record using appstore
-		var apiKeyRowsAffected int64
-		apiKeyRowsAffected, err = appstore.New(tx).CreateAppAPIKey(ctx, createAppAPIKeyParams)
-		if err != nil {
-			return AppResponse{}, errs.E(errs.Database, err)
-		}
-
-		if apiKeyRowsAffected != 1 {
-			return AppResponse{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", apiKeyRowsAffected))
-		}
-
+		return AppResponse{}, err
 	}
 
 	// commit db txn using pgxpool
@@ -177,6 +153,92 @@ func (s AppService) Create(ctx context.Context, r *CreateAppRequest, adt audit.A
 	}
 
 	return newAppResponse(appAudit{App: a, SimpleAudit: audit.SimpleAudit{First: adt, Last: adt}}), nil
+}
+
+type newAppParams struct {
+	// the request details for the app
+	r *CreateAppRequest
+	// the org the app belongs to
+	org org.Org
+	// the audit details of who is creating the app
+	adt                   audit.Audit
+	randomStringGenerator CryptoRandomGenerator
+	encryptionKey         *[32]byte
+}
+
+func newApp(nap newAppParams) (a app.App, err error) {
+	a = app.App{
+		ID:          uuid.New(),
+		ExternalID:  secure.NewID(),
+		Org:         nap.org,
+		Name:        nap.r.Name,
+		Description: nap.r.Description,
+	}
+
+	keyDeactivation := time.Date(2099, 12, 31, 0, 0, 0, 0, time.UTC)
+	err = a.AddNewKey(nap.randomStringGenerator, nap.encryptionKey, keyDeactivation)
+	if err != nil {
+		return app.App{}, err
+	}
+
+	return a, nil
+}
+
+// createAppTx creates the app in the database using a pgx.Tx. This is moved out of the
+// app create handler function as it's also used when creating an org.
+func createAppTx(ctx context.Context, tx pgx.Tx, aa appAudit) (err error) {
+	createAppParams := appstore.CreateAppParams{
+		AppID:           aa.App.ID,
+		OrgID:           aa.App.Org.ID,
+		AppExtlID:       aa.App.ExternalID.String(),
+		AppName:         aa.App.Name,
+		AppDescription:  aa.App.Description,
+		CreateAppID:     aa.SimpleAudit.First.App.ID,
+		CreateUserID:    aa.SimpleAudit.First.User.NullUUID(),
+		CreateTimestamp: aa.SimpleAudit.First.Moment,
+		UpdateAppID:     aa.SimpleAudit.Last.App.ID,
+		UpdateUserID:    aa.SimpleAudit.Last.User.NullUUID(),
+		UpdateTimestamp: aa.SimpleAudit.Last.Moment,
+	}
+
+	// create app database record using appstore
+	var rowsAffected int64
+	rowsAffected, err = appstore.New(tx).CreateApp(ctx, createAppParams)
+	if err != nil {
+		return errs.E(errs.Database, err)
+	}
+
+	if rowsAffected != 1 {
+		return errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
+	}
+
+	for _, key := range aa.App.APIKeys {
+
+		createAppAPIKeyParams := appstore.CreateAppAPIKeyParams{
+			ApiKey:          key.Ciphertext(),
+			AppID:           aa.App.ID,
+			DeactvDate:      key.DeactivationDate(),
+			CreateAppID:     aa.SimpleAudit.First.App.ID,
+			CreateUserID:    aa.SimpleAudit.First.User.NullUUID(),
+			CreateTimestamp: aa.SimpleAudit.First.Moment,
+			UpdateAppID:     aa.SimpleAudit.Last.App.ID,
+			UpdateUserID:    aa.SimpleAudit.Last.User.NullUUID(),
+			UpdateTimestamp: aa.SimpleAudit.Last.Moment,
+		}
+
+		// create app API key database record using appstore
+		var apiKeyRowsAffected int64
+		apiKeyRowsAffected, err = appstore.New(tx).CreateAppAPIKey(ctx, createAppAPIKeyParams)
+		if err != nil {
+			return errs.E(errs.Database, err)
+		}
+
+		if apiKeyRowsAffected != 1 {
+			return errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", apiKeyRowsAffected))
+		}
+	}
+
+	return nil
 }
 
 // UpdateAppRequest is the request struct for Updating an App
