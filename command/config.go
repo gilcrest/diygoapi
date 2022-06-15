@@ -22,6 +22,56 @@ const (
 	genesisRequestFile = "./config/genesis/request.json"
 )
 
+// Env defines the environment
+type Env uint8
+
+const (
+	// Existing environment - current environment is not overridden
+	Existing Env = iota
+	// Local environment (Local machine)
+	Local
+	// Staging environment (GCP)
+	Staging
+	// Production environment (GCP)
+	Production
+
+	// Invalid defines an invalid environment option
+	Invalid Env = 99
+)
+
+func (e Env) String() string {
+	switch e {
+	case Existing:
+		return "existing"
+	case Local:
+		return "local"
+	case Staging:
+		return "staging"
+	case Production:
+		return "production"
+	case Invalid:
+		return "invalid"
+	}
+	return "unknown_env_config"
+}
+
+// ParseEnv converts an env string into an Env value.
+// returns Invalid if the input string does not match known values.
+func ParseEnv(envStr string) Env {
+	switch envStr {
+	case "existing":
+		return Existing
+	case "local":
+		return Local
+	case "staging":
+		return Staging
+	case "prod":
+		return Production
+	default:
+		return Invalid
+	}
+}
+
 // ConfigFile defines the configuration file. It is the superset of
 // fields for the various environments/builds. For example, when setting
 // the local environment based on the ConfigFile, you do not need
@@ -198,57 +248,6 @@ func NewConfigFile(env Env) (ConfigFile, error) {
 	return f, nil
 }
 
-// Env defines the environment
-type Env uint8
-
-// Kinds of errors.
-//
-// The values of the error kinds are common between both
-// clients and servers. Do not reorder this list or remove
-// any items since that will change their values.
-// New items must be added only to the end.
-const (
-	Existing   Env = iota // Existing environment - current environment is not overridden
-	Local                 // Local environment (Local machine)
-	Staging               // Staging environment (GCP)
-	Production            // Production environment (GCP)
-
-	Invalid Env = 99 // Invalid defines an invalid environment option
-)
-
-func (e Env) String() string {
-	switch e {
-	case Existing:
-		return "existing"
-	case Local:
-		return "local"
-	case Staging:
-		return "staging"
-	case Production:
-		return "production"
-	case Invalid:
-		return "invalid"
-	}
-	return "unknown_env_config"
-}
-
-// ParseEnv converts an env string into an Env value.
-// returns Invalid if the input string does not match known values.
-func ParseEnv(envStr string) Env {
-	switch envStr {
-	case "existing":
-		return Existing
-	case "local":
-		return Local
-	case "staging":
-		return Staging
-	case "prod":
-		return Production
-	default:
-		return Invalid
-	}
-}
-
 // ConfigCueFilePaths defines the paths for config files processed through CUE.
 type ConfigCueFilePaths struct {
 	// Input defines the list of paths for files to be taken as input for CUE
@@ -294,7 +293,7 @@ func CUEGenesisPaths() ConfigCueFilePaths {
 	const (
 		schemaInput = "./config/genesis/cue/schema.cue"
 		authInput   = "./config/genesis/cue/auth.cue"
-		userInput   = "./config/genesis/cue/user.cue"
+		userInput   = "./config/genesis/cue/input.cue"
 	)
 
 	return ConfigCueFilePaths{
