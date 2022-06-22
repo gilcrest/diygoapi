@@ -1,4 +1,18 @@
 {
+    "user": {
+        "email": "otto.maddox@gmail.com",
+        "first_name": "Otto",
+        "last_name": "Maddox"
+    },
+    "org": {
+        "name": "Movie Makers Unlimited",
+        "description": "An organization dedicated to creating movies in a demo app.",
+        "kind": "standard",
+        "app": {
+            "name": "Movie Makers App",
+            "description": "The first app dedicated to creating movies in a demo app."
+        }
+    },
     "permissions": [
         {
             "resource": "/api/v1/ping",
@@ -141,10 +155,5 @@
                 }
             ]
         }
-    ],
-    "user": {
-        "email": "otto.maddox@gmail.com",
-        "first_name": "Otto",
-        "last_name": "Maddox"
-    }
+    ]
 }
