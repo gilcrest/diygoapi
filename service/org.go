@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 
+	"github.com/gilcrest/diy-go-api/datastore/appstore"
 	"github.com/gilcrest/diy-go-api/datastore/orgstore"
 	"github.com/gilcrest/diy-go-api/domain/app"
 	"github.com/gilcrest/diy-go-api/domain/audit"
@@ -326,6 +327,20 @@ func (s OrgService) Delete(ctx context.Context, extlID string) (dr DeleteRespons
 	defer func() {
 		err = s.Datastorer.RollbackTx(ctx, tx, err)
 	}()
+
+	var apps []appstore.App
+	apps, err = appstore.New(tx).FindAppsByOrg(ctx, o.ID)
+	if err != nil {
+		return DeleteResponse{}, errs.E(errs.Database, err)
+	}
+
+	for _, aa := range apps {
+		a := app.App{ID: aa.AppID}
+		err = deleteAppTx(ctx, tx, a)
+		if err != nil {
+			return DeleteResponse{}, errs.E(errs.Database, err)
+		}
+	}
 
 	var rowsAffected int64
 	rowsAffected, err = orgstore.New(tx).DeleteOrg(ctx, o.ID)

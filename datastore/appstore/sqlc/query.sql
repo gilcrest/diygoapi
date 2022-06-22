@@ -144,6 +144,10 @@ WHERE o.org_id = $1
 SELECT * FROM app
 ORDER BY app_name;
 
+-- name: FindAppsByOrg :many
+SELECT * FROM app
+WHERE org_id = $1;
+
 -- name: FindAppsWithAudit :many
 SELECT a.org_id,
        o.org_extl_id,

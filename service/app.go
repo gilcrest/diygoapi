@@ -330,26 +330,9 @@ func (s AppService) Delete(ctx context.Context, extlID string) (dr DeleteRespons
 		err = s.Datastorer.RollbackTx(ctx, tx, err)
 	}()
 
-	// one-to-many API keys can be associated with an App. This will
-	// delete them all.
-	var apiKeysRowsAffected int64
-	apiKeysRowsAffected, err = appstore.New(tx).DeleteAppAPIKeys(ctx, a.ID)
+	err = deleteAppTx(ctx, tx, a)
 	if err != nil {
-		return DeleteResponse{}, errs.E(errs.Database, err)
-	}
-
-	if apiKeysRowsAffected < 1 {
-		return DeleteResponse{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be at least 1, actual: %d", apiKeysRowsAffected))
-	}
-
-	var rowsAffected int64
-	rowsAffected, err = appstore.New(tx).DeleteApp(ctx, a.ID)
-	if err != nil {
-		return DeleteResponse{}, errs.E(errs.Database, err)
-	}
-
-	if rowsAffected != 1 {
-		return DeleteResponse{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
+		return DeleteResponse{}, err
 	}
 
 	// commit db txn using pgxpool
@@ -364,6 +347,32 @@ func (s AppService) Delete(ctx context.Context, extlID string) (dr DeleteRespons
 	}
 
 	return response, nil
+}
+
+func deleteAppTx(ctx context.Context, tx pgx.Tx, a app.App) (err error) {
+	// one-to-many API keys can be associated with an App. This will
+	// delete them all.
+	var apiKeysRowsAffected int64
+	apiKeysRowsAffected, err = appstore.New(tx).DeleteAppAPIKeys(ctx, a.ID)
+	if err != nil {
+		return errs.E(errs.Database, err)
+	}
+
+	if apiKeysRowsAffected < 1 {
+		return errs.E(errs.Database, fmt.Sprintf("rows affected should be at least 1, actual: %d", apiKeysRowsAffected))
+	}
+
+	var rowsAffected int64
+	rowsAffected, err = appstore.New(tx).DeleteApp(ctx, a.ID)
+	if err != nil {
+		return errs.E(errs.Database, err)
+	}
+
+	if rowsAffected != 1 {
+		return errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
+	}
+
+	return nil
 }
 
 // FindByExternalID is used to find an App by its External ID

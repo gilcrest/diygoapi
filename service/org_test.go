@@ -2,6 +2,7 @@ package service_test
 
 import (
 	"context"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -19,6 +20,7 @@ import (
 	"github.com/gilcrest/diy-go-api/domain/org"
 	"github.com/gilcrest/diy-go-api/domain/person"
 	"github.com/gilcrest/diy-go-api/domain/secure"
+	"github.com/gilcrest/diy-go-api/domain/secure/random"
 	"github.com/gilcrest/diy-go-api/domain/user"
 	"github.com/gilcrest/diy-go-api/service"
 )
@@ -32,14 +34,30 @@ const (
 )
 
 func TestOrgService(t *testing.T) {
-	t.Run("create", func(t *testing.T) {
+	t.Run("create (without app)", func(t *testing.T) {
 		c := qt.New(t)
 
+		eks := os.Getenv("ENCRYPT_KEY")
+		if eks == "" {
+			t.Fatal("no encryption key found")
+		}
+
+		// decode and retrieve encryption key
+		var (
+			ek  *[32]byte
+			err error
+		)
+		ek, err = secure.ParseEncryptionKey(eks)
+		if err != nil {
+			t.Fatal("secure.ParseEncryptionKey() error")
+		}
 		ds, cleanup := datastoretest.NewDatastore(t)
 		c.Cleanup(cleanup)
 
-		s := service.OrgService{
-			Datastorer: ds,
+		s := service.CreateOrgService{
+			Datastorer:            ds,
+			RandomStringGenerator: random.CryptoGenerator{},
+			EncryptionKey:         ek,
 		}
 		r := service.CreateOrgRequest{
 			Name:        testOrgServiceOrgName,
@@ -51,7 +69,8 @@ func TestOrgService(t *testing.T) {
 
 		adt := findPrincipalTestAudit(ctx, t, ds)
 
-		got, err := s.Create(context.Background(), &r, adt)
+		var got service.OrgResponse
+		got, err = s.Create(context.Background(), &r, adt)
 		want := service.OrgResponse{
 			ExternalID:          got.ExternalID,
 			Name:                testOrgServiceOrgName,
@@ -68,6 +87,110 @@ func TestOrgService(t *testing.T) {
 		}
 		c.Assert(err, qt.IsNil)
 		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(service.OrgResponse{}, "CreateDateTime", "UpdateDateTime")), want)
+	})
+	t.Run("create (with app)", func(t *testing.T) {
+		c := qt.New(t)
+
+		eks := os.Getenv("ENCRYPT_KEY")
+		if eks == "" {
+			t.Fatal("no encryption key found")
+		}
+
+		// decode and retrieve encryption key
+		var (
+			ek  *[32]byte
+			err error
+		)
+		ek, err = secure.ParseEncryptionKey(eks)
+		if err != nil {
+			t.Fatal("secure.ParseEncryptionKey() error")
+		}
+
+		ds, cleanup := datastoretest.NewDatastore(t)
+		c.Cleanup(cleanup)
+
+		s := service.CreateOrgService{
+			Datastorer:            ds,
+			RandomStringGenerator: random.CryptoGenerator{},
+			EncryptionKey:         ek,
+		}
+		r := service.CreateOrgRequest{
+			Name:        testOrgServiceOrgName + "_withApp",
+			Description: testOrgServiceOrgDescription + "_withApp",
+			Kind:        testOrgServiceOrgKind,
+			App: service.CreateAppRequest{
+				Name:        testAppServiceAppName,
+				Description: testAppServiceAppDescription,
+			},
+		}
+
+		ctx := context.Background()
+
+		adt := findPrincipalTestAudit(ctx, t, ds)
+
+		var got service.OrgResponse
+		got, err = s.Create(context.Background(), &r, adt)
+		want := service.OrgResponse{
+			ExternalID:          got.ExternalID,
+			Name:                testOrgServiceOrgName + "_withApp",
+			KindExternalID:      testOrgServiceOrgKind,
+			Description:         testOrgServiceOrgDescription + "_withApp",
+			CreateAppExtlID:     adt.App.ExternalID.String(),
+			CreateUsername:      adt.User.Username,
+			CreateUserFirstName: adt.User.Profile.FirstName,
+			CreateUserLastName:  adt.User.Profile.LastName,
+			UpdateAppExtlID:     adt.App.ExternalID.String(),
+			UpdateUsername:      adt.User.Username,
+			UpdateUserFirstName: adt.User.Profile.FirstName,
+			UpdateUserLastName:  adt.User.Profile.LastName,
+			App: service.AppResponse{
+				ExternalID:          got.App.ExternalID,
+				Name:                testAppServiceAppName,
+				Description:         testAppServiceAppDescription,
+				CreateAppExtlID:     adt.App.ExternalID.String(),
+				CreateUsername:      adt.User.Username,
+				CreateUserFirstName: adt.User.Profile.FirstName,
+				CreateUserLastName:  adt.User.Profile.LastName,
+				UpdateAppExtlID:     adt.App.ExternalID.String(),
+				UpdateUsername:      adt.User.Username,
+				UpdateUserFirstName: adt.User.Profile.FirstName,
+				UpdateUserLastName:  adt.User.Profile.LastName,
+				APIKeys:             nil,
+			},
+		}
+		c.Assert(err, qt.IsNil)
+		ignoreFields := []string{"ExternalID", "CreateDateTime", "UpdateDateTime", "App.CreateDateTime", "App.UpdateDateTime", "App.APIKeys"}
+		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(service.OrgResponse{}, ignoreFields...)), want)
+	})
+	t.Run("delete (with app)", func(t *testing.T) {
+		c := qt.New(t)
+
+		ds, cleanup := datastoretest.NewDatastore(t)
+		c.Cleanup(cleanup)
+
+		ctx := context.Background()
+
+		var (
+			testOrg orgstore.FindOrgByNameRow
+			err     error
+		)
+		testOrg, err = orgstore.New(ds.Pool()).FindOrgByName(ctx, testOrgServiceOrgName+"_withApp")
+		if err != nil {
+			t.Fatalf("FindOrgByName() error = %v", err)
+		}
+
+		s := service.OrgService{
+			Datastorer: ds,
+		}
+
+		var got service.DeleteResponse
+		got, err = s.Delete(context.Background(), testOrg.OrgExtlID)
+		want := service.DeleteResponse{
+			ExternalID: testOrg.OrgExtlID,
+			Deleted:    true,
+		}
+		c.Assert(err, qt.IsNil)
+		c.Assert(got, qt.CmpEquals(), want)
 	})
 	t.Run("update", func(t *testing.T) {
 		c := qt.New(t)
