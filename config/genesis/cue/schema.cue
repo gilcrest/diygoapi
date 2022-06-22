@@ -6,6 +6,20 @@ package genesis
 	last_name:  !="" // must be specified and non-empty
 }
 
+#Org: {
+	name:        !="" // must be specified and non-empty
+	description: !="" // must be specified and non-empty
+	kind:        #OrgKinds
+	app:         #App
+}
+
+#OrgKinds: "genesis" | "test" | "standard"
+
+#App: {
+	name:        !="" // must be specified and non-empty
+	description: !="" // must be specified and non-empty
+}
+
 // Auth is the permissions and roles required for the Role Based Access Control (RBAC) setup of the app
 #Auth: {
 	permissions: [...#Permission]
