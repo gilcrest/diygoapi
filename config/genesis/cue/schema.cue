@@ -1,5 +1,12 @@
 package genesis
 
+// Objects included in output.
+user: #User
+org:  #Org
+permissions: [_pingV1Get, _loggerV1Get, _loggerV1Put, _orgsV1Post, _orgsV1Put, _orgsV1Delete, _orgsV1Get,
+	_orgsV1GetByExtlID, _appsV1Post, _permissionsV1Post, _permissionsV1Get]
+roles: [_sysAdmin]
+
 #User: {
 	email:      !="" // must be specified and non-empty
 	first_name: !="" // must be specified and non-empty
