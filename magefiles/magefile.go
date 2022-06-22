@@ -32,9 +32,7 @@ func CueGenerateConfig(env string) (err error) {
 
 	// Vet input files
 	vetArgs := []string{"vet"}
-	for _, path := range paths.Input {
-		vetArgs = append(vetArgs, path)
-	}
+	vetArgs = append(vetArgs, paths.Input...)
 	err = sh.Run("cue", vetArgs...)
 	if err != nil {
 		return err
@@ -42,9 +40,7 @@ func CueGenerateConfig(env string) (err error) {
 
 	// format input files
 	fmtArgs := []string{"fmt"}
-	for _, path := range paths.Input {
-		fmtArgs = append(fmtArgs, path)
-	}
+	fmtArgs = append(fmtArgs, paths.Input...)
 	err = sh.Run("cue", fmtArgs...)
 	if err != nil {
 		return err
@@ -52,9 +48,7 @@ func CueGenerateConfig(env string) (err error) {
 
 	// Export output files
 	exportArgs := []string{"export"}
-	for _, path := range paths.Input {
-		exportArgs = append(exportArgs, path)
-	}
+	exportArgs = append(exportArgs, paths.Input...)
 	exportArgs = append(exportArgs, "--force", "--out", "json", "--outfile", paths.Output)
 
 	err = sh.Run("cue", exportArgs...)
@@ -75,9 +69,7 @@ func CueGenerateGenesisConfig() (err error) {
 
 	// Vet input files
 	vetArgs := []string{"vet"}
-	for _, path := range paths.Input {
-		vetArgs = append(vetArgs, path)
-	}
+	vetArgs = append(vetArgs, paths.Input...)
 	err = sh.Run("cue", vetArgs...)
 	if err != nil {
 		return err
@@ -85,9 +77,7 @@ func CueGenerateGenesisConfig() (err error) {
 
 	// format input files
 	fmtArgs := []string{"fmt"}
-	for _, path := range paths.Input {
-		fmtArgs = append(fmtArgs, path)
-	}
+	fmtArgs = append(fmtArgs, paths.Input...)
 	err = sh.Run("cue", fmtArgs...)
 	if err != nil {
 		return err
@@ -95,9 +85,7 @@ func CueGenerateGenesisConfig() (err error) {
 
 	// Export output files
 	exportArgs := []string{"export"}
-	for _, path := range paths.Input {
-		exportArgs = append(exportArgs, path)
-	}
+	exportArgs = append(exportArgs, paths.Input...)
 	exportArgs = append(exportArgs, "--force", "--out", "json", "--outfile", paths.Output)
 
 	err = sh.Run("cue", exportArgs...)
