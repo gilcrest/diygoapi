@@ -1,7 +1,7 @@
 package genesis
 
 user: #User
-org: #Org
+org:  #Org
 
 // The "genesis" user - the first user to create the system and is
 // given the sysAdmin role (which has all permissions). This user is
