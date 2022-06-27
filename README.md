@@ -1,167 +1,463 @@
 # DIY Go API
 
-v0.46.0 - 5/24/2022 - I have updated the module name and implemented the DIY RBAC I mentioned in previous releases. Next step is to start to document - a LOT.
-
-Things are still coming back together, a ton of work recently. **The docs below are out of date in many cases**. Hoping to have everything sorted soon, but if you look at the code, you can start to see the structure. I am currently building a simple RBAC implementation as part of this as well. After that is completed, README documentation will be my focus. I will get this updated!
-
---------
-
 A RESTful API template (built with Go)
 
-The goal of this project is to be an example of a relational database-backed REST HTTP API that has characteristics needed to ensure success in a high volume environment. I struggled a lot with parsing all of the different ideas people have for package layouts over the past few years and would like to help others who may be having a similar struggle. I'd like to see Go as accessible as possible for everyone. If you have any questions or would like help, open an issue or send me a note - I'm happy to help! Also, if you have disagree or have suggestions about this repo, please do the same, I really enjoy getting both positive and negative feedback.
+The goal of this project is to be an example of a relational database-backed REST HTTP Web Server that has characteristics needed to ensure success in a high volume environment. This project co-opts the DIY ethos of the Go community and does its best to "use the standard library" whenever possible, bringing in third-party libraries when not doing so would be unduly burdensome (structured logging, Oauth2, etc.).
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/gilcrest/go-api-basic.svg)](https://pkg.go.dev/github.com/gilcrest/go-api-basic) [![Go Report Card](https://goreportcard.com/badge/github.com/gilcrest/diy-go-api)](https://goreportcard.com/report/github.com/gilcrest/diy-go-api)
+I struggled a lot with parsing the myriad different patterns people have for package layouts over the past few years and have tried to coalesce what I've learned from others into my own take on a package layout. Below, I hope to communicate how this structure works. If you have any questions, open an issue or send me a note - I'm happy to help! Also, if you disagree or have suggestions, please do the same, I really enjoy getting both positive and negative feedback.
+
+[![Go Reference](https://pkg.go.dev/badge/github.com/gilcrest/diy-go-api.svg)](https://pkg.go.dev/github.com/gilcrest/diy-go-api) [![Go Report Card](https://goreportcard.com/badge/github.com/gilcrest/diy-go-api)](https://goreportcard.com/report/github.com/gilcrest/diy-go-api)
 
 ## API Walkthrough
 
-The following is an in-depth walkthrough of this project. This walkthrough has a lot of detail. This is a demo API, so the "business" intent of it is to support basic CRUD (**C**reate, **R**ead, **U**pdate, **D**elete) operations for a movie database.
+The following is an in-depth walkthrough of this project. This is a demo API, so the "business" intent of it is to support basic CRUD (**C**reate, **R**ead, **U**pdate, **D**elete) operations for a movie database. All paths to files or directories are from the project root.
 
 ## Minimum Requirements
 
-Go and PostgreSQL are required in order to run these APIs. In addition, several database objects must be created (see [Database Objects Setup](#database-objects-setup) below)
+- [Go](https://go.dev/)
+- [PostgreSQL](https://www.postgresql.org/) - Database
+- [Google OAuth 2.0](https://developers.google.com/identity/protocols/oauth2/web-server) - authentication
+- [Mage](https://magefile.org/) - for build and easier script execution
+- [CUE](https://cuelang.org/) - config file generation
 
-## Table of Contents
-
-- [Getting Started](#getting-started)
-  - [Database Objects Setup](#database-objects-setup)
-  - [Program Execution](#program-execution)
-    - [Command Line Flags](#command-line-flags)
-    - [Environment Setup](#environment-setup)
-      - [Database Connection Environment Variables](database-connection-environment-variables)
-    - [Run the Binary](#run-the-binary)
-  - [Ping](#ping)
-  - [Authentication and Authorization](#authentication-and-authorization)
-  - [cURL Commands to Call Services](#curl-commands-to-call-services)
-  - [Project Walkthrough](#project-walkthrough)
-    - [Errors](#errors)
-    - [Logging](#logging)
-
----
+--------
 
 ## Getting Started
 
-### Database Objects Setup
+The following are basic instructions for getting started. For detailed explanations of many of the constructs created as part of these steps, jump to the [Project Walkthroug](#project-walkthrough)
 
-Assuming PostgreSQL is installed locally, the [demo_ddl.sql](https://github.com/gilcrest/go-api-basic/blob/master/demo.ddl) script (*DDL = **D**ata **D**efinition **L**anguage*) located in the `/scripts/ddl` directory needs to be run, however, there are some things to know. At the highest level, PostgreSQL has the concept of databases, separate from schemas. A database is a container of other objects (tables, views, functions, indexes, etc.). There is no limit no the number of databases inside a PostgreSQL server.
+### Step 1 - Get the code
 
-In the DDL script, the first statement creates a database called `go_api_basic`:
+Clone the code:
 
-```sql
-create database go_api_basic
-    with owner postgres;
+```shell
+$ git clone https://github.com/gilcrest/diy-go-api.git
+Cloning into 'diy-go-api'...
 ```
 
-> Using this database is optional; you can use the default `postgres` database or your user database or whatever you prefer. When connecting later, you can set the database to whatever is your preference. If you do choose to create a separate database like this, depending on what PostgreSQL IDE you're running the DDL in, you'll likely need to stop after this first statement, switch to this database, and then continue to run the remainder of the DDL statements.
+or use the [Github CLI](https://cli.github.com/) (also written in Go!):
 
-The remainder of the statements create a schema (`demo`) within the database:
-
-```sql
-create schema demo;
+```shell
+$ gh repo clone gilcrest/diy-go-api
+Cloning into 'diy-go-api'...
 ```
 
-one table (`demo.movie`):
+### Step 2 - Authentication and Authorization
 
-```sql
-create table demo.movie
-(
-    movie_id uuid not null
-        constraint movie_pk
-            primary key,
-    extl_id varchar(250) not null,
-    title varchar(1000) not null,
-    rated varchar(10),
-    released date,
-    run_time integer,
-    director varchar(1000),
-    writer varchar(1000),
-    create_username varchar,
-    create_timestamp timestamp with time zone,
-    update_username varchar,
-    update_timestamp timestamp with time zone
-);
+#### Authentication
 
-alter table demo.movie owner to postgres;
+All requests with this demo webserver require authentication. I have chosen to use [Google's Oauth2 solution](https://developers.google.com/identity/protocols/oauth2/web-server) for these APIs. To use this, you need to setup a Client ID and Client Secret and obtain an access token. The instructions [here](https://developers.google.com/identity/protocols/oauth2) are great.
 
-create unique index movie_extl_id_uindex
-    on demo.movie (extl_id);
+After Oauth2 setup with Google, I recommend the [Google Oauth2 Playground](https://developers.google.com/oauthplayground/) to obtain fresh access tokens for testing.
+
+Once a user has authenticated through this flow, all calls to services require that the Google access token be sent as a `Bearer` token in the `Authorization` header.
+
+- If there is no token present, an `HTTP 401 (Unauthorized)` response will be sent and the response body will be empty.
+- If a token is properly sent, the [Google Oauth2 v2 API](https://pkg.go.dev/google.golang.org/api/oauth2/v2) is used to validate the token. If the token is ***invalid***, an `HTTP 401 (Unauthorized)` response will be sent and the response body will be empty.
+
+#### Authorization
+
+- If the token is ***valid***, Google will respond with information about the user. The user's email will be used as their username in addition to determining if the user is authorized for access to a particular endpoint/resource. The authorization is done through an internal database role based access control model. If the user is not authorized to use the API, an `HTTP 403 (Forbidden)` response will be sent and the response body will be empty.
+
+--------
+
+### Step 3 - Prepare Environment (2 options)
+
+All Mage programs in this project which take an environment (env) parameter (e.g., `func DBUp(env string)`), must have certain environment variables set. These environment variables can be set independently [option 1](#option-1---set-your-environment-independently) or based on a configuration file [option 2](#option-2---set-your-environment-through-a-config-file). Depending on which environment method you choose, the values to pass to the env parameter when running Mage programs in this project are as follows:
+
+| env string      | File Path   |Description |
+| --------------- | ----------- | ---------- |
+| current         | N/A         | Uses the current session environment. Environment will not be overriden from a config file |
+| local           | ./config/local.json | Uses the `local.json` config file to set the environment |
+| staging         | ./config/staging.json | Uses the `staging.json` config file to set the environment in [Google Cloud Run](https://cloud.google.com/run) |
+
+The base environment variables to be set are:
+
+| Environment Variable | Description |
+| --------------- | ----------- |
+PORT|Port the server will listen on
+LOG_LEVEL|zerolog logging level (debug, info, etc.)
+LOG_LEVEL_MIN|sets the minimum accepted logging level
+LOG_ERROR_STACK|If true, log full error stacktrace, else just log error
+DB_HOST|The host name of the database server.
+DB_PORT|The port number the database server is listening on.
+DB_NAME|The database name.
+DB_USER|PostgreSQL™ user name to connect as.
+DB_PASSWORD|Password to be used if the server demands password authentication.
+DB_SEARCH_PATH|Schema Search Path
+ENCRYPT_KEY|Encryption Key
+
+> The same environment variables are used when running the web server, but are not mandatory. When running the web server, if you prefer, you can bypass environment variables and instead send command line flags (more about that later).
+
+#### Generate a new encryption key
+
+```shell
+$ mage -v newkey
+Running target: NewKey
+Key Ciphertext: [31f8cbffe80df0067fbfac4abf0bb76c51d44cb82d2556743e6bf1a5e25d4e06]
 ```
 
-and one function (`demo.create_movie`) used on create/insert:
+> Copy the key ciphertext between the brackets to your clipboard to use in option 1 or 2 below
 
-```sql
-create function demo.create_movie(p_id uuid, p_extl_id character varying, p_title character varying, p_rated character varying, p_released date, p_run_time integer, p_director character varying, p_writer character varying, p_create_client_id uuid, p_create_username character varying)
-    returns TABLE(o_create_timestamp timestamp without time zone, o_update_timestamp timestamp without time zone)
-    language plpgsql
-as
-$$
-DECLARE
-    v_dml_timestamp TIMESTAMP;
-    v_create_timestamp timestamp;
-    v_update_timestamp timestamp;
-BEGIN
+#### Option 1 - Set your environment independently
 
-    v_dml_timestamp := now() at time zone 'utc';
-
-    INSERT INTO demo.movie (movie_id,
-                            extl_id,
-                            title,
-                            rated,
-                            released,
-                            run_time,
-                            director,
-                            writer,
-                            create_username,
-                            create_timestamp,
-                            update_username,
-                            update_timestamp)
-    VALUES (p_id,
-            p_extl_id,
-            p_title,
-            p_rated,
-            p_released,
-            p_run_time,
-            p_director,
-            p_writer,
-            p_create_username,
-            v_dml_timestamp,
-            p_create_username,
-            v_dml_timestamp)
-    RETURNING create_timestamp, update_timestamp
-        into v_create_timestamp, v_update_timestamp;
-
-    o_create_timestamp := v_create_timestamp;
-    o_update_timestamp := v_update_timestamp;
-
-    RETURN NEXT;
-
-END;
-
-$$;
-
-alter function demo.create_movie(uuid, varchar, varchar, varchar, date, integer, varchar, varchar, uuid, varchar) owner to postgres;
-```
-
-### Program Execution
-
-TL;DR - just show me how to install and run the code. Fork or clone the code.
+As always, you can set your environment on your own through bash or whatever strategy you use for this, an example bash script should you choose:
 
 ```bash
-git clone https://github.com/gilcrest/go-api-basic.git
+#!/bin/bash
+
+# encryption key
+export ENCRYPT_KEY="31f8cbffe80df0067fbfac4abf0bb76c51d44cb82d2556743e6bf1a5e25d4e06"
+
+# server listen port
+export PORT="8080"
+
+# logger environment variables
+export LOG_LEVEL_MIN="trace"
+export LOG_LEVEL="debug"
+export LOG_ERROR_STACK="true"
+
+# Database Environment variables
+export DB_HOST="localhost"
+export DB_PORT="5432"
+export DB_NAME="dga_local"
+export DB_USER="demo_user"
+export DB_PASSWORD="REPLACE_ME"
+export DB_SEARCH_PATH="demo"
 ```
 
-To validate your installation and ensure you've got connectivity to the database, do the following:
+#### Option 2 - Set your environment through a Config File
 
-Build the code from the program root directory
+##### Generate new config file using CUE
 
-```bash
-go build -o server
+Another option is to use a JSON configuration file generated by [CUE](https://cuelang.org/) located at `./config/local.json`.
+
+In order to generate this file, edit the `./config/cue/local.cue` file. Paste and overwrite the new key from your clipboard into the `config: encryptionKey:` field of the file and update the `config: database:` fields (`host`, `port`, `name`, `user`, `password`, `searchPath`) as appropriate for your `PostgreSQL` installation.
+
+```cue
+package config
+
+config: #LocalConfig
+
+config: encryptionKey: "31f8cbffe80df0067fbfac4abf0bb76c51d44cb82d2556743e6bf1a5e25d4e06"
+
+config: httpServer: listenPort: 8080
+
+config: logger: minLogLevel:   "trace"
+config: logger: logLevel:      "debug"
+config: logger: logErrorStack: true
+
+config: database: host:       "localhost"
+config: database: port:       5432
+config: database: name:       "dga_local"
+config: database: user:       "demo_user"
+config: database: password:   "REPLACE_ME"
+config: database: searchPath: "demo"
 ```
 
-> This sends the output of `go build` to a binary file called `server` in the same directory.
+> Security Disclaimer: Config files make local development easier, however, putting any credentials (encryption keys, username and password, etc.) in a config file is a bad idea from a security perspective. At a minimum, you should have the `config/` directory added to your `.gitignore` file so these configs are not checked in. As this is a template repo, I have checked this all in for example purposes only. The data there is bogus. In an upcoming release, I will integrate with a secrets management platform like [GCP Secret Manager](https://cloud.google.com/secret-manager) or [HashiCorp Vault](https://learn.hashicorp.com/tutorials/vault/getting-started-intro?in=vault/getting-started) [Issue 91](https://github.com/gilcrest/diy-go-api/issues/91).
 
-#### Command Line Flags
+After modifying the above file, run the following from project root:
 
-When running the program binary, a number flags can be passed. The [ff](https://github.com/peterbourgon/ff) library from [Peter Bourgon](https://peter.bourgon.org) is used to parse the flags. If your preference is to set configuration with [environment variables](https://en.wikipedia.org/wiki/Environment_variable), that is possible as well. Flags take precedence, so if a flag is passed, that will be used. A PostgreSQL database connection is required. If there is no flag set, then the program checks for a matching environment variable. If neither are found, the flag's default value will be used and, depending on the flag, may result in a database connection error.
+```shell
+$ mage -v cueGenerateConfig local
+Running target: CueGenerateConfig
+exec: cue "vet" "./config/cue/schema.cue" "./config/cue/local.cue"
+exec: cue "fmt" "./config/cue/schema.cue" "./config/cue/local.cue"
+exec: cue "export" "./config/cue/schema.cue" "./config/cue/local.cue" "--force" "--out" "json" "--outfile" "./config/local.json"
+```
+
+`cueGenerateConfig` should produce a JSON config file at `./config/local.json` that looks similar to:
+
+```json
+{
+    "config": {
+        "httpServer": {
+            "listenPort": 8080
+        },
+        "logger": {
+            "minLogLevel": "trace",
+            "logLevel": "debug",
+            "logErrorStack": true
+        },
+        "encryptionKey": "31f8cbffe80df0067fbfac4abf0bb76c51d44cb82d2556743e6bf1a5e25d4e06",
+        "database": {
+            "host": "localhost",
+            "port": 5432,
+            "name": "dga_local",
+            "user": "demo_user",
+            "password": "REPLACE_ME",
+            "searchPath": "demo"
+        }
+    }
+}
+```
+
+> Setting the [schema search path](https://www.postgresql.org/docs/current/ddl-schemas.html#DDL-SCHEMAS-PATH) properly is critical as the objects in the migration scripts intentionally do not have qualified object names and will therefore use the search path when creating or dropping objects (in the case of the db down migration).
+
+### Step 4 - Database Initialization
+
+The following steps setup the database objects and initialize data needed for running the web server. As a convenience, database migration programs which create these objects and load initial data can be executed using [Mage](https://magefile.org/). To understand database migrations and how they are structured in this project, you can watch [this talk](https://youtu.be/w07butydI5Q) I gave to the [Boston Golang meetup group](https://www.meetup.com/bostongo/?_cookie-check=1Gx8ms5NN8GhlaLJ) in February 2022. The below examples assume you have already setup PostgreSQL and know what user, database and schema you want to install the objects.
+
+> If you want to create an isolated database and schema, you can find examples of doing that at `./scripts/db/db_init.sql`.
+
+#### Run the Database Up Migration
+
+Twelve database tables are created as part of the up migration.
+
+```shell
+$ mage -v dbup local
+Running target: DBUp
+exec: psql "-w" "-d" "postgresql://demo_user@localhost:5432/dga_local?options=-csearch_path%3Ddemo" "-c" "select current_database(), current_user, version()" "-f" "./scripts/db/migrations/up/001-app.sql" "-f" "./scripts/db/migrations/up/002-org_user.sql" "-f" "./scripts/db/migrations/up/003-permission.sql" "-f" "./scripts/db/migrations/up/004-person.sql" "-f" "./scripts/db/migrations/up/005-org_kind.sql" "-f" "./scripts/db/migrations/up/006-role.sql" "-f" "./scripts/db/migrations/up/007-movie.sql" "-f" "./scripts/db/migrations/up/008-app_api_key.sql" "-f" "./scripts/db/migrations/up/009-person_profile.sql" "-f" "./scripts/db/migrations/up/010-org.sql" "-f" "./scripts/db/migrations/up/011-role_permission.sql" "-f" "./scripts/db/migrations/up/012-role_user.sql"
+ current_database | current_user |                                                      version                                                      
+------------------+--------------+-------------------------------------------------------------------------------------------------------------------
+ dga_local        | demo_user    | PostgreSQL 14.2 on aarch64-apple-darwin20.6.0, compiled by Apple clang version 12.0.5 (clang-1205.0.22.9), 64-bit
+(1 row)
+
+CREATE TABLE
+COMMENT
+COMMENT
+COMMENT
+COMMENT
+COMMENT
+COMMENT
+COMMENT
+COMMENT
+COMMENT
+COMMENT
+COMMENT
+COMMENT
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+COMMENT
+COMMENT
+COMMENT
+...
+```
+
+> Note: At any time, you can drop all the database objects created as part of the up migration using using the down migration program: `mage -v dbdown local`
+
+#### Data Initialization (Genesis)
+
+There are a number of tables that require initialization of data to facilitate things like: authentication through role based access controls, tracking which applications/users are interacting with the system, etc. I have bundled this initialization into a Genesis service, which can be run only once per database. This can be run as a service, but for ease of use, there is a mage program for it as well.
+
+The `genesis` mage program uses a JSON configuration file generated by [CUE](https://cuelang.org/) located at `./config/genesis/request.json`.
+
+To generate this file, navigate to `./config/genesis/cue/input.cue` and update the user details you plan to authenticate with via Google Oauth2. If you wish, you can update the initial org and app details from the default values you'll find in the file as well:
+
+```cue
+package genesis
+
+// The "genesis" user - the first user to create the system and is
+// given the sysAdmin role (which has all permissions). This user is
+// added to the Principal org and the user initiated org created below.
+user: email:      "otto.maddox@gmail.com"
+user: first_name: "Otto"
+user: last_name:  "Maddox"
+
+// The first organization created which can actually transact
+// (e.g. is not the principal or test org)
+org: name:        "Movie Makers Unlimited"
+org: description: "An organization dedicated to creating movies in a demo app."
+org: kind:        "standard"
+
+// The initial app created along with the Organization created above
+org: app: name:        "Movie Makers App"
+org: app: description: "The first app dedicated to creating movies in a demo app."
+```
+
+Next, use mage to run the `cueGenerateGenesisConfig` program:
+
+```shell
+$ mage -v cueGenerateGenesisConfig
+Running target: CueGenerateGenesisConfig
+exec: cue "vet" "./config/genesis/cue/schema.cue" "./config/genesis/cue/auth.cue" "./config/genesis/cue/input.cue"
+exec: cue "fmt" "./config/genesis/cue/schema.cue" "./config/genesis/cue/auth.cue" "./config/genesis/cue/input.cue"
+exec: cue "export" "./config/genesis/cue/schema.cue" "./config/genesis/cue/auth.cue" "./config/genesis/cue/input.cue" "--force" "--out" "json" "--outfile" "./config/genesis/request.json"
+```
+
+This will generate `./config/genesis/request.json` similar to the below (the user details may be at the bottom of the file). This file also includes information about which permissions and roles to create as part of Genesis. Leave those as is.
+
+```json
+{
+    "user": {
+        "email": "otto.maddox@gmail.com",
+        "first_name": "Otto",
+        "last_name": "Maddox"
+    },
+    "org": {
+        "name": "Movie Makers Unlimited",
+        "description": "An organization dedicated to creating movies in a demo app.",
+        "kind": "standard",
+        "app": {
+            "name": "Movie Makers App",
+            "description": "The first app dedicated to creating movies in a demo app."
+        }
+    },
+    "permissions": [
+        {
+            "resource": "/api/v1/ping",
+            "operation": "GET",
+            "description": "allows for calling the ping service to determine if system is up and running",
+            "active": true
+        },
+        {
+            "resource": "/api/v1/logger",
+            "operation": "GET",
+            "description": "allows for reading the logger state",
+            "active": true
+        },
+        {
+            "resource": "/api/v1/logger",
+            "operation": "PUT",
+            "description": "allows for updating the logger state",
+            "active": true
+        },
+        {
+            "resource": "/api/v1/orgs",
+            "operation": "POST",
+...
+```
+
+Execute the `Genesis` mage program to initialize the database with dependent data:
+
+```shell
+$ mage -v genesis local
+Running target: Genesis
+{"level":"info","time":1654723891,"severity":"INFO","message":"minimum accepted logging level set to trace"}
+{"level":"info","time":1654723891,"severity":"INFO","message":"logging level set to debug"}
+{"level":"info","time":1654723891,"severity":"INFO","message":"log error stack global set to true"}
+{"level":"info","time":1654723891,"severity":"INFO","message":"sql database opened for localhost on port 5432"}
+{"level":"info","time":1654723891,"severity":"INFO","message":"sql database Ping returned successfully"}
+{"level":"info","time":1654723891,"severity":"INFO","message":"database version: PostgreSQL 14.2 on aarch64-apple-darwin20.6.0, compiled by Apple clang version 12.0.5 (clang-1205.0.22.9), 64-bit"}
+{"level":"info","time":1654723891,"severity":"INFO","message":"current database user: demo_user"}
+{"level":"info","time":1654723891,"severity":"INFO","message":"current database: dga_local"}
+{"level":"info","time":1654723891,"severity":"INFO","message":"current search_path: demo"}
+{
+  "principal": {
+    "org": {
+      "external_id": "HmiB9CmMpUU8hdVk",
+      "name": "Principal",
+      "kind_description": "genesis",
+      "description": "The Principal org represents the first organization created in the database and exists for the administrative purpose of creating other organizations, apps and users.",
+      "create_app_extl_id": "L-qGp1UquEgxKjn2",
+      "create_username": "otto.maddox@gmail.com",
+      "create_user_first_name": "Otto",
+      "create_user_last_name": "Maddox",
+      "create_date_time": "2022-06-08T17:31:31-04:00",
+      "update_app_extl_id": "L-qGp1UquEgxKjn2",
+      "update_username": "otto.maddox@gmail.com",
+      "update_user_first_name": "Otto",
+      "update_user_last_name": "Maddox",
+      "update_date_time": "2022-06-08T17:31:31-04:00"
+    },
+    "app": {
+      "external_id": "L-qGp1UquEgxKjn2",
+      "name": "Developer Dashboard",
+      "description": "App created as part of Genesis event. To be used solely for creating other apps, orgs and users.",
+      "create_app_extl_id": "L-qGp1UquEgxKjn2",
+      "create_username": "otto.maddox@gmail.com",
+      "create_user_first_name": "Otto",
+      "create_user_last_name": "Maddox",
+      "create_date_time": "2022-06-08T17:31:31-04:00",
+      "update_app_extl_id": "L-qGp1UquEgxKjn2",
+      "update_username": "otto.maddox@gmail.com",
+      "update_user_first_name": "Otto",
+      "update_user_last_name": "Maddox",
+      "update_date_time": "2022-06-08T17:31:31-04:00",
+      "api_keys": [
+        {
+          "key": "ZXo3BL-deFqP2VXLIYDAbZzF",
+          "deactivation_date": "2099-12-31 00:00:00 +0000 UTC"
+        }
+      ]
+    }
+  },
+  "test": {
+    "org": {
+...
+```
+
+When running the `Genesis` service through `mage`, the JSON response is sent to the terminal and also `./config/genesis/response.json` so you don't need to collect it now.
+
+Briefly, the data model is setup to enable a B2B multi-tenant SAAS, which is overkill for a simple CRUD app, but it's the model I wanted to create/learn and can serve only one tenant just fine. This initial data setup as part of Genesis creates a Principal organization, a Test organization and apps/users within those as well as sets up permissions and roles for access for the user input into the service. The principal org is created solely for the administrative purpose of creating other organizations, apps and users. The test organization is where all tests are run for test data isolation, etc.
+
+Most importantly, a user initiated organization and app is created based on your input in `./config/genesis/cue/input.cue`. The response details of this organization (located within the `userInitiated` node of the response are those which are needed to run the various Movie APIs (create movie, read movie, etc.)
+
+--------
+
+### Step 5 - Run Tests
+
+The project tests require that Genesis has been run successfully. If all went well in step 4, you can run the following command to validate:
+
+```shell
+$ mage -v testall false local
+Running target: TestAll
+exec: go "test" "./..."
+?       github.com/gilcrest/diy-go-api  [no test files]
+ok      github.com/gilcrest/diy-go-api/command  (cached)
+ok      github.com/gilcrest/diy-go-api/datastore        (cached)
+?       github.com/gilcrest/diy-go-api/datastore/appstore       [no test files]
+?       github.com/gilcrest/diy-go-api/datastore/authstore      [no test files]
+?       github.com/gilcrest/diy-go-api/datastore/datastoretest  [no test files]
+?       github.com/gilcrest/diy-go-api/datastore/moviestore     [no test files]
+?       github.com/gilcrest/diy-go-api/datastore/orgstore       [no test files]
+?       github.com/gilcrest/diy-go-api/datastore/personstore    [no test files]
+?       github.com/gilcrest/diy-go-api/datastore/pingstore      [no test files]
+ok      github.com/gilcrest/diy-go-api/datastore/userstore      (cached)
+?       github.com/gilcrest/diy-go-api/domain/app       [no test files]
+?       github.com/gilcrest/diy-go-api/domain/audit     [no test files]
+ok      github.com/gilcrest/diy-go-api/domain/auth      (cached)
+ok      github.com/gilcrest/diy-go-api/domain/errs      (cached)
+ok      github.com/gilcrest/diy-go-api/domain/logger    (cached)
+ok      github.com/gilcrest/diy-go-api/domain/movie     (cached)
+?       github.com/gilcrest/diy-go-api/domain/org       [no test files]
+?       github.com/gilcrest/diy-go-api/domain/person    [no test files]
+ok      github.com/gilcrest/diy-go-api/domain/random    (cached)
+?       github.com/gilcrest/diy-go-api/domain/random/randomtest [no test files]
+ok      github.com/gilcrest/diy-go-api/domain/secure    (cached)
+?       github.com/gilcrest/diy-go-api/domain/secure/random     [no test files]
+ok      github.com/gilcrest/diy-go-api/domain/user      (cached)
+?       github.com/gilcrest/diy-go-api/domain/user/usertest     [no test files]
+?       github.com/gilcrest/diy-go-api/gateway  [no test files]
+?       github.com/gilcrest/diy-go-api/gateway/authgateway      [no test files]
+?       github.com/gilcrest/diy-go-api/magefiles        [no test files]
+ok      github.com/gilcrest/diy-go-api/server   (cached)
+?       github.com/gilcrest/diy-go-api/server/driver    [no test files]
+ok      github.com/gilcrest/diy-go-api/service  (cached)
+```
+
+> Note: There are a number of packages without test files, but there is extensive testing as part of this project. More can and will be done, of course...
+
+### Step 6 - Run the Web Server
+
+There are three options for running the web server. When running the program, a number of flags can be passed instead of using the environment. The [ff](https://github.com/peterbourgon/ff) library from [Peter Bourgon](https://peter.bourgon.org) is used to parse the flags. If your preference is to set configuration with [environment variables](https://en.wikipedia.org/wiki/Environment_variable), that is possible as well. Flags take precedence, so if a flag is passed, that will be used. A PostgreSQL database connection is required. If there is no flag set, then the program checks for a matching environment variable. If neither are found, the flag's default value will be used and, depending on the flag, may result in a database connection error.
+
+For simplicity sake, the easiest option to start with is setting the environment and running the server with Mage:
+
+#### Option 1 - Run web server with config file and Mage
+
+You can run the webserver with Mage. As in all examples above, Mage will either use the current environment or set the environment using a config file depending on the environment parameter sent in.
+
+```shell
+$ mage -v run local
+Running target: Run
+exec: go "run" "main.go"
+{"level":"info","time":1655956480,"severity":"INFO","message":"minimum accepted logging level set to trace"}
+{"level":"info","time":1655956480,"severity":"INFO","message":"logging level set to debug"}
+{"level":"info","time":1655956480,"severity":"INFO","message":"log error stack global set to true"}
+{"level":"info","time":1655956480,"severity":"INFO","message":"sql database opened for localhost on port 5432"}
+{"level":"info","time":1655956480,"severity":"INFO","message":"sql database Ping returned successfully"}
+{"level":"info","time":1655956480,"severity":"INFO","message":"database version: PostgreSQL 14.4 on aarch64-apple-darwin20.6.0, compiled by Apple clang version 12.0.5 (clang-1205.0.22.9), 64-bit"}
+{"level":"info","time":1655956480,"severity":"INFO","message":"current database user: demo_user"}
+{"level":"info","time":1655956480,"severity":"INFO","message":"current database: dga_local"}
+{"level":"info","time":1655956480,"severity":"INFO","message":"current search_path: demo"}
+```
+
+#### Option 2 - Run web server using command line flags
+
+The below are the list of the command line flags that can be used to start the webserver (and their equivalent environment variable name for reference as well):
 
 | Flag Name       | Description | Environment Variable | Default |
 | --------------- | ----------- | -------------------- | ------- |
@@ -174,56 +470,42 @@ When running the program binary, a number flags can be passed. The [ff](https://
 | db-name         | The database name. | DB_NAME | |
 | db-user         | PostgreSQL™ user name to connect as. | DB_USER | |
 | db-password     | Password to be used if the server demands password authentication. | DB_PASSWORD | |
+| db-search-path  | Schema search path to be used when connecting. | DB_SEARCH_PATH | |
+| encrypt-key     | Encryption key to be used for all encrypted data. | ENCRYPT_KEY | |
 
-#### Environment Setup
-
-If you choose to use [environment variables](https://en.wikipedia.org/wiki/Environment_variable) instead of flags for connecting to the database, you can set these however you like (permanently in something like .`bash_profile` if on a mac, etc. - some notes [here](https://gist.github.com/gilcrest/d5981b873d1e2fc9646602eedd384ba6#environment-variables)), but my preferred way is to run a bash script to set environment variables temporarily for the current shell environment. I have included an example script file (`setlocalEnvVars.sh`) in the `/scripts/ddl` directory. The below statements assume you're running the command from the project root directory.
-
-In order to set the environment variables using this script, first, in the file, set the environment variable values to whatever is appropriate for your environment:
-
-##### Database Connection Environment Variables
+Starting the web server with command line flags looks like:
 
 ```bash
-export DB_NAME="go_api_basic"
-export DB_USER="postgres"
-export DB_PASSWORD=""
-export DB_HOST="localhost"
-export DB_PORT="5432"
+$ go run main.go -db-name=dga_local -db-user=demo_user -db-password=REPLACE_ME -db-search-path=demo -encrypt-key=31f8cbffe80df0067fbfac4abf0bb76c51d44cb82d2556743e6bf1a5e25d4e06
+{"level":"info","time":1656296193,"severity":"INFO","message":"minimum accepted logging level set to trace"}
+{"level":"info","time":1656296193,"severity":"INFO","message":"logging level set to debug"}
+{"level":"info","time":1656296193,"severity":"INFO","message":"log error stack global set to true"}
+{"level":"info","time":1656296193,"severity":"INFO","message":"sql database opened for localhost on port 5432"}
+{"level":"info","time":1656296193,"severity":"INFO","message":"sql database Ping returned successfully"}
+{"level":"info","time":1656296193,"severity":"INFO","message":"database version: PostgreSQL 14.4 on aarch64-apple-darwin20.6.0, compiled by Apple clang version 12.0.5 (clang-1205.0.22.9), 64-bit"}
+{"level":"info","time":1656296193,"severity":"INFO","message":"current database user: demo_user"}
+{"level":"info","time":1656296193,"severity":"INFO","message":"current database: dga_local"}
+{"level":"info","time":1656296193,"severity":"INFO","message":"current search_path: demo"}
 ```
 
-Next, you'll need to set the script to executable
+#### Option 3 - Run web server using independently set environment
+
+If you're not using mage or command line flags and have set the appropriate environment variables properly, you can run the web server simply like so:
 
 ```bash
-chmod +x ./scripts/setlocalEnvVars.sh
+$ go run main.go
+{"level":"info","time":1656296765,"severity":"INFO","message":"minimum accepted logging level set to trace"}
+{"level":"info","time":1656296765,"severity":"INFO","message":"logging level set to debug"}
+{"level":"info","time":1656296765,"severity":"INFO","message":"log error stack global set to true"}
+{"level":"info","time":1656296765,"severity":"INFO","message":"sql database opened for localhost on port 5432"}
+{"level":"info","time":1656296765,"severity":"INFO","message":"sql database Ping returned successfully"}
+{"level":"info","time":1656296765,"severity":"INFO","message":"database version: PostgreSQL 14.4 on aarch64-apple-darwin20.6.0, compiled by Apple clang version 12.0.5 (clang-1205.0.22.9), 64-bit"}
+{"level":"info","time":1656296765,"severity":"INFO","message":"current database user: gilcrest"}
+{"level":"info","time":1656296765,"severity":"INFO","message":"current database: fide_local"}
+{"level":"info","time":1656296765,"severity":"INFO","message":"current search_path: fide"}
 ```
 
-Finally, execute the file in the current shell environment:
-
-```bash
-source ./scripts/ddl/setlocalEnvVars.sh
-```
-
-#### Run the Binary
-
-```bash
-./server -log-level=debug -db-host=localhost -db-port=5432 -db-name=go_api_basic -db-user=postgres -db-password=fakePassword
-```
-
-Upon running, you should see something similar to the following:
-
-```bash
-$ ./server -log-level=debug
-{"level":"info","time":1618260160,"severity":"INFO","message":"minimum accepted logging level set to trace"}
-{"level":"info","time":1618260160,"severity":"INFO","message":"logging level set to debug"}
-{"level":"info","time":1618260160,"severity":"INFO","message":"log error stack global set to true"}
-{"level":"info","time":1618260160,"severity":"INFO","message":"sql database opened for localhost on port 5432"}
-{"level":"info","time":1618260160,"severity":"INFO","message":"sql database Ping returned successfully"}
-{"level":"info","time":1618260160,"severity":"INFO","message":"database version: PostgreSQL 12.6 on x86_64-apple-darwin16.7.0, compiled by Apple LLVM version 8.1.0 (clang-802.0.42), 64-bit"}
-{"level":"info","time":1618260160,"severity":"INFO","message":"current database user: postgres"}
-{"level":"info","time":1618260160,"severity":"INFO","message":"current database: go_api_basic"}
-```
-
-##### Ping
+##### Step 7 - Send Requests
 
 With the server up and running, the easiest service to interact with is the `ping` service. This service is a simple health check that returns a series of flags denoting health of the system (queue depths, database up boolean, etc.). For right now, the only thing it checks is if the database is up and pingable. I have left this service unauthenticated so there's at least one service that you can get to without having to have an authentication token, but in actuality, I would typically have every service behind a security token.
 
@@ -244,20 +526,6 @@ The response looks like:
     }
 }
 ```
-
-### Authentication and Authorization
-
-The remainder of requests require authentication. I have chosen to use [Google's Oauth2 solution](https://developers.google.com/identity/protocols/oauth2/web-server) for these APIs. To use this, you need to setup a Client ID and Client Secret and obtain an access token. The instructions [here](https://developers.google.com/identity/protocols/oauth2) are great.
-
-After Oauth2 setup with Google, I recommend the [Google Oauth2 Playground](https://developers.google.com/oauthplayground/) to obtain fresh access tokens for testing.
-
-Once a user has authenticated through this flow, all calls to services (other than `ping`) require that the Google access token be sent as a `Bearer` token in the `Authorization` header.
-
-- If there is no token present, an HTTP 401 (Unauthorized) response will be sent and the response body will be empty.
-- If a token is properly sent, the Google API is used to validate the token. If the token is invalid, an HTTP 401 (Unauthorized) response will be sent and the response body will be empty.
-- If the token is valid, Google will respond with information about the user. The user's email will be used as their username as well as for authorization that it has been granted access to the API. If the user is not authorized to use the API, an HTTP 403 (Forbidden) response will be sent and the response body will be empty. The authorization is currently hard-coded to allow for one email. Add your email at `/domain/auth/auth.go` in the `Authorize` method of the `Authorizer` struct for testing. This is definitely not a production-ready way to do authorization. I will eventually switch to some [ACL](https://en.wikipedia.org/wiki/Access-control_list) or [RBAC](https://en.wikipedia.org/wiki/Role-based_access_control) library when I have time to research those, but for now, this works.
-
-So long as you've got a valid token and are properly setup in the authorization function, you can then execute all four operations (create, read, update, delete) using cURL.
 
 ### cURL Commands to Call Services
 
@@ -577,7 +845,7 @@ There is logic within `errs.HTTPErrorResponse` to return a different response bo
 }
 ```
 
----
+--------
 
 #### Unauthenticated Errors
 
@@ -624,7 +892,7 @@ Date: Wed, 09 Jun 2021 19:46:07 GMT
 Content-Length: 0
 ```
 
----
+--------
 
 #### Unauthorized Errors
 
@@ -664,7 +932,7 @@ When starting `go-api-basic`, there are several flags which setup the logger:
 | log-level-min   | sets the minimum accepted logging level | LOG_LEVEL_MIN | debug |
 | log-error-stack | If true, log full error stacktrace, else just log error | LOG_ERROR_STACK | false |
 
----
+--------
 
 > As mentioned [above](https://github.com/gilcrest/go-api-basic#command-line-flags), `go-api-basic` uses the [ff](https://github.com/peterbourgon/ff) library from [Peter Bourgon](https://peter.bourgon.org), which allows for using either flags or environment variables. Going forward, we'll assume you've chosen flags.
 
@@ -834,6 +1102,8 @@ and the response will look something like:
 
 The `PUT` response is the same as the `GET` response, but with updated values. In the examples above, I used a scenario where the logger state started with the global logging level (`global_log_level`) at error and error stack tracing (`log_error_stack`) set to false. The `PUT` request then updates the logger state, setting the global logging level to `debug` and the error stack tracing. You might do something like this if you are debugging an issue and need to see debug logs or error stacks to help with that.
 
+--------
+
 ## 7/13/2021 - README under construction
 
-Logging completed. TBD next.
+v0.47.0 - 6/26/2022 - I have made a lot of changes and have been working through the README. Everything in this doc is up to date, but I see a few bugs I will quickly squash in the next day or two.
