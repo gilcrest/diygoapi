@@ -70,7 +70,40 @@ _appsV1Post: #Permission & {
 	active:      true
 }
 
-//   {PathTemplate: pathPrefix + registerV1PathRoot, HTTPMethods: []string{http.MethodPost}},
+_moviesV1Post: #Permission & {
+	resource:    "/api/v1/movies"
+	operation:   "POST"
+	description: "allows for creating a movie"
+	active:      true
+}
+
+_moviesV1UpdateByExtlID: #Permission & {
+	resource:    "/api/v1/movies/{extlID}"
+	operation:   "PUT"
+	description: "allows for updating a movie"
+	active:      true
+}
+
+_moviesV1DeleteByExtlID: #Permission & {
+	resource:    "/api/v1/movies/{extlID}"
+	operation:   "DELETE"
+	description: "allows for deleting a movie"
+	active:      true
+}
+
+_moviesV1FindByExtlID: #Permission & {
+	resource:    "/api/v1/movies/{extlID}"
+	operation:   "GET"
+	description: "allows for finding a unique movie"
+	active:      true
+}
+
+_moviesV1FindAll: #Permission & {
+	resource:    "/api/v1/movies"
+	operation:   "GET"
+	description: "allows for finding all movies"
+	active:      true
+}
 
 _permissionsV1Post: #Permission & {
 	resource:    "/api/v1/permissions"
@@ -90,5 +123,6 @@ _sysAdmin: #Role & {
 	role_cd:          "sysAdmin"
 	role_description: "System administrator role."
 	active:           true
-	permissions: [_pingV1Get, _loggerV1Get, _loggerV1Put, _orgsV1Post, _orgsV1Put, _orgsV1Delete, _orgsV1Get, _orgsV1GetByExtlID, _appsV1Post, _permissionsV1Post, _permissionsV1Get]
+	permissions: [_pingV1Get, _loggerV1Get, _loggerV1Put, _orgsV1Post, _orgsV1Put, _orgsV1Delete, _orgsV1Get, _orgsV1GetByExtlID, _appsV1Post,
+		_permissionsV1Post, _permissionsV1Get, _moviesV1Post, _moviesV1UpdateByExtlID, _moviesV1DeleteByExtlID, _moviesV1FindByExtlID, _moviesV1FindAll]
 }

@@ -79,6 +79,36 @@
             "operation": "GET",
             "description": "allows for finding all permissions",
             "active": true
+        },
+        {
+            "resource": "/api/v1/movies",
+            "operation": "POST",
+            "description": "allows for creating a movie",
+            "active": true
+        },
+        {
+            "resource": "/api/v1/movies/{extlID}",
+            "operation": "PUT",
+            "description": "allows for updating a movie",
+            "active": true
+        },
+        {
+            "resource": "/api/v1/movies/{extlID}",
+            "operation": "DELETE",
+            "description": "allows for deleting a movie",
+            "active": true
+        },
+        {
+            "resource": "/api/v1/movies/{extlID}",
+            "operation": "GET",
+            "description": "allows for finding a unique movie",
+            "active": true
+        },
+        {
+            "resource": "/api/v1/movies",
+            "operation": "GET",
+            "description": "allows for finding all movies",
+            "active": true
         }
     ],
     "roles": [
@@ -151,6 +181,36 @@
                     "resource": "/api/v1/permissions",
                     "operation": "GET",
                     "description": "allows for finding all permissions",
+                    "active": true
+                },
+                {
+                    "resource": "/api/v1/movies",
+                    "operation": "POST",
+                    "description": "allows for creating a movie",
+                    "active": true
+                },
+                {
+                    "resource": "/api/v1/movies/{extlID}",
+                    "operation": "PUT",
+                    "description": "allows for updating a movie",
+                    "active": true
+                },
+                {
+                    "resource": "/api/v1/movies/{extlID}",
+                    "operation": "DELETE",
+                    "description": "allows for deleting a movie",
+                    "active": true
+                },
+                {
+                    "resource": "/api/v1/movies/{extlID}",
+                    "operation": "GET",
+                    "description": "allows for finding a unique movie",
+                    "active": true
+                },
+                {
+                    "resource": "/api/v1/movies",
+                    "operation": "GET",
+                    "description": "allows for finding all movies",
                     "active": true
                 }
             ]
