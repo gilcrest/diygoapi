@@ -11,7 +11,7 @@ const (
 	appJSONContentTypeHeaderVal string = "application/json"
 	// Default Realm used as part of the WWW-Authenticate response
 	// header when returning a 401 Unauthorized response
-	defaultRealm string = "go-api-basic"
+	defaultRealm string = "diy-go-api"
 	// extlID is used to represent an external id. This is a common
 	// enough pattern in these services, that I've chosen to make it
 	// a constant
@@ -190,9 +190,6 @@ func (s *Server) registerRoutes() {
 	// Match only GET requests at /api/v1/ping
 	s.router.Handle(pingV1PathRoot,
 		s.loggerChain().
-			Append(s.appHandler).
-			Append(s.userHandler).
-			Append(s.authorizeUserHandler).
 			Append(s.jsonContentTypeResponseHandler).
 			ThenFunc(s.handlePing)).
 		Methods(http.MethodGet)

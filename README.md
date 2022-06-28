@@ -627,11 +627,11 @@ All errors should return a `Request-Id` response header with a unique request id
 
 #### Error Implementation
 
-All errors should be raised using custom errors from the [domain/errs](https://github.com/gilcrest/go-api-basic/tree/main/domain/errs) package. The three custom errors correspond directly to the requirements above.
+All errors should be raised using custom errors from the [domain/errs](https://github.com/gilcrest/diy-go-api/tree/main/domain/errs) package. The three custom errors correspond directly to the requirements above.
 
 ##### Typical Errors
 
-Typical errors raised throughout `go-api-basic` are the custom `errs.Error`, which look like:
+Typical errors raised throughout `diy-go-api` are the custom `errs.Error`, which look like:
 
  ```go
 type Error struct {
@@ -649,7 +649,7 @@ type Error struct {
 }
 ```
 
-This custom error type is raised using the `E` function from the [domain/errs](https://github.com/gilcrest/go-api-basic/tree/main/domain/errs) package. `errs.E` is taken from Rob Pike's [upspin errors package](https://github.com/upspin/upspin/tree/master/errors) (but has been changed based on my requirements). The `errs.E` function call is [variadic](https://en.wikipedia.org/wiki/Variadic) and can take several different types to form the custom `errs.Error` struct.
+This custom error type is raised using the `E` function from the [domain/errs](https://github.com/gilcrest/diy-go-api/tree/main/domain/errs) package. `errs.E` is taken from Rob Pike's [upspin errors package](https://github.com/upspin/upspin/tree/master/errors) (but has been changed based on my requirements). The `errs.E` function call is [variadic](https://en.wikipedia.org/wiki/Variadic) and can take several different types to form the custom `errs.Error` struct.
 
 Here is a simple example of creating an `error` using `errs.E`:
 
@@ -749,7 +749,7 @@ You can add additional context fields (`errs.Code`, `errs.Parameter`, `errs.Kind
 
 ##### Handler Flow
 
-At the top of the program flow for each service is the app service handler (for example, [Server.handleMovieCreate](https://github.com/gilcrest/go-api-basic/blob/main/app/handlers.go)). In this handler, any error returned from any function or method is sent through the `errs.HTTPErrorResponse` function along with the `http.ResponseWriter` and a `zerolog.Logger`.
+At the top of the program flow for each service is the app service handler (for example, [Server.handleMovieCreate](https://github.com/gilcrest/diy-go-api/blob/main/app/handlers.go)). In this handler, any error returned from any function or method is sent through the `errs.HTTPErrorResponse` function along with the `http.ResponseWriter` and a `zerolog.Logger`.
 
 For example:
 
@@ -876,22 +876,22 @@ func NewUnauthenticatedError(realm string, err error) *UnauthenticatedError {
 
 ##### Unauthenticated Error Flow
 
-The `errs.Unauthenticated` error should only be raised at points of authentication as part of a middleware handler. I will get into application flow in detail later, but authentication for `go-api-basic` happens in middleware handlers prior to calling the app handler for the given route.
+The `errs.Unauthenticated` error should only be raised at points of authentication as part of a middleware handler. I will get into application flow in detail later, but authentication for `diy-go-api` happens in middleware handlers prior to calling the app handler for the given route.
 
-- The `WWW-Authenticate` *realm* is set to the request context using the `defaultRealmHandler` middleware in the [app package](https://github.com/gilcrest/go-api-basic/blob/main/app/middleware.go) prior to attempting authentication.
+- The `WWW-Authenticate` *realm* is set to the request context using the `defaultRealmHandler` middleware in the [app package](https://github.com/gilcrest/diy-go-api/blob/main/app/middleware.go) prior to attempting authentication.
 - Next, the Oauth2 access token is retrieved from the `Authorization` http header using the `accessTokenHandler` middleware. There are several access token validations in this middleware, if any are not successful, the `errs.Unauthenticated` error is returned using the realm set to the request context.
 - Finally, if the access token is successfully retrieved, it is then converted to a `User` via the `GoogleAccessTokenConverter.Convert` method in the `gateway/authgateway` package. This method sends an outbound request to Google using their API; if any errors are returned, an `errs.Unauthenticated` error is returned.
 
-> In general, I do not like to use `context.Context`, however, it is used in `go-api-basic` to pass values between middlewares. The `WWW-Authenticate` *realm*, the Oauth2 access token and the calling user after authentication, all of which are `request-scoped` values, are all set to the request `context.Context`.
+> In general, I do not like to use `context.Context`, however, it is used in `diy-go-api` to pass values between middlewares. The `WWW-Authenticate` *realm*, the Oauth2 access token and the calling user after authentication, all of which are `request-scoped` values, are all set to the request `context.Context`.
 
 ##### Unauthenticated Error Response
 
-Per requirements, `go-api-basic` does not return a response body when returning an **Unauthenticated** error. The error response from [cURL](https://curl.se/) looks like the following:
+Per requirements, `diy-go-api` does not return a response body when returning an **Unauthenticated** error. The error response from [cURL](https://curl.se/) looks like the following:
 
 ```bash
 HTTP/1.1 401 Unauthorized
 Request-Id: c30hkvua0brkj8qhk3e0
-Www-Authenticate: Bearer realm="go-api-basic"
+Www-Authenticate: Bearer realm="diy-go-api"
 Date: Wed, 09 Jun 2021 19:46:07 GMT
 Content-Length: 0
 ```
@@ -911,9 +911,9 @@ The `errs.NewUnauthorizedError` function initializes an `UnauthorizedError`.
 
 ##### Unauthorized Error Flow
 
-The `errs.Unauthorized` error is raised when there is a permission issue for a user when attempting to access a resource. Currently, `go-api-basic`'s placeholder authorization implementation `Authorizer.Authorize` in the [domain/auth](https://github.com/gilcrest/go-api-basic/blob/main/domain/auth/auth.go) package performs rudimentary checks that a user has access to a resource. If the user does not have access, the `errs.Unauthorized` error is returned.
+The `errs.Unauthorized` error is raised when there is a permission issue for a user when attempting to access a resource. Currently, `diy-go-api`'s placeholder authorization implementation `Authorizer.Authorize` in the [domain/auth](https://github.com/gilcrest/diy-go-api/blob/main/domain/auth/auth.go) package performs rudimentary checks that a user has access to a resource. If the user does not have access, the `errs.Unauthorized` error is returned.
 
-Per requirements, `go-api-basic` does not return a response body when returning an **Unauthorized** error. The error response from [cURL](https://curl.se/) looks like the following:
+Per requirements, `diy-go-api` does not return a response body when returning an **Unauthorized** error. The error response from [cURL](https://curl.se/) looks like the following:
 
 ```bash
 HTTP/1.1 403 Forbidden
@@ -924,11 +924,11 @@ Content-Length: 0
 
 ### Logging
 
-`go-api-basic` uses the [zerolog](https://github.com/rs/zerolog) library from [Olivier Poitrey](https://github.com/rs). The mechanics for using `zerolog` are straightforward and are well documented in the library's [README](https://github.com/rs/zerolog#readme). `zerolog` takes an `io.Writer` as input to create a new logger; for simplicity in `go-api-basic`, I use `os.Stdout`.
+`diy-go-api` uses the [zerolog](https://github.com/rs/zerolog) library from [Olivier Poitrey](https://github.com/rs). The mechanics for using `zerolog` are straightforward and are well documented in the library's [README](https://github.com/rs/zerolog#readme). `zerolog` takes an `io.Writer` as input to create a new logger; for simplicity in `diy-go-api`, I use `os.Stdout`.
 
 #### Setting Logger State on Startup
 
-When starting `go-api-basic`, there are several flags which setup the logger:
+When starting `diy-go-api`, there are several flags which setup the logger:
 
 | Flag Name       | Description | Environment Variable | Default |
 | --------------- | ----------- | -------------------- | ------- |
@@ -938,7 +938,7 @@ When starting `go-api-basic`, there are several flags which setup the logger:
 
 --------
 
-> As mentioned [above](https://github.com/gilcrest/go-api-basic#command-line-flags), `go-api-basic` uses the [ff](https://github.com/peterbourgon/ff) library from [Peter Bourgon](https://peter.bourgon.org), which allows for using either flags or environment variables. Going forward, we'll assume you've chosen flags.
+> As mentioned [above](https://github.com/gilcrest/diy-go-api#command-line-flags), `diy-go-api` uses the [ff](https://github.com/peterbourgon/ff) library from [Peter Bourgon](https://peter.bourgon.org), which allows for using either flags or environment variables. Going forward, we'll assume you've chosen flags.
 
 The `log-level` flag sets the Global logging level for your `zerolog.Logger`.
 
@@ -954,7 +954,7 @@ The `log-level` flag sets the Global logging level for your `zerolog.Logger`.
 
 The `log-level-min` flag sets the minimum accepted logging level, which means, for example, if you set the minimum level to error, the only logs that will be sent to your chosen output will be those that are greater than or equal to error (`error`, `fatal` and `panic`).
 
-The `log-error-stack` boolean flag tells whether to log stack traces for each error. If `true`, the `zerolog.ErrorStackMarshaler` will be set to `pkgerrors.MarshalStack` which means, for errors raised using the [github.com/pkg/errors](https://github.com/pkg/errors) package, the error stack trace will be captured and printed along with the log. All errors raised in `go-api-basic` are raised using `github.com/pkg/errors`.
+The `log-error-stack` boolean flag tells whether to log stack traces for each error. If `true`, the `zerolog.ErrorStackMarshaler` will be set to `pkgerrors.MarshalStack` which means, for errors raised using the [github.com/pkg/errors](https://github.com/pkg/errors) package, the error stack trace will be captured and printed along with the log. All errors raised in `diy-go-api` are raised using `github.com/pkg/errors`.
 
 After parsing the command line flags, `zerolog.Logger` is initialized in `main.go`
 
@@ -1050,7 +1050,7 @@ All error logs will have the same request metadata, including `request_id`. The 
     "request_id": "c3nppj6a0brt1dho9e2g",
     "error": "googleapi: Error 401: Request is missing required authentication credential. Expected OAuth 2 access token, login cookie or other valid authentication credential. See https://developers.google.com/identity/sign-in/web/devconsole-project., unauthorized",
     "http_statuscode": 401,
-    "realm": "go-api-basic",
+    "realm": "diy-go-api",
     "time": 1626315981,
     "severity": "ERROR",
     "message": "Unauthenticated Request"
