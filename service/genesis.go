@@ -151,8 +151,8 @@ func (s GenesisService) Seed(ctx context.Context, r *GenesisRequest) (gr Genesis
 	}
 
 	// seed User Initiated org data.
-	var uiOrg OrgResponse
-	uiOrg, err = s.seedUserInitiatedData(ctx, tx, sgrp, r)
+	var uirp seedUserInitiatedDataReturnParams
+	uirp, err = s.seedUserInitiatedData(ctx, tx, sgrp, r)
 	if err != nil {
 		return gr, err
 	}
@@ -164,9 +164,13 @@ func (s GenesisService) Seed(ctx context.Context, r *GenesisRequest) (gr Genesis
 	}
 
 	// seed Roles
-	err = seedRoles(ctx, tx, r, strp.testUser, sgrp.audit)
-	if err != nil {
-		return gr, err
+	for _, crr := range r.Roles {
+		// add 3 users created as part of Genesis to the roles created
+		crr.UserExternals = append(crr.UserExternals, sgrp.audit.User.ExternalID.String(), strp.testUser.ExternalID.String(), uirp.SeedUser.ExternalID.String())
+		_, err = createRoleTx(ctx, tx, &crr, sgrp.audit)
+		if err != nil {
+			return gr, err
+		}
 	}
 
 	// commit db txn using pgxpool
@@ -184,7 +188,7 @@ func (s GenesisService) Seed(ctx context.Context, r *GenesisRequest) (gr Genesis
 	response := GenesisResponse{
 		Principal:     pOrg,
 		Test:          tOrg,
-		UserInitiated: &uiOrg,
+		UserInitiated: &uirp.OrgResponse,
 	}
 
 	return response, nil
@@ -504,7 +508,12 @@ func (s GenesisService) seedTest(ctx context.Context, tx pgx.Tx, sgrp seedGenesi
 	return strp, nil
 }
 
-func (s GenesisService) seedUserInitiatedData(ctx context.Context, tx pgx.Tx, sgrp seedGenesisReturnParams, r *GenesisRequest) (OrgResponse, error) {
+type seedUserInitiatedDataReturnParams struct {
+	OrgResponse OrgResponse
+	SeedUser    user.User
+}
+
+func (s GenesisService) seedUserInitiatedData(ctx context.Context, tx pgx.Tx, sgrp seedGenesisReturnParams, r *GenesisRequest) (seedUserInitiatedDataReturnParams, error) {
 	var err error
 
 	// create Org
@@ -529,7 +538,7 @@ func (s GenesisService) seedUserInitiatedData(ctx context.Context, tx pgx.Tx, sg
 	keyDeactivation := time.Date(2099, 12, 31, 0, 0, 0, 0, time.UTC)
 	err = a.AddNewKey(s.RandomStringGenerator, s.EncryptionKey, keyDeactivation)
 	if err != nil {
-		return OrgResponse{}, errs.E(errs.Internal, err)
+		return seedUserInitiatedDataReturnParams{}, errs.E(errs.Internal, err)
 	}
 
 	// initialize Genesis user from request data
@@ -554,7 +563,7 @@ func (s GenesisService) seedUserInitiatedData(ctx context.Context, tx pgx.Tx, sg
 	// write the Org to the database
 	err = createOrgTx(ctx, tx, orgAudit{Org: o, SimpleAudit: sa})
 	if err != nil {
-		return OrgResponse{}, err
+		return seedUserInitiatedDataReturnParams{}, err
 	}
 
 	createAppParams := appstore.CreateAppParams{
@@ -575,11 +584,11 @@ func (s GenesisService) seedUserInitiatedData(ctx context.Context, tx pgx.Tx, sg
 	var rowsAffected int64
 	rowsAffected, err = appstore.New(tx).CreateApp(ctx, createAppParams)
 	if err != nil {
-		return OrgResponse{}, errs.E(errs.Database, err)
+		return seedUserInitiatedDataReturnParams{}, errs.E(errs.Database, err)
 	}
 
 	if rowsAffected != 1 {
-		return OrgResponse{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
+		return seedUserInitiatedDataReturnParams{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
 	}
 
 	for _, key := range a.APIKeys {
@@ -600,26 +609,29 @@ func (s GenesisService) seedUserInitiatedData(ctx context.Context, tx pgx.Tx, sg
 		var apiKeyRowsAffected int64
 		apiKeyRowsAffected, err = appstore.New(tx).CreateAppAPIKey(ctx, createAppAPIKeyParams)
 		if err != nil {
-			return OrgResponse{}, errs.E(errs.Database, err)
+			return seedUserInitiatedDataReturnParams{}, errs.E(errs.Database, err)
 		}
 
 		if apiKeyRowsAffected != 1 {
-			return OrgResponse{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", apiKeyRowsAffected))
+			return seedUserInitiatedDataReturnParams{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", apiKeyRowsAffected))
 		}
 	}
 
 	// write the User to the database
 	err = createUserTx(ctx, tx, gUser, sgrp.audit)
 	if err != nil {
-		return OrgResponse{}, err
+		return seedUserInitiatedDataReturnParams{}, err
 	}
 
 	oa := orgAudit{Org: o, SimpleAudit: sa}
 	aa := appAudit{App: a, SimpleAudit: sa}
 
-	response := newOrgResponse(oa, aa)
+	rp := seedUserInitiatedDataReturnParams{
+		OrgResponse: newOrgResponse(oa, aa),
+		SeedUser:    gUser,
+	}
 
-	return response, nil
+	return rp, nil
 }
 
 func genesisHasOccurred(ctx context.Context, dbtx orgstore.DBTX) (err error) {
@@ -674,18 +686,6 @@ func (s GenesisService) ReadConfig() (gr GenesisResponse, err error) {
 func seedPermissions(ctx context.Context, tx pgx.Tx, r *GenesisRequest, adt audit.Audit) (err error) {
 	for _, p := range r.Permissions {
 		_, err = createPermissionTx(ctx, tx, &p, adt)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func seedRoles(ctx context.Context, tx pgx.Tx, r *GenesisRequest, testUser user.User, genesisAudit audit.Audit) (err error) {
-	for _, crr := range r.Roles {
-		crr.UserExternals = append(crr.UserExternals, testUser.ExternalID.String(), genesisAudit.User.ExternalID.String())
-		_, err = createRoleTx(ctx, tx, &crr, genesisAudit)
 		if err != nil {
 			return err
 		}
