@@ -1125,4 +1125,4 @@ The `PUT` response is the same as the `GET` response, but with updated values. I
 
 ## README under construction
 
-v0.47.2 - 6/28/2022 - I have made a lot of changes and have been working through the README. Everything in this doc is up to date, but I see a few bugs in the cURL examples - I will quickly squash in the next day or two.
+v0.47.3 - 6/28/2022 - I have made a lot of changes and have been working through the README. Everything in this doc is up to date. Working through adding more detail to the Project Walkthrough sections as well as a quick Intro video to take people through the setup steps.
