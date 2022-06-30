@@ -75,6 +75,7 @@ func newMovieResponse(ma movieAudit) MovieResponse {
 		UpdateUsername:      ma.SimpleAudit.Last.User.Username,
 		UpdateUserFirstName: ma.SimpleAudit.Last.User.Profile.FirstName,
 		UpdateUserLastName:  ma.SimpleAudit.Last.User.Profile.LastName,
+		UpdateDateTime:      ma.SimpleAudit.Last.Moment.Format(time.RFC3339),
 	}
 }
 
