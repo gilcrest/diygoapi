@@ -65,27 +65,27 @@ Once a user has authenticated through this flow, all calls to services require t
 
 All Mage programs in this project which take an environment (env) parameter (e.g., `func DBUp(env string)`), must have certain environment variables set. These environment variables can be set independently [option 1](#option-1---set-your-environment-independently) or based on a configuration file [option 2](#option-2---set-your-environment-through-a-config-file). Depending on which environment method you choose, the values to pass to the env parameter when running Mage programs in this project are as follows:
 
-| env string      | File Path   |Description |
-| --------------- | ----------- | ---------- |
-| current         | N/A         | Uses the current session environment. Environment will not be overriden from a config file |
-| local           | ./config/local.json | Uses the `local.json` config file to set the environment |
-| staging         | ./config/staging.json | Uses the `staging.json` config file to set the environment in [Google Cloud Run](https://cloud.google.com/run) |
+| env string | File Path             | Description                                                                                                    |
+|------------|-----------------------|----------------------------------------------------------------------------------------------------------------|
+| current    | N/A                   | Uses the current session environment. Environment will not be overriden from a config file                     |
+| local      | ./config/local.json   | Uses the `local.json` config file to set the environment                                                       |
+| staging    | ./config/staging.json | Uses the `staging.json` config file to set the environment in [Google Cloud Run](https://cloud.google.com/run) |
 
 The base environment variables to be set are:
 
-| Environment Variable | Description |
-| --------------- | ----------- |
-PORT|Port the server will listen on
-LOG_LEVEL|zerolog logging level (debug, info, etc.)
-LOG_LEVEL_MIN|sets the minimum accepted logging level
-LOG_ERROR_STACK|If true, log full error stacktrace, else just log error
-DB_HOST|The host name of the database server.
-DB_PORT|The port number the database server is listening on.
-DB_NAME|The database name.
-DB_USER|PostgreSQL™ user name to connect as.
-DB_PASSWORD|Password to be used if the server demands password authentication.
-DB_SEARCH_PATH|Schema Search Path
-ENCRYPT_KEY|Encryption Key
+| Environment Variable | Description                                                        |
+|----------------------|--------------------------------------------------------------------|
+| PORT                 | Port the server will listen on                                     |
+| LOG_LEVEL            | zerolog logging level (debug, info, etc.)                          |
+| LOG_LEVEL_MIN        | sets the minimum accepted logging level                            |
+| LOG_ERROR_STACK      | If true, log full error stacktrace, else just log error            |
+| DB_HOST              | The host name of the database server.                              |
+| DB_PORT              | The port number the database server is listening on.               |
+| DB_NAME              | The database name.                                                 |
+| DB_USER              | PostgreSQL™ user name to connect as.                               |
+| DB_PASSWORD          | Password to be used if the server demands password authentication. |
+| DB_SEARCH_PATH       | Schema Search Path                                                 |
+| ENCRYPT_KEY          | Encryption Key                                                     |
 
 > The same environment variables are used when running the web server, but are not mandatory. When running the web server, if you prefer, you can bypass environment variables and instead send command line flags (more about that later).
 
@@ -436,7 +436,7 @@ ok      github.com/gilcrest/diy-go-api/service  (cached)
 
 There are three options for running the web server. When running the program, a number of flags can be passed instead of using the environment. The [ff](https://github.com/peterbourgon/ff) library from [Peter Bourgon](https://peter.bourgon.org) is used to parse the flags. If your preference is to set configuration with [environment variables](https://en.wikipedia.org/wiki/Environment_variable), that is possible as well. Flags take precedence, so if a flag is passed, that will be used. A PostgreSQL database connection is required. If there is no flag set, then the program checks for a matching environment variable. If neither are found, the flag's default value will be used and, depending on the flag, may result in a database connection error.
 
-For simplicity sake, the easiest option to start with is setting the environment and running the server with Mage:
+For simplicity’s sake, the easiest option to start with is setting the environment and running the server with Mage:
 
 #### Option 1 - Run web server with config file and Mage
 
@@ -461,19 +461,19 @@ exec: go "run" "main.go"
 
 The below are the list of the command line flags that can be used to start the webserver (and their equivalent environment variable name for reference as well):
 
-| Flag Name       | Description | Environment Variable | Default |
-| --------------- | ----------- | -------------------- | ------- |
-| port            | Port the server will listen on | PORT | 8080|
-| log-level       | zerolog logging level (debug, info, etc.) | LOG_LEVEL | debug |
-| log-level-min   | sets the minimum accepted logging level | LOG_LEVEL_MIN | debug |
-| log-error-stack | If true, log full error stacktrace, else just log error | LOG_ERROR_STACK | false |
-| db-host         | The host name of the database server. | DB_HOST | |
-| db-port         | The port number the database server is listening on.| DB_PORT | 5432 |
-| db-name         | The database name. | DB_NAME | |
-| db-user         | PostgreSQL™ user name to connect as. | DB_USER | |
-| db-password     | Password to be used if the server demands password authentication. | DB_PASSWORD | |
-| db-search-path  | Schema search path to be used when connecting. | DB_SEARCH_PATH | |
-| encrypt-key     | Encryption key to be used for all encrypted data. | ENCRYPT_KEY | |
+| Flag Name       | Description                                                        | Environment Variable | Default |
+|-----------------|--------------------------------------------------------------------|----------------------|---------|
+| port            | Port the server will listen on                                     | PORT                 | 8080    |
+| log-level       | zerolog logging level (debug, info, etc.)                          | LOG_LEVEL            | debug   |
+| log-level-min   | sets the minimum accepted logging level                            | LOG_LEVEL_MIN        | debug   |
+| log-error-stack | If true, log full error stacktrace, else just log error            | LOG_ERROR_STACK      | false   |
+| db-host         | The host name of the database server.                              | DB_HOST              |         |
+| db-port         | The port number the database server is listening on.               | DB_PORT              | 5432    |
+| db-name         | The database name.                                                 | DB_NAME              |         |
+| db-user         | PostgreSQL™ user name to connect as.                               | DB_USER              |         |
+| db-password     | Password to be used if the server demands password authentication. | DB_PASSWORD          |         |
+| db-search-path  | Schema search path to be used when connecting.                     | DB_SEARCH_PATH       |         |
+| encrypt-key     | Encryption key to be used for all encrypted data.                  | ENCRYPT_KEY          |         |
 
 Starting the web server with command line flags looks like:
 
@@ -516,60 +516,27 @@ With the server up and running, the easiest service to interact with is the `pin
 Use [cURL](https://curl.se/) GET request to call `ping`:
 
 ```bash
-curl -v --location --request GET 'http://127.0.0.1:8080/api/v1/ping'
-```
-
-The response looks like:
-
-```bash
-{
-    "path": "/api/v1/ping",
-    "request_id": "bvfklkdnf4q0afpuo30g",
-    "data": {
-        "db_up": true
-    }
-}
+$ curl --location --request GET 'http://127.0.0.1:8080/api/v1/ping'
+{"db_up":true}
 ```
 
 #### cURL Commands to Call Movie Services
 
-**Create** - use the `POST` HTTP verb at `/api/v1/movies`:
+The values for the `x-app-id` and `x-api-key` headers needed for all below services are found in the `/api/v1/genesis` service response. If you used `mage` to run the service on your local machine, the response can be found at `./config/genesis/response.json`:
 
-```bash
-curl -v --location --request POST 'http://127.0.0.1:8080/api/v1/movies' \
+- APP ID (x-app-id): `userInitiated.app.external_id`
+- API Key (x-api-key): `userInitiated.app.api_keys[0].key`
+
+The Bearer token for the `Authorization` header needs to be generated through Google's OAuth2 mechanism. Assuming you've completed setup mentioned in [Step 2](#step-2---authentication-and-authorization), you can generate a new token at the [Google OAuth2 Playground](https://developers.google.com/oauthplayground/)
+
+**Create Movie** - use the `POST` HTTP verb at `/api/v1/movies`:
+
+```shell
+$ curl --location --request POST 'http://127.0.0.1:8080/api/v1/movies' \
 --header 'Content-Type: application/json' \
---header 'Authorization: Bearer <REPLACE WITH ACCESS TOKEN>' \
---data-raw '{
-    "title": "Repo Man",
-    "rated": "R",
-    "release_date": "1984-03-02T00:00:00Z",
-    "run_time": 92,
-    "director": "Alex Cox",
-    "writer": "Courtney Cox"
-}'
-```
-
-**Read (All Records)** - use the GET HTTP verb at `/api/v1/movies`:
-
-```bash
-curl -v --location --request GET 'http://127.0.0.1:8080/api/v1/movies' \
---header 'Authorization: Bearer <REPLACE WITH ACCESS TOKEN>' \
---data-raw ''
-```
-
-**Read (Single Record)** - use the GET HTTP verb at `/api/v1/movies/:extl_id` with the movie "external ID" from the create (POST) as the unique identifier in the URL. I try to never expose primary keys, so I use something like an external id as an alternative key.
-
-```bash
-curl -v --location --request GET 'http://127.0.0.1:8080/api/v1/movies/BDylwy3BnPazC4Casn5M' \
---header 'Authorization: Bearer <REPLACE WITH ACCESS TOKEN>' \
---data-raw ''
-```
-
-**Update** - use the PUT HTTP verb at `/api/v1/movies/:extl_id` with the movie "external ID" from the create (POST) as the unique identifier in the URL.
-
-```bash
-curl --location --request PUT 'http://127.0.0.1:8080/api/v1/movies/BDylwy3BnPazC4Casn5M' \
---header 'Content-Type: application/json' \
+--header 'x-app-id: <REPLACE WITH APP ID>' \
+--header 'x-api-key: <REPLACE WITH API KEY>' \
+--header 'x-auth-provider: google' \
 --header 'Authorization: Bearer <REPLACE WITH ACCESS TOKEN>' \
 --data-raw '{
     "title": "Repo Man",
@@ -579,14 +546,62 @@ curl --location --request PUT 'http://127.0.0.1:8080/api/v1/movies/BDylwy3BnPazC
     "director": "Alex Cox",
     "writer": "Alex Cox"
 }'
+{"external_id":"IUAtsOQuLTuQA5OM","title":"Repo Man","rated":"R","release_date":"1984-03-02T00:00:00Z","run_time":92,"director":"Alex Cox","writer":"Alex Cox","create_app_extl_id":"nBRyFTHq6PALwMdx","create_username":"dan@dangillis.dev","create_user_first_name":"Otto","create_user_last_name":"Maddox","create_date_time":"2022-06-30T15:26:02-04:00","update_app_extl_id":"nBRyFTHq6PALwMdx","update_username":"dan@dangillis.dev","update_user_first_name":"Otto","update_user_last_name":"Maddox","update_date_time":"2022-06-30T15:26:02-04:00"}
 ```
 
-**Delete** - use the DELETE HTTP verb at `/api/v1/movies/:extl_id` with the movie "external ID" from the create (POST) as the unique identifier in the URL.
+**Read (Single Record)** - use the `GET` HTTP verb at `/api/v1/movies/:extl_id` with the movie `external_id` from the create (POST) response as the unique identifier in the URL. I try to never expose primary keys, so I use something like an external id as an alternative key.
 
 ```bash
-curl --location --request DELETE 'http://127.0.0.1:8080/api/v1/movies/BDylwy3BnPazC4Casn5M' \
---header 'Authorization: Bearer <REPLACE WITH ACCESS TOKEN>'
+$ curl --location --request GET 'http://127.0.0.1:8080/api/v1/movies/IUAtsOQuLTuQA5OM' \
+--header 'x-app-id: <REPLACE WITH APP ID>' \
+--header 'x-api-key: <REPLACE WITH API KEY>' \
+--header 'x-auth-provider: google' \
+--header 'Authorization: Bearer <REPLACE WITH ACCESS TOKEN>' \
+{"external_id":"IUAtsOQuLTuQA5OM","title":"Repo Man","rated":"R","release_date":"1984-03-02T00:00:00Z","run_time":92,"director":"Alex Cox","writer":"Alex Cox","create_app_extl_id":"QfLDvkZlAEieAA7u","create_username":"dan@dangillis.dev","create_user_first_name":"Otto","create_user_last_name":"Maddox","create_date_time":"2022-06-30T15:26:02-04:00","update_app_extl_id":"QfLDvkZlAEieAA7u","update_username":"dan@dangillis.dev","update_user_first_name":"Otto","update_user_last_name":"Maddox","update_date_time":"2022-06-30T15:26:02-04:00"}
 ```
+
+**Read (All Records)** - use the `GET` HTTP verb at `/api/v1/movies`:
+
+```bash
+$ curl --location --request GET 'http://127.0.0.1:8080/api/v1/movies' \
+--header 'x-app-id: <REPLACE WITH APP ID>' \
+--header 'x-api-key: <REPLACE WITH API KEY>' \
+--header 'x-auth-provider: google' \
+--header 'Authorization: Bearer <REPLACE WITH ACCESS TOKEN>' \
+```
+
+**Update** - use the `PUT` HTTP verb at `/api/v1/movies/:extl_id` with the movie `external_id` from the create (POST) response as the unique identifier in the URL.
+
+```bash
+$ curl --location --request PUT 'http://127.0.0.1:8080/api/v1/movies/IUAtsOQuLTuQA5OM' \
+--header 'Content-Type: application/json' \
+--header 'x-app-id: <REPLACE WITH APP ID>' \
+--header 'x-api-key: <REPLACE WITH API KEY>' \
+--header 'x-auth-provider: google' \
+--header 'Authorization: Bearer <REPLACE WITH ACCESS TOKEN>' \
+--data-raw '{
+    "title": "Repo Man",
+    "rated": "R",
+	"release_date": "1984-03-02T00:00:00Z",
+    "run_time": 91,
+    "director": "Alex Cox",
+    "writer": "Alex Cox"
+}'
+{"external_id":"IUAtsOQuLTuQA5OM","title":"Repo Man","rated":"R","release_date":"1984-03-02T00:00:00Z","run_time":91,"director":"Alex Cox","writer":"Alex Cox","create_app_extl_id":"QfLDvkZlAEieAA7u","create_username":"dan@dangillis.dev","create_user_first_name":"Otto","create_user_last_name":"Maddox","create_date_time":"2022-06-30T15:26:02-04:00","update_app_extl_id":"nBRyFTHq6PALwMdx","update_username":"dan@dangillis.dev","update_user_first_name":"Otto","update_user_last_name":"Maddox","update_date_time":"2022-06-30T15:38:42-04:00"}
+```
+
+**Delete** - use the `DELETE` HTTP verb at `/api/v1/movies/:extl_id` with the movie `external_id` from the create (POST) response as the unique identifier in the URL.
+
+```bash
+$ curl --location --request DELETE 'http://127.0.0.1:8080/api/v1/movies/IUAtsOQuLTuQA5OM' \
+--header 'x-app-id: <REPLACE WITH APP ID>' \
+--header 'x-api-key: <REPLACE WITH API KEY>' \
+--header 'x-auth-provider: google' \
+--header 'Authorization: Bearer <REPLACE WITH ACCESS TOKEN>' \
+{"extl_id":"IUAtsOQuLTuQA5OM","deleted":true}
+```
+
+--------
 
 ## Project Walkthrough
 
@@ -930,11 +945,11 @@ Content-Length: 0
 
 When starting `diy-go-api`, there are several flags which setup the logger:
 
-| Flag Name       | Description | Environment Variable | Default |
-| --------------- | ----------- | -------------------- | ------- |
-| log-level       | zerolog logging level (debug, info, etc.) | LOG_LEVEL | debug |
-| log-level-min   | sets the minimum accepted logging level | LOG_LEVEL_MIN | debug |
-| log-error-stack | If true, log full error stacktrace, else just log error | LOG_ERROR_STACK | false |
+| Flag Name       | Description                                             | Environment Variable | Default |
+|-----------------|---------------------------------------------------------|----------------------|---------|
+| log-level       | zerolog logging level (debug, info, etc.)               | LOG_LEVEL            | debug   |
+| log-level-min   | sets the minimum accepted logging level                 | LOG_LEVEL_MIN        | debug   |
+| log-error-stack | If true, log full error stacktrace, else just log error | LOG_ERROR_STACK      | false   |
 
 --------
 
