@@ -26,6 +26,9 @@ const (
 	apiKeyHeaderKey string = "X-API-KEY"
 	// Authorization provider header key
 	authProviderHeaderKey string = "X-AUTH-PROVIDER"
+	// Default Realm used as part of the WWW-Authenticate response
+	// header when returning a 401 Unauthorized response
+	defaultRealm string = "diy-go-api"
 )
 
 // jsonContentTypeResponseHandler middleware is used to add the

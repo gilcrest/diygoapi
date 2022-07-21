@@ -9,9 +9,6 @@ const (
 	contentTypeHeaderKey string = "Content-Type"
 	// application/json header value for Content-Type header key
 	appJSONContentTypeHeaderVal string = "application/json"
-	// Default Realm used as part of the WWW-Authenticate response
-	// header when returning a 401 Unauthorized response
-	defaultRealm string = "diy-go-api"
 	// extlID is used to represent an external id. This is a common
 	// enough pattern in these services, that I've chosen to make it
 	// a constant

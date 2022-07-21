@@ -20,7 +20,7 @@ import (
 	"github.com/gilcrest/diy-go-api/gateway/authgateway"
 )
 
-// Authorizer determines if an app/user (as part of an Audit) is
+// Authorizer determines if an app/user (as part of an audit.Audit struct) is
 // authorized for the route in the request
 type Authorizer interface {
 	Authorize(lgr zerolog.Logger, r *http.Request, sub audit.Audit) error
