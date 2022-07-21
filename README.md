@@ -582,7 +582,7 @@ $ curl --location --request PUT 'http://127.0.0.1:8080/api/v1/movies/IUAtsOQuLTu
 --data-raw '{
     "title": "Repo Man",
     "rated": "R",
-	"release_date": "1984-03-02T00:00:00Z",
+    "release_date": "1984-03-02T00:00:00Z",
     "run_time": 91,
     "director": "Alex Cox",
     "writer": "Alex Cox"
@@ -764,7 +764,7 @@ You can add additional context fields (`errs.Code`, `errs.Parameter`, `errs.Kind
 
 ##### Handler Flow
 
-At the top of the program flow for each service is the app service handler (for example, [Server.handleMovieCreate](https://github.com/gilcrest/diy-go-api/blob/main/app/handlers.go)). In this handler, any error returned from any function or method is sent through the `errs.HTTPErrorResponse` function along with the `http.ResponseWriter` and a `zerolog.Logger`.
+At the top of the program flow for each route is the handler (for example, [Server.handleMovieCreate](https://github.com/gilcrest/diy-go-api/blob/main/server/handlers.go)). In this handler, any error returned from any function or method is sent through the `errs.HTTPErrorResponse` function along with the `http.ResponseWriter` and a `zerolog.Logger`.
 
 For example:
 
@@ -776,13 +776,13 @@ if err != nil {
 }
 ```
 
-`errs.HTTPErrorResponse` takes the custom error (`errs.Error`, `errs.Unauthenticated` or `errs.UnauthorizedError`), writes the response to the given `http.ResponseWriter` and logs the error using the given `zerolog.Logger`.
+`errs.HTTPErrorResponse` takes the custom `errs.Error` type and writes the response to the given `http.ResponseWriter` and logs the error using the given `zerolog.Logger`.
 
 > `return` must be called immediately after `errs.HTTPErrorResponse` to return the error to the client.
 
 ##### Typical Error Response
 
-For the `errs.Error` type, `errs.HTTPErrorResponse` writes the HTTP response body as JSON using the `errs.ErrResponse` struct.
+If an `errs.Error` type is sent to `errs.HTTPErrorResponse`, the function writes the HTTP response body as JSON using the `errs.ErrResponse` struct.
 
 ```go
 // ErrResponse is used as the Response Body
@@ -790,8 +790,7 @@ type ErrResponse struct {
     Error ServiceError `json:"error"`
 }
 
-// ServiceError has fields for Service errors. All fields with no data will
-// be omitted
+// ServiceError has fields for Service errors. All fields with no data will be omitted
 type ServiceError struct {
     Kind    string `json:"kind,omitempty"`
     Code    string `json:"code,omitempty"`
@@ -853,7 +852,7 @@ The error log will look like the following (*I cut off parts of the stack for br
 
 ##### Internal or Database Error Response
 
-There is logic within `errs.HTTPErrorResponse` to return a different response body if the `errs.Kind` is `Internal` or `Database`. As per the requirements, we should not leak the error message or any internal stack, etc. when an internal or database error occurs. If an error comes through and is an `errs.Error` with either of these error `Kind` or is unknown error type in any way, the response will look like the following:
+There is logic within `errs.HTTPErrorResponse` to return a different response body if the `errs.Kind` is `Internal` or `Database`. As per the requirements, we should not leak the error message or any internal stack, etc. when an internal or database error occurs. If an error comes through and is an `errs.Error` with either of these error `Kind` or is an unknown error type in any way, the response will look like the following:
 
 ```json
 {
@@ -868,36 +867,27 @@ There is logic within `errs.HTTPErrorResponse` to return a different response bo
 
 #### Unauthenticated Errors
 
-```go
-type UnauthenticatedError struct {
-    // WWWAuthenticateRealm is a description of the protected area.
-    // If no realm is specified, "DefaultRealm" will be used as realm
-    WWWAuthenticateRealm string
-
-    // The underlying error that triggered this one, if any.
-    Err error
-}
-```
-
-The [spec](https://tools.ietf.org/html/rfc7235#section-3.1) for `401 Unauthorized` calls for a `WWW-Authenticate` response header along with a `realm`. The realm should be set when creating an Unauthenticated error. The `errs.NewUnauthenticatedError` function initializes an `UnauthenticatedError`.
-
-> I generally like to follow the Go idiom for brevity in all things as much as possible, but for `Unauthenticated` vs. `Unauthorized` errors, it's confusing enough as it is already, I don't take any shortcuts.
-
-```go
-func NewUnauthenticatedError(realm string, err error) *UnauthenticatedError {
-    return &UnauthenticatedError{WWWAuthenticateRealm: realm, Err: err}
-}
-```
+The [spec](https://tools.ietf.org/html/rfc7235#section-3.1) for `401 Unauthorized` calls for a `WWW-Authenticate` response header along with a `realm`. The realm should be set when creating an Unauthenticated error.
 
 ##### Unauthenticated Error Flow
 
-The `errs.Unauthenticated` error should only be raised at points of authentication as part of a middleware handler. I will get into application flow in detail later, but authentication for `diy-go-api` happens in middleware handlers prior to calling the app handler for the given route.
+*Unauthenticated* errors should only be raised at points of authentication as part of a middleware handler. I will get into application flow in detail later, but authentication for `diy-go-api` happens in middleware handlers prior to calling the final app handler for the given route.
 
-- The `WWW-Authenticate` *realm* is set to the request context using the `defaultRealmHandler` middleware in the [app package](https://github.com/gilcrest/diy-go-api/blob/main/app/middleware.go) prior to attempting authentication.
-- Next, the Oauth2 access token is retrieved from the `Authorization` http header using the `accessTokenHandler` middleware. There are several access token validations in this middleware, if any are not successful, the `errs.Unauthenticated` error is returned using the realm set to the request context.
-- Finally, if the access token is successfully retrieved, it is then converted to a `User` via the `GoogleAccessTokenConverter.Convert` method in the `gateway/authgateway` package. This method sends an outbound request to Google using their API; if any errors are returned, an `errs.Unauthenticated` error is returned.
+The example below demonstrates returning an *Unauthenticated* error if the Authorization header is not present. This is done using the `errs.E` function (common to all errors in this repo), but the `errs.Kind` is sent as `errs.Unauthenticated`. An `errs.Realm` type should be added as well. For now, the constant `defaultRealm` is set to `diy-go-api` in the `server` package and is used for all unauthenticated errors. You can set this constant to whatever value you like for your application.
 
-> In general, I do not like to use `context.Context`, however, it is used in `diy-go-api` to pass values between middlewares. The `WWW-Authenticate` *realm*, the Oauth2 access token and the calling user after authentication, all of which are `request-scoped` values, are all set to the request `context.Context`.
+```go
+// authHeader parses/validates the Authorization header and returns an Oauth2 token
+func authHeader(realm string, header http.Header) (oauth2.Token, error) {
+    // Pull the token from the Authorization header by retrieving the
+    // value from the Header map with "Authorization" as the key
+    //
+    // format: Authorization: Bearer
+    headerValue, ok := header["Authorization"]
+    if !ok {
+        return oauth2.Token{}, errs.E(errs.Unauthenticated, errs.Realm(realm), "unauthenticated: no Authorization header sent")
+    }
+...
+```
 
 ##### Unauthenticated Error Response
 
@@ -915,18 +905,15 @@ Content-Length: 0
 
 #### Unauthorized Errors
 
-```go
-type UnauthorizedError struct {
-    // The underlying error that triggered this one, if any.
-    Err error
-}
-```
-
-The `errs.NewUnauthorizedError` function initializes an `UnauthorizedError`.
+If the user is not authorized to use the API, an `HTTP 403 (Forbidden)` response will be sent and the response body will be empty.
 
 ##### Unauthorized Error Flow
 
-The `errs.Unauthorized` error is raised when there is a permission issue for a user when attempting to access a resource. Currently, `diy-go-api`'s placeholder authorization implementation `Authorizer.Authorize` in the [domain/auth](https://github.com/gilcrest/diy-go-api/blob/main/domain/auth/auth.go) package performs rudimentary checks that a user has access to a resource. If the user does not have access, the `errs.Unauthorized` error is returned.
+*Unauthorized* errors are raised when there is a permission issue for a user attempting to access a resource. `diy-go-api` currently has a custom database-driven RBAC (Role Based Access Control) authorization implementation (more about this later). The below example demonstrates raising an *Unauthorized* error and is found in the [DBAuthorizer.Authorize](https://github.com/gilcrest/diy-go-api/blob/v0.47.3/service/rbac.go#L37) method.
+
+```go
+return errs.E(errs.Unauthorized, fmt.Sprintf("user %s does not have %s permission for %s", adt.User.Username, r.Method, pathTemplate))
+```
 
 Per requirements, `diy-go-api` does not return a response body when returning an **Unauthorized** error. The error response from [cURL](https://curl.se/) looks like the following:
 
@@ -1012,7 +999,7 @@ func (s *Server) routes() {
 ...
 ```
 
- The `Server.loggerChain` method sets up the logger with pre-populated fields, including the request method, url, status, size, duration, remote IP, user agent, referer. A unique `Request ID` is also added to the logger, context and response headers.
+The `Server.loggerChain` method sets up the logger with pre-populated fields, including the request method, url, status, size, duration, remote IP, user agent, referer. A unique `Request ID` is also added to the logger, context and response headers.
 
 ```go
 func (s *Server) loggerChain() alice.Chain {
@@ -1125,4 +1112,4 @@ The `PUT` response is the same as the `GET` response, but with updated values. I
 
 ## README under construction
 
-v0.47.3 - 6/28/2022 - I have made a lot of changes and have been working through the README. Everything in this doc is up to date. Working through adding more detail to the Project Walkthrough sections as well as a quick Intro video to take people through the setup steps.
+v0.47.4 - 7/21/2022 -Working through the README still. Everything in this doc is up-to-date. Working through adding more detail to the Project Walkthrough sections as well as a quick Intro video to take people through the setup steps.
