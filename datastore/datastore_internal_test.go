@@ -6,10 +6,10 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/gilcrest/diy-go-api/domain/logger"
-
 	qt "github.com/frankban/quicktest"
 	"github.com/rs/zerolog"
+
+	"github.com/gilcrest/diy-go-api/logger"
 )
 
 func TestNewDatastore(t *testing.T) {

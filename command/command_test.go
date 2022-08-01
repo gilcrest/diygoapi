@@ -8,7 +8,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/gilcrest/diy-go-api/datastore"
-	"github.com/gilcrest/diy-go-api/domain/errs"
+	"github.com/gilcrest/diy-go-api/errs"
 )
 
 func Test_portRange(t *testing.T) {

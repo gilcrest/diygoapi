@@ -6,11 +6,11 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"github.com/gilcrest/diy-go-api/domain/app"
-	"github.com/gilcrest/diy-go-api/domain/audit"
-	"github.com/gilcrest/diy-go-api/domain/auth"
-	"github.com/gilcrest/diy-go-api/domain/user"
+	"github.com/gilcrest/diy-go-api/app"
+	"github.com/gilcrest/diy-go-api/audit"
+	"github.com/gilcrest/diy-go-api/auth"
 	"github.com/gilcrest/diy-go-api/service"
+	"github.com/gilcrest/diy-go-api/user"
 )
 
 // CreateMovieService creates a Movie

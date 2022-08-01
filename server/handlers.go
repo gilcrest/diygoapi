@@ -7,9 +7,9 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog/hlog"
 
-	"github.com/gilcrest/diy-go-api/domain/audit"
-	"github.com/gilcrest/diy-go-api/domain/auth"
-	"github.com/gilcrest/diy-go-api/domain/errs"
+	"github.com/gilcrest/diy-go-api/audit"
+	"github.com/gilcrest/diy-go-api/auth"
+	"github.com/gilcrest/diy-go-api/errs"
 	"github.com/gilcrest/diy-go-api/service"
 )
 

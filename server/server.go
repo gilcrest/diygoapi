@@ -39,7 +39,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
 
-	"github.com/gilcrest/diy-go-api/domain/errs"
+	"github.com/gilcrest/diy-go-api/errs"
 	"github.com/gilcrest/diy-go-api/server/driver"
 )
 

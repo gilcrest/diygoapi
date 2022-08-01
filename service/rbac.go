@@ -13,13 +13,13 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/rs/zerolog"
 
+	"github.com/gilcrest/diy-go-api/audit"
+	"github.com/gilcrest/diy-go-api/auth"
 	"github.com/gilcrest/diy-go-api/datastore/authstore"
 	"github.com/gilcrest/diy-go-api/datastore/userstore"
-	"github.com/gilcrest/diy-go-api/domain/audit"
-	"github.com/gilcrest/diy-go-api/domain/auth"
-	"github.com/gilcrest/diy-go-api/domain/errs"
-	"github.com/gilcrest/diy-go-api/domain/secure"
-	"github.com/gilcrest/diy-go-api/domain/user"
+	"github.com/gilcrest/diy-go-api/errs"
+	"github.com/gilcrest/diy-go-api/secure"
+	"github.com/gilcrest/diy-go-api/user"
 )
 
 // DBAuthorizer determines authorization for a user

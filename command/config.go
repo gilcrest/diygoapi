@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	"github.com/gilcrest/diy-go-api/datastore"
-	"github.com/gilcrest/diy-go-api/domain/errs"
+	"github.com/gilcrest/diy-go-api/errs"
 )
 
 const (

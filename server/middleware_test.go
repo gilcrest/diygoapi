@@ -8,21 +8,20 @@ import (
 	"os"
 	"testing"
 
-	"github.com/gilcrest/diy-go-api/domain/audit"
-	"github.com/gilcrest/diy-go-api/domain/user"
-	"github.com/gilcrest/diy-go-api/service"
-
 	qt "github.com/frankban/quicktest"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"golang.org/x/oauth2"
 
-	"github.com/gilcrest/diy-go-api/domain/app"
-	"github.com/gilcrest/diy-go-api/domain/auth"
-	"github.com/gilcrest/diy-go-api/domain/errs"
-	"github.com/gilcrest/diy-go-api/domain/logger"
-	"github.com/gilcrest/diy-go-api/domain/org"
+	"github.com/gilcrest/diy-go-api/app"
+	"github.com/gilcrest/diy-go-api/audit"
+	"github.com/gilcrest/diy-go-api/auth"
+	"github.com/gilcrest/diy-go-api/errs"
+	"github.com/gilcrest/diy-go-api/logger"
+	"github.com/gilcrest/diy-go-api/org"
+	"github.com/gilcrest/diy-go-api/service"
+	"github.com/gilcrest/diy-go-api/user"
 )
 
 type mockMiddlewareService struct{}

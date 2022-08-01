@@ -8,7 +8,8 @@ import (
 	"testing"
 
 	qt "github.com/frankban/quicktest"
-	"github.com/gilcrest/diy-go-api/domain/errs"
+
+	"github.com/gilcrest/diy-go-api/errs"
 )
 
 func TestDecoderErr(t *testing.T) {

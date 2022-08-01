@@ -10,8 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gilcrest/diy-go-api/datastore"
-
 	qt "github.com/frankban/quicktest"
 	"github.com/google/go-cmp/cmp"
 	"github.com/jackc/pgx/v4"
@@ -20,8 +18,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
-	"github.com/gilcrest/diy-go-api/domain/errs"
-	"github.com/gilcrest/diy-go-api/domain/logger"
+	"github.com/gilcrest/diy-go-api/datastore"
+	"github.com/gilcrest/diy-go-api/errs"
+	"github.com/gilcrest/diy-go-api/logger"
 )
 
 func TestPostgreSQLDSN_ConnectionKeywordValueString(t *testing.T) {

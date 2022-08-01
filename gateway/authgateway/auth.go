@@ -9,7 +9,7 @@ import (
 	googleoauth "google.golang.org/api/oauth2/v2"
 	"google.golang.org/api/option"
 
-	"github.com/gilcrest/diy-go-api/domain/errs"
+	"github.com/gilcrest/diy-go-api/errs"
 )
 
 // ProviderUserInfo contains common fields from the various Oauth2 providers.

@@ -12,7 +12,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/gilcrest/diy-go-api/datastore/datastoretest"
-	"github.com/gilcrest/diy-go-api/domain/logger"
+	"github.com/gilcrest/diy-go-api/logger"
 	"github.com/gilcrest/diy-go-api/service"
 )
 

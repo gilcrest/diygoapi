@@ -8,16 +8,16 @@ import (
 	"github.com/rs/zerolog"
 	"golang.org/x/oauth2"
 
+	"github.com/gilcrest/diy-go-api/app"
+	"github.com/gilcrest/diy-go-api/audit"
+	"github.com/gilcrest/diy-go-api/auth"
 	"github.com/gilcrest/diy-go-api/datastore/appstore"
 	"github.com/gilcrest/diy-go-api/datastore/userstore"
-	"github.com/gilcrest/diy-go-api/domain/app"
-	"github.com/gilcrest/diy-go-api/domain/audit"
-	"github.com/gilcrest/diy-go-api/domain/auth"
-	"github.com/gilcrest/diy-go-api/domain/errs"
-	"github.com/gilcrest/diy-go-api/domain/org"
-	"github.com/gilcrest/diy-go-api/domain/secure"
-	"github.com/gilcrest/diy-go-api/domain/user"
+	"github.com/gilcrest/diy-go-api/errs"
 	"github.com/gilcrest/diy-go-api/gateway/authgateway"
+	"github.com/gilcrest/diy-go-api/org"
+	"github.com/gilcrest/diy-go-api/secure"
+	"github.com/gilcrest/diy-go-api/user"
 )
 
 // Authorizer determines if an app/user (as part of an audit.Audit struct) is

@@ -7,16 +7,16 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 
+	"github.com/gilcrest/diy-go-api/app"
+	"github.com/gilcrest/diy-go-api/audit"
 	"github.com/gilcrest/diy-go-api/datastore"
 	"github.com/gilcrest/diy-go-api/datastore/moviestore"
-	"github.com/gilcrest/diy-go-api/domain/app"
-	"github.com/gilcrest/diy-go-api/domain/audit"
-	"github.com/gilcrest/diy-go-api/domain/errs"
-	"github.com/gilcrest/diy-go-api/domain/movie"
-	"github.com/gilcrest/diy-go-api/domain/org"
-	"github.com/gilcrest/diy-go-api/domain/person"
-	"github.com/gilcrest/diy-go-api/domain/secure"
-	"github.com/gilcrest/diy-go-api/domain/user"
+	"github.com/gilcrest/diy-go-api/errs"
+	"github.com/gilcrest/diy-go-api/movie"
+	"github.com/gilcrest/diy-go-api/org"
+	"github.com/gilcrest/diy-go-api/person"
+	"github.com/gilcrest/diy-go-api/secure"
+	"github.com/gilcrest/diy-go-api/user"
 )
 
 // movieAudit is the combination of a domain Movie and its audit data

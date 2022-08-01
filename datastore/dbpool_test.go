@@ -5,9 +5,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/gilcrest/diy-go-api/domain/logger"
-
 	"github.com/rs/zerolog"
+
+	"github.com/gilcrest/diy-go-api/logger"
 )
 
 func Test_NewPostgreSQLPool(t *testing.T) {

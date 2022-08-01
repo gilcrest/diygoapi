@@ -11,10 +11,10 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/gilcrest/diy-go-api/datastore"
-	"github.com/gilcrest/diy-go-api/domain/errs"
-	"github.com/gilcrest/diy-go-api/domain/logger"
-	"github.com/gilcrest/diy-go-api/domain/secure"
-	"github.com/gilcrest/diy-go-api/domain/secure/random"
+	"github.com/gilcrest/diy-go-api/errs"
+	"github.com/gilcrest/diy-go-api/logger"
+	"github.com/gilcrest/diy-go-api/secure"
+	"github.com/gilcrest/diy-go-api/secure/random"
 	"github.com/gilcrest/diy-go-api/service"
 )
 

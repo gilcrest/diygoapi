@@ -14,7 +14,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/gilcrest/diy-go-api/datastore"
-	"github.com/gilcrest/diy-go-api/domain/logger"
+	"github.com/gilcrest/diy-go-api/logger"
 )
 
 // newPGDatasourceName is a test helper to get a PGDatasourceName

@@ -11,12 +11,12 @@ import (
 	"github.com/rs/zerolog/hlog"
 	"golang.org/x/oauth2"
 
-	"github.com/gilcrest/diy-go-api/domain/app"
-	"github.com/gilcrest/diy-go-api/domain/audit"
-	"github.com/gilcrest/diy-go-api/domain/auth"
-	"github.com/gilcrest/diy-go-api/domain/errs"
-	"github.com/gilcrest/diy-go-api/domain/user"
+	"github.com/gilcrest/diy-go-api/app"
+	"github.com/gilcrest/diy-go-api/audit"
+	"github.com/gilcrest/diy-go-api/auth"
+	"github.com/gilcrest/diy-go-api/errs"
 	"github.com/gilcrest/diy-go-api/service"
+	"github.com/gilcrest/diy-go-api/user"
 )
 
 const (

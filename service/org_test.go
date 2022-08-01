@@ -10,19 +10,19 @@ import (
 	qt "github.com/frankban/quicktest"
 	"github.com/google/go-cmp/cmp/cmpopts"
 
+	"github.com/gilcrest/diy-go-api/app"
+	"github.com/gilcrest/diy-go-api/audit"
 	"github.com/gilcrest/diy-go-api/datastore"
 	"github.com/gilcrest/diy-go-api/datastore/appstore"
 	"github.com/gilcrest/diy-go-api/datastore/datastoretest"
 	"github.com/gilcrest/diy-go-api/datastore/orgstore"
 	"github.com/gilcrest/diy-go-api/datastore/userstore"
-	"github.com/gilcrest/diy-go-api/domain/app"
-	"github.com/gilcrest/diy-go-api/domain/audit"
-	"github.com/gilcrest/diy-go-api/domain/org"
-	"github.com/gilcrest/diy-go-api/domain/person"
-	"github.com/gilcrest/diy-go-api/domain/secure"
-	"github.com/gilcrest/diy-go-api/domain/secure/random"
-	"github.com/gilcrest/diy-go-api/domain/user"
+	"github.com/gilcrest/diy-go-api/org"
+	"github.com/gilcrest/diy-go-api/person"
+	"github.com/gilcrest/diy-go-api/secure"
+	"github.com/gilcrest/diy-go-api/secure/random"
 	"github.com/gilcrest/diy-go-api/service"
+	"github.com/gilcrest/diy-go-api/user"
 )
 
 const (
