@@ -9,7 +9,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/jackc/pgconn v1.12.1
 	github.com/jackc/pgx/v4 v4.16.1
-	github.com/jackc/puddle v1.2.1
+	github.com/jackc/puddle v1.3.0
 	github.com/justinas/alice v1.2.0
 	github.com/magefile/mage v1.13.0
 	github.com/peterbourgon/ff/v3 v3.1.2
