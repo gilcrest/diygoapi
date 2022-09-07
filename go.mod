@@ -15,8 +15,8 @@ require (
 	github.com/peterbourgon/ff/v3 v3.1.2
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.27.0
-	golang.org/x/oauth2 v0.0.0-20220718184931-c8730f7fcb92
-	google.golang.org/api v0.88.0
+	golang.org/x/oauth2 v0.0.0-20220822191816-0ebed06d0094
+	google.golang.org/api v0.95.0
 )
 
 require (
