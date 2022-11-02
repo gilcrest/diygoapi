@@ -1,4 +1,4 @@
-package random
+package secure
 
 import (
 	"crypto/rand"
@@ -7,14 +7,14 @@ import (
 	"github.com/gilcrest/diy-go-api/errs"
 )
 
-// CryptoGenerator methods produce cryptographically secure random data
-type CryptoGenerator struct{}
+// RandomGenerator produces cryptographically secure random data
+type RandomGenerator struct{}
 
 // RandomBytes returns securely generated random bytes. It will return
 // an error if the system's secure random number generator fails to
 // function correctly, in which case the caller should not continue.
 // Taken from https://stackoverflow.com/questions/35781197/generating-a-random-fixed-length-byte-array-in-go
-func (g CryptoGenerator) RandomBytes(n int) ([]byte, error) {
+func (g RandomGenerator) RandomBytes(n int) ([]byte, error) {
 	b := make([]byte, n)
 	_, err := rand.Read(b)
 	// Note that err == nil only if we read len(b) bytes.
@@ -30,7 +30,7 @@ func (g CryptoGenerator) RandomBytes(n int) ([]byte, error) {
 // function correctly, in which case the caller should not continue. This should be
 // used when there are concerns about security and need something cryptographically
 // secure.
-func (g CryptoGenerator) RandomString(n int) (string, error) {
+func (g RandomGenerator) RandomString(n int) (string, error) {
 	b, err := g.RandomBytes(n)
 	if err != nil {
 		return "", err

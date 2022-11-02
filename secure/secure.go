@@ -9,7 +9,6 @@ import (
 	"io"
 
 	"github.com/gilcrest/diy-go-api/errs"
-	"github.com/gilcrest/diy-go-api/secure/random"
 )
 
 const defaultIDByteLength int = 12
@@ -20,7 +19,7 @@ type Identifier []byte
 // NewIdentifier creates a new random Identifier of n bytes or
 // returns an error.
 func NewIdentifier(n int) (Identifier, error) {
-	id, err := random.CryptoGenerator{}.RandomBytes(n)
+	id, err := RandomGenerator{}.RandomBytes(n)
 	if err != nil {
 		return Identifier{}, err
 	}
