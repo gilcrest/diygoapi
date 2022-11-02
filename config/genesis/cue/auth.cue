@@ -70,6 +70,20 @@ _appsV1Post: #Permission & {
 	active:      true
 }
 
+_permissionsV1Post: #Permission & {
+	resource:    "/api/v1/permissions"
+	operation:   "POST"
+	description: "allows for creating a permission"
+	active:      true
+}
+
+_permissionsV1Get: #Permission & {
+	resource:    "/api/v1/permissions"
+	operation:   "GET"
+	description: "allows for finding all permissions"
+	active:      true
+}
+
 _moviesV1Post: #Permission & {
 	resource:    "/api/v1/movies"
 	operation:   "POST"
@@ -102,20 +116,6 @@ _moviesV1FindAll: #Permission & {
 	resource:    "/api/v1/movies"
 	operation:   "GET"
 	description: "allows for finding all movies"
-	active:      true
-}
-
-_permissionsV1Post: #Permission & {
-	resource:    "/api/v1/permissions"
-	operation:   "POST"
-	description: "allows for creating a permission"
-	active:      true
-}
-
-_permissionsV1Get: #Permission & {
-	resource:    "/api/v1/permissions"
-	operation:   "GET"
-	description: "allows for finding all permissions"
 	active:      true
 }
 
