@@ -1,16 +1,24 @@
 package cmd
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/gilcrest/diy-go-api/errs"
-	"github.com/gilcrest/diy-go-api/secure"
-	"github.com/gilcrest/diy-go-api/service"
+	"os"
+
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/rs/zerolog"
 	"golang.org/x/text/language"
-	"os"
+
+	"github.com/gilcrest/diy-go-api"
+	"github.com/gilcrest/diy-go-api/errs"
+	"github.com/gilcrest/diy-go-api/gateway"
+	"github.com/gilcrest/diy-go-api/logger"
+	"github.com/gilcrest/diy-go-api/secure"
+	"github.com/gilcrest/diy-go-api/service"
+	"github.com/gilcrest/diy-go-api/sqldb"
 )
 
 // Genesis command runs the Genesis service and seeds the database.
@@ -103,13 +111,13 @@ func Genesis() (err error) {
 	if err != nil {
 		return errs.E(err)
 	}
-	f := fide.GenesisRequest{}
+	f := diy.GenesisRequest{}
 	err = json.Unmarshal(b, &f)
 	if err != nil {
 		return errs.E(err)
 	}
 
-	var response fide.GenesisResponse
+	var response diy.GenesisResponse
 	response, err = s.Arche(ctx, &f)
 	if err != nil {
 		var e *errs.Error

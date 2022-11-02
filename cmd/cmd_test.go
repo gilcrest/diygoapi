@@ -3,9 +3,11 @@ package cmd
 import (
 	"fmt"
 	qt "github.com/frankban/quicktest"
-	"github.com/gilcrest/diy-go-api/errs"
 	"github.com/google/go-cmp/cmp"
 	"testing"
+
+	"github.com/gilcrest/diy-go-api/errs"
+	"github.com/gilcrest/diy-go-api/sqldb"
 )
 
 func Test_portRange(t *testing.T) {

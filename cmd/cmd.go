@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -11,9 +12,12 @@ import (
 	"golang.org/x/text/language"
 
 	"github.com/gilcrest/diy-go-api/errs"
+	"github.com/gilcrest/diy-go-api/gateway"
+	"github.com/gilcrest/diy-go-api/logger"
 	"github.com/gilcrest/diy-go-api/secure"
 	"github.com/gilcrest/diy-go-api/server"
 	"github.com/gilcrest/diy-go-api/service"
+	"github.com/gilcrest/diy-go-api/sqldb"
 )
 
 const (

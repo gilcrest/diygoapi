@@ -3,9 +3,11 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gilcrest/diy-go-api/errs"
 	"os"
 	"strconv"
+
+	"github.com/gilcrest/diy-go-api/errs"
+	"github.com/gilcrest/diy-go-api/sqldb"
 )
 
 const (
