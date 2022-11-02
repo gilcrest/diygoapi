@@ -7,13 +7,13 @@ import (
 	"github.com/magefile/mage/sh"
 	"github.com/pkg/errors"
 
-	"github.com/gilcrest/diy-go-api/command"
+	"github.com/gilcrest/diy-go-api/cmd"
 )
 
 // NewKey generates a new encryption key,
 // example: mage -v newkey
 func NewKey() {
-	command.NewEncryptionKey()
+	cmd.NewEncryptionKey()
 }
 
 // CueGenerateConfig generates configuration files for the given environment,
@@ -24,8 +24,8 @@ func NewKey() {
 // Acceptable environment values are: local, staging, production
 func CueGenerateConfig(env string) (err error) {
 
-	var paths command.ConfigCueFilePaths
-	paths, err = command.CUEPaths(command.ParseEnv(env))
+	var paths cmd.ConfigCueFilePaths
+	paths, err = cmd.CUEPaths(cmd.ParseEnv(env))
 	if err != nil {
 		return err
 	}
@@ -65,7 +65,7 @@ func CueGenerateConfig(env string) (err error) {
 // the schema and are then run through cue "fmt" to format the files
 func CueGenerateGenesisConfig() (err error) {
 
-	paths := command.CUEGenesisPaths()
+	paths := cmd.CUEGenesisPaths()
 
 	// Vet input files
 	vetArgs := []string{"vet"}
@@ -105,12 +105,12 @@ func CueGenerateGenesisConfig() (err error) {
 func DBUp(env string) (err error) {
 	var args []string
 
-	err = command.LoadEnv(command.ParseEnv(env))
+	err = cmd.LoadEnv(cmd.ParseEnv(env))
 	if err != nil {
 		return err
 	}
 
-	args, err = command.PSQLArgs(true)
+	args, err = cmd.PSQLArgs(true)
 	if err != nil {
 		return err
 	}
@@ -133,12 +133,12 @@ func DBUp(env string) (err error) {
 func DBDown(env string) (err error) {
 	var args []string
 
-	err = command.LoadEnv(command.ParseEnv(env))
+	err = cmd.LoadEnv(cmd.ParseEnv(env))
 	if err != nil {
 		return err
 	}
 
-	args, err = command.PSQLArgs(false)
+	args, err = cmd.PSQLArgs(false)
 	if err != nil {
 		return err
 	}
@@ -154,12 +154,12 @@ func DBDown(env string) (err error) {
 // Genesis runs all tests including executing the Genesis service,
 // example: mage -v genesis local
 func Genesis(env string) (err error) {
-	err = command.LoadEnv(command.ParseEnv(env))
+	err = cmd.LoadEnv(cmd.ParseEnv(env))
 	if err != nil {
 		return err
 	}
 
-	err = command.Genesis()
+	err = cmd.Genesis()
 	if err != nil {
 		return err
 	}
@@ -169,9 +169,9 @@ func Genesis(env string) (err error) {
 
 // TestAll runs all tests for the app,
 // example: mage -v testall false local.
-// If verbose is passed, tests will be run in verbose mode.
+// If verbose is true, tests will be run in verbose mode.
 func TestAll(verbose bool, env string) (err error) {
-	err = command.LoadEnv(command.ParseEnv(env))
+	err = cmd.LoadEnv(cmd.ParseEnv(env))
 	if err != nil {
 		return err
 	}
@@ -193,12 +193,12 @@ func TestAll(verbose bool, env string) (err error) {
 // Run runs program using the given environment configuration,
 // example: mage -v run local
 func Run(env string) (err error) {
-	err = command.LoadEnv(command.ParseEnv(env))
+	err = cmd.LoadEnv(cmd.ParseEnv(env))
 	if err != nil {
 		return err
 	}
 
-	err = sh.Run("go", "run", "main.go")
+	err = sh.Run("go", "run", "./cmd/fide/main.go")
 	if err != nil {
 		return err
 	}
@@ -210,12 +210,12 @@ func Run(env string) (err error) {
 // and then deploys it to Google Cloud Run, example: mage -v gcp staging
 func GCP(env string) error {
 
-	f, err := command.NewConfigFile(command.ParseEnv(env))
+	f, err := cmd.NewConfigFile(cmd.ParseEnv(env))
 	if err != nil {
 		return err
 	}
 
-	image := command.GCPArtifactRegistryContainerImage{
+	image := cmd.GCPArtifactRegistryContainerImage{
 		ProjectID:          f.Config.GCP.ProjectID,
 		RepositoryLocation: f.Config.GCP.ArtifactRegistry.RepoLocation,
 		RepositoryName:     f.Config.GCP.ArtifactRegistry.RepoName,
@@ -228,7 +228,7 @@ func GCP(env string) error {
 		return err
 	}
 
-	args := command.GCPCloudRunDeployImage(f, image)
+	args := cmd.GCPCloudRunDeployImage(f, image)
 	if err != nil {
 		return err
 	}
@@ -241,7 +241,7 @@ func GCP(env string) error {
 	return nil
 }
 
-func gcpArtifactRegistryBuild(image command.GCPArtifactRegistryContainerImage) error {
+func gcpArtifactRegistryBuild(image cmd.GCPArtifactRegistryContainerImage) error {
 	const (
 		dockerfileOrigin      = "./magefiles/Dockerfile"
 		dockerfileDestination = "Dockerfile"
@@ -288,8 +288,8 @@ func gcpArtifactRegistryBuild(image command.GCPArtifactRegistryContainerImage) e
 // StartGCPDB starts the GCP Cloud SQL database for the environment/config given,
 // example: mage -v startgcpdb staging
 func StartGCPDB(env string) (err error) {
-	var f command.ConfigFile
-	f, err = command.NewConfigFile(command.ParseEnv(env))
+	var f cmd.ConfigFile
+	f, err = cmd.NewConfigFile(cmd.ParseEnv(env))
 	if err != nil {
 		return err
 	}
@@ -307,8 +307,8 @@ func StartGCPDB(env string) (err error) {
 // StopGCPDB stops the GCP Cloud SQL database for the environment/config given,
 // example: mage -v stopgcpdb staging
 func StopGCPDB(env string) (err error) {
-	var f command.ConfigFile
-	f, err = command.NewConfigFile(command.ParseEnv(env))
+	var f cmd.ConfigFile
+	f, err = cmd.NewConfigFile(cmd.ParseEnv(env))
 	if err != nil {
 		return err
 	}
