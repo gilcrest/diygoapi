@@ -1,7 +1,7 @@
 package server
 
 import (
-	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -11,12 +11,8 @@ import (
 	"github.com/rs/zerolog/hlog"
 	"golang.org/x/oauth2"
 
-	"github.com/gilcrest/diy-go-api/app"
-	"github.com/gilcrest/diy-go-api/audit"
-	"github.com/gilcrest/diy-go-api/auth"
+	"github.com/gilcrest/diy-go-api"
 	"github.com/gilcrest/diy-go-api/errs"
-	"github.com/gilcrest/diy-go-api/service"
-	"github.com/gilcrest/diy-go-api/user"
 )
 
 const (
@@ -28,7 +24,7 @@ const (
 	authProviderHeaderKey string = "X-AUTH-PROVIDER"
 	// Default Realm used as part of the WWW-Authenticate response
 	// header when returning a 401 Unauthorized response
-	defaultRealm string = "diy-go-api"
+	defaultRealm string = "diy"
 )
 
 // jsonContentTypeResponseHandler middleware is used to add the
@@ -56,124 +52,125 @@ func (s *Server) appHandler(h http.Handler) http.Handler {
 			appExtlID string
 			err       error
 		)
-		appExtlID, err = xHeader(defaultRealm, r.Header, appIDHeaderKey)
+		appExtlID, err = parseAppHeader(defaultRealm, r.Header, appIDHeaderKey)
 		if err != nil {
+			var e *errs.Error
+			if errors.As(err, &e) {
+				if e.Kind != errs.NotExist {
+					errs.HTTPErrorResponse(w, lgr, err)
+					return
+				}
+				// using app authentication is optional, if errs.NotExist
+				// then call original, do not add anything to context
+				h.ServeHTTP(w, r)
+				return
+			}
+			// should never get here, but just in case...
 			errs.HTTPErrorResponse(w, lgr, err)
 			return
 		}
 
 		var apiKey string
-		apiKey, err = xHeader(defaultRealm, r.Header, apiKeyHeaderKey)
+		apiKey, err = parseAppHeader(defaultRealm, r.Header, apiKeyHeaderKey)
 		if err != nil {
 			errs.HTTPErrorResponse(w, lgr, err)
 			return
 		}
 
-		var a app.App
-		a, err = s.MiddlewareService.FindAppByAPIKey(ctx, defaultRealm, appExtlID, apiKey)
+		var a *diy.App
+		a, err = s.AuthenticationServicer.FindAppByAPIKey(ctx, defaultRealm, appExtlID, apiKey)
 		if err != nil {
 			errs.HTTPErrorResponse(w, lgr, err)
 			return
 		}
 
-		// add access token to context
-		ctx = app.CtxWithApp(ctx, a)
+		// get a new context with app added
+		ctx = diy.NewContextWithApp(ctx, a)
 
-		// call original, adding access token to request context
+		// call original, adding app to request context
 		h.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
-// userHandler middleware is used to parse the request authorization
-// provider and authorization headers (X-AUTH-PROVIDER + Authorization respectively),
-// retrieve and validate their veracity, retrieve the User details from
-// the Oauth2 provider as well as the datastore and finally set the User
-// to the request context.
-func (s *Server) userHandler(h http.Handler) http.Handler {
+// authHandler middleware is used to parse the request authentication
+// provider and authorization Bearer token HTTP headers (X-AUTH-PROVIDER +
+// Authorization respectively) and determine authentication. Authentication
+// is determined by validating the App making the request as well as the User.
+//
+// authHandler does the following: searches for an existing authorized User:
+//
+// If an auth object already exists in the datastore for the bearer token
+// and the bearer token is not past its expiration date, that auth will
+// be used to determine the User.
+//
+// If no auth object exists in the datastore for the bearer token, an attempt
+// will be made to find the user's auth with the provider id and unique ID
+// given by the provider (found by calling the provider API). If an auth
+// object exists given these attributes, it will be updated with the
+// new bearer token details.
+//
+// authHandler also ensures an App is authenticated:
+//
+// If there is no app already in the request Context, then an app must be
+// found given the User's Oauth2 Provider's Client ID. This app will be set
+// to the request Context. If an app has already been authenticated as part
+// of an upstream middleware and set to the request Context, then the Oauth2
+// Provider's Client ID for the given User is not considered.
+func (s *Server) authHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		lgr := *hlog.FromRequest(r)
 
 		// retrieve the context from the http.Request
 		ctx := r.Context()
 
-		u, err := newUser(ctx, s.MiddlewareService, r, true)
+		var (
+			provider diy.Provider
+			err      error
+		)
+		provider, err = parseProviderHeader(defaultRealm, r.Header)
 		if err != nil {
 			errs.HTTPErrorResponse(w, lgr, err)
 			return
 		}
 
-		// add User to context
-		ctx = user.CtxWithUser(ctx, u)
-
-		// call original, adding User to request context
-		h.ServeHTTP(w, r.WithContext(ctx))
-	})
-}
-
-// newUserHandler middleware is used to parse the request authorization
-// provider and authorization headers (X-AUTH-PROVIDER + Authorization respectively),
-// retrieve and validate their veracity, retrieve the User details from
-// the Oauth2 provider and finally set the User to the request context.
-func (s *Server) newUserHandler(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		lgr := *hlog.FromRequest(r)
-
-		// retrieve the context from the http.Request
-		ctx := r.Context()
-
-		u, err := newUser(ctx, s.MiddlewareService, r, false)
+		var token *oauth2.Token
+		token, err = parseAuthorizationHeader(defaultRealm, r.Header)
 		if err != nil {
 			errs.HTTPErrorResponse(w, lgr, err)
 			return
 		}
 
-		// add User to context
-		ctx = user.CtxWithUser(ctx, u)
+		params := diy.AuthenticationParams{
+			Realm:    defaultRealm,
+			Provider: provider,
+			Token:    token,
+		}
 
-		// call original, adding User to request context
+		var auth diy.Auth
+		auth, err = s.AuthenticationServicer.FindAuth(ctx, params)
+		if err != nil {
+			errs.HTTPErrorResponse(w, lgr, err)
+			return
+		}
+
+		ctx = diy.NewContextWithUser(ctx, auth.User)
+
+		_, err = diy.AppFromRequest(r)
+		if err != nil {
+			// no app found in request, lookup app from Auth
+			var a *diy.App
+			a, err = s.AuthenticationServicer.FindAppByProviderClientID(ctx, defaultRealm, auth)
+			if err != nil {
+				errs.HTTPErrorResponse(w, lgr, err)
+				return
+			}
+			// get a new context with App from Auth added to it
+			ctx = diy.NewContextWithApp(ctx, a)
+		}
+
+		// call original, with new context
 		h.ServeHTTP(w, r.WithContext(ctx))
 	})
-}
-
-func newUser(ctx context.Context, s MiddlewareService, r *http.Request, retrieveFromDB bool) (user.User, error) {
-
-	var (
-		a   app.App
-		err error
-	)
-	a, err = app.FromRequest(r)
-	if err != nil {
-		return user.User{}, err
-	}
-
-	var providerVal string
-	providerVal, err = xHeader(defaultRealm, r.Header, authProviderHeaderKey)
-	if err != nil {
-		return user.User{}, err
-	}
-	provider := auth.ParseProvider(providerVal)
-
-	var token oauth2.Token
-	token, err = authHeader(defaultRealm, r.Header)
-	if err != nil {
-		return user.User{}, err
-	}
-
-	params := service.FindUserParams{
-		Realm:          defaultRealm,
-		App:            a,
-		Provider:       provider,
-		Token:          token,
-		RetrieveFromDB: retrieveFromDB,
-	}
-
-	var u user.User
-	u, err = s.FindUserByOauth2Token(ctx, params)
-	if err != nil {
-		return user.User{}, err
-	}
-
-	return u, nil
 }
 
 // authorizeUserHandler middleware is used authorize a User for a request path and http method
@@ -182,14 +179,14 @@ func (s *Server) authorizeUserHandler(h http.Handler) http.Handler {
 		lgr := *hlog.FromRequest(r)
 
 		// retrieve user from request context
-		adt, err := audit.FromRequest(r)
+		adt, err := diy.AuditFromRequest(r)
 		if err != nil {
 			errs.HTTPErrorResponse(w, lgr, err)
 			return
 		}
 
 		// authorize user can access the path/method
-		err = s.MiddlewareService.Authorize(lgr, r, adt)
+		err = s.AuthorizationServicer.Authorize(r, lgr, adt)
 		if err != nil {
 			errs.HTTPErrorResponse(w, lgr, err)
 			return
@@ -225,13 +222,12 @@ func (s *Server) loggerChain() alice.Chain {
 	return ac
 }
 
-// xHeader parses and returns the header value given the key. It is
-// used to validate various header values as part of authentication
-func xHeader(realm string, header http.Header, key string) (v string, err error) {
+// parseAppHeader parses an app header and returns its value.
+func parseAppHeader(realm string, header http.Header, key string) (v string, err error) {
 	// Pull the header value from the Header map given the key
 	headerValue, ok := header[http.CanonicalHeaderKey(key)]
 	if !ok {
-		return "", errs.E(errs.Unauthenticated, errs.Realm(realm), fmt.Sprintf("unauthenticated: no %s header sent", key))
+		return "", errs.E(errs.NotExist, errs.Realm(realm), fmt.Sprintf("no %s header sent", key))
 
 	}
 
@@ -251,44 +247,78 @@ func xHeader(realm string, header http.Header, key string) (v string, err error)
 		return "", errs.E(errs.Unauthenticated, errs.Realm(realm), fmt.Sprintf("unauthenticated: %s header value not found", key))
 	}
 
-	return
+	return v, nil
 }
 
-// authHeader parses/validates the Authorization header and returns an Oauth2 token
-func authHeader(realm string, header http.Header) (oauth2.Token, error) {
+// parseProviderHeader parses the X-AUTH-PROVIDER header and returns its value.
+func parseProviderHeader(realm string, header http.Header) (p diy.Provider, err error) {
+	// Pull the header value from the Header map given the key
+	headerValue, ok := header[http.CanonicalHeaderKey(authProviderHeaderKey)]
+	if !ok {
+		return diy.UnknownProvider, errs.E(errs.Unauthenticated, errs.Realm(realm), fmt.Sprintf("no %s header sent", authProviderHeaderKey))
+
+	}
+
+	// too many values sent - should only be one value
+	if len(headerValue) > 1 {
+		return diy.UnknownProvider, errs.E(errs.Unauthenticated, errs.Realm(realm), fmt.Sprintf("%s header value > 1", authProviderHeaderKey))
+	}
+
+	// retrieve header value from map
+	v := headerValue[0]
+
+	// remove all leading/trailing white space
+	v = strings.TrimSpace(v)
+
+	// should not be empty
+	if v == "" {
+		return diy.UnknownProvider, errs.E(errs.Unauthenticated, errs.Realm(realm), fmt.Sprintf("unauthenticated: %s header value not found", authProviderHeaderKey))
+	}
+
+	p = diy.ParseProvider(v)
+
+	if p == diy.UnknownProvider {
+		return p, errs.E(errs.Unauthenticated, errs.Realm(realm), fmt.Sprintf("unknown provider given: %s", v))
+	}
+
+	return p, nil
+}
+
+// parseAuthorizationHeader parses/validates the Authorization header and returns an Oauth2 token
+func parseAuthorizationHeader(realm string, header http.Header) (*oauth2.Token, error) {
 	// Pull the token from the Authorization header by retrieving the
 	// value from the Header map with "Authorization" as the key
 	//
 	// format: Authorization: Bearer
 	headerValue, ok := header["Authorization"]
 	if !ok {
-		return oauth2.Token{}, errs.E(errs.Unauthenticated, errs.Realm(realm), "unauthenticated: no Authorization header sent")
+		return nil, errs.E(errs.Unauthenticated, errs.Realm(realm), "unauthenticated: no Authorization header sent")
 	}
 
 	// too many values sent - spec allows for only one token
 	if len(headerValue) > 1 {
-		return oauth2.Token{}, errs.E(errs.Unauthenticated, errs.Realm(realm), "header value > 1")
+		return nil, errs.E(errs.Unauthenticated, errs.Realm(realm), "header value > 1")
 	}
 
 	// retrieve token from map
 	token := headerValue[0]
 
 	// Oauth2 should have "Bearer " as the prefix as the authentication scheme
-	hasBearer := strings.HasPrefix(token, auth.BearerTokenType+" ")
+	hasBearer := strings.HasPrefix(token, diy.BearerTokenType+" ")
 	if !hasBearer {
-		return oauth2.Token{}, errs.E(errs.Unauthenticated, errs.Realm(realm), "unauthenticated: Bearer authentication scheme not found")
+		return nil, errs.E(errs.Unauthenticated, errs.Realm(realm), "unauthenticated: Bearer authentication scheme not found")
 	}
 
 	// remove "Bearer " authentication scheme from header value
-	token = strings.TrimPrefix(token, auth.BearerTokenType+" ")
+	token = strings.TrimPrefix(token, diy.BearerTokenType+" ")
 
 	// remove all leading/trailing white space
 	token = strings.TrimSpace(token)
 
 	// token should not be empty
 	if token == "" {
-		return oauth2.Token{}, errs.E(errs.Unauthenticated, errs.Realm(realm), "unauthenticated: Authorization header sent with Bearer scheme, but no token found")
+		return nil, errs.E(errs.Unauthenticated, errs.Realm(realm), "unauthenticated: Authorization header sent with Bearer scheme, but no token found")
 	}
 
-	return oauth2.Token{AccessToken: token, TokenType: auth.BearerTokenType}, nil
+	return &oauth2.Token{AccessToken: token, TokenType: diy.BearerTokenType}, nil
 }

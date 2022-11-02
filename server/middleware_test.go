@@ -14,37 +14,34 @@ import (
 	"github.com/rs/zerolog"
 	"golang.org/x/oauth2"
 
-	"github.com/gilcrest/diy-go-api/app"
-	"github.com/gilcrest/diy-go-api/audit"
-	"github.com/gilcrest/diy-go-api/auth"
+	"github.com/gilcrest/diy-go-api"
 	"github.com/gilcrest/diy-go-api/errs"
 	"github.com/gilcrest/diy-go-api/logger"
-	"github.com/gilcrest/diy-go-api/org"
-	"github.com/gilcrest/diy-go-api/service"
-	"github.com/gilcrest/diy-go-api/user"
 )
 
-type mockMiddlewareService struct{}
+type mockAuthenticationService struct{}
 
-func (mockMiddlewareService) FindAppByAPIKey(ctx context.Context, realm, appExtlID, apiKey string) (app.App, error) {
-	return app.App{
+func (mockAuthenticationService) SelfRegister(ctx context.Context, params diy.AuthenticationParams) (diy.Auth, error) {
+	panic("implement me")
+}
+
+func (mockAuthenticationService) FindAuth(ctx context.Context, params diy.AuthenticationParams) (diy.Auth, error) {
+	panic("implement me")
+}
+
+func (mockAuthenticationService) FindAppByProviderClientID(ctx context.Context, realm string, auth diy.Auth) (a *diy.App, err error) {
+	panic("implement me")
+}
+
+func (mockAuthenticationService) FindAppByAPIKey(ctx context.Context, realm, appExtlID, key string) (*diy.App, error) {
+	return &diy.App{
 		ID:          uuid.UUID{},
 		ExternalID:  []byte("so random"),
-		Org:         org.Org{},
+		Org:         &diy.Org{},
 		Name:        "",
 		Description: "",
 		APIKeys:     nil,
 	}, nil
-}
-
-func (mockMiddlewareService) FindUserByOauth2Token(ctx context.Context, params service.FindUserParams) (user.User, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (mockMiddlewareService) Authorize(lgr zerolog.Logger, r *http.Request, sub audit.Audit) error {
-	//TODO implement me
-	panic("implement me")
 }
 
 func TestJSONContentTypeResponseHandler(t *testing.T) {
@@ -69,7 +66,7 @@ func TestJSONContentTypeResponseHandler(t *testing.T) {
 	handlers.ServeHTTP(rr, req)
 }
 
-// TODO - add typical - with database test to actually query db. Requires quite a bit of data setup, but is appropriate and will get to this.
+// TODO - currently using mock - should use database test to actually query db. Requires quite a bit of data setup, but is appropriate and will get to this.
 func TestServer_appHandler(t *testing.T) {
 	t.Run("typical - mock database", func(t *testing.T) {
 		c := qt.New(t)
@@ -82,14 +79,15 @@ func TestServer_appHandler(t *testing.T) {
 		req.Header.Add(apiKeyHeaderKey, "test_app_api_key")
 
 		testAppHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			a, err := app.FromRequest(r)
+			var a *diy.App
+			a, err = diy.AppFromRequest(r)
 			if err != nil {
 				t.Fatal("app.FromRequest() error", err)
 			}
-			wantApp := app.App{
+			wantApp := &diy.App{
 				ID:          uuid.UUID{},
 				ExternalID:  []byte("so random"),
-				Org:         org.Org{},
+				Org:         &diy.Org{},
 				Name:        "",
 				Description: "",
 				APIKeys:     nil,
@@ -99,10 +97,10 @@ func TestServer_appHandler(t *testing.T) {
 
 		rr := httptest.NewRecorder()
 
-		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+		lgr := logger.New(os.Stdout, zerolog.DebugLevel, true)
 
 		s := New(NewMuxRouter(), NewDriver(), lgr)
-		s.MiddlewareService = mockMiddlewareService{}
+		s.AuthenticationServicer = mockAuthenticationService{}
 
 		handlers := s.appHandler(testAppHandler)
 		handlers.ServeHTTP(rr, req)
@@ -113,13 +111,13 @@ func TestServer_appHandler(t *testing.T) {
 	})
 }
 
-func TestXHeader(t *testing.T) {
+func Test_parseAppHeader(t *testing.T) {
 	t.Run("x-app-id", func(t *testing.T) {
 		c := qt.New(t)
 		hdr := http.Header{}
 		hdr.Add(appIDHeaderKey, "appIdHeaderFakeText")
 
-		appID, err := xHeader(defaultRealm, hdr, appIDHeaderKey)
+		appID, err := parseAppHeader(defaultRealm, hdr, appIDHeaderKey)
 		c.Assert(err, qt.IsNil)
 		c.Assert(appID, qt.Equals, "appIdHeaderFakeText")
 	})
@@ -127,8 +125,8 @@ func TestXHeader(t *testing.T) {
 		c := qt.New(t)
 		hdr := http.Header{}
 
-		_, err := xHeader(defaultRealm, hdr, appIDHeaderKey)
-		c.Assert(err, qt.CmpEquals(cmp.Comparer(errs.Match)), errs.E(errs.Unauthenticated, errs.Realm(defaultRealm), fmt.Sprintf("unauthenticated: no %s header sent", appIDHeaderKey)))
+		_, err := parseAppHeader(defaultRealm, hdr, appIDHeaderKey)
+		c.Assert(err, qt.CmpEquals(cmp.Comparer(errs.Match)), errs.E(errs.NotExist, errs.Realm(defaultRealm), fmt.Sprintf("no %s header sent", appIDHeaderKey)))
 	})
 	t.Run("too many values error", func(t *testing.T) {
 		c := qt.New(t)
@@ -136,7 +134,7 @@ func TestXHeader(t *testing.T) {
 		hdr.Add(appIDHeaderKey, "value1")
 		hdr.Add(appIDHeaderKey, "value2")
 
-		_, err := xHeader(defaultRealm, hdr, appIDHeaderKey)
+		_, err := parseAppHeader(defaultRealm, hdr, appIDHeaderKey)
 		c.Assert(err, qt.CmpEquals(cmp.Comparer(errs.Match)), errs.E(errs.Unauthenticated, errs.Realm(defaultRealm), fmt.Sprintf("%s header value > 1", appIDHeaderKey)))
 	})
 	t.Run("empty value error", func(t *testing.T) {
@@ -144,12 +142,12 @@ func TestXHeader(t *testing.T) {
 		hdr := http.Header{}
 		hdr.Add(appIDHeaderKey, "")
 
-		_, err := xHeader(defaultRealm, hdr, appIDHeaderKey)
+		_, err := parseAppHeader(defaultRealm, hdr, appIDHeaderKey)
 		c.Assert(err, qt.CmpEquals(cmp.Comparer(errs.Match)), errs.E(errs.Unauthenticated, errs.Realm(defaultRealm), fmt.Sprintf("unauthenticated: %s header value not found", appIDHeaderKey)))
 	})
 }
 
-func Test_authHeader(t *testing.T) {
+func Test_parseAuthorizationHeader(t *testing.T) {
 	c := qt.New(t)
 
 	const reqHeader string = "Authorization"
@@ -184,7 +182,7 @@ func Test_authHeader(t *testing.T) {
 		wantToken oauth2.Token
 		wantErr   error
 	}{
-		{"typical", args{realm: defaultRealm, header: hdr}, oauth2.Token{AccessToken: "foobarbbq", TokenType: auth.BearerTokenType}, nil},
+		{"typical", args{realm: defaultRealm, header: hdr}, oauth2.Token{AccessToken: "foobarbbq", TokenType: diy.BearerTokenType}, nil},
 		{"no authorization header error", args{realm: defaultRealm, header: emptyHdr}, oauth2.Token{}, emptyHdrErr},
 		{"too many values error", args{realm: defaultRealm, header: tooManyValues}, oauth2.Token{}, tooManyValuesErr},
 		{"no bearer scheme error", args{realm: defaultRealm, header: noBearer}, oauth2.Token{}, noBearerErr},
@@ -192,10 +190,14 @@ func Test_authHeader(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotToken, err := authHeader(tt.args.realm, tt.args.header)
+			token, err := parseAuthorizationHeader(tt.args.realm, tt.args.header)
 			if (err != nil) && (tt.wantErr == nil) {
 				t.Errorf("authHeader() error = %v, nil expected", err)
 				return
+			}
+			var gotToken oauth2.Token
+			if token != nil {
+				gotToken = *token
 			}
 			c.Assert(err, qt.CmpEquals(cmp.Comparer(errs.Match)), tt.wantErr)
 			c.Assert(gotToken, qt.Equals, tt.wantToken)
