@@ -67,7 +67,7 @@ func TestDecoderErr(t *testing.T) {
 		err = decoderErr(json.NewDecoder(r.Body).Decode(&wantBody))
 		defer r.Body.Close()
 
-		wantErr := errs.E(errs.InvalidRequest, errors.New("Malformed JSON"))
+		wantErr := errs.E(errs.InvalidRequest, errors.New("malformed JSON"))
 		c.Assert(errs.Match(err, wantErr), qt.IsTrue)
 	})
 
@@ -95,7 +95,7 @@ func TestDecoderErr(t *testing.T) {
 		err = decoderErr(json.NewDecoder(r.Body).Decode(&wantBody))
 		defer r.Body.Close()
 
-		wantErr := errs.E(errs.InvalidRequest, errors.New("Request Body cannot be empty"))
+		wantErr := errs.E(errs.InvalidRequest, errors.New("request body cannot be empty"))
 		c.Assert(errs.Match(err, wantErr), qt.IsTrue)
 	})
 
