@@ -1,0 +1,1 @@
+drop table if exists org_kind cascade;

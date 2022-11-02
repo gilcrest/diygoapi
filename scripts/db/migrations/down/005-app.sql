@@ -1,1 +1,1 @@
-drop table if exists demo.app cascade;
+drop table if exists app cascade;

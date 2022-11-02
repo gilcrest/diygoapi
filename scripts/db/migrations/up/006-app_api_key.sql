@@ -16,18 +16,18 @@ create table if not exists app_api_key
     constraint app_api_key_app_fk1
         foreign key (create_app_id) references app
             deferrable initially deferred,
-    constraint app_api_key_org_user_fk1
-        foreign key (create_user_id) references org_user
+    constraint app_api_key_users_fk1
+        foreign key (create_user_id) references users
             deferrable initially deferred,
     constraint app_api_key_app_fk2
         foreign key (update_app_id) references app
             deferrable initially deferred,
-    constraint app_api_key_org_user_fk2
-        foreign key (update_user_id) references org_user
+    constraint app_api_key_users_fk2
+        foreign key (update_user_id) references users
             deferrable initially deferred
 );
 
-comment on column app_api_key.api_key is 'app_key is a hash of a key given to a user for an app';
+comment on column app_api_key.api_key is 'app_key is a hash of a key given to an person for an app';
 
 comment on column app_api_key.app_id is 'foreign key to app table';
 

@@ -1,0 +1,1 @@
+drop table if exists users_lang_prefs cascade;

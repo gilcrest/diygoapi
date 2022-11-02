@@ -14,10 +14,10 @@ create table if not exists org
     constraint org_pk
         primary key (org_id),
     constraint org_create_user_fk
-        foreign key (create_user_id) references org_user
+        foreign key (create_user_id) references users
             deferrable initially deferred,
     constraint org_update_user_fk
-        foreign key (update_user_id) references org_user
+        foreign key (update_user_id) references users
             deferrable initially deferred,
     constraint org_create_app_fk
         foreign key (create_app_id) references app
@@ -54,11 +54,6 @@ comment on column org.update_timestamp is 'The timestamp when the record was upd
 
 alter table app
     add constraint app_org_org_id_fk
-        foreign key (org_id) references org
-            deferrable initially deferred;
-
-alter table org_user
-    add constraint user_org_fk
         foreign key (org_id) references org
             deferrable initially deferred;
 

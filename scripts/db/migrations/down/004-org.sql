@@ -1,1 +1,1 @@
-drop table if exists demo.org cascade;
+drop table if exists org cascade;

@@ -1,1 +1,1 @@
-drop table if exists demo.person;
+drop table if exists person cascade;

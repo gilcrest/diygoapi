@@ -1,1 +1,1 @@
-drop table if exists demo.app_api_key;
+drop table if exists app_api_key cascade;
