@@ -1,11 +1,11 @@
-package datastore_test
+package sqldb_test
 
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
-	"reflect"
 	"strconv"
 	"testing"
 	"time"
@@ -15,12 +15,12 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/jackc/puddle"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
-	"github.com/gilcrest/diy-go-api/datastore"
+	"github.com/gilcrest/diy-go-api"
 	"github.com/gilcrest/diy-go-api/errs"
 	"github.com/gilcrest/diy-go-api/logger"
+	"github.com/gilcrest/diy-go-api/sqldb"
 )
 
 func TestPostgreSQLDSN_ConnectionKeywordValueString(t *testing.T) {
@@ -41,7 +41,7 @@ func TestPostgreSQLDSN_ConnectionKeywordValueString(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			dsn := datastore.PostgreSQLDSN{
+			dsn := sqldb.PostgreSQLDSN{
 				Host:     tt.fields.Host,
 				Port:     tt.fields.Port,
 				DBName:   tt.fields.DBName,
@@ -55,38 +55,38 @@ func TestPostgreSQLDSN_ConnectionKeywordValueString(t *testing.T) {
 	}
 }
 
-func TestDatastore_Pool(t *testing.T) {
-	c := qt.New(t)
+//func TestDB_Pool(t *testing.T) {
+//	c := qt.New(t)
+//
+//	ctx := context.Background()
+//	lgr := logger.New(os.Stdout, zerolog.DebugLevel, true)
+//
+//	dsn := newPostgreSQLDSN(t)
+//
+//	ogpool, cleanup, err := sqldb.NewPostgreSQLPool(ctx, lgr, dsn)
+//	t.Cleanup(cleanup)
+//	if err != nil {
+//		t.Fatal(err)
+//	}
+//	ds := sqldb.NewDB(ogpool)
+//	dbpool := ds.Pool()
+//
+//	c.Assert(dbpool, qt.Equals, ogpool)
+//}
 
-	ctx := context.Background()
-	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
-
-	dsn := newPostgreSQLDSN(t)
-
-	ogpool, cleanup, err := datastore.NewPostgreSQLPool(ctx, dsn, lgr)
-	t.Cleanup(cleanup)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ds := datastore.NewDatastore(ogpool)
-	dbpool := ds.Pool()
-
-	c.Assert(dbpool, qt.Equals, ogpool)
-}
-
-func TestDatastore_BeginTx(t *testing.T) {
+func TestDB_BeginTx(t *testing.T) {
 	t.Run("typical", func(t *testing.T) {
 		c := qt.New(t)
 
 		ctx := context.Background()
 		dsn := newPostgreSQLDSN(t)
-		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+		lgr := logger.New(os.Stdout, zerolog.DebugLevel, true)
 
-		dbpool, cleanup, err := datastore.NewPostgreSQLPool(ctx, dsn, lgr)
+		dbpool, cleanup, err := sqldb.NewPostgreSQLPool(ctx, lgr, dsn)
 		c.Assert(err, qt.IsNil)
 		t.Cleanup(cleanup)
 
-		ds := datastore.NewDatastore(dbpool)
+		ds := sqldb.NewDB(dbpool)
 
 		var tx pgx.Tx
 		tx, err = ds.BeginTx(ctx)
@@ -97,20 +97,19 @@ func TestDatastore_BeginTx(t *testing.T) {
 		err = tx.Rollback(ctx)
 		c.Assert(err, qt.IsNil)
 	})
-
 	t.Run("closed pool", func(t *testing.T) {
 		c := qt.New(t)
 
 		ctx := context.Background()
 		dsn := newPostgreSQLDSN(t)
-		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+		lgr := logger.New(os.Stdout, zerolog.DebugLevel, true)
 
-		dbpool, cleanup, err := datastore.NewPostgreSQLPool(ctx, dsn, lgr)
+		dbpool, cleanup, err := sqldb.NewPostgreSQLPool(ctx, lgr, dsn)
 		c.Assert(err, qt.IsNil)
 		// cleanup closes the pool
 		cleanup()
 
-		ds := datastore.NewDatastore(dbpool)
+		ds := sqldb.NewDB(dbpool)
 
 		_, err = ds.BeginTx(ctx)
 		c.Assert(errors.Is(err, puddle.ErrClosedPool), qt.IsTrue)
@@ -121,7 +120,7 @@ func TestDatastore_BeginTx(t *testing.T) {
 
 		var err error
 
-		ds := datastore.NewDatastore(nil)
+		ds := sqldb.NewDB(nil)
 
 		ctx := context.Background()
 		_, err = ds.BeginTx(ctx)
@@ -136,15 +135,15 @@ func TestDatastore_RollbackTx(t *testing.T) {
 
 		ctx := context.Background()
 		dsn := newPostgreSQLDSN(t)
-		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+		lgr := logger.New(os.Stdout, zerolog.DebugLevel, true)
 
 		// get a *pgxpool.Pool and setup datastore.Datastore
-		dbpool, cleanup, err := datastore.NewPostgreSQLPool(ctx, dsn, lgr)
+		dbpool, cleanup, err := sqldb.NewPostgreSQLPool(ctx, lgr, dsn)
 		t.Cleanup(cleanup)
 		if err != nil {
 			t.Errorf("datastore.NewPostgreSQLDB error = %v", err)
 		}
-		ds := datastore.NewDatastore(dbpool)
+		ds := sqldb.NewDB(dbpool)
 
 		// begin a new tx from pool in datastore.Datastore
 		var tx pgx.Tx
@@ -175,15 +174,15 @@ func TestDatastore_RollbackTx(t *testing.T) {
 
 		ctx := context.Background()
 		dsn := newPostgreSQLDSN(t)
-		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+		lgr := logger.New(os.Stdout, zerolog.DebugLevel, true)
 
 		// get a *pgxpool.Pool and setup datastore.Datastore
-		dbpool, cleanup, err := datastore.NewPostgreSQLPool(ctx, dsn, lgr)
+		dbpool, cleanup, err := sqldb.NewPostgreSQLPool(ctx, lgr, dsn)
 		t.Cleanup(cleanup)
 		if err != nil {
 			t.Errorf("datastore.NewPostgreSQLDB error = %v", err)
 		}
-		ds := datastore.NewDatastore(dbpool)
+		ds := sqldb.NewDB(dbpool)
 
 		// create fake error to mimic an error that might trigger a rollback
 		fakeErr := errs.E(errs.Validation, errs.Code("INVALID_TOKEN"), "some validation error")
@@ -208,15 +207,15 @@ func TestDatastore_RollbackTx(t *testing.T) {
 
 		ctx := context.Background()
 		dsn := newPostgreSQLDSN(t)
-		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+		lgr := logger.New(os.Stdout, zerolog.DebugLevel, true)
 
 		// get a *pgxpool.Pool and setup datastore.Datastore
-		dbpool, cleanup, err := datastore.NewPostgreSQLPool(ctx, dsn, lgr)
+		dbpool, cleanup, err := sqldb.NewPostgreSQLPool(ctx, lgr, dsn)
 		t.Cleanup(cleanup)
 		if err != nil {
 			t.Errorf("datastore.NewPostgreSQLDB error = %v", err)
 		}
-		ds := datastore.NewDatastore(dbpool)
+		ds := sqldb.NewDB(dbpool)
 
 		// begin a new tx from pool in datastore.Datastore
 		var tx pgx.Tx
@@ -253,15 +252,15 @@ func TestDatastore_RollbackTx(t *testing.T) {
 
 		ctx := context.Background()
 		dsn := newPostgreSQLDSN(t)
-		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+		lgr := logger.New(os.Stdout, zerolog.DebugLevel, true)
 
 		// get a *pgxpool.Pool and setup datastore.Datastore
-		dbpool, cleanup, err := datastore.NewPostgreSQLPool(ctx, dsn, lgr)
+		dbpool, cleanup, err := sqldb.NewPostgreSQLPool(ctx, lgr, dsn)
 		t.Cleanup(cleanup)
 		if err != nil {
 			t.Errorf("datastore.NewPostgreSQLDB error = %v", err)
 		}
-		ds := datastore.NewDatastore(dbpool)
+		ds := sqldb.NewDB(dbpool)
 
 		// begin a new tx from pool in datastore.Datastore
 		var tx pgx.Tx
@@ -313,7 +312,7 @@ func TestDatastore_RollbackTx(t *testing.T) {
 		if errors.As(deferErr, &errsErr) {
 			c.Assert(errsErr.Kind, qt.Equals, errs.Database)
 			c.Assert(errsErr.Code, qt.DeepEquals, errs.Code("nil_tx"))
-			c.Assert(errsErr.Error(), qt.Equals, fmt.Sprintf("RollbackTx() error = tx cannot be nil: Original error is nil"))
+			c.Assert(errsErr.Error(), qt.Equals, "RollbackTx() error = tx cannot be nil: Original error is nil")
 		} else {
 			c.Fatalf("rollbackErr is invalid: %v", deferErr)
 		}
@@ -333,7 +332,7 @@ func TestDatastore_RollbackTx(t *testing.T) {
 		if errors.As(deferErr, &errsErr) {
 			c.Assert(errsErr.Kind, qt.Equals, errs.Database)
 			c.Assert(errsErr.Code, qt.DeepEquals, errs.Code("rollback_err"))
-			c.Assert(errsErr.Error(), qt.Equals, fmt.Sprintf("PG Error Code: 57P01, PG Error Message: terminating connection due to administrator command, RollbackTx() error = FATAL: terminating connection due to administrator command (SQLSTATE 57P01): Original error = This validation happened."))
+			c.Assert(errsErr.Error(), qt.Equals, "PG Error Code: 57P01, PG Error Message: terminating connection due to administrator command, RollbackTx() error = FATAL: terminating connection due to administrator command (SQLSTATE 57P01): Original error = This validation happened.")
 		} else {
 			c.Fatalf("rollbackErr is invalid: %v", deferErr)
 		}
@@ -343,19 +342,19 @@ func TestDatastore_RollbackTx(t *testing.T) {
 func checkDefer(t *testing.T) (err error) {
 	ctx := context.Background()
 	dsn := newPostgreSQLDSN(t)
-	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+	lgr := logger.New(os.Stdout, zerolog.DebugLevel, true)
 
 	// get a *pgxpool.Pool and setup datastore.Datastore
 	var (
 		dbpool  *pgxpool.Pool
 		cleanup func()
 	)
-	dbpool, cleanup, err = datastore.NewPostgreSQLPool(ctx, dsn, lgr)
+	dbpool, cleanup, err = sqldb.NewPostgreSQLPool(ctx, lgr, dsn)
 	t.Cleanup(cleanup)
 	if err != nil {
 		t.Fatalf("datastore.NewPostgreSQLDB error = %v", err)
 	}
-	ds := datastore.NewDatastore(dbpool)
+	ds := sqldb.NewDB(dbpool)
 
 	// begin a new tx from pool in datastore.Datastore
 	var tx pgx.Tx
@@ -388,19 +387,19 @@ type fakeUser struct {
 func checkDefer2FieldsNilError(t *testing.T) (fu fakeUser, err error) {
 	ctx := context.Background()
 	dsn := newPostgreSQLDSN(t)
-	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+	lgr := logger.New(os.Stdout, zerolog.DebugLevel, true)
 
 	// get a *pgxpool.Pool and setup datastore.Datastore
 	var (
 		dbpool  *pgxpool.Pool
 		cleanup func()
 	)
-	dbpool, cleanup, err = datastore.NewPostgreSQLPool(ctx, dsn, lgr)
+	dbpool, cleanup, err = sqldb.NewPostgreSQLPool(ctx, lgr, dsn)
 	t.Cleanup(cleanup)
 	if err != nil {
 		t.Fatalf("datastore.NewPostgreSQLDB error = %v", err)
 	}
-	ds := datastore.NewDatastore(dbpool)
+	ds := sqldb.NewDB(dbpool)
 
 	// begin a new tx from pool in datastore.Datastore
 	var tx pgx.Tx
@@ -424,19 +423,19 @@ func checkDefer2FieldsNilError(t *testing.T) (fu fakeUser, err error) {
 func checkDefer2FieldsNilTx(t *testing.T) (fu fakeUser, err error) {
 	ctx := context.Background()
 	dsn := newPostgreSQLDSN(t)
-	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+	lgr := logger.New(os.Stdout, zerolog.DebugLevel, true)
 
 	// get a *pgxpool.Pool and setup datastore.Datastore
 	var (
 		dbpool  *pgxpool.Pool
 		cleanup func()
 	)
-	dbpool, cleanup, err = datastore.NewPostgreSQLPool(ctx, dsn, lgr)
+	dbpool, cleanup, err = sqldb.NewPostgreSQLPool(ctx, lgr, dsn)
 	t.Cleanup(cleanup)
 	if err != nil {
 		t.Fatalf("datastore.NewPostgreSQLDB error = %v", err)
 	}
-	ds := datastore.NewDatastore(dbpool)
+	ds := sqldb.NewDB(dbpool)
 
 	// begin a new tx from pool in datastore.Datastore
 	var tx pgx.Tx
@@ -460,15 +459,15 @@ func checkDefer2FieldsNilTx(t *testing.T) (fu fakeUser, err error) {
 func checkDeferKillDB(t *testing.T) (err error) {
 	ctx := context.Background()
 	dsn := newPostgreSQLDSN(t)
-	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+	lgr := logger.New(os.Stdout, zerolog.DebugLevel, true)
 
 	// get a *pgxpool.Pool and setup datastore.Datastore
-	dbpool, cleanup, err := datastore.NewPostgreSQLPool(ctx, dsn, lgr)
+	dbpool, cleanup, err := sqldb.NewPostgreSQLPool(ctx, lgr, dsn)
 	t.Cleanup(cleanup)
 	if err != nil {
 		t.Fatalf("datastore.NewPostgreSQLDB error = %v", err)
 	}
-	ds := datastore.NewDatastore(dbpool)
+	ds := sqldb.NewDB(dbpool)
 
 	// begin a new tx from pool in datastore.Datastore
 	var tx pgx.Tx
@@ -497,9 +496,9 @@ func TestDatastore_CommitTx(t *testing.T) {
 
 	ctx := context.Background()
 	dsn := newPostgreSQLDSN(t)
-	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+	lgr := logger.New(os.Stdout, zerolog.DebugLevel, true)
 
-	dbpool, cleanup, err := datastore.NewPostgreSQLPool(ctx, dsn, lgr)
+	dbpool, cleanup, err := sqldb.NewPostgreSQLPool(ctx, lgr, dsn)
 	t.Cleanup(cleanup)
 	if err != nil {
 		t.Errorf("datastore.NewPostgreSQLPool error = %v", err)
@@ -537,7 +536,7 @@ func TestDatastore_CommitTx(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ds := datastore.NewDatastore(tt.fields.dbpool)
+			ds := sqldb.NewDB(tt.fields.dbpool)
 			if commitErr := ds.CommitTx(tt.args.ctx, tt.args.tx); (commitErr != nil) != tt.wantErr {
 				t.Errorf("CommitTx() error = %v, wantErr %v", commitErr, tt.wantErr)
 			}
@@ -563,13 +562,15 @@ func TestNewNullString(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := datastore.NewNullString(tt.args.s)
+			got := diy.NewNullString(tt.args.s)
 			c.Assert(got, qt.Equals, tt.want)
 		})
 	}
 }
 
 func TestNewNullInt64(t *testing.T) {
+	c := qt.New(t)
+
 	type args struct {
 		i int64
 	}
@@ -583,16 +584,15 @@ func TestNewNullInt64(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := datastore.NewNullInt64(tt.args.i); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewNullInt64() = %v, want %v", got, tt.want)
-			}
+			got := diy.NewNullInt64(tt.args.i)
+			c.Assert(got, qt.Equals, tt.want)
 		})
 	}
 }
 
 // newPGDatasourceName is a test helper to get a PGDatasourceName
 // from environment variables
-func newPostgreSQLDSN(t *testing.T) datastore.PostgreSQLDSN {
+func newPostgreSQLDSN(t *testing.T) sqldb.PostgreSQLDSN {
 	t.Helper()
 
 	var (
@@ -606,42 +606,42 @@ func newPostgreSQLDSN(t *testing.T) datastore.PostgreSQLDSN {
 		err          error
 	)
 
-	dbHost, ok = os.LookupEnv(datastore.DBHostEnv)
+	dbHost, ok = os.LookupEnv(sqldb.DBHostEnv)
 	if !ok {
-		t.Fatalf("No environment variable found for %s", datastore.DBHostEnv)
+		t.Fatalf("No environment variable found for %s", sqldb.DBHostEnv)
 	}
 
 	var p string
-	p, ok = os.LookupEnv(datastore.DBPortEnv)
+	p, ok = os.LookupEnv(sqldb.DBPortEnv)
 	if !ok {
-		t.Fatalf("No environment variable found for %s", datastore.DBPortEnv)
+		t.Fatalf("No environment variable found for %s", sqldb.DBPortEnv)
 	}
 	dbPort, err = strconv.Atoi(p)
 	if err != nil {
 		t.Fatalf("Unable to convert db port %s to int", p)
 	}
 
-	dbName, ok = os.LookupEnv(datastore.DBNameEnv)
+	dbName, ok = os.LookupEnv(sqldb.DBNameEnv)
 	if !ok {
-		t.Fatalf("No environment variable found for %s", datastore.DBNameEnv)
+		t.Fatalf("No environment variable found for %s", sqldb.DBNameEnv)
 	}
 
-	dbUser, ok = os.LookupEnv(datastore.DBUserEnv)
+	dbUser, ok = os.LookupEnv(sqldb.DBUserEnv)
 	if !ok {
-		t.Fatalf("No environment variable found for %s", datastore.DBUserEnv)
+		t.Fatalf("No environment variable found for %s", sqldb.DBUserEnv)
 	}
 
-	dbPassword, ok = os.LookupEnv(datastore.DBPasswordEnv)
+	dbPassword, ok = os.LookupEnv(sqldb.DBPasswordEnv)
 	if !ok {
-		t.Fatalf("No environment variable found for %s", datastore.DBPasswordEnv)
+		t.Fatalf("No environment variable found for %s", sqldb.DBPasswordEnv)
 	}
 
-	dbSearchPath, ok = os.LookupEnv(datastore.DBSearchPathEnv)
+	dbSearchPath, ok = os.LookupEnv(sqldb.DBSearchPathEnv)
 	if !ok {
-		t.Fatalf("No environment variable found for %s", datastore.DBSearchPathEnv)
+		t.Fatalf("No environment variable found for %s", sqldb.DBSearchPathEnv)
 	}
 
-	return datastore.PostgreSQLDSN{
+	return sqldb.PostgreSQLDSN{
 		Host:       dbHost,
 		Port:       dbPort,
 		DBName:     dbName,

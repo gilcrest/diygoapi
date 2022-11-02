@@ -1,7 +1,7 @@
-// Package datastore is used to interact with a datastore. It has
+// Package sqldb is used to interact with a datastore. It has
 // functions to help set up a sql.DB as well as helpers for working
 // with the sql.DB once it's initialized.
-package datastore
+package sqldb
 
 import (
 	"context"
@@ -10,11 +10,11 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
-	"time"
 
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/rs/zerolog"
 
 	"github.com/gilcrest/diy-go-api/errs"
 )
@@ -48,22 +48,29 @@ type PostgreSQLDSN struct {
 // The general form for a connection URI is:
 // postgresql://[userspec@][hostspec][/dbname][?paramspec]
 // where userspec is
-//     user[:password]
+//
+//	user[:password]
+//
 // and hostspec is:
-//     [host][:port][,...]
+//
+//	[host][:port][,...]
+//
 // and paramspec is:
-//     name=value[&...]
+//
+//	name=value[&...]
+//
 // The URI scheme designator can be either postgresql:// or postgres://.
 // Each of the remaining URI parts is optional.
 // The following examples illustrate valid URI syntax:
-//    postgresql://
-//    postgresql://localhost
-//    postgresql://localhost:5433
-//    postgresql://localhost/mydb
-//    postgresql://user@localhost
-//    postgresql://user:secret@localhost
-//    postgresql://other@localhost/otherdb?connect_timeout=10&application_name=myapp
-//    postgresql://host1:123,host2:456/somedb?target_session_attrs=any&application_name=myapp
+//
+//	postgresql://
+//	postgresql://localhost
+//	postgresql://localhost:5433
+//	postgresql://localhost/mydb
+//	postgresql://user@localhost
+//	postgresql://user:secret@localhost
+//	postgresql://other@localhost/otherdb?connect_timeout=10&application_name=myapp
+//	postgresql://host1:123,host2:456/somedb?target_session_attrs=any&application_name=myapp
 func (dsn PostgreSQLDSN) ConnectionURI() string {
 
 	const uriSchemeDesignator string = "postgresql"
@@ -113,29 +120,99 @@ func (dsn PostgreSQLDSN) KeywordValueConnectionString() string {
 	}
 }
 
-// Datastore is a concrete implementation for a sql database
-type Datastore struct {
-	dbpool *pgxpool.Pool
+// NewPostgreSQLPool creates a new db pool and establishes a connection.
+// In addition, returns a Close function to defer closing the pool.
+func NewPostgreSQLPool(ctx context.Context, lgr zerolog.Logger, dsn PostgreSQLDSN) (pool *pgxpool.Pool, close func(), err error) {
+
+	f := func() {}
+
+	// Open the postgres database using the pgxpool driver (pq)
+	// func Open(driverName, dataSourceName string) (*DB, error)
+	pool, err = pgxpool.Connect(ctx, dsn.KeywordValueConnectionString())
+	if err != nil {
+		return nil, f, errs.E(errs.Database, err)
+	}
+
+	lgr.Info().Msgf("sql database opened for %s on port %d", dsn.Host, dsn.Port)
+
+	return pool, func() { pool.Close() }, nil
 }
 
-// NewDatastore is an initializer for the Datastore struct
-func NewDatastore(dbpool *pgxpool.Pool) Datastore {
-	return Datastore{dbpool: dbpool}
+// DB is a concrete implementation for a PostgreSQL database
+type DB struct {
+	pool *pgxpool.Pool
 }
 
-// Pool returns *pgxpool.Pool from the Datastore struct
-func (ds Datastore) Pool() *pgxpool.Pool {
-	return ds.dbpool
+// NewDB is an initializer for the DB struct
+func NewDB(pool *pgxpool.Pool) *DB {
+	return &DB{pool: pool}
+}
+
+// Ping pings the DB pool.
+//
+// From pgx: "Ping acquires a connection from the Pool and executes
+// an empty sql statement against it. If the sql returns without error,
+// the database Ping is considered successful, otherwise, the error is returned."
+func (db *DB) Ping(ctx context.Context) error {
+	err := db.pool.Ping(ctx)
+	if err != nil {
+		return errs.E(errs.Database, err)
+	}
+	return err
+}
+
+// ValidatePool pings the database and logs the current user and database.
+// ValidatePool is used for logging db status on startup.
+func (db *DB) ValidatePool(ctx context.Context, log zerolog.Logger) error {
+	err := db.pool.Ping(ctx)
+	if err != nil {
+		return errs.E(errs.Database, err)
+	}
+	log.Info().Msg("sql database Ping returned successfully")
+
+	var (
+		currentDatabase string
+		currentUser     string
+		dbVersion       string
+		searchPath      string
+	)
+	sqlStatement := `select current_database(), current_user, version();`
+	row := db.pool.QueryRow(ctx, sqlStatement)
+	err = row.Scan(&currentDatabase, &currentUser, &dbVersion)
+	switch {
+	case err == sql.ErrNoRows:
+		return errs.E(errs.Database, "no rows returned")
+	case err != nil:
+		return errs.E(errs.Database, err)
+	default:
+		log.Info().Msgf("database version: %s", dbVersion)
+		log.Info().Msgf("current database user: %s", currentUser)
+		log.Info().Msgf("current database: %s", currentDatabase)
+	}
+
+	searchPathSQL := `SHOW search_path;`
+	searchPathRow := db.pool.QueryRow(ctx, searchPathSQL)
+	err = searchPathRow.Scan(&searchPath)
+	switch {
+	case err == sql.ErrNoRows:
+		return errs.E(errs.Database, "no rows returned for search_path")
+	case err != nil:
+		return errs.E(errs.Database, err)
+	default:
+		log.Info().Msgf("current search_path: %s", searchPath)
+	}
+
+	return nil
 }
 
 // BeginTx returns an acquired transaction from the db pool and
 // adds app specific error handling
-func (ds Datastore) BeginTx(ctx context.Context) (pgx.Tx, error) {
-	if ds.dbpool == nil {
+func (db *DB) BeginTx(ctx context.Context) (pgx.Tx, error) {
+	if db.pool == nil {
 		return nil, errs.E(errs.Database, "db pool cannot be nil")
 	}
 
-	tx, err := ds.dbpool.Begin(ctx)
+	tx, err := db.pool.Begin(ctx)
 	if err != nil {
 		return nil, errs.E(errs.Database, err)
 	}
@@ -145,7 +222,7 @@ func (ds Datastore) BeginTx(ctx context.Context) (pgx.Tx, error) {
 
 // RollbackTx is a wrapper for sql.Tx.Rollback in order to expose from
 // the Datastore interface. Proper error handling is also considered.
-func (ds Datastore) RollbackTx(ctx context.Context, tx pgx.Tx, err error) error {
+func (db *DB) RollbackTx(ctx context.Context, tx pgx.Tx, err error) error {
 	if tx == nil {
 		if err != nil {
 			return errs.E(errs.Database, errs.Code("nil_tx"), fmt.Sprintf("RollbackTx() error = tx cannot be nil: Original error = %s", err.Error()))
@@ -177,7 +254,7 @@ func (ds Datastore) RollbackTx(ctx context.Context, tx pgx.Tx, err error) error 
 
 // CommitTx is a wrapper for sql.Tx.Commit in order to expose from
 // the Datastore interface. Proper error handling is also considered.
-func (ds Datastore) CommitTx(ctx context.Context, tx pgx.Tx) error {
+func (db *DB) CommitTx(ctx context.Context, tx pgx.Tx) error {
 	if tx == nil {
 		return errs.E(errs.Database, errs.Code("nil_tx"), "CommitTx() error = tx cannot be nil")
 	}
@@ -187,52 +264,4 @@ func (ds Datastore) CommitTx(ctx context.Context, tx pgx.Tx) error {
 	}
 
 	return nil
-}
-
-// NewNullString returns a null if s is empty, otherwise it returns
-// the string which was input
-func NewNullString(s string) sql.NullString {
-	if len(s) == 0 {
-		return sql.NullString{}
-	}
-	return sql.NullString{
-		String: s,
-		Valid:  true,
-	}
-}
-
-// NewNullTime returns a null if t is the zero value for time.Time,
-// otherwise it returns the time which was input
-func NewNullTime(t time.Time) sql.NullTime {
-	if t.IsZero() {
-		return sql.NullTime{}
-	}
-	return sql.NullTime{
-		Time:  t,
-		Valid: true,
-	}
-}
-
-// NewNullInt64 returns a null if i == 0, otherwise it returns
-// the int64 which was input.
-func NewNullInt64(i int64) sql.NullInt64 {
-	if i == 0 {
-		return sql.NullInt64{}
-	}
-	return sql.NullInt64{
-		Int64: i,
-		Valid: true,
-	}
-}
-
-// NewNullInt32 returns a null if i == 0, otherwise it returns
-// the int32 which was input.
-func NewNullInt32(i int32) sql.NullInt32 {
-	if i == 0 {
-		return sql.NullInt32{}
-	}
-	return sql.NullInt32{
-		Int32: i,
-		Valid: true,
-	}
 }

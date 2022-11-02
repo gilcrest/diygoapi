@@ -1,4 +1,4 @@
-package datastore
+package sqldb
 
 import (
 	"context"
@@ -12,23 +12,66 @@ import (
 	"github.com/gilcrest/diy-go-api/logger"
 )
 
-func TestNewDatastore(t *testing.T) {
+func Test_NewPostgreSQLPool(t *testing.T) {
+	type args struct {
+		ctx  context.Context
+		pgds PostgreSQLDSN
+		l    zerolog.Logger
+	}
+
+	ctx := context.Background()
+	lgr := logger.New(os.Stdout, zerolog.DebugLevel, true)
+	dsn := newPostgreSQLDSN(t)
+	baddsn := PostgreSQLDSN{
+		Host:   "badhost",
+		Port:   5432,
+		DBName: "go_api_basic",
+		User:   "postgres",
+	}
+
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{"App DB", args{ctx, dsn, lgr}, false},
+		{"Bad DSN", args{ctx, baddsn, lgr}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db, cleanup, err := NewPostgreSQLPool(tt.args.ctx, tt.args.l, tt.args.pgds)
+			t.Cleanup(cleanup)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewDB() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if err == nil {
+				err = db.Ping(ctx)
+				if err != nil {
+					t.Errorf("Error pinging database = %v", err)
+				}
+			}
+		})
+	}
+}
+
+func TestNewDB(t *testing.T) {
 	t.Run("typical", func(t *testing.T) {
 		c := qt.New(t)
 
 		ctx := context.Background()
-		lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+		lgr := logger.New(os.Stdout, zerolog.DebugLevel, true)
 
 		dsn := newPostgreSQLDSN(t)
 
-		dbpool, cleanup, err := NewPostgreSQLPool(ctx, dsn, lgr)
+		dbpool, cleanup, err := NewPostgreSQLPool(ctx, lgr, dsn)
 		c.Assert(err, qt.IsNil)
 		t.Cleanup(cleanup)
 
-		got := NewDatastore(dbpool)
-		want := Datastore{dbpool: dbpool}
+		got := NewDB(dbpool)
+		want := DB{pool: dbpool}
 
-		c.Assert(got, qt.Equals, want)
+		c.Assert(*got, qt.Equals, want)
 	})
 }
 
