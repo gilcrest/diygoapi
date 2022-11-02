@@ -49,7 +49,8 @@ func readDDLFiles(dir string) ([]ddlFile, error) {
 		if file.IsDir() {
 			continue
 		}
-		df, err := newDDLFile(file.Name())
+		var df ddlFile
+		df, err = newDDLFile(file.Name())
 		if err != nil {
 			return nil, err
 		}
