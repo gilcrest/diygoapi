@@ -24,10 +24,8 @@ SELECT o.org_id,
        a.app_name         create_app_name,
        a.app_description  create_app_description,
        o.create_user_id,
-       ou.username        create_username,
-       ou.org_id          create_user_org_id,
-       pp.first_name      create_user_first_name,
-       pp.last_name       create_user_last_name,
+       cu.first_name      create_user_first_name,
+       cu.last_name       create_user_last_name,
        o.create_timestamp,
        o.update_app_id,
        a2.org_id          update_app_org_id,
@@ -35,19 +33,15 @@ SELECT o.org_id,
        a2.app_name        update_app_name,
        a2.app_description update_app_description,
        o.update_user_id,
-       ou2.username       update_username,
-       ou2.org_id         update_user_org_id,
-       pp2.first_name     update_user_first_name,
-       pp2.last_name      update_user_last_name,
+       uu.first_name      update_user_first_name,
+       uu.last_name       update_user_last_name,
        o.update_timestamp
 FROM org o
          INNER JOIN org_kind ok on ok.org_kind_id = o.org_kind_id
          INNER JOIN app a on a.app_id = o.create_app_id
          INNER JOIN app a2 on a2.app_id = o.update_app_id
-         LEFT JOIN org_user ou on ou.user_id = o.create_user_id
-         INNER JOIN person_profile pp on pp.person_profile_id = ou.person_profile_id
-         LEFT JOIN org_user ou2 on ou2.user_id = o.update_user_id
-         INNER JOIN person_profile pp2 on pp2.person_profile_id = ou2.person_profile_id
+         INNER JOIN users cu on cu.user_id = o.create_user_id
+         INNER JOIN users uu on uu.user_id = o.update_user_id
 WHERE o.org_id = $1;
 
 -- name: FindOrgByExtlID :one
@@ -76,10 +70,8 @@ SELECT o.org_id,
        a.app_name         create_app_name,
        a.app_description  create_app_description,
        o.create_user_id,
-       ou.username        create_username,
-       ou.org_id          create_user_org_id,
-       pp.first_name      create_user_first_name,
-       pp.last_name       create_user_last_name,
+       cu.first_name      create_user_first_name,
+       cu.last_name       create_user_last_name,
        o.create_timestamp,
        o.update_app_id,
        a2.org_id          update_app_org_id,
@@ -87,20 +79,16 @@ SELECT o.org_id,
        a2.app_name        update_app_name,
        a2.app_description update_app_description,
        o.update_user_id,
-       ou2.username       update_username,
-       ou2.org_id         update_user_org_id,
-       pp2.first_name     update_user_first_name,
-       pp2.last_name      update_user_last_name,
+       uu.first_name      update_user_first_name,
+       uu.last_name       update_user_last_name,
        o.update_timestamp
 FROM org o
          INNER JOIN org_kind ok on ok.org_kind_id = o.org_kind_id
          INNER JOIN app a on a.app_id = o.create_app_id
          INNER JOIN app a2 on a2.app_id = o.update_app_id
-         LEFT JOIN org_user ou on ou.user_id = o.create_user_id
-         INNER JOIN person_profile pp on pp.person_profile_id = ou.person_profile_id
-         LEFT JOIN org_user ou2 on ou2.user_id = o.update_user_id
-         INNER JOIN person_profile pp2 on pp2.person_profile_id = ou2.person_profile_id
-WHERE org_extl_id = $1;
+         INNER JOIN users cu on cu.user_id = o.create_user_id
+         INNER JOIN users uu on uu.user_id = o.update_user_id
+WHERE o.org_extl_id = $1;
 
 -- name: FindOrgByName :one
 SELECT o.org_id,
@@ -128,10 +116,8 @@ SELECT o.org_id,
        a.app_name         create_app_name,
        a.app_description  create_app_description,
        o.create_user_id,
-       ou.username        create_username,
-       ou.org_id          create_user_org_id,
-       pp.first_name      create_user_first_name,
-       pp.last_name       create_user_last_name,
+       cu.first_name      create_user_first_name,
+       cu.last_name       create_user_last_name,
        o.create_timestamp,
        o.update_app_id,
        a2.org_id          update_app_org_id,
@@ -139,19 +125,15 @@ SELECT o.org_id,
        a2.app_name        update_app_name,
        a2.app_description update_app_description,
        o.update_user_id,
-       ou2.username       update_username,
-       ou2.org_id         update_user_org_id,
-       pp2.first_name     update_user_first_name,
-       pp2.last_name      update_user_last_name,
+       uu.first_name      update_user_first_name,
+       uu.last_name       update_user_last_name,
        o.update_timestamp
 FROM org o
          INNER JOIN org_kind ok on ok.org_kind_id = o.org_kind_id
          INNER JOIN app a on a.app_id = o.create_app_id
          INNER JOIN app a2 on a2.app_id = o.update_app_id
-         LEFT JOIN org_user ou on ou.user_id = o.create_user_id
-         INNER JOIN person_profile pp on pp.person_profile_id = ou.person_profile_id
-         LEFT JOIN org_user ou2 on ou2.user_id = o.update_user_id
-         INNER JOIN person_profile pp2 on pp2.person_profile_id = ou2.person_profile_id
+         INNER JOIN users cu on cu.user_id = o.create_user_id
+         INNER JOIN users uu on uu.user_id = o.update_user_id
 WHERE o.org_name = $1;
 
 -- name: FindOrgs :many
@@ -180,10 +162,8 @@ SELECT o.org_id,
        a.app_name         create_app_name,
        a.app_description  create_app_description,
        o.create_user_id,
-       ou.username        create_username,
-       ou.org_id          create_user_org_id,
-       pp.first_name      create_user_first_name,
-       pp.last_name       create_user_last_name,
+       cu.first_name      create_user_first_name,
+       cu.last_name       create_user_last_name,
        o.create_timestamp,
        o.update_app_id,
        a2.org_id          update_app_org_id,
@@ -191,19 +171,15 @@ SELECT o.org_id,
        a2.app_name        update_app_name,
        a2.app_description update_app_description,
        o.update_user_id,
-       ou2.username       update_username,
-       ou2.org_id         update_user_org_id,
-       pp2.first_name     update_user_first_name,
-       pp2.last_name      update_user_last_name,
+       uu.first_name      update_user_first_name,
+       uu.last_name       update_user_last_name,
        o.update_timestamp
 FROM org o
          INNER JOIN org_kind ok on ok.org_kind_id = o.org_kind_id
          INNER JOIN app a on a.app_id = o.create_app_id
          INNER JOIN app a2 on a2.app_id = o.update_app_id
-         LEFT JOIN org_user ou on ou.user_id = o.create_user_id
-         INNER JOIN person_profile pp on pp.person_profile_id = ou.person_profile_id
-         LEFT JOIN org_user ou2 on ou2.user_id = o.update_user_id
-         INNER JOIN person_profile pp2 on pp2.person_profile_id = ou2.person_profile_id;
+         INNER JOIN users cu on cu.user_id = o.create_user_id
+         INNER JOIN users uu on uu.user_id = o.update_user_id;
 
 -- name: FindOrgsByKindExtlID :many
 SELECT o.org_id,
@@ -232,7 +208,8 @@ SET org_name         = $1,
 WHERE org_id = $6;
 
 -- name: DeleteOrg :execrows
-DELETE FROM org
+DELETE
+FROM org
 WHERE org_id = $1;
 
 -- ---------------------------------------------------------------------------------------------------------------------
@@ -240,10 +217,12 @@ WHERE org_id = $1;
 -- ---------------------------------------------------------------------------------------------------------------------
 
 -- name: FindOrgKinds :many
-SELECT * FROM org_kind;
+SELECT *
+FROM org_kind;
 
 -- name: FindOrgKindByExtlID :one
-SELECT * FROM org_kind
+SELECT *
+FROM org_kind
 WHERE org_kind_extl_id = $1;
 
 -- name: CreateOrgKind :execrows

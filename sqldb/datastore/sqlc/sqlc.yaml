@@ -1,0 +1,10 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    schema: "../../../scripts/db/objects/demo"
+    queries: "postgresql/"
+    gen:
+      go:
+        package: "datastore"
+        out: "../"
+        sql_package: "pgx/v4"
