@@ -1,8 +1,7 @@
 {
     "user": {
-        "email": "otto.maddox@gmail.com",
-        "first_name": "Otto",
-        "last_name": "Maddox"
+        "provider": "google",
+        "token": "REPLACE_ME"
     },
     "org": {
         "name": "Movie Makers Unlimited",
