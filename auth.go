@@ -300,5 +300,4 @@ type PermissionServicer interface {
 // as well as assigning permissions and users to it.
 type RoleServicer interface {
 	Create(ctx context.Context, r *Role, adt Audit) (Role, error)
-	//AddPermissions(ctx context.Context, r *[]fide.Permission, adt fide.Audit) error
 }
