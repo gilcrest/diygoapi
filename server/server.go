@@ -16,7 +16,7 @@
 // the following changes:
 //
 // - removed requestlog.Logger
-//      I chose to log with in a middleware from zerolog
+//      I chose to log with middleware from zerolog
 // - removed opencensus integration
 //      I may eventually add something in for tracing, but for now, removing
 //      opencensus as I have not worked with it and think it has moved to
@@ -39,11 +39,27 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
 
+	"github.com/gilcrest/diy-go-api"
 	"github.com/gilcrest/diy-go-api/errs"
 	"github.com/gilcrest/diy-go-api/server/driver"
 )
 
 const pathPrefix string = "/api"
+
+// Services are used by the application service handlers
+type Services struct {
+	OrgServicer            diy.OrgServicer
+	AppServicer            diy.AppServicer
+	RegisterUserService    diy.RegisterPersonServicer
+	PingService            diy.PingServicer
+	LoggerService          diy.LoggerServicer
+	GenesisServicer        diy.GenesisServicer
+	AuthenticationServicer diy.AuthenticationServicer
+	AuthorizationServicer  diy.AuthorizationServicer
+	PermissionServicer     diy.PermissionServicer
+	RoleServicer           diy.RoleServicer
+	MovieServicer          diy.MovieServicer
+}
 
 // Server represents an HTTP server.
 type Server struct {
@@ -100,7 +116,7 @@ type Driver struct {
 	Server http.Server
 }
 
-// NewDriver creates a Driver with an http.Server with default timeouts.
+// NewDriver creates a Driver enfolding a http.Server with default timeouts.
 func NewDriver() *Driver {
 	return &Driver{
 		Server: http.Server{
@@ -149,11 +165,11 @@ func decoderErr(err error) error {
 	// If the request body is empty (io.EOF)
 	// return an error
 	case err == io.EOF:
-		return errs.E(errs.InvalidRequest, "Request Body cannot be empty")
+		return errs.E(errs.InvalidRequest, "request body cannot be empty")
 	// If the request body has malformed JSON (io.ErrUnexpectedEOF)
 	// return an error
 	case err == io.ErrUnexpectedEOF:
-		return errs.E(errs.InvalidRequest, "Malformed JSON")
+		return errs.E(errs.InvalidRequest, "malformed JSON")
 	// return other errors
 	case err != nil:
 		return errs.E(err)
