@@ -20,38 +20,9 @@ type movieAudit struct {
 	SimpleAudit diy.SimpleAudit
 }
 
-// CreateMovieRequest is the request struct for Creating a Movie
-type CreateMovieRequest struct {
-	Title    string `json:"title"`
-	Rated    string `json:"rated"`
-	Released string `json:"release_date"`
-	RunTime  int    `json:"run_time"`
-	Director string `json:"director"`
-	Writer   string `json:"writer"`
-}
-
-// MovieResponse is the response struct for a Movie
-type MovieResponse struct {
-	ExternalID          string `json:"external_id"`
-	Title               string `json:"title"`
-	Rated               string `json:"rated"`
-	Released            string `json:"release_date"`
-	RunTime             int    `json:"run_time"`
-	Director            string `json:"director"`
-	Writer              string `json:"writer"`
-	CreateAppExtlID     string `json:"create_app_extl_id"`
-	CreateUserFirstName string `json:"create_user_first_name"`
-	CreateUserLastName  string `json:"create_user_last_name"`
-	CreateDateTime      string `json:"create_date_time"`
-	UpdateAppExtlID     string `json:"update_app_extl_id"`
-	UpdateUserFirstName string `json:"update_user_first_name"`
-	UpdateUserLastName  string `json:"update_user_last_name"`
-	UpdateDateTime      string `json:"update_date_time"`
-}
-
 // newMovieResponse initializes MovieResponse
-func newMovieResponse(ma movieAudit) *MovieResponse {
-	return &MovieResponse{
+func newMovieResponse(ma movieAudit) *diy.MovieResponse {
+	return &diy.MovieResponse{
 		ExternalID:          ma.Movie.ExternalID.String(),
 		Title:               ma.Movie.Title,
 		Rated:               ma.Movie.Rated,
@@ -70,13 +41,13 @@ func newMovieResponse(ma movieAudit) *MovieResponse {
 	}
 }
 
-// CreateMovieService is a service for creating a Movie
-type CreateMovieService struct {
+// MovieService is a service for creating a Movie
+type MovieService struct {
 	Datastorer diy.Datastorer
 }
 
 // Create is used to create a Movie
-func (s CreateMovieService) Create(ctx context.Context, r *CreateMovieRequest, adt diy.Audit) (mr *MovieResponse, err error) {
+func (s *MovieService) Create(ctx context.Context, r *diy.CreateMovieRequest, adt diy.Audit) (mr *diy.MovieResponse, err error) {
 	var released time.Time
 	released, err = time.Parse(time.RFC3339, r.Released)
 	if err != nil {
@@ -152,24 +123,8 @@ func (s CreateMovieService) Create(ctx context.Context, r *CreateMovieRequest, a
 	return mr, nil
 }
 
-// UpdateMovieRequest is the request struct for updating a Movie
-type UpdateMovieRequest struct {
-	ExternalID string
-	Title      string `json:"title"`
-	Rated      string `json:"rated"`
-	Released   string `json:"release_date"`
-	RunTime    int    `json:"run_time"`
-	Director   string `json:"director"`
-	Writer     string `json:"writer"`
-}
-
-// UpdateMovieService is a service for updating a Movie
-type UpdateMovieService struct {
-	Datastorer diy.Datastorer
-}
-
 // Update is used to update a movie
-func (s UpdateMovieService) Update(ctx context.Context, r *UpdateMovieRequest, adt diy.Audit) (mr *MovieResponse, err error) {
+func (s *MovieService) Update(ctx context.Context, r *diy.UpdateMovieRequest, adt diy.Audit) (mr *diy.MovieResponse, err error) {
 
 	var released time.Time
 	released, err = time.Parse(time.RFC3339, r.Released)
@@ -275,13 +230,8 @@ func (s UpdateMovieService) Update(ctx context.Context, r *UpdateMovieRequest, a
 	return mr, nil
 }
 
-// DeleteMovieService is a service for deleting a Movie
-type DeleteMovieService struct {
-	Datastorer diy.Datastorer
-}
-
 // Delete is used to delete a movie
-func (s DeleteMovieService) Delete(ctx context.Context, extlID string) (dr diy.DeleteResponse, err error) {
+func (s *MovieService) Delete(ctx context.Context, extlID string) (dr diy.DeleteResponse, err error) {
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
@@ -323,13 +273,8 @@ func (s DeleteMovieService) Delete(ctx context.Context, extlID string) (dr diy.D
 	return response, nil
 }
 
-// FindMovieService is a service for reading Movies from the DB
-type FindMovieService struct {
-	Datastorer diy.Datastorer
-}
-
 // FindMovieByID is used to find an individual movie
-func (s FindMovieService) FindMovieByID(ctx context.Context, extlID string) (mr *MovieResponse, err error) {
+func (s *MovieService) FindMovieByID(ctx context.Context, extlID string) (mr *diy.MovieResponse, err error) {
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
@@ -403,7 +348,7 @@ func (s FindMovieService) FindMovieByID(ctx context.Context, extlID string) (mr 
 }
 
 // FindAllMovies is used to list all movies in the db
-func (s FindMovieService) FindAllMovies(ctx context.Context) (smr []*MovieResponse, err error) {
+func (s *MovieService) FindAllMovies(ctx context.Context) (smr []*diy.MovieResponse, err error) {
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
