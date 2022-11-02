@@ -7,24 +7,22 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog/hlog"
 
-	"github.com/gilcrest/diy-go-api/audit"
-	"github.com/gilcrest/diy-go-api/auth"
+	"github.com/gilcrest/diy-go-api"
 	"github.com/gilcrest/diy-go-api/errs"
-	"github.com/gilcrest/diy-go-api/service"
 )
 
 // CreateMovie is a HandlerFunc used to create a Movie
 func (s *Server) handleMovieCreate(w http.ResponseWriter, r *http.Request) {
 	logger := *hlog.FromRequest(r)
 
-	adt, err := audit.FromRequest(r)
+	adt, err := diy.AuditFromRequest(r)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, err)
 		return
 	}
 
 	// Declare request body (rb) as an instance of service.MovieRequest
-	rb := new(service.CreateMovieRequest)
+	rb := new(diy.CreateMovieRequest)
 
 	// Decode JSON HTTP request body into a Decoder type
 	// and unmarshal that into the CreateMovieRequest struct (rb)
@@ -38,7 +36,8 @@ func (s *Server) handleMovieCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response, err := s.CreateMovieService.Create(r.Context(), rb, adt)
+	var response *diy.MovieResponse
+	response, err = s.MovieServicer.Create(r.Context(), rb, adt)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, err)
 		return
@@ -58,7 +57,7 @@ func (s *Server) handleMovieUpdate(w http.ResponseWriter, r *http.Request) {
 
 	logger := *hlog.FromRequest(r)
 
-	adt, err := audit.FromRequest(r)
+	adt, err := diy.AuditFromRequest(r)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, err)
 		return
@@ -71,7 +70,7 @@ func (s *Server) handleMovieUpdate(w http.ResponseWriter, r *http.Request) {
 	extlid := vars["extlID"]
 
 	// Declare request body (rb) as an instance of service.MovieRequest
-	rb := new(service.UpdateMovieRequest)
+	rb := new(diy.UpdateMovieRequest)
 
 	// Decode JSON HTTP request body into a Decoder type
 	// and unmarshal that into requestData
@@ -89,7 +88,8 @@ func (s *Server) handleMovieUpdate(w http.ResponseWriter, r *http.Request) {
 	// from decoding response body
 	rb.ExternalID = extlid
 
-	response, err := s.UpdateMovieService.Update(r.Context(), rb, adt)
+	var response *diy.MovieResponse
+	response, err = s.MovieServicer.Update(r.Context(), rb, adt)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, err)
 		return
@@ -115,7 +115,7 @@ func (s *Server) handleMovieDelete(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	extlID := vars["extlID"]
 
-	response, err := s.DeleteMovieService.Delete(r.Context(), extlID)
+	response, err := s.MovieServicer.Delete(r.Context(), extlID)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, err)
 		return
@@ -141,7 +141,7 @@ func (s *Server) handleFindMovieByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	extlID := vars["extlID"]
 
-	response, err := s.FindMovieService.FindMovieByID(r.Context(), extlID)
+	response, err := s.MovieServicer.FindMovieByID(r.Context(), extlID)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, err)
 		return
@@ -161,7 +161,7 @@ func (s *Server) handleFindAllMovies(w http.ResponseWriter, r *http.Request) {
 
 	logger := *hlog.FromRequest(r)
 
-	response, err := s.FindMovieService.FindAllMovies(r.Context())
+	response, err := s.MovieServicer.FindAllMovies(r.Context())
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, err)
 		return
@@ -179,14 +179,14 @@ func (s *Server) handleFindAllMovies(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleOrgCreate(w http.ResponseWriter, r *http.Request) {
 	lgr := *hlog.FromRequest(r)
 
-	adt, err := audit.FromRequest(r)
+	adt, err := diy.AuditFromRequest(r)
 	if err != nil {
 		errs.HTTPErrorResponse(w, lgr, err)
 		return
 	}
 
 	// Declare request body (rb) as an instance of service.MovieRequest
-	rb := new(service.CreateOrgRequest)
+	rb := new(diy.CreateOrgRequest)
 
 	// Decode JSON HTTP request body into a Decoder type
 	// and unmarshal that into the MovieRequest struct in the
@@ -201,8 +201,8 @@ func (s *Server) handleOrgCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var response service.OrgResponse
-	response, err = s.CreateOrgService.Create(r.Context(), rb, adt)
+	var response *diy.OrgResponse
+	response, err = s.OrgServicer.Create(r.Context(), rb, adt)
 	if err != nil {
 		errs.HTTPErrorResponse(w, lgr, err)
 		return
@@ -220,14 +220,14 @@ func (s *Server) handleOrgCreate(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleOrgUpdate(w http.ResponseWriter, r *http.Request) {
 	lgr := *hlog.FromRequest(r)
 
-	adt, err := audit.FromRequest(r)
+	adt, err := diy.AuditFromRequest(r)
 	if err != nil {
 		errs.HTTPErrorResponse(w, lgr, err)
 		return
 	}
 
 	// Declare request body (rb) as an instance of service.MovieRequest
-	rb := new(service.UpdateOrgRequest)
+	rb := new(diy.UpdateOrgRequest)
 
 	// Decode JSON HTTP request body into a Decoder type
 	// and unmarshal that into the MovieRequest struct in the
@@ -247,8 +247,8 @@ func (s *Server) handleOrgUpdate(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	rb.ExternalID = vars["extlID"]
 
-	var response service.OrgResponse
-	response, err = s.OrgService.Update(r.Context(), rb, adt)
+	var response *diy.OrgResponse
+	response, err = s.OrgServicer.Update(r.Context(), rb, adt)
 	if err != nil {
 		errs.HTTPErrorResponse(w, lgr, err)
 		return
@@ -264,7 +264,7 @@ func (s *Server) handleOrgUpdate(w http.ResponseWriter, r *http.Request) {
 
 // handleOrgDelete is a HandlerFunc used to delete an Org
 func (s *Server) handleOrgDelete(w http.ResponseWriter, r *http.Request) {
-	logger := *hlog.FromRequest(r)
+	lgr := *hlog.FromRequest(r)
 
 	// gorilla mux Vars function returns the route variables for the
 	// current request, if any.
@@ -272,57 +272,57 @@ func (s *Server) handleOrgDelete(w http.ResponseWriter, r *http.Request) {
 	// extlID is the external id given for the resource
 	extlID := vars["extlID"]
 
-	response, err := s.OrgService.Delete(r.Context(), extlID)
+	response, err := s.OrgServicer.Delete(r.Context(), extlID)
 	if err != nil {
-		errs.HTTPErrorResponse(w, logger, err)
+		errs.HTTPErrorResponse(w, lgr, err)
 		return
 	}
 
 	// Encode response struct to JSON for the response body
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
-		errs.HTTPErrorResponse(w, logger, errs.E(errs.Internal, err))
+		errs.HTTPErrorResponse(w, lgr, errs.E(errs.Internal, err))
 		return
 	}
 }
 
 // handleOrgFindAll is a HandlerFunc used to find a list of Orgs
 func (s *Server) handleOrgFindAll(w http.ResponseWriter, r *http.Request) {
-	logger := *hlog.FromRequest(r)
+	lgr := *hlog.FromRequest(r)
 
-	response, err := s.OrgService.FindAll(r.Context())
+	response, err := s.OrgServicer.FindAll(r.Context())
 	if err != nil {
-		errs.HTTPErrorResponse(w, logger, err)
+		errs.HTTPErrorResponse(w, lgr, err)
 		return
 	}
 
 	// Encode response struct to JSON for the response body
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
-		errs.HTTPErrorResponse(w, logger, errs.E(errs.Internal, err))
+		errs.HTTPErrorResponse(w, lgr, errs.E(errs.Internal, err))
 		return
 	}
 }
 
 // handleOrgFindByExtlID is a HandlerFunc used to find a specific Org by External ID
 func (s *Server) handleOrgFindByExtlID(w http.ResponseWriter, r *http.Request) {
-	logger := *hlog.FromRequest(r)
+	lgr := *hlog.FromRequest(r)
 
 	// gorilla mux Vars function returns the route variables for the
 	// current request, if any. ID is the external id given for the resource
 	vars := mux.Vars(r)
 	extlID := vars["extlID"]
 
-	response, err := s.OrgService.FindByExternalID(r.Context(), extlID)
+	response, err := s.OrgServicer.FindByExternalID(r.Context(), extlID)
 	if err != nil {
-		errs.HTTPErrorResponse(w, logger, err)
+		errs.HTTPErrorResponse(w, lgr, err)
 		return
 	}
 
 	// Encode response struct to JSON for the response body
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
-		errs.HTTPErrorResponse(w, logger, errs.E(errs.Internal, err))
+		errs.HTTPErrorResponse(w, lgr, errs.E(errs.Internal, err))
 		return
 	}
 }
@@ -331,14 +331,14 @@ func (s *Server) handleOrgFindByExtlID(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleAppCreate(w http.ResponseWriter, r *http.Request) {
 	lgr := *hlog.FromRequest(r)
 
-	adt, err := audit.FromRequest(r)
+	adt, err := diy.AuditFromRequest(r)
 	if err != nil {
 		errs.HTTPErrorResponse(w, lgr, err)
 		return
 	}
 
 	// Declare request body (rb)
-	rb := new(service.CreateAppRequest)
+	rb := new(diy.CreateAppRequest)
 
 	// Decode JSON HTTP request body into a Decoder type
 	// and unmarshal that into the MovieRequest struct in the
@@ -353,8 +353,8 @@ func (s *Server) handleAppCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var response service.AppResponse
-	response, err = s.AppService.Create(r.Context(), rb, adt)
+	var response *diy.AppResponse
+	response, err = s.AppServicer.Create(r.Context(), rb, adt)
 	if err != nil {
 		errs.HTTPErrorResponse(w, lgr, err)
 		return
@@ -372,7 +372,7 @@ func (s *Server) handleAppCreate(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 	lgr := *hlog.FromRequest(r)
 
-	adt, err := audit.FromRequest(r)
+	adt, err := diy.AuditFromRequest(r)
 	if err != nil {
 		errs.HTTPErrorResponse(w, lgr, err)
 		return
@@ -405,7 +405,7 @@ func (s *Server) handleLoggerUpdate(w http.ResponseWriter, r *http.Request) {
 	lgr := *hlog.FromRequest(r)
 
 	// Declare rb as an instance of service.LoggerRequest
-	rb := new(service.LoggerRequest)
+	rb := new(diy.LoggerRequest)
 
 	// Decode JSON HTTP request body into a json.Decoder type
 	// and unmarshal that into rb
@@ -419,7 +419,7 @@ func (s *Server) handleLoggerUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var response service.LoggerResponse
+	var response *diy.LoggerResponse
 	response, err = s.LoggerService.Update(rb)
 	if err != nil {
 		errs.HTTPErrorResponse(w, lgr, err)
@@ -437,17 +437,17 @@ func (s *Server) handleLoggerUpdate(w http.ResponseWriter, r *http.Request) {
 // Ping handles GET requests for the /ping endpoint
 func (s *Server) handlePing(w http.ResponseWriter, r *http.Request) {
 	// pull logger from request context
-	logger := *hlog.FromRequest(r)
+	lgr := *hlog.FromRequest(r)
 
 	// pull the context from the http request
 	ctx := r.Context()
 
-	response := s.PingService.Ping(ctx, logger)
+	response := s.PingService.Ping(ctx, lgr)
 
 	// Encode response struct to JSON for the response body
 	err := json.NewEncoder(w).Encode(response)
 	if err != nil {
-		errs.HTTPErrorResponse(w, logger, errs.E(errs.Internal, err))
+		errs.HTTPErrorResponse(w, lgr, errs.E(errs.Internal, err))
 		return
 	}
 }
@@ -457,7 +457,7 @@ func (s *Server) handleGenesis(w http.ResponseWriter, r *http.Request) {
 	lgr := *hlog.FromRequest(r)
 
 	// Declare rb as an instance of service.LoggerRequest
-	rb := new(service.GenesisRequest)
+	rb := new(diy.GenesisRequest)
 
 	// Decode JSON HTTP request body into a json.Decoder type
 	// and unmarshal that into rb
@@ -471,8 +471,8 @@ func (s *Server) handleGenesis(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var response service.GenesisResponse
-	response, err = s.GenesisService.Seed(r.Context(), rb)
+	var response diy.GenesisResponse
+	response, err = s.GenesisServicer.Arche(r.Context(), rb)
 	if err != nil {
 		errs.HTTPErrorResponse(w, lgr, err)
 		return
@@ -491,10 +491,10 @@ func (s *Server) handleGenesisRead(w http.ResponseWriter, r *http.Request) {
 	lgr := *hlog.FromRequest(r)
 
 	var (
-		response service.GenesisResponse
+		response diy.GenesisResponse
 		err      error
 	)
-	response, err = s.GenesisService.ReadConfig()
+	response, err = s.GenesisServicer.ReadConfig()
 	if err != nil {
 		errs.HTTPErrorResponse(w, lgr, err)
 		return
@@ -514,16 +514,16 @@ func (s *Server) handlePermissionCreate(w http.ResponseWriter, r *http.Request) 
 
 	var (
 		err error
-		adt audit.Audit
+		adt diy.Audit
 	)
-	adt, err = audit.FromRequest(r)
+	adt, err = diy.AuditFromRequest(r)
 	if err != nil {
 		errs.HTTPErrorResponse(w, lgr, err)
 		return
 	}
 
-	// Declare rb as an instance of auth.Permission
-	rb := new(service.PermissionRequest)
+	// Declare rb as an instance of service.PermissionRequest
+	rb := new(diy.PermissionRequest)
 
 	// Decode JSON HTTP request body into a json.Decoder type
 	// and unmarshal that into rb
@@ -537,8 +537,8 @@ func (s *Server) handlePermissionCreate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	var response auth.Permission
-	response, err = s.PermissionService.Create(r.Context(), rb, adt)
+	var response diy.Permission
+	response, err = s.PermissionServicer.Create(r.Context(), rb, adt)
 	if err != nil {
 		errs.HTTPErrorResponse(w, lgr, err)
 		return
@@ -556,7 +556,7 @@ func (s *Server) handlePermissionCreate(w http.ResponseWriter, r *http.Request) 
 func (s *Server) handlePermissionFindAll(w http.ResponseWriter, r *http.Request) {
 	lgr := *hlog.FromRequest(r)
 
-	response, err := s.PermissionService.FindAll(r.Context())
+	response, err := s.PermissionServicer.FindAll(r.Context())
 	if err != nil {
 		errs.HTTPErrorResponse(w, lgr, err)
 		return
