@@ -1,6 +1,8 @@
 package genesis
 
-// Objects included in output.
+// Objects included in output. All object definitions are in the schema.cue file. The permissions and roles are in the
+// auth.cue file, but they are only included as part of the request.json file due to their inclusion below (because of
+// the leading underscore).
 user: #User
 org:  #Org
 permissions: [_pingV1Get, _loggerV1Get, _loggerV1Put, _orgsV1Post, _orgsV1Put, _orgsV1Delete, _orgsV1Get,
@@ -9,10 +11,11 @@ permissions: [_pingV1Get, _loggerV1Get, _loggerV1Put, _orgsV1Post, _orgsV1Put, _
 roles: [_sysAdmin]
 
 #User: {
-	email:      !="" // must be specified and non-empty
-	first_name: !="" // must be specified and non-empty
-	last_name:  !="" // must be specified and non-empty
+	provider: #Oauth2Provider
+	token:    !="" // must be specified and non-empty
 }
+
+#Oauth2Provider: "google"
 
 #Org: {
 	name:        !="" // must be specified and non-empty

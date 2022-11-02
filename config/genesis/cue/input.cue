@@ -3,9 +3,10 @@ package genesis
 // The "genesis" user - the first user to create the system and is
 // given the sysAdmin role (which has all permissions). This user is
 // added to the Principal org and the user initiated org created below.
-user: email:      "otto.maddox@gmail.com"
-user: first_name: "Otto"
-user: last_name:  "Maddox"
+// Add the Oauth2 provider (currently only google is supported) and the
+// Oauth2 token to be used to create the user.
+user: provider: "google"
+user: token:    "REPLACE_ME"
 
 // The first organization created which can actually transact
 // (e.g. is not the principal or test org)
