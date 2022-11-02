@@ -1,4 +1,4 @@
-package app
+package diy
 
 import (
 	"encoding/hex"
@@ -9,50 +9,55 @@ import (
 	"github.com/gilcrest/diy-go-api/secure"
 )
 
-// APIKeyStringGenerator creates a random, 128 API key string
-type APIKeyStringGenerator interface {
+// APIKeyGenerator creates a random, 128 API key string
+type APIKeyGenerator interface {
 	RandomString(n int) (string, error)
 }
 
-// APIKey is an API key for interacting with the system
+// APIKey is an API key for interacting with the system. The API key string
+// is delivered to the client along with an App ID. The API Key acts as a
+// password for the application.
 type APIKey struct {
 	// key: the unencrypted API key string
 	key string
 	// ciphertext: the encrypted API key as []byte
-	ciphertext []byte
+	ciphertextbytes []byte
 	// deactivation: the date/time the API key is no longer usable
 	deactivation time.Time
 }
 
-// NewAPIKey initializes an APIKey. It generates both a 128-bit (16 byte)
-// random string as an API key and its corresponding ciphertext bytes
-func NewAPIKey(g APIKeyStringGenerator, ek *[32]byte) (APIKey, error) {
+// NewAPIKey initializes an APIKey. It generates a random 128-bit (16 byte)
+// base64 encoded string as an API key. The generated key is then encrypted
+// using 256-bit AES-GCM and the encrypted bytes are added to the struct as
+// well.
+func NewAPIKey(g APIKeyGenerator, ek *[32]byte, deactivation time.Time) (APIKey, error) {
+	const n int = 16
 	var (
 		k   string
 		err error
 	)
-	k, err = g.RandomString(18)
+	k, err = g.RandomString(n)
 	if err != nil {
 		return APIKey{}, err
 	}
 
-	var ct []byte
-	ct, err = secure.Encrypt([]byte(k), ek)
+	var ctb []byte
+	ctb, err = secure.Encrypt([]byte(k), ek)
 	if err != nil {
 		return APIKey{}, err
 	}
 
-	return APIKey{key: k, ciphertext: ct}, nil
+	return APIKey{key: k, ciphertextbytes: ctb, deactivation: deactivation}, nil
 }
 
-// NewAPIKeyFromCipher initializes an APIKey
+// NewAPIKeyFromCipher initializes an APIKey given a ciphertext string.
 func NewAPIKeyFromCipher(ciphertext string, ek *[32]byte) (APIKey, error) {
 	var (
 		eak []byte
 		err error
 	)
 
-	// encrypted key is stored using hex in db. Decode to get ciphertext bytes.
+	// encrypted api key is stored using hex in db. Decode to get ciphertext bytes.
 	eak, err = hex.DecodeString(ciphertext)
 	if err != nil {
 		return APIKey{}, errs.E(errs.Internal, err)
@@ -64,21 +69,21 @@ func NewAPIKeyFromCipher(ciphertext string, ek *[32]byte) (APIKey, error) {
 		return APIKey{}, err
 	}
 
-	return APIKey{key: string(apiKey), ciphertext: eak}, nil
+	return APIKey{key: string(apiKey), ciphertextbytes: eak}, nil
 }
 
 // Key returns the key for the API key
-func (a APIKey) Key() string {
+func (a *APIKey) Key() string {
 	return a.key
 }
 
 // Ciphertext returns the hex encoded text of the encrypted cipher bytes for the API key
-func (a APIKey) Ciphertext() string {
-	return hex.EncodeToString(a.ciphertext)
+func (a *APIKey) Ciphertext() string {
+	return hex.EncodeToString(a.ciphertextbytes)
 }
 
 // DeactivationDate returns the Deactivation Date for the API key
-func (a APIKey) DeactivationDate() time.Time {
+func (a *APIKey) DeactivationDate() time.Time {
 	return a.deactivation
 }
 
@@ -100,9 +105,8 @@ func (a *APIKey) SetStringAsDeactivationDate(s string) error {
 	return nil
 }
 
-// isValid validates the API Key
-func (a APIKey) isValid() error {
-	if a.ciphertext == nil {
+func (a *APIKey) validate() error {
+	if a.ciphertextbytes == nil {
 		return errs.E("ciphertext must have a value")
 	}
 
