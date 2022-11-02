@@ -1,5 +1,6 @@
 // Package logger has helpers to setup a zerolog.Logger
-//   https://github.com/rs/zerolog
+//
+//	https://github.com/rs/zerolog
 package logger
 
 import (
@@ -9,8 +10,10 @@ import (
 	"github.com/rs/zerolog/pkgerrors"
 )
 
-// NewLogger is a convenience function to initialize a zerolog.Logger
-func NewLogger(w io.Writer, lvl zerolog.Level, withTimestamp bool) zerolog.Logger {
+// New is a convenience function to initialize a zerolog.Logger
+// with an initial minimum accepted level and timestamp (if true)
+// for a given io.Writer.
+func New(w io.Writer, lvl zerolog.Level, withTimestamp bool) zerolog.Logger {
 	// logger is initialized with the writer and level passed in.
 	// All logs will be written at the given level (unless raised
 	// using zerolog.SetGlobalLevel)
@@ -19,10 +22,22 @@ func NewLogger(w io.Writer, lvl zerolog.Level, withTimestamp bool) zerolog.Logge
 		lgr = lgr.With().Timestamp().Logger()
 	}
 
-	// Add Severity Hook. Zerolog by default outputs structured logs
-	// with "level":"error" as its leveling. Google Cloud as an
-	// example expects "severity","ERROR" for its leveling. This
-	// hook will add severity to each message
+	return lgr
+}
+
+// NewWithGCPHook is a convenience function to initialize a zerolog.Logger
+// with an initial minimum accepted level and timestamp (if true) for a
+// given io.Writer. In addition, it adds a Google Cloud Platform (GCP)
+// Severity Hook. Zerolog by default outputs structured logs with
+// "level":"error" as its leveling. Google Cloud, as an example, expects
+// "severity","ERROR" for its leveling. This hook will add severity
+// to each message.
+func NewWithGCPHook(w io.Writer, lvl zerolog.Level, withTimestamp bool) zerolog.Logger {
+	// logger is initialized with the writer and level passed in.
+	// All logs will be written at the given level (unless raised
+	// using zerolog.SetGlobalLevel)
+	lgr := New(w, lvl, withTimestamp)
+
 	lgr = lgr.Hook(GCPSeverityHook{})
 
 	return lgr
@@ -59,9 +74,10 @@ func (h GCPSeverityHook) Run(e *zerolog.Event, level zerolog.Level, msg string) 
 	}
 }
 
-// WriteErrorStackGlobal is a convenience wrapper to set the zerolog
-// Global variable ErrorStackMarshaler to write Error stacks for logs
-func WriteErrorStackGlobal(writeStack bool) {
+// WriteErrorStack is a convenience function to set the zerolog
+// ErrorStackMarshaler global variable. If true, writes error
+// stacks for logs. If false, will turn off error stack.
+func WriteErrorStack(writeStack bool) {
 	if !writeStack {
 		zerolog.ErrorStackMarshaler = nil
 		return

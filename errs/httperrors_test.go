@@ -54,7 +54,7 @@ func TestHTTPErrorResponse_StatusCode(t *testing.T) {
 		err error
 	}
 
-	l := logger.NewLogger(os.Stdout, zerolog.DebugLevel, false)
+	l := logger.New(os.Stdout, zerolog.DebugLevel, false)
 
 	unauthenticatedErr := E(Unauthenticated, "some error from Google")
 	unauthorizedErr := E(Unauthorized, "some authorization error")
@@ -89,7 +89,7 @@ func TestHTTPErrorResponse_Body(t *testing.T) {
 	}
 
 	var b bytes.Buffer
-	lgr := logger.NewLogger(&b, zerolog.DebugLevel, false)
+	lgr := logger.New(&b, zerolog.DebugLevel, false)
 
 	tests := []struct {
 		name string

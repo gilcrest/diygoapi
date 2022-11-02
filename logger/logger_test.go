@@ -3,9 +3,7 @@ package logger
 import (
 	"bytes"
 	"encoding/json"
-	"io"
 	"os"
-	"reflect"
 	"regexp"
 	"testing"
 
@@ -13,35 +11,6 @@ import (
 
 	"github.com/gilcrest/diy-go-api/errs"
 )
-
-func TestNewLogger(t *testing.T) {
-	// empty string for TimeFieldFormat will write logs with UNIX time
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-	// start a new logger with Stdout as the target
-	lgr := zerolog.New(os.Stdout).Level(zerolog.InfoLevel).With().Timestamp().Logger()
-	lgr = lgr.Hook(GCPSeverityHook{})
-
-	type args struct {
-		w             io.Writer
-		lvl           zerolog.Level
-		withTimestamp bool
-	}
-
-	tests := []struct {
-		name string
-		args args
-		want zerolog.Logger
-	}{
-		{"stdout", args{os.Stdout, zerolog.InfoLevel, true}, lgr},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := NewLogger(tt.args.w, tt.args.lvl, tt.args.withTimestamp); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewLogger() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
 
 func TestGCPSeverityHook_Run(t *testing.T) {
 	// empty string for TimeFieldFormat will write logs with UNIX time
@@ -93,7 +62,7 @@ func TestGCPSeverityHook_Run(t *testing.T) {
 
 func TestWriteErrorStackGlobal(t *testing.T) {
 	t.Run("with stack", func(t *testing.T) {
-		WriteErrorStackGlobal(true)
+		WriteErrorStack(true)
 		out := &bytes.Buffer{}
 		logger := zerolog.New(out)
 
@@ -109,7 +78,7 @@ func TestWriteErrorStackGlobal(t *testing.T) {
 	})
 
 	t.Run("without stack", func(t *testing.T) {
-		WriteErrorStackGlobal(false)
+		WriteErrorStack(false)
 		out := &bytes.Buffer{}
 		logger := zerolog.New(out)
 
@@ -123,4 +92,23 @@ func TestWriteErrorStackGlobal(t *testing.T) {
 			t.Errorf("invalid log output:\ngot:  %v\nwant: %v", got, want)
 		}
 	})
+}
+
+func ExampleNewWithGCPHook() {
+	lgr := NewWithGCPHook(os.Stdout, zerolog.DebugLevel, false)
+	lgr.Trace().Msg("Trace is lower than Debug, this message is filtered out")
+	lgr.Debug().Msg("This is a log at the Debug level")
+
+	zerolog.SetGlobalLevel(zerolog.ErrorLevel)
+	lgr.Debug().Msg("Logging level raised to Error, Debug is lower than Error, this message is filtered out")
+	lgr.Error().Msg("This is a log at the Error level")
+
+	zerolog.SetGlobalLevel(zerolog.TraceLevel)
+	lgr.Trace().Msg("Setting Global level will not impact minimum set to logger, this trace message will still be filtered out")
+	lgr.Debug().Msg("Logging level raised all the way down to Trace level, Debug is higher than Trace, this will log")
+
+	// Output:
+	// {"level":"debug","severity":"DEBUG","message":"This is a log at the Debug level"}
+	// {"level":"error","severity":"ERROR","message":"This is a log at the Error level"}
+	// {"level":"debug","severity":"DEBUG","message":"Logging level raised all the way down to Trace level, Debug is higher than Trace, this will log"}
 }

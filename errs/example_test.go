@@ -54,7 +54,7 @@ func ExampleMatch() {
 func ExampleHTTPErrorResponse() {
 
 	w := httptest.NewRecorder()
-	l := logger.NewLogger(os.Stdout, zerolog.DebugLevel, false)
+	l := logger.NewWithGCPHook(os.Stdout, zerolog.DebugLevel, false)
 
 	err := layer4()
 	errs.HTTPErrorResponse(w, l, err)
