@@ -55,7 +55,7 @@ func TestNewMuxRouter(t *testing.T) {
 		// make a slice of r for use in the Walk function
 		gotRoutes := make([]r, 0)
 
-		// use gorilla/mux Walk function to walk the registered routes
+		// use gorilla/mux Walk function to walk the registered routes.
 		// routes will be added in order registered
 		err := rtr.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
 			pathTemplate, err := route.GetPathTemplate()
