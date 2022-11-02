@@ -3,26 +3,18 @@ package service_test
 import (
 	"context"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
 	qt "github.com/frankban/quicktest"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/jackc/pgx/v4"
 
-	"github.com/gilcrest/diy-go-api/app"
-	"github.com/gilcrest/diy-go-api/audit"
-	"github.com/gilcrest/diy-go-api/datastore"
-	"github.com/gilcrest/diy-go-api/datastore/appstore"
-	"github.com/gilcrest/diy-go-api/datastore/datastoretest"
-	"github.com/gilcrest/diy-go-api/datastore/orgstore"
-	"github.com/gilcrest/diy-go-api/datastore/userstore"
-	"github.com/gilcrest/diy-go-api/org"
-	"github.com/gilcrest/diy-go-api/person"
+	"github.com/gilcrest/diy-go-api"
 	"github.com/gilcrest/diy-go-api/secure"
-	"github.com/gilcrest/diy-go-api/secure/random"
 	"github.com/gilcrest/diy-go-api/service"
-	"github.com/gilcrest/diy-go-api/user"
+	"github.com/gilcrest/diy-go-api/sqldb/datastore"
+	"github.com/gilcrest/diy-go-api/sqldb/sqldbtest"
 )
 
 const (
@@ -51,42 +43,50 @@ func TestOrgService(t *testing.T) {
 		if err != nil {
 			t.Fatal("secure.ParseEncryptionKey() error")
 		}
-		ds, cleanup := datastoretest.NewDatastore(t)
+		db, cleanup := sqldbtest.NewDB(t)
 		c.Cleanup(cleanup)
 
-		s := service.CreateOrgService{
-			Datastorer:            ds,
-			RandomStringGenerator: random.CryptoGenerator{},
-			EncryptionKey:         ek,
+		// start db txn using pgxpool
+		ctx := context.Background()
+		var tx pgx.Tx
+		tx, err = db.BeginTx(ctx)
+		if err != nil {
+			t.Fatalf("db.BeginTx error: %v", err)
 		}
-		r := service.CreateOrgRequest{
+		// defer transaction rollback and handle error, if any
+		defer func() {
+			err = db.RollbackTx(ctx, tx, err)
+		}()
+
+		s := service.OrgService{
+			Datastorer:      db,
+			APIKeyGenerator: secure.RandomGenerator{},
+			EncryptionKey:   ek,
+		}
+		r := diy.CreateOrgRequest{
 			Name:        testOrgServiceOrgName,
 			Description: testOrgServiceOrgDescription,
 			Kind:        testOrgServiceOrgKind,
 		}
 
-		ctx := context.Background()
+		adt := findPrincipalTestAudit(ctx, c, tx)
 
-		adt := findPrincipalTestAudit(ctx, t, ds)
-
-		var got service.OrgResponse
+		var got *diy.OrgResponse
 		got, err = s.Create(context.Background(), &r, adt)
-		want := service.OrgResponse{
+		want := &diy.OrgResponse{
 			ExternalID:          got.ExternalID,
 			Name:                testOrgServiceOrgName,
 			KindExternalID:      testOrgServiceOrgKind,
 			Description:         testOrgServiceOrgDescription,
 			CreateAppExtlID:     adt.App.ExternalID.String(),
-			CreateUsername:      adt.User.Username,
-			CreateUserFirstName: adt.User.Profile.FirstName,
-			CreateUserLastName:  adt.User.Profile.LastName,
+			CreateUserFirstName: adt.User.FirstName,
+			CreateUserLastName:  adt.User.LastName,
 			UpdateAppExtlID:     adt.App.ExternalID.String(),
-			UpdateUsername:      adt.User.Username,
-			UpdateUserFirstName: adt.User.Profile.FirstName,
-			UpdateUserLastName:  adt.User.Profile.LastName,
+			UpdateUserFirstName: adt.User.FirstName,
+			UpdateUserLastName:  adt.User.LastName,
 		}
 		c.Assert(err, qt.IsNil)
-		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(service.OrgResponse{}, "CreateDateTime", "UpdateDateTime")), want)
+		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(diy.OrgResponse{}, "CreateDateTime", "UpdateDateTime")), want)
 	})
 	t.Run("create (with app)", func(t *testing.T) {
 		c := qt.New(t)
@@ -106,86 +106,103 @@ func TestOrgService(t *testing.T) {
 			t.Fatal("secure.ParseEncryptionKey() error")
 		}
 
-		ds, cleanup := datastoretest.NewDatastore(t)
+		db, cleanup := sqldbtest.NewDB(t)
 		c.Cleanup(cleanup)
 
-		s := service.CreateOrgService{
-			Datastorer:            ds,
-			RandomStringGenerator: random.CryptoGenerator{},
-			EncryptionKey:         ek,
+		// start db txn using pgxpool
+		ctx := context.Background()
+		var tx pgx.Tx
+		tx, err = db.BeginTx(ctx)
+		if err != nil {
+			t.Fatalf("db.BeginTx error: %v", err)
 		}
-		r := service.CreateOrgRequest{
+		// defer transaction rollback and handle error, if any
+		defer func() {
+			err = db.RollbackTx(ctx, tx, err)
+		}()
+
+		s := service.OrgService{
+			Datastorer:      db,
+			APIKeyGenerator: secure.RandomGenerator{},
+			EncryptionKey:   ek,
+		}
+		r := diy.CreateOrgRequest{
 			Name:        testOrgServiceOrgName + "_withApp",
 			Description: testOrgServiceOrgDescription + "_withApp",
 			Kind:        testOrgServiceOrgKind,
-			App: service.CreateAppRequest{
+			App: &diy.CreateAppRequest{
 				Name:        testAppServiceAppName,
 				Description: testAppServiceAppDescription,
 			},
 		}
 
-		ctx := context.Background()
+		adt := findPrincipalTestAudit(ctx, c, tx)
 
-		adt := findPrincipalTestAudit(ctx, t, ds)
-
-		var got service.OrgResponse
+		var got *diy.OrgResponse
 		got, err = s.Create(context.Background(), &r, adt)
-		want := service.OrgResponse{
+		want := &diy.OrgResponse{
 			ExternalID:          got.ExternalID,
 			Name:                testOrgServiceOrgName + "_withApp",
 			KindExternalID:      testOrgServiceOrgKind,
 			Description:         testOrgServiceOrgDescription + "_withApp",
 			CreateAppExtlID:     adt.App.ExternalID.String(),
-			CreateUsername:      adt.User.Username,
-			CreateUserFirstName: adt.User.Profile.FirstName,
-			CreateUserLastName:  adt.User.Profile.LastName,
+			CreateUserFirstName: adt.User.FirstName,
+			CreateUserLastName:  adt.User.LastName,
 			UpdateAppExtlID:     adt.App.ExternalID.String(),
-			UpdateUsername:      adt.User.Username,
-			UpdateUserFirstName: adt.User.Profile.FirstName,
-			UpdateUserLastName:  adt.User.Profile.LastName,
-			App: service.AppResponse{
+			UpdateUserFirstName: adt.User.FirstName,
+			UpdateUserLastName:  adt.User.LastName,
+			App: &diy.AppResponse{
 				ExternalID:          got.App.ExternalID,
 				Name:                testAppServiceAppName,
 				Description:         testAppServiceAppDescription,
 				CreateAppExtlID:     adt.App.ExternalID.String(),
-				CreateUsername:      adt.User.Username,
-				CreateUserFirstName: adt.User.Profile.FirstName,
-				CreateUserLastName:  adt.User.Profile.LastName,
+				CreateUserFirstName: adt.User.FirstName,
+				CreateUserLastName:  adt.User.LastName,
 				UpdateAppExtlID:     adt.App.ExternalID.String(),
-				UpdateUsername:      adt.User.Username,
-				UpdateUserFirstName: adt.User.Profile.FirstName,
-				UpdateUserLastName:  adt.User.Profile.LastName,
+				UpdateUserFirstName: adt.User.FirstName,
+				UpdateUserLastName:  adt.User.LastName,
 				APIKeys:             nil,
 			},
 		}
 		c.Assert(err, qt.IsNil)
 		ignoreFields := []string{"ExternalID", "CreateDateTime", "UpdateDateTime", "App.CreateDateTime", "App.UpdateDateTime", "App.APIKeys"}
-		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(service.OrgResponse{}, ignoreFields...)), want)
+		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(diy.OrgResponse{}, ignoreFields...)), want)
 	})
 	t.Run("delete (with app)", func(t *testing.T) {
 		c := qt.New(t)
 
-		ds, cleanup := datastoretest.NewDatastore(t)
-		c.Cleanup(cleanup)
-
-		ctx := context.Background()
-
 		var (
-			testOrg orgstore.FindOrgByNameRow
+			testOrg datastore.FindOrgByNameRow
 			err     error
 		)
-		testOrg, err = orgstore.New(ds.Pool()).FindOrgByName(ctx, testOrgServiceOrgName+"_withApp")
+
+		db, cleanup := sqldbtest.NewDB(t)
+		c.Cleanup(cleanup)
+
+		// start db txn using pgxpool
+		ctx := context.Background()
+		var tx pgx.Tx
+		tx, err = db.BeginTx(ctx)
+		if err != nil {
+			t.Fatalf("db.BeginTx error: %v", err)
+		}
+		// defer transaction rollback and handle error, if any
+		defer func() {
+			err = db.RollbackTx(ctx, tx, err)
+		}()
+
+		testOrg, err = datastore.New(tx).FindOrgByName(ctx, testOrgServiceOrgName+"_withApp")
 		if err != nil {
 			t.Fatalf("FindOrgByName() error = %v", err)
 		}
 
 		s := service.OrgService{
-			Datastorer: ds,
+			Datastorer: db,
 		}
 
-		var got service.DeleteResponse
+		var got diy.DeleteResponse
 		got, err = s.Delete(context.Background(), testOrg.OrgExtlID)
-		want := service.DeleteResponse{
+		want := diy.DeleteResponse{
 			ExternalID: testOrg.OrgExtlID,
 			Deleted:    true,
 		}
@@ -195,106 +212,124 @@ func TestOrgService(t *testing.T) {
 	t.Run("update", func(t *testing.T) {
 		c := qt.New(t)
 
-		ds, cleanup := datastoretest.NewDatastore(t)
-		c.Cleanup(cleanup)
-
-		ctx := context.Background()
-
 		var (
-			testOrg orgstore.FindOrgByNameRow
+			testOrg datastore.FindOrgByNameRow
 			err     error
 		)
-		testOrg, err = orgstore.New(ds.Pool()).FindOrgByName(ctx, testOrgServiceOrgName)
+
+		db, cleanup := sqldbtest.NewDB(t)
+		c.Cleanup(cleanup)
+
+		// start db txn using pgxpool
+		ctx := context.Background()
+		var tx pgx.Tx
+		tx, err = db.BeginTx(ctx)
+		if err != nil {
+			t.Fatalf("db.BeginTx error: %v", err)
+		}
+		// defer transaction rollback and handle error, if any
+		defer func() {
+			err = db.RollbackTx(ctx, tx, err)
+		}()
+
+		testOrg, err = datastore.New(tx).FindOrgByName(ctx, testOrgServiceOrgName)
 		if err != nil {
 			t.Fatalf("FindOrgByName() error = %v", err)
 		}
 
 		s := service.OrgService{
-			Datastorer: ds,
+			Datastorer: db,
 		}
-		r := service.UpdateOrgRequest{
+		r := diy.UpdateOrgRequest{
 			ExternalID:  testOrg.OrgExtlID,
 			Name:        testOrgServiceUpdatedOrgName,
 			Description: testOrgServiceUpdatedOrgDescription,
 		}
 
-		adt := findPrincipalTestAudit(ctx, t, ds)
+		adt := findPrincipalTestAudit(ctx, c, tx)
 
-		var got service.OrgResponse
+		var got *diy.OrgResponse
 		got, err = s.Update(context.Background(), &r, adt)
-		want := service.OrgResponse{
+		want := &diy.OrgResponse{
 			ExternalID:          got.ExternalID,
 			Name:                testOrgServiceUpdatedOrgName,
 			KindExternalID:      testOrgServiceOrgKind,
 			Description:         testOrgServiceUpdatedOrgDescription,
 			CreateAppExtlID:     adt.App.ExternalID.String(),
-			CreateUsername:      adt.User.Username,
-			CreateUserFirstName: adt.User.Profile.FirstName,
-			CreateUserLastName:  adt.User.Profile.LastName,
+			CreateUserFirstName: adt.User.FirstName,
+			CreateUserLastName:  adt.User.LastName,
 			UpdateAppExtlID:     adt.App.ExternalID.String(),
-			UpdateUsername:      adt.User.Username,
-			UpdateUserFirstName: adt.User.Profile.FirstName,
-			UpdateUserLastName:  adt.User.Profile.LastName,
+			UpdateUserFirstName: adt.User.FirstName,
+			UpdateUserLastName:  adt.User.LastName,
 		}
 		c.Assert(err, qt.IsNil)
-		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(service.OrgResponse{}, "CreateDateTime", "UpdateDateTime")), want)
+		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(diy.OrgResponse{}, "CreateDateTime", "UpdateDateTime")), want)
 	})
 	t.Run("findByExtlID", func(t *testing.T) {
 		c := qt.New(t)
 
-		ds, cleanup := datastoretest.NewDatastore(t)
-		c.Cleanup(cleanup)
-
-		ctx := context.Background()
-
 		var (
-			testOrg orgstore.FindOrgByNameRow
+			testOrg datastore.FindOrgByNameRow
 			err     error
 		)
-		testOrg, err = orgstore.New(ds.Pool()).FindOrgByName(ctx, testOrgServiceUpdatedOrgName)
+
+		db, cleanup := sqldbtest.NewDB(t)
+		c.Cleanup(cleanup)
+
+		// start db txn using pgxpool
+		ctx := context.Background()
+		var tx pgx.Tx
+		tx, err = db.BeginTx(ctx)
+		if err != nil {
+			t.Fatalf("db.BeginTx error: %v", err)
+		}
+		// defer transaction rollback and handle error, if any
+		defer func() {
+			err = db.RollbackTx(ctx, tx, err)
+		}()
+
+		testOrg, err = datastore.New(tx).FindOrgByName(ctx, testOrgServiceUpdatedOrgName)
 		if err != nil {
 			t.Fatalf("FindOrgByName() error = %v", err)
 		}
 
 		s := service.OrgService{
-			Datastorer: ds,
+			Datastorer: db,
 		}
 
-		adt := findPrincipalTestAudit(ctx, t, ds)
+		adt := findPrincipalTestAudit(ctx, c, tx)
 
-		var got service.OrgResponse
+		var got *diy.OrgResponse
 		got, err = s.FindByExternalID(context.Background(), testOrg.OrgExtlID)
-		want := service.OrgResponse{
+		want := &diy.OrgResponse{
 			ExternalID:          got.ExternalID,
 			Name:                testOrgServiceUpdatedOrgName,
 			KindExternalID:      testOrgServiceOrgKind,
 			Description:         testOrgServiceUpdatedOrgDescription,
 			CreateAppExtlID:     adt.App.ExternalID.String(),
-			CreateUsername:      adt.User.Username,
-			CreateUserFirstName: adt.User.Profile.FirstName,
-			CreateUserLastName:  adt.User.Profile.LastName,
+			CreateUserFirstName: adt.User.FirstName,
+			CreateUserLastName:  adt.User.LastName,
 			UpdateAppExtlID:     adt.App.ExternalID.String(),
-			UpdateUsername:      adt.User.Username,
-			UpdateUserFirstName: adt.User.Profile.FirstName,
-			UpdateUserLastName:  adt.User.Profile.LastName,
+			UpdateUserFirstName: adt.User.FirstName,
+			UpdateUserLastName:  adt.User.LastName,
 		}
 		c.Assert(err, qt.IsNil)
-		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(service.OrgResponse{}, "CreateDateTime", "UpdateDateTime")), want)
+		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(diy.OrgResponse{}, "CreateDateTime", "UpdateDateTime")), want)
 	})
 	t.Run("findAll", func(t *testing.T) {
 		c := qt.New(t)
 
-		ds, cleanup := datastoretest.NewDatastore(t)
+		db, cleanup := sqldbtest.NewDB(t)
 		c.Cleanup(cleanup)
 
 		ctx := context.Background()
 
 		s := service.OrgService{
-			Datastorer: ds,
+			Datastorer: db,
 		}
 
 		var (
-			got []service.OrgResponse
+			got []*diy.OrgResponse
 			err error
 		)
 		got, err = s.FindAll(ctx)
@@ -305,27 +340,38 @@ func TestOrgService(t *testing.T) {
 	t.Run("delete", func(t *testing.T) {
 		c := qt.New(t)
 
-		ds, cleanup := datastoretest.NewDatastore(t)
-		c.Cleanup(cleanup)
-
-		ctx := context.Background()
-
 		var (
-			testOrg orgstore.FindOrgByNameRow
+			testOrg datastore.FindOrgByNameRow
 			err     error
 		)
-		testOrg, err = orgstore.New(ds.Pool()).FindOrgByName(ctx, testOrgServiceUpdatedOrgName)
+
+		db, cleanup := sqldbtest.NewDB(t)
+		c.Cleanup(cleanup)
+
+		// start db txn using pgxpool
+		ctx := context.Background()
+		var tx pgx.Tx
+		tx, err = db.BeginTx(ctx)
+		if err != nil {
+			t.Fatalf("db.BeginTx error: %v", err)
+		}
+		// defer transaction rollback and handle error, if any
+		defer func() {
+			err = db.RollbackTx(ctx, tx, err)
+		}()
+
+		testOrg, err = datastore.New(tx).FindOrgByName(ctx, testOrgServiceUpdatedOrgName)
 		if err != nil {
 			t.Fatalf("FindOrgByName() error = %v", err)
 		}
 
 		s := service.OrgService{
-			Datastorer: ds,
+			Datastorer: db,
 		}
 
-		var got service.DeleteResponse
+		var got diy.DeleteResponse
 		got, err = s.Delete(context.Background(), testOrg.OrgExtlID)
-		want := service.DeleteResponse{
+		want := diy.DeleteResponse{
 			ExternalID: testOrg.OrgExtlID,
 			Deleted:    true,
 		}
@@ -334,26 +380,26 @@ func TestOrgService(t *testing.T) {
 	})
 }
 
-// findPrincipalTestAudit returns an audit.Audit with the Principal Org, App and a Test User
-func findPrincipalTestAudit(ctx context.Context, t *testing.T, ds datastore.Datastore) audit.Audit {
-	t.Helper()
+// findPrincipalTestAudit returns a diy.Audit with the Principal Org, App and a Test User
+func findPrincipalTestAudit(ctx context.Context, c *qt.C, tx pgx.Tx) diy.Audit {
+	c.Helper()
 
 	var (
-		findOrgByNameRow orgstore.FindOrgByNameRow
+		findOrgByNameRow datastore.FindOrgByNameRow
 		err              error
 	)
-	findOrgByNameRow, err = orgstore.New(ds.Pool()).FindOrgByName(ctx, service.PrincipalOrgName)
+	findOrgByNameRow, err = datastore.New(tx).FindOrgByName(ctx, service.PrincipalOrgName)
 	if err != nil {
-		t.Fatalf("FindOrgByName() error = %v", err)
+		c.Fatalf("FindOrgByName() error = %v", err)
 	}
 
-	k := org.Kind{
+	k := &diy.OrgKind{
 		ID:          findOrgByNameRow.OrgKindID,
 		ExternalID:  findOrgByNameRow.OrgKindExtlID,
 		Description: findOrgByNameRow.OrgKindDesc,
 	}
 
-	genesisOrg := org.Org{
+	genesisOrg := &diy.Org{
 		ID:          findOrgByNameRow.OrgID,
 		ExternalID:  secure.MustParseIdentifier(findOrgByNameRow.OrgExtlID),
 		Name:        findOrgByNameRow.OrgName,
@@ -361,18 +407,18 @@ func findPrincipalTestAudit(ctx context.Context, t *testing.T, ds datastore.Data
 		Kind:        k,
 	}
 
-	findAppByNameParams := appstore.FindAppByNameParams{
+	findAppByNameParams := datastore.FindAppByNameParams{
 		OrgID:   findOrgByNameRow.OrgID,
 		AppName: service.PrincipalAppName,
 	}
 
-	var genesisDBAppRow appstore.FindAppByNameRow
-	genesisDBAppRow, err = appstore.New(ds.Pool()).FindAppByName(context.Background(), findAppByNameParams)
+	var genesisDBAppRow datastore.FindAppByNameRow
+	genesisDBAppRow, err = datastore.New(tx).FindAppByName(context.Background(), findAppByNameParams)
 	if err != nil {
-		t.Fatalf("FindTestApp() error = %v", err)
+		c.Fatalf("FindTestApp() error = %v", err)
 	}
 
-	genesisApp := app.App{
+	genesisApp := &diy.App{
 		ID:          genesisDBAppRow.AppID,
 		ExternalID:  secure.MustParseIdentifier(genesisDBAppRow.AppExtlID),
 		Org:         genesisOrg,
@@ -381,30 +427,45 @@ func findPrincipalTestAudit(ctx context.Context, t *testing.T, ds datastore.Data
 		APIKeys:     nil,
 	}
 
-	findUserByUsernameParams := userstore.FindUserByUsernameParams{
-		Username: strings.TrimSpace(service.PrincipalTestUsername),
-		OrgID:    genesisOrg.ID,
-	}
-
-	var row userstore.FindUserByUsernameRow
-	row, err = userstore.New(ds.Pool()).FindUserByUsername(ctx, findUserByUsernameParams)
+	var testOrg *diy.Org
+	testOrg, err = service.FindOrgByName(ctx, tx, service.TestOrgName)
 	if err != nil {
-		t.Fatalf("FindUserByUsername() error = %v", err)
+		c.Fatalf("FindOrgByName() error = %v", err)
 	}
 
-	genesisTestUser := user.User{
-		ID:       row.UserID,
-		Username: row.Username,
-		Org:      genesisOrg,
-		Profile: person.Profile{
-			FirstName: row.FirstName,
-			LastName:  row.LastName,
-		},
+	var testRole diy.Role
+	testRole, err = service.FindRoleByCode(ctx, tx, service.TestRoleCode)
+	if err != nil {
+		c.Fatalf("FindRoleByCode() error = %v", err)
 	}
 
-	adt := audit.Audit{
+	findUsersByOrgRoleParams := datastore.FindUsersByOrgRoleParams{
+		OrgID:  testOrg.ID,
+		RoleID: testRole.ID,
+	}
+
+	var usersRole []datastore.UsersRole
+	usersRole, err = datastore.New(tx).FindUsersByOrgRole(ctx, findUsersByOrgRoleParams)
+	if err != nil {
+		c.Fatalf("FindUsersByOrgRole() error = %v", err)
+	}
+
+	var u *diy.User
+	for i, ur := range usersRole {
+		u, err = service.FindUserByID(ctx, tx, ur.UserID)
+		if err != nil {
+			c.Fatalf("FindUserByID() error = %v", err)
+		}
+		// theoretically, only one user should have this role, so we
+		// don't need this break, but just in case...
+		if i == 0 {
+			break
+		}
+	}
+
+	adt := diy.Audit{
 		App:    genesisApp,
-		User:   genesisTestUser,
+		User:   u,
 		Moment: time.Now(),
 	}
 

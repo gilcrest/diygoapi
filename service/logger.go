@@ -4,24 +4,11 @@ import (
 	"strconv"
 
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/pkgerrors"
 
+	"github.com/gilcrest/diy-go-api"
 	"github.com/gilcrest/diy-go-api/errs"
-	"github.com/gilcrest/diy-go-api/logger"
 )
-
-// LoggerRequest is the request struct for the app logger
-type LoggerRequest struct {
-	GlobalLogLevel string `json:"global_log_level"`
-	LogErrorStack  string `json:"log_error_stack"`
-}
-
-// LoggerResponse is the response struct for the current
-// state of the app logger
-type LoggerResponse struct {
-	LoggerMinimumLevel string `json:"logger_minimum_level"`
-	GlobalLogLevel     string `json:"global_log_level"`
-	LogErrorStack      bool   `json:"log_error_stack"`
-}
 
 // LoggerService reads and updates the logger state
 type LoggerService struct {
@@ -29,14 +16,14 @@ type LoggerService struct {
 }
 
 // ReadLogger handles GET requests for the /logger endpoint
-func (ls LoggerService) Read() LoggerResponse {
+func (ls *LoggerService) Read() *diy.LoggerResponse {
 
 	var logErrorStack bool
 	if zerolog.ErrorStackMarshaler != nil {
 		logErrorStack = true
 	}
 
-	response := LoggerResponse{
+	response := &diy.LoggerResponse{
 		LoggerMinimumLevel: ls.Logger.GetLevel().String(),
 		GlobalLogLevel:     zerolog.GlobalLevel().String(),
 		LogErrorStack:      logErrorStack,
@@ -47,13 +34,13 @@ func (ls LoggerService) Read() LoggerResponse {
 
 // Update handles PUT requests for the /logger endpoint
 // and updates the logger globals
-func (ls LoggerService) Update(r *LoggerRequest) (LoggerResponse, error) {
+func (ls *LoggerService) Update(r *diy.LoggerRequest) (*diy.LoggerResponse, error) {
 
 	if r.GlobalLogLevel != "" {
 		// parse input level from request (if present) and set to that
 		lvl, err := zerolog.ParseLevel(r.GlobalLogLevel)
 		if err != nil {
-			return LoggerResponse{}, errs.E(errs.Validation, err)
+			return nil, errs.E(errs.Validation, err)
 		}
 
 		clvl := zerolog.GlobalLevel()
@@ -70,11 +57,10 @@ func (ls LoggerService) Update(r *LoggerRequest) (LoggerResponse, error) {
 			err error
 		)
 		if les, err = strconv.ParseBool(r.LogErrorStack); err != nil {
-			return LoggerResponse{}, errs.E(errs.Validation, "Invalid value sent for log_error_stack")
+			return nil, errs.E(errs.Validation, "Invalid value sent for log_error_stack")
 		}
-		// use input LogErrorStack boolean to set whether or not to
-		// write error stack
-		logger.WriteErrorStackGlobal(les)
+		// use input LogErrorStack boolean to determine whether to write error stack
+		writeErrorStackGlobal(les)
 	}
 
 	var logErrorStack bool
@@ -82,11 +68,23 @@ func (ls LoggerService) Update(r *LoggerRequest) (LoggerResponse, error) {
 		logErrorStack = true
 	}
 
-	response := LoggerResponse{
+	response := &diy.LoggerResponse{
 		LoggerMinimumLevel: ls.Logger.GetLevel().String(),
 		GlobalLogLevel:     zerolog.GlobalLevel().String(),
 		LogErrorStack:      logErrorStack,
 	}
 
 	return response, nil
+}
+
+// writeErrorStackGlobal is a convenience wrapper to set the zerolog
+// Global variable ErrorStackMarshaler to write Error stacks for logs
+func writeErrorStackGlobal(writeStack bool) {
+	if !writeStack {
+		zerolog.ErrorStackMarshaler = nil
+		return
+	}
+	// set ErrorStackMarshaler to pkgerrors.MarshalStack
+	// to enable error stack traces
+	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 }

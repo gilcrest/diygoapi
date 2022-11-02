@@ -5,37 +5,32 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
+	"golang.org/x/oauth2"
+	"golang.org/x/text/language"
 
-	"github.com/gilcrest/diy-go-api/app"
-	"github.com/gilcrest/diy-go-api/audit"
-	"github.com/gilcrest/diy-go-api/datastore/appstore"
-	"github.com/gilcrest/diy-go-api/datastore/orgstore"
+	"github.com/gilcrest/diy-go-api"
 	"github.com/gilcrest/diy-go-api/errs"
-	"github.com/gilcrest/diy-go-api/org"
-	"github.com/gilcrest/diy-go-api/person"
 	"github.com/gilcrest/diy-go-api/secure"
-	"github.com/gilcrest/diy-go-api/user"
+	"github.com/gilcrest/diy-go-api/sqldb/datastore"
 )
 
 const (
 	// PrincipalOrgName is the first organization created as part of
 	// the Genesis event and is the central administration org.
-	PrincipalOrgName        = "Principal"
-	principalOrgDescription = "The Principal org represents the first organization created in the database and exists for the administrative purpose of creating other organizations, apps and users."
+	PrincipalOrgName               = "Principal"
+	principalOrgDescription        = "The Principal org represents the first organization created in the database and exists for the administrative purpose of creating other organizations, apps and users."
+	principalOrgKind        string = "principal"
 	// PrincipalAppName is the first app created as part of the
 	// Genesis event and is the central administration app.
 	PrincipalAppName        = "Developer Dashboard"
 	principalAppDescription = "App created as part of Genesis event. To be used solely for creating other apps, orgs and users."
-	// PrincipalTestUsername is for the test user created as part of the
-	// Genesis event and is needed for testing some features of the Principal org.
-	PrincipalTestUsername      = "pgabriel"
-	principalTestUserFirstName = "Peter"
-	principalTestUserLastName  = "Gabriel"
+	// Peter Gabriel is the test user created as part of the Genesis event.
+	testUserFirstName = "Peter"
+	testUserLastName  = "Gabriel"
 	// TestOrgName is the organization created as part of the Genesis
 	// event solely for the purpose of testing
 	TestOrgName        = "Test Org"
@@ -44,86 +39,47 @@ const (
 	// event solely for the purpose of testing
 	TestAppName        = "Test App"
 	testAppDescription = "The test app is used solely for the purpose of testing."
-	// TestUsername is the test user created as part of the Genesis
-	// event solely for the purpose of testing
-	TestUsername      = "shackett"
-	testUserFirstName = "Steve"
-	testUserLastName  = "Hackett"
-
-	genesisOrgKind string = "genesis"
+	// TestRoleCode is the role created to flag the test account in the test org.
+	TestRoleCode = "TestAdminRole"
 	// LocalJSONGenesisResponseFile is the local JSON Genesis Response File path
 	// (relative to project root)
 	LocalJSONGenesisResponseFile = "./config/genesis/response.json"
 )
 
-// GenesisResponse contains both the Genesis response and the Test response
-type GenesisResponse struct {
-	Principal     OrgResponse  `json:"principal"`
-	Test          OrgResponse  `json:"test"`
-	UserInitiated *OrgResponse `json:"userInitiated,omitempty"`
+// principalSeed is used in the Genesis event to seed the principal
+// org, app, initial org Kinds, and Audit object from the event.
+type principalSeed struct {
+	PrincipalOrg    *diy.Org
+	PrincipalApp    *diy.App
+	StandardOrgKind *diy.OrgKind
+	TestOrgKind     *diy.OrgKind
+	Audit           diy.Audit
 }
 
-// GenesisRequest is the request struct for the genesis service
-type GenesisRequest struct {
-	User struct {
-		// Email: The Genesis user email address.
-		Email string `json:"email"`
-
-		// FirstName: The Genesis user first name.
-		FirstName string `json:"first_name"`
-
-		// LastName: The Genesis user last name.
-		LastName string `json:"last_name"`
-	} `json:"user"`
-
-	UserInitiatedOrg CreateOrgRequest `json:"org"`
-
-	// Permissions: The list of permissions to be created as part of Genesis
-	Permissions []PermissionRequest `json:"permissions"`
-
-	// Roles: The list of Roles to be created as part of Genesis
-	Roles []CreateRoleRequest `json:"roles"`
+// testSeed is the Test Org, App and User
+type testSeed struct {
+	TestOrg  *diy.Org
+	TestApp  *diy.App
+	TestUser *diy.User
 }
 
-// seedGenesisReturnParams returns several structs needed for subsequent actions
-// in Genesis.
-type seedGenesisReturnParams struct {
-	org          org.Org
-	app          app.App
-	standardKind org.Kind
-	testKind     org.Kind
-	audit        audit.Audit
-}
-
-// seedGenesisReturnParams returns several structs needed for subsequent actions
-// in Genesis.
-type seedTestReturnParams struct {
-	org      org.Org
-	app      app.App
-	testUser user.User
-	audit    audit.Audit
+// userInitiatedSeed is the User Initiated Org, App and User
+type userInitiatedSeed struct {
+	UserInitiatedOrg *diy.Org
+	UserInitiatedApp *diy.App
 }
 
 // GenesisService seeds the database. It should be run only once on initial database setup.
 type GenesisService struct {
-	Datastorer            Datastorer
-	RandomStringGenerator CryptoRandomGenerator
-	EncryptionKey         *[32]byte
+	Datastorer      diy.Datastorer
+	APIKeyGenerator diy.APIKeyGenerator
+	EncryptionKey   *[32]byte
+	TokenExchanger  diy.TokenExchanger
+	LanguageMatcher language.Matcher
 }
 
-// Seed method seeds the database
-func (s GenesisService) Seed(ctx context.Context, r *GenesisRequest) (gr GenesisResponse, err error) {
-
-	// ensure the Genesis seed event has not already taken place
-	err = genesisHasOccurred(ctx, s.Datastorer.Pool())
-	if err != nil {
-		return gr, err
-	}
-
-	var (
-		sgrp seedGenesisReturnParams
-		strp seedTestReturnParams
-	)
+// Arche creates the initial seed data in the database.
+func (s *GenesisService) Arche(ctx context.Context, r *diy.GenesisRequest) (gr diy.GenesisResponse, err error) {
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
@@ -136,41 +92,61 @@ func (s GenesisService) Seed(ctx context.Context, r *GenesisRequest) (gr Genesis
 		err = s.Datastorer.RollbackTx(ctx, tx, err)
 	}()
 
-	// seed Genesis org data. As part of this method, the initial org.Kind
-	// structs are added to the db. The test kind is returned for use
-	// in the seedTest method
-	sgrp, err = s.seedGenesis(ctx, tx, r)
+	// ensure the Genesis event has not already taken place
+	err = genesisHasOccurred(ctx, tx)
+	if err != nil {
+		return gr, err
+	}
+
+	var (
+		ps  principalSeed
+		ts  testSeed
+		uis userInitiatedSeed
+	)
+
+	// seed Principal org, app and user data as well as initial OrgKind structs.
+	// principalSeed struct is returned for use in subsequent steps
+	ps, err = s.seedPrincipal(ctx, tx, r)
 	if err != nil {
 		return gr, err
 	}
 
 	// seed Test org data.
-	strp, err = s.seedTest(ctx, tx, sgrp)
+	ts, err = s.seedTest(ctx, tx, ps)
 	if err != nil {
 		return gr, err
 	}
 
 	// seed User Initiated org data.
-	var uirp seedUserInitiatedDataReturnParams
-	uirp, err = s.seedUserInitiatedData(ctx, tx, sgrp, r)
+	uis, err = s.seedUserInitiatedData(ctx, tx, ps, r)
 	if err != nil {
 		return gr, err
 	}
 
 	// seed Permissions
-	err = seedPermissions(ctx, tx, r, sgrp.audit)
+	err = seedPermissions(ctx, tx, r, ps.Audit)
 	if err != nil {
 		return gr, err
 	}
 
 	// seed Roles
-	for _, crr := range r.Roles {
-		// add 3 users created as part of Genesis to the roles created
-		crr.UserExternals = append(crr.UserExternals, sgrp.audit.User.ExternalID.String(), strp.testUser.ExternalID.String(), uirp.SeedUser.ExternalID.String())
-		_, err = createRoleTx(ctx, tx, &crr, sgrp.audit)
-		if err != nil {
-			return gr, err
-		}
+	var gRoles genesisRoles
+	gRoles, err = seedRoles(ctx, tx, r, ps.Audit)
+	if err != nil {
+		return gr, err
+	}
+
+	ar2gup := assignRoles2GenesisUsersParams{
+		Roles:             gRoles,
+		PrincipalSeed:     ps,
+		TestSeed:          ts,
+		UserInitiatedSeed: uis,
+	}
+
+	// assign Roles to users
+	err = assignRoles2GenesisUsers(ctx, tx, ar2gup)
+	if err != nil {
+		return gr, err
 	}
 
 	// commit db txn using pgxpool
@@ -179,26 +155,29 @@ func (s GenesisService) Seed(ctx context.Context, r *GenesisRequest) (gr Genesis
 		return gr, err
 	}
 
-	pOrg := newOrgResponse(orgAudit{Org: sgrp.org, SimpleAudit: audit.SimpleAudit{First: sgrp.audit, Last: sgrp.audit}},
-		appAudit{App: sgrp.app, SimpleAudit: audit.SimpleAudit{First: sgrp.audit, Last: sgrp.audit}})
+	pOrg := newOrgResponse(&orgAudit{Org: ps.PrincipalOrg, SimpleAudit: &diy.SimpleAudit{Create: ps.Audit, Update: ps.Audit}},
+		appAudit{App: ps.PrincipalApp, SimpleAudit: &diy.SimpleAudit{Create: ps.Audit, Update: ps.Audit}})
 
-	tOrg := newOrgResponse(orgAudit{Org: strp.org, SimpleAudit: audit.SimpleAudit{First: strp.audit, Last: strp.audit}},
-		appAudit{App: strp.app, SimpleAudit: audit.SimpleAudit{First: strp.audit, Last: strp.audit}})
+	tOrg := newOrgResponse(&orgAudit{Org: ts.TestOrg, SimpleAudit: &diy.SimpleAudit{Create: ps.Audit, Update: ps.Audit}},
+		appAudit{App: ts.TestApp, SimpleAudit: &diy.SimpleAudit{Create: ps.Audit, Update: ps.Audit}})
 
-	response := GenesisResponse{
+	uiOrg := newOrgResponse(&orgAudit{Org: uis.UserInitiatedOrg, SimpleAudit: &diy.SimpleAudit{Create: ps.Audit, Update: ps.Audit}},
+		appAudit{App: uis.UserInitiatedApp, SimpleAudit: &diy.SimpleAudit{Create: ps.Audit, Update: ps.Audit}})
+
+	response := diy.GenesisResponse{
 		Principal:     pOrg,
 		Test:          tOrg,
-		UserInitiated: &uirp.OrgResponse,
+		UserInitiated: uiOrg,
 	}
 
 	return response, nil
 }
 
-func (s GenesisService) seedGenesis(ctx context.Context, tx pgx.Tx, r *GenesisRequest) (seedGenesisReturnParams, error) {
+func (s *GenesisService) seedPrincipal(ctx context.Context, tx pgx.Tx, r *diy.GenesisRequest) (principalSeed, error) {
 	var err error
 
 	// create Org
-	o := org.Org{
+	o := &diy.Org{
 		ID:          uuid.New(),
 		ExternalID:  secure.NewID(),
 		Name:        PrincipalOrgName,
@@ -206,109 +185,147 @@ func (s GenesisService) seedGenesis(ctx context.Context, tx pgx.Tx, r *GenesisRe
 	}
 
 	// initialize App and inject dependent fields
-
-	a := app.App{
-		ID:          uuid.New(),
-		ExternalID:  secure.NewID(),
-		Org:         o,
-		Name:        PrincipalAppName,
-		Description: principalAppDescription,
-		APIKeys:     nil,
+	nap := newAppParams{
+		name:            PrincipalAppName,
+		description:     principalAppDescription,
+		org:             o,
+		apiKeyGenerator: s.APIKeyGenerator,
+		encryptionKey:   s.EncryptionKey,
 	}
 
-	// create API key
-	keyDeactivation := time.Date(2099, 12, 31, 0, 0, 0, 0, time.UTC)
-	err = a.AddNewKey(s.RandomStringGenerator, s.EncryptionKey, keyDeactivation)
+	var a *diy.App
+	a, err = newApp(nap)
 	if err != nil {
-		return seedGenesisReturnParams{}, errs.E(errs.Internal, err)
+		return principalSeed{}, err
 	}
 
-	// initialize Peter Gabriel test user in Genesis org
-	pgUser := user.User{
+	token := &oauth2.Token{AccessToken: r.User.Token, TokenType: diy.BearerTokenType}
+
+	provider := diy.ParseProvider(r.User.Provider)
+
+	// initialize "The Creator" user from request data
+	// auth could not be found by access token in the db
+	// get ProviderInfo from provider API
+	var providerInfo *diy.ProviderInfo
+	providerInfo, err = s.TokenExchanger.Exchange(ctx, "seedPrincipal", provider, token)
+	if err != nil {
+		return principalSeed{}, err
+	}
+
+	gUser := newUserFromProviderInfo(providerInfo, s.LanguageMatcher)
+
+	err = gUser.Validate()
+	if err != nil {
+		return principalSeed{}, err
+	}
+
+	gPerson := diy.Person{
 		ID:         uuid.New(),
 		ExternalID: secure.NewID(),
-		Username:   strings.TrimSpace(PrincipalTestUsername),
-		Org:        o,
-		Profile: person.Profile{
-			ID:        uuid.New(),
-			Person:    person.Person{ID: uuid.New(), Org: o},
-			FirstName: principalTestUserFirstName,
-			LastName:  principalTestUserLastName,
-		},
+		Users:      []*diy.User{gUser},
 	}
 
-	// initialize Genesis user from request data
-	gUser := user.User{
-		ID:         uuid.New(),
-		ExternalID: secure.NewID(),
-		Username:   strings.TrimSpace(r.User.Email),
-		Org:        o,
-		Profile: person.Profile{
-			ID:        uuid.New(),
-			Person:    person.Person{ID: uuid.New(), Org: o},
-			FirstName: strings.TrimSpace(r.User.FirstName),
-			LastName:  strings.TrimSpace(r.User.LastName),
-		},
-	}
-
-	err = gUser.IsValid()
-	if err != nil {
-		return seedGenesisReturnParams{}, err
-	}
-
-	adt := audit.Audit{
+	adt := diy.Audit{
 		App:    a,
 		User:   gUser,
 		Moment: time.Now(),
 	}
 
-	// create Genesis org kind
-	var genesisKindParams orgstore.CreateOrgKindParams
-	genesisKindParams, err = createGenesisOrgKind(ctx, tx, adt)
-	if err != nil {
-		return seedGenesisReturnParams{}, errs.E(errs.Database, err)
+	cg := datastore.CreateAuthProviderParams{
+		AuthProviderID:   int64(diy.Google),
+		AuthProviderCd:   diy.Google.String(),
+		AuthProviderDesc: "Google Oauth2",
+		CreateAppID:      adt.App.ID,
+		CreateUserID:     adt.User.NullUUID(),
+		CreateTimestamp:  adt.Moment,
+		UpdateAppID:      adt.App.ID,
+		UpdateUserID:     adt.User.NullUUID(),
+		UpdateTimestamp:  adt.Moment,
 	}
-	o.Kind = org.Kind{
-		ID:          genesisKindParams.OrgKindID,
-		ExternalID:  genesisKindParams.OrgKindExtlID,
-		Description: genesisKindParams.OrgKindDesc,
+	_, err = datastore.New(tx).CreateAuthProvider(ctx, cg)
+	if err != nil {
+		return principalSeed{}, errs.E(errs.Database, err)
+	}
+
+	// write Person/User from request to the database
+	err = createPersonTx(ctx, tx, gPerson, adt)
+	if err != nil {
+		return principalSeed{}, err
+	}
+
+	// associate Genesis org to "The Creator"
+	aoaParams := attachOrgAssociationParams{
+		Org:   o,
+		User:  gUser,
+		Audit: adt,
+	}
+	err = attachOrgAssociation(ctx, tx, aoaParams)
+	if err != nil {
+		return principalSeed{}, err
+	}
+
+	// create Auth for "The Creator"
+	auth := diy.Auth{
+		ID:               uuid.New(),
+		User:             gUser,
+		Provider:         providerInfo.Provider,
+		ProviderClientID: providerInfo.TokenInfo.ClientID,
+		ProviderPersonID: providerInfo.UserInfo.ExternalID,
+		Token:            token,
+	}
+
+	err = createAuthTx(ctx, tx, createAuthTxParams{Auth: auth, Audit: adt})
+	if err != nil {
+		return principalSeed{}, err
+	}
+
+	// create Principal org kind
+	var principalKindParams datastore.CreateOrgKindParams
+	principalKindParams, err = createPrincipalOrgKind(ctx, tx, adt)
+	if err != nil {
+		return principalSeed{}, errs.E(errs.Database, err)
+	}
+	o.Kind = &diy.OrgKind{
+		ID:          principalKindParams.OrgKindID,
+		ExternalID:  principalKindParams.OrgKindExtlID,
+		Description: principalKindParams.OrgKindDesc,
 	}
 
 	// create other org kinds (test, standard)
-	var testKindParams orgstore.CreateOrgKindParams
+	var testKindParams datastore.CreateOrgKindParams
 	testKindParams, err = createTestOrgKind(ctx, tx, adt)
 	if err != nil {
-		return seedGenesisReturnParams{}, errs.E(errs.Database, err)
+		return principalSeed{}, errs.E(errs.Database, err)
 	}
-	tk := org.Kind{
+	tk := &diy.OrgKind{
 		ID:          testKindParams.OrgKindID,
 		ExternalID:  testKindParams.OrgKindExtlID,
 		Description: testKindParams.OrgKindDesc,
 	}
 
-	var standardOrgParams orgstore.CreateOrgKindParams
+	var standardOrgParams datastore.CreateOrgKindParams
 	standardOrgParams, err = createStandardOrgKind(ctx, tx, adt)
 	if err != nil {
-		return seedGenesisReturnParams{}, errs.E(errs.Database, err)
+		return principalSeed{}, errs.E(errs.Database, err)
 	}
-	sk := org.Kind{
+	sk := &diy.OrgKind{
 		ID:          standardOrgParams.OrgKindID,
 		ExternalID:  standardOrgParams.OrgKindExtlID,
 		Description: standardOrgParams.OrgKindDesc,
 	}
 
-	sa := audit.SimpleAudit{
-		First: adt,
-		Last:  adt,
+	sa := &diy.SimpleAudit{
+		Create: adt,
+		Update: adt,
 	}
 
 	// write the Org to the database
-	err = createOrgTx(ctx, tx, orgAudit{Org: o, SimpleAudit: sa})
+	err = createOrgTx(ctx, tx, &orgAudit{Org: o, SimpleAudit: sa})
 	if err != nil {
-		return seedGenesisReturnParams{}, err
+		return principalSeed{}, err
 	}
 
-	createAppParams := appstore.CreateAppParams{
+	createAppParams := datastore.CreateAppParams{
 		AppID:           a.ID,
 		OrgID:           a.Org.ID,
 		AppExtlID:       a.ExternalID.String(),
@@ -322,20 +339,19 @@ func (s GenesisService) seedGenesis(ctx context.Context, tx pgx.Tx, r *GenesisRe
 		UpdateTimestamp: adt.Moment,
 	}
 
-	// create app database record using appstore
+	// create app database record using datastore
 	var rowsAffected int64
-	rowsAffected, err = appstore.New(tx).CreateApp(ctx, createAppParams)
+	rowsAffected, err = datastore.New(tx).CreateApp(ctx, createAppParams)
 	if err != nil {
-		return seedGenesisReturnParams{}, errs.E(errs.Database, err)
+		return principalSeed{}, errs.E(errs.Database, err)
 	}
 
 	if rowsAffected != 1 {
-		return seedGenesisReturnParams{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
+		return principalSeed{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
 	}
 
 	for _, key := range a.APIKeys {
-
-		createAppAPIKeyParams := appstore.CreateAppAPIKeyParams{
+		createAppAPIKeyParams := datastore.CreateAppAPIKeyParams{
 			ApiKey:          key.Ciphertext(),
 			AppID:           a.ID,
 			DeactvDate:      key.DeactivationDate(),
@@ -347,303 +363,286 @@ func (s GenesisService) seedGenesis(ctx context.Context, tx pgx.Tx, r *GenesisRe
 			UpdateTimestamp: adt.Moment,
 		}
 
-		// create app API key database record using appstore
+		// create app API key database record using datastore
 		var apiKeyRowsAffected int64
-		apiKeyRowsAffected, err = appstore.New(tx).CreateAppAPIKey(ctx, createAppAPIKeyParams)
+		apiKeyRowsAffected, err = datastore.New(tx).CreateAppAPIKey(ctx, createAppAPIKeyParams)
 		if err != nil {
-			return seedGenesisReturnParams{}, errs.E(errs.Database, err)
+			return principalSeed{}, errs.E(errs.Database, err)
 		}
 
 		if apiKeyRowsAffected != 1 {
-			return seedGenesisReturnParams{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", apiKeyRowsAffected))
+			return principalSeed{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", apiKeyRowsAffected))
 		}
 	}
 
-	// write user from request to the database
-	err = createUserTx(ctx, tx, gUser, adt)
-	if err != nil {
-		return seedGenesisReturnParams{}, err
+	seed := principalSeed{
+		PrincipalOrg:    o,
+		PrincipalApp:    a,
+		StandardOrgKind: sk,
+		TestOrgKind:     tk,
+		Audit:           adt,
 	}
 
-	// write user to the database
-	err = createUserTx(ctx, tx, pgUser, adt)
-	if err != nil {
-		return seedGenesisReturnParams{}, err
-	}
-
-	sgrp := seedGenesisReturnParams{
-		org:          o,
-		app:          a,
-		standardKind: sk,
-		testKind:     tk,
-		audit:        adt,
-	}
-
-	return sgrp, nil
+	return seed, nil
 }
 
-func (s GenesisService) seedTest(ctx context.Context, tx pgx.Tx, sgrp seedGenesisReturnParams) (seedTestReturnParams, error) {
+func (s *GenesisService) seedTest(ctx context.Context, tx pgx.Tx, ps principalSeed) (testSeed, error) {
 	var err error
 
+	// initialize test user in Genesis org
+	testUser := &diy.User{
+		ID:         uuid.New(),
+		ExternalID: secure.NewID(),
+		FirstName:  testUserFirstName,
+		LastName:   testUserLastName,
+	}
+
+	// make Test User a whole Person
+	testPerson := diy.Person{
+		ID:         uuid.New(),
+		ExternalID: secure.NewID(),
+		Users:      []*diy.User{testUser},
+	}
+
+	// write Test Person/User to the database
+	err = createPersonTx(ctx, tx, testPerson, ps.Audit)
+	if err != nil {
+		return testSeed{}, err
+	}
+
+	// associate Principal org to the Test User
+	aoaParams := attachOrgAssociationParams{
+		Org:   ps.PrincipalOrg,
+		User:  testUser,
+		Audit: ps.Audit,
+	}
+	err = attachOrgAssociation(ctx, tx, aoaParams)
+	if err != nil {
+		return testSeed{}, err
+	}
+
 	// create Org
-	o := org.Org{
+	o := &diy.Org{
 		ID:          uuid.New(),
 		ExternalID:  secure.NewID(),
 		Name:        TestOrgName,
 		Description: testOrgDescription,
-		Kind:        sgrp.testKind,
+		Kind:        ps.TestOrgKind,
 	}
 
-	// initialize App and inject dependent fields
-	a := app.App{
-		ID:          uuid.New(),
-		ExternalID:  secure.NewID(),
-		Org:         o,
-		Name:        TestAppName,
-		Description: testAppDescription,
-		APIKeys:     nil,
+	nap := newAppParams{
+		name:            TestAppName,
+		description:     testAppDescription,
+		org:             o,
+		apiKeyGenerator: s.APIKeyGenerator,
+		encryptionKey:   s.EncryptionKey,
 	}
 
-	keyDeactivation := time.Date(2099, 12, 31, 0, 0, 0, 0, time.UTC)
-	err = a.AddNewKey(s.RandomStringGenerator, s.EncryptionKey, keyDeactivation)
+	var a *diy.App
+	a, err = newApp(nap)
 	if err != nil {
-		return seedTestReturnParams{}, errs.E(errs.Internal, err)
+		return testSeed{}, errs.E(errs.Internal, err)
 	}
 
-	// create Person
-	prsn := person.Person{
-		ID:  uuid.New(),
-		Org: o,
-	}
-
-	// create Person Profile
-	pfl := person.Profile{ID: uuid.New(), Person: prsn}
-	pfl.FirstName = testUserFirstName
-	pfl.LastName = testUserLastName
-
-	// create User
-	u := user.User{
-		ID:         uuid.New(),
-		ExternalID: secure.NewID(),
-		Username:   TestUsername,
-		Org:        o,
-		Profile:    pfl,
-	}
-
-	sa := audit.SimpleAudit{
-		First: sgrp.audit,
-		Last:  sgrp.audit,
+	sa := &diy.SimpleAudit{
+		Create: ps.Audit,
+		Update: ps.Audit,
 	}
 
 	// write the Org to the database
-	err = createOrgTx(ctx, tx, orgAudit{Org: o, SimpleAudit: sa})
+	err = createOrgTx(ctx, tx, &orgAudit{Org: o, SimpleAudit: sa})
 	if err != nil {
-		return seedTestReturnParams{}, err
+		return testSeed{}, err
 	}
 
-	createAppParams := appstore.CreateAppParams{
+	createAppParams := datastore.CreateAppParams{
 		AppID:           a.ID,
 		OrgID:           a.Org.ID,
 		AppExtlID:       a.ExternalID.String(),
 		AppName:         a.Name,
 		AppDescription:  a.Description,
-		CreateAppID:     sgrp.audit.App.ID,
-		CreateUserID:    sgrp.audit.User.NullUUID(),
-		CreateTimestamp: sgrp.audit.Moment,
-		UpdateAppID:     sgrp.audit.App.ID,
-		UpdateUserID:    sgrp.audit.User.NullUUID(),
-		UpdateTimestamp: sgrp.audit.Moment,
+		CreateAppID:     ps.Audit.App.ID,
+		CreateUserID:    ps.Audit.User.NullUUID(),
+		CreateTimestamp: ps.Audit.Moment,
+		UpdateAppID:     ps.Audit.App.ID,
+		UpdateUserID:    ps.Audit.User.NullUUID(),
+		UpdateTimestamp: ps.Audit.Moment,
 	}
 
-	// create app database record using appstore
+	// create app database record using datastore
 	var rowsAffected int64
-	rowsAffected, err = appstore.New(tx).CreateApp(ctx, createAppParams)
+	rowsAffected, err = datastore.New(tx).CreateApp(ctx, createAppParams)
 	if err != nil {
-		return seedTestReturnParams{}, errs.E(errs.Database, err)
+		return testSeed{}, errs.E(errs.Database, err)
 	}
 
 	if rowsAffected != 1 {
-		return seedTestReturnParams{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
+		return testSeed{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
 	}
 
 	for _, key := range a.APIKeys {
 
-		createAppAPIKeyParams := appstore.CreateAppAPIKeyParams{
+		createAppAPIKeyParams := datastore.CreateAppAPIKeyParams{
 			ApiKey:          key.Ciphertext(),
 			AppID:           a.ID,
 			DeactvDate:      key.DeactivationDate(),
-			CreateAppID:     sgrp.audit.App.ID,
-			CreateUserID:    sgrp.audit.User.NullUUID(),
-			CreateTimestamp: sgrp.audit.Moment,
-			UpdateAppID:     sgrp.audit.App.ID,
-			UpdateUserID:    sgrp.audit.User.NullUUID(),
-			UpdateTimestamp: sgrp.audit.Moment,
+			CreateAppID:     ps.Audit.App.ID,
+			CreateUserID:    ps.Audit.User.NullUUID(),
+			CreateTimestamp: ps.Audit.Moment,
+			UpdateAppID:     ps.Audit.App.ID,
+			UpdateUserID:    ps.Audit.User.NullUUID(),
+			UpdateTimestamp: ps.Audit.Moment,
 		}
 
-		// create app API key database record using appstore
+		// create app API key database record using datastore
 		var apiKeyRowsAffected int64
-		apiKeyRowsAffected, err = appstore.New(tx).CreateAppAPIKey(ctx, createAppAPIKeyParams)
+		apiKeyRowsAffected, err = datastore.New(tx).CreateAppAPIKey(ctx, createAppAPIKeyParams)
 		if err != nil {
-			return seedTestReturnParams{}, errs.E(errs.Database, err)
+			return testSeed{}, errs.E(errs.Database, err)
 		}
 
 		if apiKeyRowsAffected != 1 {
-			return seedTestReturnParams{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", apiKeyRowsAffected))
+			return testSeed{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", apiKeyRowsAffected))
 		}
 	}
 
-	// write the User to the database
-	err = createUserTx(ctx, tx, u, sgrp.audit)
+	// attach test org to test user
+	aoaParams = attachOrgAssociationParams{
+		Org:   o,
+		User:  testUser,
+		Audit: ps.Audit,
+	}
+	err = attachOrgAssociation(ctx, tx, aoaParams)
 	if err != nil {
-		return seedTestReturnParams{}, err
+		return testSeed{}, err
 	}
 
-	strp := seedTestReturnParams{
-		org:      o,
-		app:      a,
-		testUser: u,
-		audit:    sgrp.audit,
+	seed := testSeed{
+		TestOrg:  o,
+		TestApp:  a,
+		TestUser: testUser,
 	}
 
-	return strp, nil
+	return seed, nil
 }
 
-type seedUserInitiatedDataReturnParams struct {
-	OrgResponse OrgResponse
-	SeedUser    user.User
-}
-
-func (s GenesisService) seedUserInitiatedData(ctx context.Context, tx pgx.Tx, sgrp seedGenesisReturnParams, r *GenesisRequest) (seedUserInitiatedDataReturnParams, error) {
+func (s *GenesisService) seedUserInitiatedData(ctx context.Context, tx pgx.Tx, ps principalSeed, r *diy.GenesisRequest) (userInitiatedSeed, error) {
 	var err error
 
 	// create Org
-	o := org.Org{
+	o := &diy.Org{
 		ID:          uuid.New(),
 		ExternalID:  secure.NewID(),
 		Name:        r.UserInitiatedOrg.Name,
 		Description: r.UserInitiatedOrg.Description,
-		Kind:        sgrp.standardKind,
+		Kind:        ps.StandardOrgKind,
 	}
 
-	// initialize App and inject dependent fields
-	a := app.App{
-		ID:          uuid.New(),
-		ExternalID:  secure.NewID(),
-		Org:         o,
-		Name:        r.UserInitiatedOrg.App.Name,
-		Description: r.UserInitiatedOrg.App.Description,
-		APIKeys:     nil,
+	nap := newAppParams{
+		name:            r.UserInitiatedOrg.App.Name,
+		description:     r.UserInitiatedOrg.App.Description,
+		org:             o,
+		apiKeyGenerator: s.APIKeyGenerator,
+		encryptionKey:   s.EncryptionKey,
 	}
 
-	keyDeactivation := time.Date(2099, 12, 31, 0, 0, 0, 0, time.UTC)
-	err = a.AddNewKey(s.RandomStringGenerator, s.EncryptionKey, keyDeactivation)
+	var a *diy.App
+	a, err = newApp(nap)
 	if err != nil {
-		return seedUserInitiatedDataReturnParams{}, errs.E(errs.Internal, err)
+		return userInitiatedSeed{}, errs.E(errs.Internal, err)
 	}
 
-	// initialize Genesis user from request data
-	gUser := user.User{
-		ID:         uuid.New(),
-		ExternalID: secure.NewID(),
-		Username:   strings.TrimSpace(r.User.Email),
-		Org:        o,
-		Profile: person.Profile{
-			ID:        uuid.New(),
-			Person:    person.Person{ID: uuid.New(), Org: o},
-			FirstName: strings.TrimSpace(r.User.FirstName),
-			LastName:  strings.TrimSpace(r.User.LastName),
-		},
-	}
-
-	sa := audit.SimpleAudit{
-		First: sgrp.audit,
-		Last:  sgrp.audit,
+	sa := &diy.SimpleAudit{
+		Create: ps.Audit,
+		Update: ps.Audit,
 	}
 
 	// write the Org to the database
-	err = createOrgTx(ctx, tx, orgAudit{Org: o, SimpleAudit: sa})
+	err = createOrgTx(ctx, tx, &orgAudit{Org: o, SimpleAudit: sa})
 	if err != nil {
-		return seedUserInitiatedDataReturnParams{}, err
+		return userInitiatedSeed{}, err
 	}
 
-	createAppParams := appstore.CreateAppParams{
+	createAppParams := datastore.CreateAppParams{
 		AppID:           a.ID,
 		OrgID:           a.Org.ID,
 		AppExtlID:       a.ExternalID.String(),
 		AppName:         a.Name,
 		AppDescription:  a.Description,
-		CreateAppID:     sgrp.audit.App.ID,
-		CreateUserID:    sgrp.audit.User.NullUUID(),
-		CreateTimestamp: sgrp.audit.Moment,
-		UpdateAppID:     sgrp.audit.App.ID,
-		UpdateUserID:    sgrp.audit.User.NullUUID(),
-		UpdateTimestamp: sgrp.audit.Moment,
+		CreateAppID:     ps.Audit.App.ID,
+		CreateUserID:    ps.Audit.User.NullUUID(),
+		CreateTimestamp: ps.Audit.Moment,
+		UpdateAppID:     ps.Audit.App.ID,
+		UpdateUserID:    ps.Audit.User.NullUUID(),
+		UpdateTimestamp: ps.Audit.Moment,
 	}
 
-	// create app database record using appstore
+	// create app database record using datastore
 	var rowsAffected int64
-	rowsAffected, err = appstore.New(tx).CreateApp(ctx, createAppParams)
+	rowsAffected, err = datastore.New(tx).CreateApp(ctx, createAppParams)
 	if err != nil {
-		return seedUserInitiatedDataReturnParams{}, errs.E(errs.Database, err)
+		return userInitiatedSeed{}, errs.E(errs.Database, err)
 	}
 
 	if rowsAffected != 1 {
-		return seedUserInitiatedDataReturnParams{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
+		return userInitiatedSeed{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
 	}
 
 	for _, key := range a.APIKeys {
 
-		createAppAPIKeyParams := appstore.CreateAppAPIKeyParams{
+		createAppAPIKeyParams := datastore.CreateAppAPIKeyParams{
 			ApiKey:          key.Ciphertext(),
 			AppID:           a.ID,
 			DeactvDate:      key.DeactivationDate(),
-			CreateAppID:     sgrp.audit.App.ID,
-			CreateUserID:    sgrp.audit.User.NullUUID(),
-			CreateTimestamp: sgrp.audit.Moment,
-			UpdateAppID:     sgrp.audit.App.ID,
-			UpdateUserID:    sgrp.audit.User.NullUUID(),
-			UpdateTimestamp: sgrp.audit.Moment,
+			CreateAppID:     ps.Audit.App.ID,
+			CreateUserID:    ps.Audit.User.NullUUID(),
+			CreateTimestamp: ps.Audit.Moment,
+			UpdateAppID:     ps.Audit.App.ID,
+			UpdateUserID:    ps.Audit.User.NullUUID(),
+			UpdateTimestamp: ps.Audit.Moment,
 		}
 
-		// create app API key database record using appstore
+		// create app API key database record using datastore
 		var apiKeyRowsAffected int64
-		apiKeyRowsAffected, err = appstore.New(tx).CreateAppAPIKey(ctx, createAppAPIKeyParams)
+		apiKeyRowsAffected, err = datastore.New(tx).CreateAppAPIKey(ctx, createAppAPIKeyParams)
 		if err != nil {
-			return seedUserInitiatedDataReturnParams{}, errs.E(errs.Database, err)
+			return userInitiatedSeed{}, errs.E(errs.Database, err)
 		}
 
 		if apiKeyRowsAffected != 1 {
-			return seedUserInitiatedDataReturnParams{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", apiKeyRowsAffected))
+			return userInitiatedSeed{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", apiKeyRowsAffected))
 		}
 	}
 
-	// write the User to the database
-	err = createUserTx(ctx, tx, gUser, sgrp.audit)
+	// associate existing User to newly created Org
+	aoaParams := attachOrgAssociationParams{
+		Org:   o,
+		User:  ps.Audit.User,
+		Audit: ps.Audit,
+	}
+	err = attachOrgAssociation(ctx, tx, aoaParams)
 	if err != nil {
-		return seedUserInitiatedDataReturnParams{}, err
+		return userInitiatedSeed{}, err
 	}
 
-	oa := orgAudit{Org: o, SimpleAudit: sa}
-	aa := appAudit{App: a, SimpleAudit: sa}
-
-	rp := seedUserInitiatedDataReturnParams{
-		OrgResponse: newOrgResponse(oa, aa),
-		SeedUser:    gUser,
+	ui := userInitiatedSeed{
+		UserInitiatedOrg: o,
+		UserInitiatedApp: a,
 	}
 
-	return rp, nil
+	return ui, nil
 }
 
-func genesisHasOccurred(ctx context.Context, dbtx orgstore.DBTX) (err error) {
+func genesisHasOccurred(ctx context.Context, dbtx datastore.DBTX) (err error) {
 	var (
-		existingOrgs         []orgstore.FindOrgsByKindExtlIDRow
+		existingOrgs         []datastore.FindOrgsByKindExtlIDRow
 		hasGenesisOrgTypeRow = true
 		hasGenesisOrgRow     = true
 	)
 
-	// validate Genesis records do not exist already
+	// validate Principal records do not exist already
 	// first: check org_type
-	_, err = orgstore.New(dbtx).FindOrgKindByExtlID(ctx, genesisOrgKind)
+	_, err = datastore.New(dbtx).FindOrgKindByExtlID(ctx, principalOrgKind)
 	if err != nil {
 		if err != pgx.ErrNoRows {
 			return errs.E(errs.Database, err)
@@ -652,7 +651,7 @@ func genesisHasOccurred(ctx context.Context, dbtx orgstore.DBTX) (err error) {
 	}
 
 	// last: check org
-	existingOrgs, err = orgstore.New(dbtx).FindOrgsByKindExtlID(ctx, genesisOrgKind)
+	existingOrgs, err = datastore.New(dbtx).FindOrgsByKindExtlID(ctx, principalOrgKind)
 	if err != nil {
 		return errs.E(errs.Database, err)
 	}
@@ -669,26 +668,147 @@ func genesisHasOccurred(ctx context.Context, dbtx orgstore.DBTX) (err error) {
 
 // ReadConfig reads the generated config file from Genesis
 // and returns it in the response body
-func (s GenesisService) ReadConfig() (gr GenesisResponse, err error) {
+func (s *GenesisService) ReadConfig() (gr diy.GenesisResponse, err error) {
 	var b []byte
 	b, err = os.ReadFile(LocalJSONGenesisResponseFile)
 	if err != nil {
-		return GenesisResponse{}, errs.E(err)
+		return diy.GenesisResponse{}, errs.E(err)
 	}
 	err = json.Unmarshal(b, &gr)
 	if err != nil {
-		return GenesisResponse{}, errs.E(err)
+		return diy.GenesisResponse{}, errs.E(err)
 	}
 
 	return gr, nil
 }
 
-func seedPermissions(ctx context.Context, tx pgx.Tx, r *GenesisRequest, adt audit.Audit) (err error) {
-	for _, p := range r.Permissions {
+func seedPermissions(ctx context.Context, tx pgx.Tx, r *diy.GenesisRequest, adt diy.Audit) (err error) {
+	for _, p := range r.PermissionRequests {
 		_, err = createPermissionTx(ctx, tx, &p, adt)
 		if err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+// roles created as part of Genesis event
+type genesisRoles struct {
+	// RequestRoles are roles created from the user request input
+	RequestRoles []diy.Role
+	// TestRole is the role created for designating test users
+	TestRole diy.Role
+}
+
+func seedRoles(ctx context.Context, tx pgx.Tx, r *diy.GenesisRequest, adt diy.Audit) (genesisRoles, error) {
+	var (
+		requestRoles    []diy.Role
+		rolePermissions []*diy.Permission
+		err             error
+	)
+
+	// seed roles from Genesis request (slice of CreateRoleRequest contained within)
+	for _, crr := range r.CreateRoleRequests {
+
+		role := diy.Role{
+			ID:          uuid.New(),
+			ExternalID:  secure.NewID(),
+			Code:        crr.Code,
+			Description: crr.Description,
+			Active:      crr.Active,
+		}
+
+		// find and add corresponding Permissions to the role
+		rolePermissions, err = findPermissionsFromPermissionRequest(ctx, tx, crr.Permissions)
+		if err != nil {
+			return genesisRoles{}, err
+		}
+		role.Permissions = rolePermissions
+
+		// add the Test user and Genesis input user to roles by attaching their external ids
+		err = createRoleTx(ctx, tx, role, adt)
+		if err != nil {
+			return genesisRoles{}, err
+		}
+		requestRoles = append(requestRoles, role)
+	}
+
+	// seed testAdmin role
+	// all permissions are given to this role as it's for testing only
+	testRole := diy.Role{
+		ID:          uuid.New(),
+		ExternalID:  secure.NewID(),
+		Code:        TestRoleCode,
+		Description: "Role created for the sole purpose of unit and db integration testing.",
+		Active:      false,
+		Permissions: rolePermissions,
+	}
+
+	err = createRoleTx(ctx, tx, testRole, adt)
+	if err != nil {
+		return genesisRoles{}, err
+	}
+
+	roles := genesisRoles{
+		RequestRoles: requestRoles,
+		TestRole:     testRole,
+	}
+
+	return roles, nil
+}
+
+type assignRoles2GenesisUsersParams struct {
+	Roles             genesisRoles
+	PrincipalSeed     principalSeed
+	TestSeed          testSeed
+	UserInitiatedSeed userInitiatedSeed
+}
+
+// assignRoles2GenesisUsers assigns whichever roles are included as
+// part of the Genesis request as well as the testAdmin role to flag
+// the test user
+func assignRoles2GenesisUsers(ctx context.Context, tx pgx.Tx, params assignRoles2GenesisUsersParams) error {
+
+	var err error
+
+	// assign roles from the Genesis request to The Creator
+	for _, requestRole := range params.Roles.RequestRoles {
+		aorParams := assignOrgRoleParams{
+			Role:  requestRole,
+			User:  params.PrincipalSeed.Audit.User,
+			Org:   params.PrincipalSeed.PrincipalOrg,
+			Audit: params.PrincipalSeed.Audit,
+		}
+
+		err = assignOrgRole(ctx, tx, aorParams)
+		if err != nil {
+			return err
+		}
+
+		p := assignOrgRoleParams{
+			Role:  requestRole,
+			User:  params.PrincipalSeed.Audit.User,
+			Org:   params.UserInitiatedSeed.UserInitiatedOrg,
+			Audit: params.PrincipalSeed.Audit,
+		}
+
+		err = assignOrgRole(ctx, tx, p)
+		if err != nil {
+			return err
+		}
+	}
+
+	aorParams := assignOrgRoleParams{
+		Role:  params.Roles.TestRole,
+		User:  params.TestSeed.TestUser,
+		Org:   params.TestSeed.TestOrg,
+		Audit: params.PrincipalSeed.Audit,
+	}
+
+	err = assignOrgRole(ctx, tx, aorParams)
+	if err != nil {
+		return err
 	}
 
 	return nil

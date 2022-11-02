@@ -8,20 +8,13 @@ import (
 
 	qt "github.com/frankban/quicktest"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/jackc/pgx/v4"
 
-	"github.com/gilcrest/diy-go-api/app"
-	"github.com/gilcrest/diy-go-api/audit"
-	"github.com/gilcrest/diy-go-api/datastore"
-	"github.com/gilcrest/diy-go-api/datastore/appstore"
-	"github.com/gilcrest/diy-go-api/datastore/datastoretest"
-	"github.com/gilcrest/diy-go-api/datastore/orgstore"
-	"github.com/gilcrest/diy-go-api/datastore/userstore"
-	"github.com/gilcrest/diy-go-api/org"
-	"github.com/gilcrest/diy-go-api/person"
+	"github.com/gilcrest/diy-go-api"
 	"github.com/gilcrest/diy-go-api/secure"
-	"github.com/gilcrest/diy-go-api/secure/random"
 	"github.com/gilcrest/diy-go-api/service"
-	"github.com/gilcrest/diy-go-api/user"
+	"github.com/gilcrest/diy-go-api/sqldb/datastore"
+	"github.com/gilcrest/diy-go-api/sqldb/sqldbtest"
 )
 
 const (
@@ -50,149 +43,162 @@ func TestAppService(t *testing.T) {
 			t.Fatal("secure.ParseEncryptionKey() error")
 		}
 
-		ds, cleanup := datastoretest.NewDatastore(t)
+		db, cleanup := sqldbtest.NewDB(t)
 		c.Cleanup(cleanup)
 
-		s := service.AppService{
-			Datastorer:            ds,
-			RandomStringGenerator: random.CryptoGenerator{},
-			EncryptionKey:         ek,
+		// start db txn using pgxpool
+		var tx pgx.Tx
+		ctx := context.Background()
+		tx, err = db.BeginTx(ctx)
+		if err != nil {
+			c.Fatalf("BeginTx() error = %v", err)
 		}
-		r := service.CreateAppRequest{
+		c.Cleanup(func() { _ = db.RollbackTx(ctx, tx, err) })
+
+		s := service.AppService{
+			Datastorer:      db,
+			APIKeyGenerator: secure.RandomGenerator{},
+			EncryptionKey:   ek,
+		}
+		r := diy.CreateAppRequest{
 			Name:        testAppServiceAppName,
 			Description: testAppServiceAppDescription,
 		}
 
-		ctx := context.Background()
+		adt := findTestAudit(ctx, c, tx)
 
-		adt := findTestAudit(ctx, t, ds)
-
-		var got service.AppResponse
+		var got *diy.AppResponse
 		got, err = s.Create(context.Background(), &r, adt)
-		want := service.AppResponse{
+		want := &diy.AppResponse{
 			Name:                testAppServiceAppName,
 			Description:         testAppServiceAppDescription,
 			CreateAppExtlID:     adt.App.ExternalID.String(),
-			CreateUsername:      adt.User.Username,
-			CreateUserFirstName: adt.User.Profile.FirstName,
-			CreateUserLastName:  adt.User.Profile.LastName,
+			CreateUserFirstName: adt.User.FirstName,
+			CreateUserLastName:  adt.User.LastName,
 			UpdateAppExtlID:     adt.App.ExternalID.String(),
-			UpdateUsername:      adt.User.Username,
-			UpdateUserFirstName: adt.User.Profile.FirstName,
-			UpdateUserLastName:  adt.User.Profile.LastName,
+			UpdateUserFirstName: adt.User.FirstName,
+			UpdateUserLastName:  adt.User.LastName,
 		}
 		ignoreFields := []string{"ExternalID", "CreateDateTime", "UpdateDateTime", "APIKeys"}
 		c.Assert(err, qt.IsNil)
-		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(service.AppResponse{}, ignoreFields...)), want)
+		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(diy.AppResponse{}, ignoreFields...)), want)
 	})
 	t.Run("update", func(t *testing.T) {
 		c := qt.New(t)
 
 		var err error
 
-		ds, cleanup := datastoretest.NewDatastore(t)
+		db, cleanup := sqldbtest.NewDB(t)
 		c.Cleanup(cleanup)
 
+		// start db txn using pgxpool
+		var tx pgx.Tx
 		ctx := context.Background()
-		adt := findTestAudit(ctx, t, ds)
+		tx, err = db.BeginTx(ctx)
+		if err != nil {
+			c.Fatalf("BeginTx() error = %v", err)
+		}
+		c.Cleanup(func() { _ = db.RollbackTx(ctx, tx, err) })
 
-		findAppByNameParams := appstore.FindAppByNameParams{
+		adt := findTestAudit(ctx, c, tx)
+
+		findAppByNameParams := datastore.FindAppByNameParams{
 			OrgID:   adt.App.Org.ID,
 			AppName: testAppServiceAppName,
 		}
 
-		var testAppRow appstore.FindAppByNameRow
-		testAppRow, err = appstore.New(ds.Pool()).FindAppByName(ctx, findAppByNameParams)
+		var testAppRow datastore.FindAppByNameRow
+		testAppRow, err = datastore.New(tx).FindAppByName(ctx, findAppByNameParams)
 		if err != nil {
 			t.Fatalf("FindAppByName() error = %v", err)
 		}
 
 		s := service.AppService{
-			Datastorer: ds,
+			Datastorer: db,
 		}
-		r := service.UpdateAppRequest{
+		r := diy.UpdateAppRequest{
 			ExternalID:  testAppRow.AppExtlID,
 			Name:        testAppServiceUpdatedAppName,
 			Description: testAppServiceUpdatedAppDescription,
 		}
 
-		var got service.AppResponse
+		var got *diy.AppResponse
 		got, err = s.Update(context.Background(), &r, adt)
-		want := service.AppResponse{
+		want := &diy.AppResponse{
 			Name:                testAppServiceUpdatedAppName,
 			Description:         testAppServiceUpdatedAppDescription,
 			CreateAppExtlID:     adt.App.ExternalID.String(),
-			CreateUsername:      adt.User.Username,
-			CreateUserFirstName: adt.User.Profile.FirstName,
-			CreateUserLastName:  adt.User.Profile.LastName,
+			CreateUserFirstName: adt.User.FirstName,
+			CreateUserLastName:  adt.User.LastName,
 			UpdateAppExtlID:     adt.App.ExternalID.String(),
-			UpdateUsername:      adt.User.Username,
-			UpdateUserFirstName: adt.User.Profile.FirstName,
-			UpdateUserLastName:  adt.User.Profile.LastName,
+			UpdateUserFirstName: adt.User.FirstName,
+			UpdateUserLastName:  adt.User.LastName,
 		}
 		ignoreFields := []string{"ExternalID", "CreateDateTime", "UpdateDateTime", "APIKeys"}
 		c.Assert(err, qt.IsNil)
-		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(service.AppResponse{}, ignoreFields...)), want)
+		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(diy.AppResponse{}, ignoreFields...)), want)
 	})
 	t.Run("findByExtlID", func(t *testing.T) {
 		c := qt.New(t)
 
-		ds, cleanup := datastoretest.NewDatastore(t)
+		db, cleanup := sqldbtest.NewDB(t)
 		c.Cleanup(cleanup)
 
+		// start db txn using pgxpool
 		ctx := context.Background()
-		adt := findTestAudit(ctx, t, ds)
+		tx, err := db.BeginTx(ctx)
+		if err != nil {
+			c.Fatalf("BeginTx() error = %v", err)
+		}
+		c.Cleanup(func() { _ = db.RollbackTx(ctx, tx, err) })
 
-		findAppByNameParams := appstore.FindAppByNameParams{
+		adt := findTestAudit(ctx, c, tx)
+
+		var testAppRow datastore.FindAppByNameRow
+		findAppByNameParams := datastore.FindAppByNameParams{
 			OrgID:   adt.App.Org.ID,
 			AppName: testAppServiceUpdatedAppName,
 		}
 
-		var (
-			testAppRow appstore.FindAppByNameRow
-			err        error
-		)
-		testAppRow, err = appstore.New(ds.Pool()).FindAppByName(ctx, findAppByNameParams)
+		testAppRow, err = datastore.New(tx).FindAppByName(ctx, findAppByNameParams)
 		if err != nil {
 			t.Fatalf("FindAppByName() error = %v", err)
 		}
 
 		s := service.AppService{
-			Datastorer: ds,
+			Datastorer: db,
 		}
 
-		var got service.AppResponse
+		var got *diy.AppResponse
 		got, err = s.FindByExternalID(context.Background(), testAppRow.AppExtlID)
-		want := service.AppResponse{
+		want := &diy.AppResponse{
 			ExternalID:          got.ExternalID,
 			Name:                testAppServiceUpdatedAppName,
 			Description:         testAppServiceUpdatedAppDescription,
 			CreateAppExtlID:     adt.App.ExternalID.String(),
-			CreateUsername:      adt.User.Username,
-			CreateUserFirstName: adt.User.Profile.FirstName,
-			CreateUserLastName:  adt.User.Profile.LastName,
+			CreateUserFirstName: adt.User.FirstName,
+			CreateUserLastName:  adt.User.LastName,
 			UpdateAppExtlID:     adt.App.ExternalID.String(),
-			UpdateUsername:      adt.User.Username,
-			UpdateUserFirstName: adt.User.Profile.FirstName,
-			UpdateUserLastName:  adt.User.Profile.LastName,
+			UpdateUserFirstName: adt.User.FirstName,
+			UpdateUserLastName:  adt.User.LastName,
 		}
 		c.Assert(err, qt.IsNil)
-		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(service.AppResponse{}, "CreateDateTime", "UpdateDateTime")), want)
+		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(diy.AppResponse{}, "CreateDateTime", "UpdateDateTime")), want)
 	})
 	t.Run("findAll", func(t *testing.T) {
 		c := qt.New(t)
 
-		ds, cleanup := datastoretest.NewDatastore(t)
+		db, cleanup := sqldbtest.NewDB(t)
 		c.Cleanup(cleanup)
 
 		ctx := context.Background()
 
 		s := service.AppService{
-			Datastorer: ds,
+			Datastorer: db,
 		}
 
 		var (
-			got []service.AppResponse
+			got []*diy.AppResponse
 			err error
 		)
 		got, err = s.FindAll(ctx)
@@ -205,30 +211,38 @@ func TestAppService(t *testing.T) {
 
 		var err error
 
-		ds, cleanup := datastoretest.NewDatastore(t)
+		db, cleanup := sqldbtest.NewDB(t)
 		c.Cleanup(cleanup)
 
+		// start db txn using pgxpool
+		var tx pgx.Tx
 		ctx := context.Background()
-		adt := findTestAudit(ctx, t, ds)
+		tx, err = db.BeginTx(ctx)
+		if err != nil {
+			c.Fatalf("BeginTx() error = %v", err)
+		}
+		c.Cleanup(func() { _ = db.RollbackTx(ctx, tx, err) })
 
-		findAppByNameParams := appstore.FindAppByNameParams{
+		adt := findTestAudit(ctx, c, tx)
+
+		findAppByNameParams := datastore.FindAppByNameParams{
 			OrgID:   adt.App.Org.ID,
 			AppName: testAppServiceUpdatedAppName,
 		}
 
-		var testAppRow appstore.FindAppByNameRow
-		testAppRow, err = appstore.New(ds.Pool()).FindAppByName(ctx, findAppByNameParams)
+		var testAppRow datastore.FindAppByNameRow
+		testAppRow, err = datastore.New(tx).FindAppByName(ctx, findAppByNameParams)
 		if err != nil {
 			t.Fatalf("FindAppByName() error = %v", err)
 		}
 
 		s := service.AppService{
-			Datastorer: ds,
+			Datastorer: db,
 		}
 
-		var got service.DeleteResponse
+		var got diy.DeleteResponse
 		got, err = s.Delete(context.Background(), testAppRow.AppExtlID)
-		want := service.DeleteResponse{
+		want := diy.DeleteResponse{
 			ExternalID: testAppRow.AppExtlID,
 			Deleted:    true,
 		}
@@ -237,74 +251,56 @@ func TestAppService(t *testing.T) {
 	})
 }
 
-func findTestAudit(ctx context.Context, t *testing.T, ds datastore.Datastore) audit.Audit {
-	t.Helper()
+func findTestAudit(ctx context.Context, c *qt.C, tx datastore.DBTX) diy.Audit {
+	c.Helper()
 
-	var (
-		findOrgByNameRow orgstore.FindOrgByNameRow
-		err              error
-	)
-	findOrgByNameRow, err = orgstore.New(ds.Pool()).FindOrgByName(ctx, service.TestOrgName)
+	var err error
+
+	var testOrg *diy.Org
+	testOrg, err = service.FindOrgByName(ctx, tx, service.TestOrgName)
 	if err != nil {
-		t.Fatalf("FindOrgByName() error = %v", err)
+		c.Fatalf("FindOrgByName() error = %v", err)
 	}
 
-	testOrg := org.Org{
-		ID:          findOrgByNameRow.OrgID,
-		ExternalID:  secure.MustParseIdentifier(findOrgByNameRow.OrgExtlID),
-		Name:        findOrgByNameRow.OrgName,
-		Description: findOrgByNameRow.OrgDescription,
-		Kind: org.Kind{
-			ID:          findOrgByNameRow.OrgKindID,
-			ExternalID:  findOrgByNameRow.OrgKindExtlID,
-			Description: findOrgByNameRow.OrgKindDesc,
-		},
-	}
-
-	findAppByNameParams := appstore.FindAppByNameParams{
-		OrgID:   findOrgByNameRow.OrgID,
-		AppName: service.TestAppName,
-	}
-
-	var testDBAppRow appstore.FindAppByNameRow
-	testDBAppRow, err = appstore.New(ds.Pool()).FindAppByName(context.Background(), findAppByNameParams)
+	var testApp *diy.App
+	testApp, err = service.FindAppByName(ctx, tx, testOrg, service.TestAppName)
 	if err != nil {
-		t.Fatalf("FindTestApp() error = %v", err)
+		c.Fatalf("FindOrgByName() error = %v", err)
 	}
 
-	testApp := app.App{
-		ID:          testDBAppRow.AppID,
-		ExternalID:  secure.MustParseIdentifier(testDBAppRow.AppExtlID),
-		Org:         testOrg,
-		Name:        testDBAppRow.AppName,
-		Description: testDBAppRow.AppDescription,
-		APIKeys:     nil,
-	}
-
-	findUserByUsernameParams := userstore.FindUserByUsernameParams{
-		Username: service.TestUsername,
-		OrgID:    testOrg.ID,
-	}
-
-	var findUserByUsernameRow userstore.FindUserByUsernameRow
-	findUserByUsernameRow, err = userstore.New(ds.Pool()).FindUserByUsername(ctx, findUserByUsernameParams)
+	var testRole diy.Role
+	testRole, err = service.FindRoleByCode(ctx, tx, service.TestRoleCode)
 	if err != nil {
-		t.Fatalf("FindUserByUsername() error = %v", err)
+		c.Fatalf("FindRoleByCode() error = %v", err)
 	}
 
-	testUser := user.User{
-		ID:       findUserByUsernameRow.UserID,
-		Username: findUserByUsernameRow.Username,
-		Org:      testOrg,
-		Profile: person.Profile{
-			FirstName: findUserByUsernameRow.FirstName,
-			LastName:  findUserByUsernameRow.LastName,
-		},
+	findUsersByOrgRoleParams := datastore.FindUsersByOrgRoleParams{
+		OrgID:  testOrg.ID,
+		RoleID: testRole.ID,
 	}
 
-	adt := audit.Audit{
+	var usersRole []datastore.UsersRole
+	usersRole, err = datastore.New(tx).FindUsersByOrgRole(ctx, findUsersByOrgRoleParams)
+	if err != nil {
+		c.Fatalf("FindUsersByOrgRole() error = %v", err)
+	}
+
+	var u *diy.User
+	for i, ur := range usersRole {
+		u, err = service.FindUserByID(ctx, tx, ur.UserID)
+		if err != nil {
+			c.Fatalf("FindUserByID() error = %v", err)
+		}
+		// theoretically, only one user should have this role, so we
+		// don't need this break, but just in case...
+		if i == 0 {
+			break
+		}
+	}
+
+	adt := diy.Audit{
 		App:    testApp,
-		User:   testUser,
+		User:   u,
 		Moment: time.Now(),
 	}
 

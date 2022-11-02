@@ -3,29 +3,41 @@ package service
 import (
 	"context"
 
-	"github.com/gilcrest/diy-go-api/datastore/pingstore"
-
+	"github.com/jackc/pgx/v4"
 	"github.com/rs/zerolog"
-)
 
-// PingResponse is the response struct for the PingService
-type PingResponse struct {
-	DBUp bool `json:"db_up"`
-}
+	"github.com/gilcrest/diy-go-api"
+)
 
 // PingService pings the database.
 type PingService struct {
-	Datastorer Datastorer
+	Datastorer diy.Datastorer
 }
 
 // Ping method pings the database
-func (p PingService) Ping(ctx context.Context, lgr zerolog.Logger) PingResponse {
-	err := pingstore.PingDB(ctx, p.Datastorer.Pool())
+func (s *PingService) Ping(ctx context.Context, lgr zerolog.Logger) diy.PingResponse {
+	// start db txn using pgxpool
+	var (
+		tx  pgx.Tx
+		err error
+	)
+	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
-		// if error from PingDB, log the error, set dbok to false
-		lgr.Error().Stack().Err(err).Msg("PingDB error")
-		return PingResponse{DBUp: false}
+		// if error from PingDB, log the error, set DBUp to false
+		lgr.Error().Stack().Err(err).Msg("PingService.Ping BeginTx error")
+		return diy.PingResponse{DBUp: false}
+	}
+	// defer transaction rollback and handle error, if any
+	defer func() {
+		err = s.Datastorer.RollbackTx(ctx, tx, err)
+	}()
+
+	err = s.Datastorer.Ping(ctx)
+	if err != nil {
+		// if error from PingDB, log the error, set DBUp to false
+		lgr.Error().Stack().Err(err).Msg("s.Datastorer.Ping error")
+		return diy.PingResponse{DBUp: false}
 	}
 
-	return PingResponse{DBUp: true}
+	return diy.PingResponse{DBUp: true}
 }
