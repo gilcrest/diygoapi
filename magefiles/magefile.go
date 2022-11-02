@@ -198,7 +198,7 @@ func Run(env string) (err error) {
 		return err
 	}
 
-	err = sh.Run("go", "run", "./cmd/fide/main.go")
+	err = sh.Run("go", "run", "./cmd/diy/main.go")
 	if err != nil {
 		return err
 	}
