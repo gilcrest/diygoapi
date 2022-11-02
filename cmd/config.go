@@ -1,13 +1,11 @@
-package command
+package cmd
 
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/gilcrest/diy-go-api/errs"
 	"os"
 	"strconv"
-
-	"github.com/gilcrest/diy-go-api/datastore"
-	"github.com/gilcrest/diy-go-api/errs"
 )
 
 const (
@@ -160,37 +158,37 @@ func overrideEnv(f ConfigFile) error {
 	}
 
 	// database host
-	err = os.Setenv(datastore.DBHostEnv, f.Config.Database.Host)
+	err = os.Setenv(sqldb.DBHostEnv, f.Config.Database.Host)
 	if err != nil {
 		return err
 	}
 
 	// database port
-	err = os.Setenv(datastore.DBPortEnv, strconv.Itoa(f.Config.Database.Port))
+	err = os.Setenv(sqldb.DBPortEnv, strconv.Itoa(f.Config.Database.Port))
 	if err != nil {
 		return err
 	}
 
 	// database name
-	err = os.Setenv(datastore.DBNameEnv, f.Config.Database.Name)
+	err = os.Setenv(sqldb.DBNameEnv, f.Config.Database.Name)
 	if err != nil {
 		return err
 	}
 
 	// database user
-	err = os.Setenv(datastore.DBUserEnv, f.Config.Database.User)
+	err = os.Setenv(sqldb.DBUserEnv, f.Config.Database.User)
 	if err != nil {
 		return err
 	}
 
 	// database user password
-	err = os.Setenv(datastore.DBPasswordEnv, f.Config.Database.Password)
+	err = os.Setenv(sqldb.DBPasswordEnv, f.Config.Database.Password)
 	if err != nil {
 		return err
 	}
 
 	// database search path
-	err = os.Setenv(datastore.DBSearchPathEnv, f.Config.Database.SearchPath)
+	err = os.Setenv(sqldb.DBSearchPathEnv, f.Config.Database.SearchPath)
 	if err != nil {
 		return err
 	}

@@ -1,21 +1,16 @@
-package command
+package cmd
 
 import (
-	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"os"
-
+	"github.com/gilcrest/diy-go-api/errs"
+	"github.com/gilcrest/diy-go-api/secure"
+	"github.com/gilcrest/diy-go-api/service"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/rs/zerolog"
-
-	"github.com/gilcrest/diy-go-api/datastore"
-	"github.com/gilcrest/diy-go-api/errs"
-	"github.com/gilcrest/diy-go-api/logger"
-	"github.com/gilcrest/diy-go-api/secure"
-	"github.com/gilcrest/diy-go-api/secure/random"
-	"github.com/gilcrest/diy-go-api/service"
+	"golang.org/x/text/language"
+	"os"
 )
 
 // Genesis command runs the Genesis service and seeds the database.
@@ -45,7 +40,7 @@ func Genesis() (err error) {
 	}
 
 	// setup logger with appropriate defaults
-	lgr := logger.NewLogger(os.Stdout, minlvl, true)
+	lgr := logger.NewWithGCPHook(os.Stdout, minlvl, true)
 
 	// logs will be written at the level set in NewLogger (which is
 	// also the minimum level). If the logs are to be written at a
@@ -63,7 +58,7 @@ func Genesis() (err error) {
 	lgr.Info().Msgf("logging level set to %s", lvl)
 
 	// set global to log errors with stack (or not) based on flag
-	logger.WriteErrorStackGlobal(flgs.logErrorStack)
+	logger.WriteErrorStack(flgs.logErrorStack)
 	lgr.Info().Msgf("log error stack global set to %t", flgs.logErrorStack)
 
 	if flgs.encryptkey == "" {
@@ -83,16 +78,24 @@ func Genesis() (err error) {
 		dbpool  *pgxpool.Pool
 		cleanup func()
 	)
-	dbpool, cleanup, err = datastore.NewPostgreSQLPool(ctx, newPostgreSQLDSN(flgs), lgr)
+	dbpool, cleanup, err = sqldb.NewPostgreSQLPool(ctx, lgr, newPostgreSQLDSN(flgs))
 	if err != nil {
-		lgr.Fatal().Err(err).Msg("datastore.NewPostgreSQLPool error")
+		lgr.Fatal().Err(err).Msg("sqldb.NewPostgreSQLPool error")
 	}
 	defer cleanup()
 
+	var supportedLangs = []language.Tag{
+		language.AmericanEnglish,
+	}
+
+	matcher := language.NewMatcher(supportedLangs)
+
 	s := service.GenesisService{
-		Datastorer:            datastore.NewDatastore(dbpool),
-		RandomStringGenerator: random.CryptoGenerator{},
-		EncryptionKey:         ek,
+		Datastorer:      sqldb.NewDB(dbpool),
+		APIKeyGenerator: secure.RandomGenerator{},
+		EncryptionKey:   ek,
+		TokenExchanger:  gateway.Oauth2TokenExchange{},
+		LanguageMatcher: matcher,
 	}
 
 	var b []byte
@@ -100,16 +103,27 @@ func Genesis() (err error) {
 	if err != nil {
 		return errs.E(err)
 	}
-	f := service.GenesisRequest{}
+	f := fide.GenesisRequest{}
 	err = json.Unmarshal(b, &f)
 	if err != nil {
 		return errs.E(err)
 	}
 
-	var response service.GenesisResponse
-	response, err = s.Seed(ctx, &f)
+	var response fide.GenesisResponse
+	response, err = s.Arche(ctx, &f)
 	if err != nil {
-		return err
+		var e *errs.Error
+		if errors.As(err, &e) {
+			lgr.Error().Stack().Err(e.Err).
+				Str("Kind", e.Kind.String()).
+				Str("Parameter", string(e.Param)).
+				Str("Code", string(e.Code)).
+				Msg("Error Response Sent")
+			return err
+		} else {
+			lgr.Error().Err(err).Send()
+			return err
+		}
 	}
 
 	var responseJSON []byte
@@ -133,7 +147,7 @@ func Genesis() (err error) {
 // to function correctly, in which case the caller should not continue.
 // Taken from https://github.com/gtank/cryptopasta/blob/master/encrypt.go
 func NewEncryptionKey() {
-	lgr := logger.NewLogger(os.Stdout, zerolog.DebugLevel, true)
+	lgr := logger.NewWithGCPHook(os.Stdout, zerolog.DebugLevel, true)
 
 	keyBytes, err := secure.NewEncryptionKey()
 	if err != nil {

@@ -1,11 +1,9 @@
-package command
+package cmd
 
 import (
 	"fmt"
 	"strconv"
 	"strings"
-
-	"github.com/gilcrest/diy-go-api/datastore"
 )
 
 // GCPCloudRunDeployImage builds arguments for running a service on
@@ -25,12 +23,12 @@ func GCPCloudRunDeployImage(f ConfigFile, image GCPArtifactRegistryContainerImag
 	args = append(args, "--add-cloudsql-instances", gcpCloudSQLInstanceConnectionName)
 
 	icn := fmt.Sprintf(`INSTANCE-CONNECTION-NAME=%s`, gcpCloudSQLInstanceConnectionName)
-	dbName := fmt.Sprintf(`%s=%s`, datastore.DBNameEnv, f.Config.Database.Name)
-	dbUser := fmt.Sprintf(`%s=%s`, datastore.DBUserEnv, f.Config.Database.User)
-	dbPassword := fmt.Sprintf(`%s=%s`, datastore.DBPasswordEnv, f.Config.Database.Password)
-	dbHost := fmt.Sprintf(`%s=%s`, datastore.DBHostEnv, f.Config.Database.Host)
-	dbPort := fmt.Sprintf(`%s=%s`, datastore.DBPortEnv, strconv.Itoa(f.Config.Database.Port))
-	dbSearchPath := fmt.Sprintf(`%s=%s`, datastore.DBSearchPathEnv, f.Config.Database.SearchPath)
+	dbName := fmt.Sprintf(`%s=%s`, sqldb.DBNameEnv, f.Config.Database.Name)
+	dbUser := fmt.Sprintf(`%s=%s`, sqldb.DBUserEnv, f.Config.Database.User)
+	dbPassword := fmt.Sprintf(`%s=%s`, sqldb.DBPasswordEnv, f.Config.Database.Password)
+	dbHost := fmt.Sprintf(`%s=%s`, sqldb.DBHostEnv, f.Config.Database.Host)
+	dbPort := fmt.Sprintf(`%s=%s`, sqldb.DBPortEnv, strconv.Itoa(f.Config.Database.Port))
+	dbSearchPath := fmt.Sprintf(`%s=%s`, sqldb.DBSearchPathEnv, f.Config.Database.SearchPath)
 	encryptKey := fmt.Sprintf(`%s=%s`, encryptKeyEnv, f.Config.EncryptionKey)
 
 	envVars := []string{icn, dbName, dbUser, dbPassword, dbHost, dbPort, dbSearchPath, encryptKey}

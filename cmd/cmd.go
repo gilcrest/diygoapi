@@ -1,11 +1,6 @@
-// Package commands defines and implements command-line build
-// commands and flags used by the application. The package name is
-// inspired by Hugo and Cobra/Viper, but for now, Cobra/Viper is
-// not used, opting instead for the simplicity of ff.
-package command
+package cmd
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -13,13 +8,10 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/peterbourgon/ff/v3"
 	"github.com/rs/zerolog"
+	"golang.org/x/text/language"
 
-	"github.com/gilcrest/diy-go-api/datastore"
 	"github.com/gilcrest/diy-go-api/errs"
-	"github.com/gilcrest/diy-go-api/gateway/authgateway"
-	"github.com/gilcrest/diy-go-api/logger"
 	"github.com/gilcrest/diy-go-api/secure"
-	"github.com/gilcrest/diy-go-api/secure/random"
 	"github.com/gilcrest/diy-go-api/server"
 	"github.com/gilcrest/diy-go-api/service"
 )
@@ -92,12 +84,12 @@ func newFlags(args []string) (flags, error) {
 		loglvl        = flagSet.String("log-level", "info", fmt.Sprintf("sets log level (trace, debug, info, warn, error, fatal, panic, disabled), (also via %s)", loglevelEnv))
 		logErrorStack = flagSet.Bool("log-error-stack", true, fmt.Sprintf("if true, log full error stacktrace, else just log error, (also via %s)", logErrorStackEnv))
 		port          = flagSet.Int("port", 8080, fmt.Sprintf("listen port for server (also via %s)", portEnv))
-		dbhost        = flagSet.String("db-host", "", fmt.Sprintf("postgresql database host (also via %s)", datastore.DBHostEnv))
-		dbport        = flagSet.Int("db-port", 5432, fmt.Sprintf("postgresql database port (also via %s)", datastore.DBPortEnv))
-		dbname        = flagSet.String("db-name", "", fmt.Sprintf("postgresql database name (also via %s)", datastore.DBNameEnv))
-		dbuser        = flagSet.String("db-user", "", fmt.Sprintf("postgresql database user (also via %s)", datastore.DBUserEnv))
-		dbpassword    = flagSet.String("db-password", "", fmt.Sprintf("postgresql database password (also via %s)", datastore.DBPasswordEnv))
-		dbsearchpath  = flagSet.String("db-search-path", "", fmt.Sprintf("postgresql database search path (also via %s)", datastore.DBSearchPathEnv))
+		dbhost        = flagSet.String("db-host", "", fmt.Sprintf("postgresql database host (also via %s)", sqldb.DBHostEnv))
+		dbport        = flagSet.Int("db-port", 5432, fmt.Sprintf("postgresql database port (also via %s)", sqldb.DBPortEnv))
+		dbname        = flagSet.String("db-name", "", fmt.Sprintf("postgresql database name (also via %s)", sqldb.DBNameEnv))
+		dbuser        = flagSet.String("db-user", "", fmt.Sprintf("postgresql database user (also via %s)", sqldb.DBUserEnv))
+		dbpassword    = flagSet.String("db-password", "", fmt.Sprintf("postgresql database password (also via %s)", sqldb.DBPasswordEnv))
+		dbsearchpath  = flagSet.String("db-search-path", "", fmt.Sprintf("postgresql database search path (also via %s)", sqldb.DBSearchPathEnv))
 		encryptkey    = flagSet.String("encrypt-key", "", fmt.Sprintf("encryption key (also via %s)", encryptKeyEnv))
 	)
 
@@ -146,7 +138,7 @@ func Run(args []string) (err error) {
 	}
 
 	// setup logger with appropriate defaults
-	lgr := logger.NewLogger(os.Stdout, minlvl, true)
+	lgr := logger.NewWithGCPHook(os.Stdout, minlvl, true)
 
 	// logs will be written at the level set in NewLogger (which is
 	// also the minimum level). If the logs are to be written at a
@@ -164,7 +156,7 @@ func Run(args []string) (err error) {
 	lgr.Info().Msgf("logging level set to %s", lvl)
 
 	// set global to log errors with stack (or not) based on flag
-	logger.WriteErrorStackGlobal(flgs.logErrorStack)
+	logger.WriteErrorStack(flgs.logErrorStack)
 	lgr.Info().Msgf("log error stack global set to %t", flgs.logErrorStack)
 
 	// validate port in acceptable range
@@ -173,7 +165,7 @@ func Run(args []string) (err error) {
 		lgr.Fatal().Err(err).Msg("portRange() error")
 	}
 
-	// initialize Server enfolding an http.Server with default timeouts
+	// initialize Server enfolding a http.Server with default timeouts
 	// a Gorilla mux router with /api subroute and a zerolog.Logger
 	s := server.New(server.NewMuxRouter(), server.NewDriver(), lgr)
 
@@ -191,57 +183,66 @@ func Run(args []string) (err error) {
 		lgr.Fatal().Err(err).Msg("secure.ParseEncryptionKey() error")
 	}
 
+	ctx := context.Background()
+
 	// initialize PostgreSQL database
 	var (
 		dbpool  *pgxpool.Pool
 		cleanup func()
 	)
-	dbpool, cleanup, err = datastore.NewPostgreSQLPool(context.Background(), newPostgreSQLDSN(flgs), lgr)
+	dbpool, cleanup, err = sqldb.NewPostgreSQLPool(ctx, lgr, newPostgreSQLDSN(flgs))
 	if err != nil {
-		lgr.Fatal().Err(err).Msg("datastore.NewPostgreSQLPool error")
+		lgr.Fatal().Err(err).Msg("sqldb.NewPostgreSQLPool error")
 	}
 	defer cleanup()
 
-	// initialize Datastore
-	ds := datastore.NewDatastore(dbpool)
+	// create a new DB using the pool and established connection
+	db := sqldb.NewDB(dbpool)
+
+	err = db.ValidatePool(ctx, lgr)
+	if err != nil {
+		lgr.Fatal().Err(err).Msg("db.ValidatePool error")
+	}
+
+	var supportedLangs = []language.Tag{
+		language.AmericanEnglish,
+	}
+
+	matcher := language.NewMatcher(supportedLangs)
 
 	s.Services = server.Services{
-		CreateMovieService: service.CreateMovieService{Datastorer: ds},
-		UpdateMovieService: service.UpdateMovieService{Datastorer: ds},
-		DeleteMovieService: service.DeleteMovieService{Datastorer: ds},
-		FindMovieService:   service.FindMovieService{Datastorer: ds},
-		CreateOrgService: service.CreateOrgService{
-			Datastorer:            ds,
-			RandomStringGenerator: random.CryptoGenerator{},
-			EncryptionKey:         ek},
-		OrgService: service.OrgService{Datastorer: ds},
-		AppService: service.AppService{
-			Datastorer:            ds,
-			RandomStringGenerator: random.CryptoGenerator{},
-			EncryptionKey:         ek},
-		RegisterUserService: service.RegisterUserService{Datastorer: ds},
-		PingService:         service.PingService{Datastorer: ds},
-		LoggerService:       service.LoggerService{Logger: lgr},
-		GenesisService: service.GenesisService{
-			Datastorer:            ds,
-			RandomStringGenerator: random.CryptoGenerator{},
-			EncryptionKey:         ek,
+		OrgServicer: &service.OrgService{
+			Datastorer:      db,
+			APIKeyGenerator: secure.RandomGenerator{},
+			EncryptionKey:   ek},
+		AppServicer: &service.AppService{
+			Datastorer:      db,
+			APIKeyGenerator: secure.RandomGenerator{},
+			EncryptionKey:   ek},
+		PingService:   &service.PingService{Datastorer: db},
+		LoggerService: &service.LoggerService{Logger: lgr},
+		GenesisServicer: &service.GenesisService{
+			Datastorer:      db,
+			APIKeyGenerator: secure.RandomGenerator{},
+			EncryptionKey:   ek,
+			TokenExchanger:  gateway.Oauth2TokenExchange{},
+			LanguageMatcher: matcher,
 		},
-		MiddlewareService: service.MiddlewareService{
-			Datastorer:                 ds,
-			GoogleOauth2TokenConverter: authgateway.GoogleOauth2TokenConverter{},
-			Authorizer:                 service.DBAuthorizer{Datastorer: ds},
-			EncryptionKey:              ek,
+		AuthenticationServicer: service.DBAuthenticationService{
+			Datastorer:      db,
+			TokenExchanger:  gateway.Oauth2TokenExchange{},
+			EncryptionKey:   ek,
+			LanguageMatcher: matcher,
 		},
-		PermissionService: service.PermissionService{Datastorer: ds},
+		AuthorizationServicer: &service.DBAuthorizationService{Datastorer: db},
 	}
 
 	return s.ListenAndServe()
 }
 
-// newPostgreSQLDSN initializes a datastore.PostgreSQLDSN given a Flags struct
-func newPostgreSQLDSN(flgs flags) datastore.PostgreSQLDSN {
-	return datastore.PostgreSQLDSN{
+// newPostgreSQLDSN initializes a sqldb.PostgreSQLDSN given a Flags struct
+func newPostgreSQLDSN(flgs flags) sqldb.PostgreSQLDSN {
+	return sqldb.PostgreSQLDSN{
 		Host:       flgs.dbhost,
 		Port:       flgs.dbport,
 		DBName:     flgs.dbname,

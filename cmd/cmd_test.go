@@ -1,14 +1,11 @@
-package command
+package cmd
 
 import (
 	"fmt"
-	"testing"
-
 	qt "github.com/frankban/quicktest"
-	"github.com/google/go-cmp/cmp"
-
-	"github.com/gilcrest/diy-go-api/datastore"
 	"github.com/gilcrest/diy-go-api/errs"
+	"github.com/google/go-cmp/cmp"
+	"testing"
 )
 
 func Test_portRange(t *testing.T) {
@@ -47,12 +44,12 @@ func Test_newFlags(t *testing.T) {
 		c.Setenv(logLevelMinEnv, "debug")
 		c.Setenv(logErrorStackEnv, "false")
 		c.Setenv(portEnv, "8081")
-		c.Setenv(datastore.DBHostEnv, "hostwiththemost")
-		c.Setenv(datastore.DBPortEnv, "5150")
-		c.Setenv(datastore.DBNameEnv, "whatisinaname")
-		c.Setenv(datastore.DBUserEnv, "usersarelosers")
-		c.Setenv(datastore.DBPasswordEnv, "yeet")
-		c.Setenv(datastore.DBSearchPathEnv, "u2")
+		c.Setenv(sqldb.DBHostEnv, "hostwiththemost")
+		c.Setenv(sqldb.DBPortEnv, "5150")
+		c.Setenv(sqldb.DBNameEnv, "whatisinaname")
+		c.Setenv(sqldb.DBUserEnv, "usersarelosers")
+		c.Setenv(sqldb.DBPasswordEnv, "yeet")
+		c.Setenv(sqldb.DBSearchPathEnv, "u2")
 		c.Setenv(encryptKeyEnv, "reallyGoodKey")
 		c.Log("Environment setup completed")
 	}
@@ -63,12 +60,12 @@ func Test_newFlags(t *testing.T) {
 		c.Setenv(logLevelMinEnv, "")
 		c.Setenv(logErrorStackEnv, "")
 		c.Setenv(portEnv, "")
-		c.Setenv(datastore.DBHostEnv, "")
-		c.Setenv(datastore.DBPortEnv, "")
-		c.Setenv(datastore.DBNameEnv, "")
-		c.Setenv(datastore.DBUserEnv, "")
-		c.Setenv(datastore.DBPasswordEnv, "")
-		c.Setenv(datastore.DBSearchPathEnv, "")
+		c.Setenv(sqldb.DBHostEnv, "")
+		c.Setenv(sqldb.DBPortEnv, "")
+		c.Setenv(sqldb.DBNameEnv, "")
+		c.Setenv(sqldb.DBUserEnv, "")
+		c.Setenv(sqldb.DBPasswordEnv, "")
+		c.Setenv(sqldb.DBSearchPathEnv, "")
 		c.Setenv(encryptKeyEnv, "")
 		c.Log("Environment setup completed")
 	}
