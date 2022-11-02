@@ -39,7 +39,7 @@ func (s *Server) registerRoutes() {
 	s.router.Handle(moviesV1PathRoot,
 		s.loggerChain().
 			Append(s.appHandler).
-			Append(s.userHandler).
+			Append(s.authHandler).
 			Append(s.authorizeUserHandler).
 			Append(s.jsonContentTypeResponseHandler).
 			ThenFunc(s.handleMovieCreate)).
@@ -51,7 +51,7 @@ func (s *Server) registerRoutes() {
 	s.router.Handle(moviesV1PathRoot+extlIDPathDir,
 		s.loggerChain().
 			Append(s.appHandler).
-			Append(s.userHandler).
+			Append(s.authHandler).
 			Append(s.authorizeUserHandler).
 			Append(s.jsonContentTypeResponseHandler).
 			ThenFunc(s.handleMovieUpdate)).
@@ -62,7 +62,7 @@ func (s *Server) registerRoutes() {
 	s.router.Handle(moviesV1PathRoot+extlIDPathDir,
 		s.loggerChain().
 			Append(s.appHandler).
-			Append(s.userHandler).
+			Append(s.authHandler).
 			Append(s.authorizeUserHandler).
 			Append(s.jsonContentTypeResponseHandler).
 			ThenFunc(s.handleMovieDelete)).
@@ -72,7 +72,7 @@ func (s *Server) registerRoutes() {
 	s.router.Handle(moviesV1PathRoot+extlIDPathDir,
 		s.loggerChain().
 			Append(s.appHandler).
-			Append(s.userHandler).
+			Append(s.authHandler).
 			Append(s.authorizeUserHandler).
 			Append(s.jsonContentTypeResponseHandler).
 			ThenFunc(s.handleFindMovieByID)).
@@ -82,7 +82,7 @@ func (s *Server) registerRoutes() {
 	s.router.Handle(moviesV1PathRoot,
 		s.loggerChain().
 			Append(s.appHandler).
-			Append(s.userHandler).
+			Append(s.authHandler).
 			Append(s.authorizeUserHandler).
 			Append(s.jsonContentTypeResponseHandler).
 			ThenFunc(s.handleFindAllMovies)).
@@ -93,7 +93,7 @@ func (s *Server) registerRoutes() {
 	s.router.Handle(orgsV1PathRoot,
 		s.loggerChain().
 			Append(s.appHandler).
-			Append(s.userHandler).
+			Append(s.authHandler).
 			Append(s.authorizeUserHandler).
 			Append(s.jsonContentTypeResponseHandler).
 			ThenFunc(s.handleOrgCreate)).
@@ -105,7 +105,7 @@ func (s *Server) registerRoutes() {
 	s.router.Handle(orgsV1PathRoot+extlIDPathDir,
 		s.loggerChain().
 			Append(s.appHandler).
-			Append(s.userHandler).
+			Append(s.authHandler).
 			Append(s.authorizeUserHandler).
 			Append(s.jsonContentTypeResponseHandler).
 			ThenFunc(s.handleOrgUpdate)).
@@ -116,7 +116,7 @@ func (s *Server) registerRoutes() {
 	s.router.Handle(orgsV1PathRoot+extlIDPathDir,
 		s.loggerChain().
 			Append(s.appHandler).
-			Append(s.userHandler).
+			Append(s.authHandler).
 			Append(s.authorizeUserHandler).
 			Append(s.jsonContentTypeResponseHandler).
 			ThenFunc(s.handleOrgDelete)).
@@ -126,7 +126,7 @@ func (s *Server) registerRoutes() {
 	s.router.Handle(orgsV1PathRoot,
 		s.loggerChain().
 			Append(s.appHandler).
-			Append(s.userHandler).
+			Append(s.authHandler).
 			Append(s.authorizeUserHandler).
 			Append(s.jsonContentTypeResponseHandler).
 			ThenFunc(s.handleOrgFindAll)).
@@ -136,7 +136,7 @@ func (s *Server) registerRoutes() {
 	s.router.Handle(orgsV1PathRoot+extlIDPathDir,
 		s.loggerChain().
 			Append(s.appHandler).
-			Append(s.userHandler).
+			Append(s.authHandler).
 			Append(s.authorizeUserHandler).
 			Append(s.jsonContentTypeResponseHandler).
 			ThenFunc(s.handleOrgFindByExtlID)).
@@ -147,7 +147,7 @@ func (s *Server) registerRoutes() {
 	s.router.Handle(appsV1PathRoot,
 		s.loggerChain().
 			Append(s.appHandler).
-			Append(s.userHandler).
+			Append(s.authHandler).
 			Append(s.authorizeUserHandler).
 			Append(s.jsonContentTypeResponseHandler).
 			ThenFunc(s.handleAppCreate)).
@@ -158,7 +158,6 @@ func (s *Server) registerRoutes() {
 	s.router.Handle(registerV1PathRoot,
 		s.loggerChain().
 			Append(s.appHandler).
-			Append(s.newUserHandler).
 			Append(s.jsonContentTypeResponseHandler).
 			ThenFunc(s.handleAppCreate)).
 		Methods(http.MethodPost)
@@ -167,7 +166,7 @@ func (s *Server) registerRoutes() {
 	s.router.Handle(loggerV1PathRoot,
 		s.loggerChain().
 			Append(s.appHandler).
-			Append(s.userHandler).
+			Append(s.authHandler).
 			Append(s.authorizeUserHandler).
 			Append(s.jsonContentTypeResponseHandler).
 			ThenFunc(s.handleLoggerRead)).
@@ -177,7 +176,7 @@ func (s *Server) registerRoutes() {
 	s.router.Handle(loggerV1PathRoot,
 		s.loggerChain().
 			Append(s.appHandler).
-			Append(s.userHandler).
+			Append(s.authHandler).
 			Append(s.authorizeUserHandler).
 			Append(s.jsonContentTypeResponseHandler).
 			ThenFunc(s.handleLoggerUpdate)).
@@ -187,6 +186,9 @@ func (s *Server) registerRoutes() {
 	// Match only GET requests at /api/v1/ping
 	s.router.Handle(pingV1PathRoot,
 		s.loggerChain().
+			Append(s.appHandler).
+			Append(s.authHandler).
+			Append(s.authorizeUserHandler).
 			Append(s.jsonContentTypeResponseHandler).
 			ThenFunc(s.handlePing)).
 		Methods(http.MethodGet)
@@ -195,7 +197,7 @@ func (s *Server) registerRoutes() {
 	s.router.Handle(permissionV1PathRoot,
 		s.loggerChain().
 			Append(s.appHandler).
-			Append(s.userHandler).
+			Append(s.authHandler).
 			Append(s.jsonContentTypeResponseHandler).
 			ThenFunc(s.handlePermissionCreate)).
 		Methods(http.MethodPost).
@@ -205,7 +207,7 @@ func (s *Server) registerRoutes() {
 	s.router.Handle(permissionV1PathRoot,
 		s.loggerChain().
 			Append(s.appHandler).
-			Append(s.userHandler).
+			Append(s.authHandler).
 			Append(s.jsonContentTypeResponseHandler).
 			ThenFunc(s.handlePermissionFindAll)).
 		Methods(http.MethodGet)
