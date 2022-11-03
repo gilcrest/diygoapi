@@ -12,6 +12,8 @@ I struggled a lot with parsing the myriad different patterns people have for pac
 
 The following is an in-depth walkthrough of this project. This is a demo API, so the "business" intent of it is to support basic CRUD (**C**reate, **R**ead, **U**pdate, **D**elete) operations for a movie database. All paths to files or directories are from the project root.
 
+> IMPORTANT: I just completed a significant refactor of this app. Most of the below still applies, but I need to take some time to update a few things.
+
 ## Minimum Requirements
 
 - [Go](https://go.dev/)
@@ -210,7 +212,7 @@ Twelve database tables are created as part of the up migration.
 ```shell
 $ mage -v dbup local
 Running target: DBUp
-exec: psql "-w" "-d" "postgresql://demo_user@localhost:5432/dga_local?options=-csearch_path%3Ddemo" "-c" "select current_database(), current_user, version()" "-f" "./scripts/db/migrations/up/001-app.sql" "-f" "./scripts/db/migrations/up/002-org_user.sql" "-f" "./scripts/db/migrations/up/003-permission.sql" "-f" "./scripts/db/migrations/up/004-person.sql" "-f" "./scripts/db/migrations/up/005-org_kind.sql" "-f" "./scripts/db/migrations/up/006-role.sql" "-f" "./scripts/db/migrations/up/007-movie.sql" "-f" "./scripts/db/migrations/up/008-app_api_key.sql" "-f" "./scripts/db/migrations/up/009-person_profile.sql" "-f" "./scripts/db/migrations/up/010-org.sql" "-f" "./scripts/db/migrations/up/011-role_permission.sql" "-f" "./scripts/db/migrations/up/012-role_user.sql"
+exec: psql "-w" "-d" "postgresql://demo_user@localhost:5432/dga_local?options=-csearch_path%3Ddemo" "-c" "select current_database(), current_user, version()" "-f" "./scripts/db/migrations/up/001-app.sql" "-f" "./scripts/db/migrations/up/002-org_user.sql" "-f" "./scripts/db/migrations/up/003-permission.sql" "-f" "./scripts/db/migrations/up/004-person.sql" "-f" "./scripts/db/migrations/up/005-org_kind.sql" "-f" "./scripts/db/migrations/up/006-role.sql" "-f" "./scripts/db/migrations/up/014-movie.sql" "-f" "./scripts/db/migrations/up/008-app_api_key.sql" "-f" "./scripts/db/migrations/up/009-person_profile.sql" "-f" "./scripts/db/migrations/up/010-org.sql" "-f" "./scripts/db/migrations/up/011-role_permission.sql" "-f" "./scripts/db/migrations/up/012-role_user.sql"
  current_database | current_user |                                                      version                                                      
 ------------------+--------------+-------------------------------------------------------------------------------------------------------------------
  dga_local        | demo_user    | PostgreSQL 14.2 on aarch64-apple-darwin20.6.0, compiled by Apple clang version 12.0.5 (clang-1205.0.22.9), 64-bit
@@ -398,8 +400,11 @@ $ mage -v testall false local
 Running target: TestAll
 exec: go "test" "./..."
 ?       github.com/gilcrest/diy-go-api  [no test files]
-ok      github.com/gilcrest/diy-go-api/command  (cached)
-ok      github.com/gilcrest/diy-go-api/datastore        (cached)
+?       github.com/gilcrest/diy-go-api/app      [no test files]
+?       github.com/gilcrest/diy-go-api/audit    [no test files]
+ok      github.com/gilcrest/diy-go-api/auth     0.331s
+ok      github.com/gilcrest/diy-go-api/command  0.724s
+ok      github.com/gilcrest/diy-go-api/datastore        0.682s
 ?       github.com/gilcrest/diy-go-api/datastore/appstore       [no test files]
 ?       github.com/gilcrest/diy-go-api/datastore/authstore      [no test files]
 ?       github.com/gilcrest/diy-go-api/datastore/datastoretest  [no test files]
@@ -407,27 +412,24 @@ ok      github.com/gilcrest/diy-go-api/datastore        (cached)
 ?       github.com/gilcrest/diy-go-api/datastore/orgstore       [no test files]
 ?       github.com/gilcrest/diy-go-api/datastore/personstore    [no test files]
 ?       github.com/gilcrest/diy-go-api/datastore/pingstore      [no test files]
-ok      github.com/gilcrest/diy-go-api/datastore/userstore      (cached)
-?       github.com/gilcrest/diy-go-api/domain/app       [no test files]
-?       github.com/gilcrest/diy-go-api/domain/audit     [no test files]
-ok      github.com/gilcrest/diy-go-api/domain/auth      (cached)
-ok      github.com/gilcrest/diy-go-api/domain/errs      (cached)
-ok      github.com/gilcrest/diy-go-api/domain/logger    (cached)
-ok      github.com/gilcrest/diy-go-api/domain/movie     (cached)
-?       github.com/gilcrest/diy-go-api/domain/org       [no test files]
-?       github.com/gilcrest/diy-go-api/domain/person    [no test files]
-ok      github.com/gilcrest/diy-go-api/domain/random    (cached)
-?       github.com/gilcrest/diy-go-api/domain/random/randomtest [no test files]
-ok      github.com/gilcrest/diy-go-api/domain/secure    (cached)
-?       github.com/gilcrest/diy-go-api/domain/secure/random     [no test files]
-ok      github.com/gilcrest/diy-go-api/domain/user      (cached)
-?       github.com/gilcrest/diy-go-api/domain/user/usertest     [no test files]
+ok      github.com/gilcrest/diy-go-api/datastore/userstore      0.742s
+ok      github.com/gilcrest/diy-go-api/errs     0.490s
 ?       github.com/gilcrest/diy-go-api/gateway  [no test files]
 ?       github.com/gilcrest/diy-go-api/gateway/authgateway      [no test files]
+ok      github.com/gilcrest/diy-go-api/logger   0.284s
 ?       github.com/gilcrest/diy-go-api/magefiles        [no test files]
-ok      github.com/gilcrest/diy-go-api/server   (cached)
+ok      github.com/gilcrest/diy-go-api/movie    0.571s
+?       github.com/gilcrest/diy-go-api/org      [no test files]
+?       github.com/gilcrest/diy-go-api/person   [no test files]
+ok      github.com/gilcrest/diy-go-api/random   0.333s
+?       github.com/gilcrest/diy-go-api/random/randomtest        [no test files]
+ok      github.com/gilcrest/diy-go-api/secure   0.574s
+?       github.com/gilcrest/diy-go-api/secure/random    [no test files]
+ok      github.com/gilcrest/diy-go-api/server   0.328s
 ?       github.com/gilcrest/diy-go-api/server/driver    [no test files]
-ok      github.com/gilcrest/diy-go-api/service  (cached)
+ok      github.com/gilcrest/diy-go-api/service  0.504s
+ok      github.com/gilcrest/diy-go-api/user     0.323s
+?       github.com/gilcrest/diy-go-api/user/usertest    [no test files]
 ```
 
 > Note: There are a number of packages without test files, but there is extensive testing as part of this project. More can and will be done, of course...
@@ -503,8 +505,8 @@ $ go run main.go
 {"level":"info","time":1656296765,"severity":"INFO","message":"sql database Ping returned successfully"}
 {"level":"info","time":1656296765,"severity":"INFO","message":"database version: PostgreSQL 14.4 on aarch64-apple-darwin20.6.0, compiled by Apple clang version 12.0.5 (clang-1205.0.22.9), 64-bit"}
 {"level":"info","time":1656296765,"severity":"INFO","message":"current database user: gilcrest"}
-{"level":"info","time":1656296765,"severity":"INFO","message":"current database: fide_local"}
-{"level":"info","time":1656296765,"severity":"INFO","message":"current search_path: fide"}
+{"level":"info","time":1656296765,"severity":"INFO","message":"current database: dga_local"}
+{"level":"info","time":1656296765,"severity":"INFO","message":"current search_path: demo"}
 ```
 
 ### Step 7 - Send Requests
@@ -604,6 +606,14 @@ $ curl --location --request DELETE 'http://127.0.0.1:8080/api/v1/movies/IUAtsOQu
 --------
 
 ## Project Walkthrough
+
+### Package Layout
+
+![RealWorld Example Applications](media/diygoapi-package-layout.png)
+
+The above image is a high-level view of an example request that is processed by the server (creating a movie). To summarize, after receiving an http request, the request path, method, etc. is matched to a registered route in the [gorilla mux](https://github.com/gorilla/mux) router (router initialization is part of server startup in the `command` package) as part of the routes.go file in the server package. The request is then sent through a sequence of middleware handlers for setting up request logging, response headers, authentication and authorization. Finally, the request is routed through a bespoke app handler, in this case `handleMovieCreate`.
+
+> `diy-go-api` package layout is based on several projects, but the primary source of inspiration is the [WTF Dial app repo](https://github.com/benbjohnson/wtf) and [accompanying blog](https://www.gobeyond.dev/) from [Ben Johnson](https://github.com/benbjohnson). It's really a wonderful resource and I encourage everyone to read it.
 
 ### Errors
 
