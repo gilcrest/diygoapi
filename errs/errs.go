@@ -40,7 +40,7 @@ func (e *Error) isZero() bool {
 }
 
 // Unwrap method allows for unwrapping errors using errors.As
-func (e Error) Unwrap() error {
+func (e *Error) Unwrap() error {
 	return e.Err
 }
 
@@ -139,6 +139,7 @@ func (k Kind) String() string {
 // only the last one is recorded.
 //
 // The types are:
+//
 //	UserName
 //		The username of the user attempting the operation.
 //	string
@@ -246,8 +247,9 @@ func E(args ...interface{}) error {
 // the first are ignored.
 //
 // For example,
-//	Match(errors.E(upspin.UserName("joe@schmoe.com"), errors.Permission), err)
-//  tests whether err is an Error with Kind=Permission and User=joe@schmoe.com.
+//
+//		Match(errors.E(upspin.UserName("joe@schmoe.com"), errors.Permission), err)
+//	 tests whether err is an Error with Kind=Permission and User=joe@schmoe.com.
 func Match(err1, err2 error) bool {
 	e1, ok := err1.(*Error)
 	if !ok {
