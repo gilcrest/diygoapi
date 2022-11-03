@@ -106,7 +106,11 @@ type UpdateOrgRequest struct {
 	Description string `json:"description"`
 }
 
-// OrgResponse is the response struct for an Org
+// OrgResponse is the response struct for an Org.
+// It contains only one app (even though an org can have many apps).
+// This app is only present in the response when creating an org and
+// accompanying app. I may change this later to be different response
+// structs for different purposes, but for now, this works.
 type OrgResponse struct {
 	ExternalID          string       `json:"external_id"`
 	Name                string       `json:"name"`
