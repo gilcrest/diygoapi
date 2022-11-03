@@ -255,7 +255,8 @@ func Match(err1, err2 error) bool {
 	if !ok {
 		return false
 	}
-	e2, ok := err2.(*Error)
+	var e2 *Error
+	e2, ok = err2.(*Error)
 	if !ok {
 		return false
 	}
@@ -272,7 +273,7 @@ func Match(err1, err2 error) bool {
 		return false
 	}
 	if e1.Err != nil {
-		if _, ok := e1.Err.(*Error); ok {
+		if _, k := e1.Err.(*Error); k {
 			return Match(e1.Err, e2.Err)
 		}
 		if e2.Err == nil || e2.Err.Error() != e1.Err.Error() {
