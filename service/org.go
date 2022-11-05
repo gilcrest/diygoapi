@@ -100,17 +100,22 @@ func (s *OrgService) Create(ctx context.Context, r *diy.CreateOrgRequest, adt di
 		a   *diy.App
 		aa  appAudit
 	)
+
+	provider := diy.ParseProvider(r.App.Oauth2Provider)
+
 	if r.App != car {
 		err = r.App.Validate()
 		if err != nil {
 			return nil, err
 		}
 		nap := newAppParams{
-			name:            r.App.Name,
-			description:     r.App.Description,
-			org:             o,
-			apiKeyGenerator: s.APIKeyGenerator,
-			encryptionKey:   s.EncryptionKey,
+			Name:             r.App.Name,
+			Description:      r.App.Description,
+			Org:              o,
+			ApiKeyGenerator:  s.APIKeyGenerator,
+			EncryptionKey:    s.EncryptionKey,
+			Provider:         provider,
+			ProviderClientID: r.App.Oauth2ProviderClientID,
 		}
 		a, err = newApp(nap)
 		if err != nil {

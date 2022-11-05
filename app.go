@@ -11,12 +11,14 @@ import (
 
 // App is an application that interacts with the system
 type App struct {
-	ID          uuid.UUID
-	ExternalID  secure.Identifier
-	Org         *Org
-	Name        string
-	Description string
-	APIKeys     []APIKey
+	ID               uuid.UUID
+	ExternalID       secure.Identifier
+	Org              *Org
+	Name             string
+	Description      string
+	Provider         Provider
+	ProviderClientID string
+	APIKeys          []APIKey
 }
 
 // AddKey validates and adds an API key to the slice of App API keys
@@ -57,8 +59,10 @@ func (a *App) matchKey(realm, matchKey string) (APIKey, error) {
 
 // CreateAppRequest is the request struct for Creating an App
 type CreateAppRequest struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
+	Name                   string `json:"name"`
+	Description            string `json:"description"`
+	Oauth2Provider         string `json:"oauth2_provider"`
+	Oauth2ProviderClientID string `json:"oauth2_provider_client_id"`
 }
 
 // Validate determines whether the CreateAppRequest has proper data to be considered valid
@@ -68,6 +72,10 @@ func (r CreateAppRequest) Validate() error {
 		return errs.E(errs.Validation, "app name is required")
 	case r.Description == "":
 		return errs.E(errs.Validation, "app description is required")
+	case r.Oauth2Provider == "":
+		return errs.E(errs.Validation, "oAuth2 provider is required")
+	case r.Oauth2ProviderClientID == "":
+		return errs.E(errs.Validation, "oAuth2 client ID is required")
 	}
 	return nil
 }

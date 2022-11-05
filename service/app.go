@@ -65,13 +65,13 @@ func (s *AppService) Create(ctx context.Context, r *diy.CreateAppRequest, adt di
 		aa appAudit
 	)
 	nap := newAppParams{
-		name:        r.Name,
-		description: r.Description,
+		Name:        r.Name,
+		Description: r.Description,
 		// when creating an app, the org the app belongs to must be
 		// the same as the org which the user is transacting.
-		org:             adt.App.Org,
-		apiKeyGenerator: s.APIKeyGenerator,
-		encryptionKey:   s.EncryptionKey,
+		Org:             adt.App.Org,
+		ApiKeyGenerator: s.APIKeyGenerator,
+		EncryptionKey:   s.EncryptionKey,
 	}
 	a, err = newApp(nap)
 	if err != nil {
@@ -112,31 +112,38 @@ func (s *AppService) Create(ctx context.Context, r *diy.CreateAppRequest, adt di
 
 type newAppParams struct {
 	// name: app name
-	name string
+	Name string
 	// description: app description
-	description string
+	Description string
 	// org: the org the app belongs to
-	org *diy.Org
+	Org *diy.Org
 	// apiKeyGenerator: random string generator used to create API key for app
-	apiKeyGenerator diy.APIKeyGenerator
+	ApiKeyGenerator diy.APIKeyGenerator
 	// encryptionKey: encryption key used to encrypt the generated API key
-	encryptionKey *[32]byte
+	EncryptionKey *[32]byte
+	// Provider is the OAuth2 provider
+	Provider diy.Provider
+	// ProviderClientID is the unique Client ID given by the Provider
+	// which represents an application
+	ProviderClientID string
 }
 
 // newApp initializes a diy.App with a single API Key
 func newApp(nap newAppParams) (a *diy.App, err error) {
 	a = &diy.App{
-		ID:          uuid.New(),
-		ExternalID:  secure.NewID(),
-		Org:         nap.org,
-		Name:        nap.name,
-		Description: nap.description,
+		ID:               uuid.New(),
+		ExternalID:       secure.NewID(),
+		Org:              nap.Org,
+		Name:             nap.Name,
+		Description:      nap.Description,
+		Provider:         nap.Provider,
+		ProviderClientID: nap.ProviderClientID,
 	}
 
 	// create new API key
 	keyDeactivation := time.Date(2099, 12, 31, 0, 0, 0, 0, time.UTC)
 	var key diy.APIKey
-	key, err = diy.NewAPIKey(nap.apiKeyGenerator, nap.encryptionKey, keyDeactivation)
+	key, err = diy.NewAPIKey(nap.ApiKeyGenerator, nap.EncryptionKey, keyDeactivation)
 	if err != nil {
 		return nil, err
 	}
@@ -154,17 +161,19 @@ func newApp(nap newAppParams) (a *diy.App, err error) {
 // app create handler function as it's also used when creating an org.
 func createAppTx(ctx context.Context, tx pgx.Tx, aa appAudit) (err error) {
 	createAppParams := datastore.CreateAppParams{
-		AppID:           aa.App.ID,
-		OrgID:           aa.App.Org.ID,
-		AppExtlID:       aa.App.ExternalID.String(),
-		AppName:         aa.App.Name,
-		AppDescription:  aa.App.Description,
-		CreateAppID:     aa.SimpleAudit.Create.App.ID,
-		CreateUserID:    aa.SimpleAudit.Create.User.NullUUID(),
-		CreateTimestamp: aa.SimpleAudit.Create.Moment,
-		UpdateAppID:     aa.SimpleAudit.Update.App.ID,
-		UpdateUserID:    aa.SimpleAudit.Update.User.NullUUID(),
-		UpdateTimestamp: aa.SimpleAudit.Update.Moment,
+		AppID:                aa.App.ID,
+		OrgID:                aa.App.Org.ID,
+		AppExtlID:            aa.App.ExternalID.String(),
+		AppName:              aa.App.Name,
+		AppDescription:       aa.App.Description,
+		AuthProviderID:       diy.NewNullInt32(int32(aa.App.Provider)),
+		AuthProviderClientID: diy.NewNullString(aa.App.ProviderClientID),
+		CreateAppID:          aa.SimpleAudit.Create.App.ID,
+		CreateUserID:         aa.SimpleAudit.Create.User.NullUUID(),
+		CreateTimestamp:      aa.SimpleAudit.Create.Moment,
+		UpdateAppID:          aa.SimpleAudit.Update.App.ID,
+		UpdateUserID:         aa.SimpleAudit.Update.User.NullUUID(),
+		UpdateTimestamp:      aa.SimpleAudit.Update.Moment,
 	}
 
 	// create app database record using appstore

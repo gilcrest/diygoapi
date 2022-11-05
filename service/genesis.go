@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"time"
 
@@ -186,11 +185,11 @@ func (s *GenesisService) seedPrincipal(ctx context.Context, tx pgx.Tx, r *diy.Ge
 
 	// initialize App and inject dependent fields
 	nap := newAppParams{
-		name:            PrincipalAppName,
-		description:     principalAppDescription,
-		org:             o,
-		apiKeyGenerator: s.APIKeyGenerator,
-		encryptionKey:   s.EncryptionKey,
+		Name:            PrincipalAppName,
+		Description:     principalAppDescription,
+		Org:             o,
+		ApiKeyGenerator: s.APIKeyGenerator,
+		EncryptionKey:   s.EncryptionKey,
 	}
 
 	var a *diy.App
@@ -325,54 +324,10 @@ func (s *GenesisService) seedPrincipal(ctx context.Context, tx pgx.Tx, r *diy.Ge
 		return principalSeed{}, err
 	}
 
-	createAppParams := datastore.CreateAppParams{
-		AppID:           a.ID,
-		OrgID:           a.Org.ID,
-		AppExtlID:       a.ExternalID.String(),
-		AppName:         a.Name,
-		AppDescription:  a.Description,
-		CreateAppID:     adt.App.ID,
-		CreateUserID:    adt.User.NullUUID(),
-		CreateTimestamp: adt.Moment,
-		UpdateAppID:     adt.App.ID,
-		UpdateUserID:    adt.User.NullUUID(),
-		UpdateTimestamp: adt.Moment,
-	}
-
-	// create app database record using datastore
-	var rowsAffected int64
-	rowsAffected, err = datastore.New(tx).CreateApp(ctx, createAppParams)
+	// app is also to be created, write it to the db
+	err = createAppTx(ctx, tx, appAudit{App: a, SimpleAudit: sa})
 	if err != nil {
-		return principalSeed{}, errs.E(errs.Database, err)
-	}
-
-	if rowsAffected != 1 {
-		return principalSeed{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
-	}
-
-	for _, key := range a.APIKeys {
-		createAppAPIKeyParams := datastore.CreateAppAPIKeyParams{
-			ApiKey:          key.Ciphertext(),
-			AppID:           a.ID,
-			DeactvDate:      key.DeactivationDate(),
-			CreateAppID:     adt.App.ID,
-			CreateUserID:    adt.User.NullUUID(),
-			CreateTimestamp: adt.Moment,
-			UpdateAppID:     adt.App.ID,
-			UpdateUserID:    adt.User.NullUUID(),
-			UpdateTimestamp: adt.Moment,
-		}
-
-		// create app API key database record using datastore
-		var apiKeyRowsAffected int64
-		apiKeyRowsAffected, err = datastore.New(tx).CreateAppAPIKey(ctx, createAppAPIKeyParams)
-		if err != nil {
-			return principalSeed{}, errs.E(errs.Database, err)
-		}
-
-		if apiKeyRowsAffected != 1 {
-			return principalSeed{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", apiKeyRowsAffected))
-		}
+		return principalSeed{}, err
 	}
 
 	seed := principalSeed{
@@ -431,11 +386,11 @@ func (s *GenesisService) seedTest(ctx context.Context, tx pgx.Tx, ps principalSe
 	}
 
 	nap := newAppParams{
-		name:            TestAppName,
-		description:     testAppDescription,
-		org:             o,
-		apiKeyGenerator: s.APIKeyGenerator,
-		encryptionKey:   s.EncryptionKey,
+		Name:            TestAppName,
+		Description:     testAppDescription,
+		Org:             o,
+		ApiKeyGenerator: s.APIKeyGenerator,
+		EncryptionKey:   s.EncryptionKey,
 	}
 
 	var a *diy.App
@@ -455,55 +410,10 @@ func (s *GenesisService) seedTest(ctx context.Context, tx pgx.Tx, ps principalSe
 		return testSeed{}, err
 	}
 
-	createAppParams := datastore.CreateAppParams{
-		AppID:           a.ID,
-		OrgID:           a.Org.ID,
-		AppExtlID:       a.ExternalID.String(),
-		AppName:         a.Name,
-		AppDescription:  a.Description,
-		CreateAppID:     ps.Audit.App.ID,
-		CreateUserID:    ps.Audit.User.NullUUID(),
-		CreateTimestamp: ps.Audit.Moment,
-		UpdateAppID:     ps.Audit.App.ID,
-		UpdateUserID:    ps.Audit.User.NullUUID(),
-		UpdateTimestamp: ps.Audit.Moment,
-	}
-
-	// create app database record using datastore
-	var rowsAffected int64
-	rowsAffected, err = datastore.New(tx).CreateApp(ctx, createAppParams)
+	// app is also to be created, write it to the db
+	err = createAppTx(ctx, tx, appAudit{App: a, SimpleAudit: sa})
 	if err != nil {
-		return testSeed{}, errs.E(errs.Database, err)
-	}
-
-	if rowsAffected != 1 {
-		return testSeed{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
-	}
-
-	for _, key := range a.APIKeys {
-
-		createAppAPIKeyParams := datastore.CreateAppAPIKeyParams{
-			ApiKey:          key.Ciphertext(),
-			AppID:           a.ID,
-			DeactvDate:      key.DeactivationDate(),
-			CreateAppID:     ps.Audit.App.ID,
-			CreateUserID:    ps.Audit.User.NullUUID(),
-			CreateTimestamp: ps.Audit.Moment,
-			UpdateAppID:     ps.Audit.App.ID,
-			UpdateUserID:    ps.Audit.User.NullUUID(),
-			UpdateTimestamp: ps.Audit.Moment,
-		}
-
-		// create app API key database record using datastore
-		var apiKeyRowsAffected int64
-		apiKeyRowsAffected, err = datastore.New(tx).CreateAppAPIKey(ctx, createAppAPIKeyParams)
-		if err != nil {
-			return testSeed{}, errs.E(errs.Database, err)
-		}
-
-		if apiKeyRowsAffected != 1 {
-			return testSeed{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", apiKeyRowsAffected))
-		}
+		return testSeed{}, err
 	}
 
 	// attach test org to test user
@@ -538,12 +448,16 @@ func (s *GenesisService) seedUserInitiatedData(ctx context.Context, tx pgx.Tx, p
 		Kind:        ps.StandardOrgKind,
 	}
 
+	provider := diy.ParseProvider(r.UserInitiatedOrg.App.Oauth2Provider)
+
 	nap := newAppParams{
-		name:            r.UserInitiatedOrg.App.Name,
-		description:     r.UserInitiatedOrg.App.Description,
-		org:             o,
-		apiKeyGenerator: s.APIKeyGenerator,
-		encryptionKey:   s.EncryptionKey,
+		Name:             r.UserInitiatedOrg.App.Name,
+		Description:      r.UserInitiatedOrg.App.Description,
+		Org:              o,
+		ApiKeyGenerator:  s.APIKeyGenerator,
+		EncryptionKey:    s.EncryptionKey,
+		Provider:         provider,
+		ProviderClientID: r.UserInitiatedOrg.App.Oauth2ProviderClientID,
 	}
 
 	var a *diy.App
@@ -563,55 +477,10 @@ func (s *GenesisService) seedUserInitiatedData(ctx context.Context, tx pgx.Tx, p
 		return userInitiatedSeed{}, err
 	}
 
-	createAppParams := datastore.CreateAppParams{
-		AppID:           a.ID,
-		OrgID:           a.Org.ID,
-		AppExtlID:       a.ExternalID.String(),
-		AppName:         a.Name,
-		AppDescription:  a.Description,
-		CreateAppID:     ps.Audit.App.ID,
-		CreateUserID:    ps.Audit.User.NullUUID(),
-		CreateTimestamp: ps.Audit.Moment,
-		UpdateAppID:     ps.Audit.App.ID,
-		UpdateUserID:    ps.Audit.User.NullUUID(),
-		UpdateTimestamp: ps.Audit.Moment,
-	}
-
-	// create app database record using datastore
-	var rowsAffected int64
-	rowsAffected, err = datastore.New(tx).CreateApp(ctx, createAppParams)
+	// app is also to be created, write it to the db
+	err = createAppTx(ctx, tx, appAudit{App: a, SimpleAudit: sa})
 	if err != nil {
-		return userInitiatedSeed{}, errs.E(errs.Database, err)
-	}
-
-	if rowsAffected != 1 {
-		return userInitiatedSeed{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
-	}
-
-	for _, key := range a.APIKeys {
-
-		createAppAPIKeyParams := datastore.CreateAppAPIKeyParams{
-			ApiKey:          key.Ciphertext(),
-			AppID:           a.ID,
-			DeactvDate:      key.DeactivationDate(),
-			CreateAppID:     ps.Audit.App.ID,
-			CreateUserID:    ps.Audit.User.NullUUID(),
-			CreateTimestamp: ps.Audit.Moment,
-			UpdateAppID:     ps.Audit.App.ID,
-			UpdateUserID:    ps.Audit.User.NullUUID(),
-			UpdateTimestamp: ps.Audit.Moment,
-		}
-
-		// create app API key database record using datastore
-		var apiKeyRowsAffected int64
-		apiKeyRowsAffected, err = datastore.New(tx).CreateAppAPIKey(ctx, createAppAPIKeyParams)
-		if err != nil {
-			return userInitiatedSeed{}, errs.E(errs.Database, err)
-		}
-
-		if apiKeyRowsAffected != 1 {
-			return userInitiatedSeed{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", apiKeyRowsAffected))
-		}
+		return userInitiatedSeed{}, err
 	}
 
 	// associate existing User to newly created Org

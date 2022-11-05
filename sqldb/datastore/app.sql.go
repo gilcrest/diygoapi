@@ -14,23 +14,27 @@ import (
 )
 
 const createApp = `-- name: CreateApp :execrows
-INSERT INTO app (app_id, org_id, app_extl_id, app_name, app_description, create_app_id, create_user_id,
-                 create_timestamp, update_app_id, update_user_id, update_timestamp)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+INSERT INTO app (app_id, org_id, app_extl_id, app_name, app_description,
+                 auth_provider_id, auth_provider_client_id,
+                 create_app_id, create_user_id, create_timestamp,
+                 update_app_id, update_user_id, update_timestamp)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 `
 
 type CreateAppParams struct {
-	AppID           uuid.UUID
-	OrgID           uuid.UUID
-	AppExtlID       string
-	AppName         string
-	AppDescription  string
-	CreateAppID     uuid.UUID
-	CreateUserID    uuid.NullUUID
-	CreateTimestamp time.Time
-	UpdateAppID     uuid.UUID
-	UpdateUserID    uuid.NullUUID
-	UpdateTimestamp time.Time
+	AppID                uuid.UUID
+	OrgID                uuid.UUID
+	AppExtlID            string
+	AppName              string
+	AppDescription       string
+	AuthProviderID       sql.NullInt32
+	AuthProviderClientID sql.NullString
+	CreateAppID          uuid.UUID
+	CreateUserID         uuid.NullUUID
+	CreateTimestamp      time.Time
+	UpdateAppID          uuid.UUID
+	UpdateUserID         uuid.NullUUID
+	UpdateTimestamp      time.Time
 }
 
 func (q *Queries) CreateApp(ctx context.Context, arg CreateAppParams) (int64, error) {
@@ -40,6 +44,8 @@ func (q *Queries) CreateApp(ctx context.Context, arg CreateAppParams) (int64, er
 		arg.AppExtlID,
 		arg.AppName,
 		arg.AppDescription,
+		arg.AuthProviderID,
+		arg.AuthProviderClientID,
 		arg.CreateAppID,
 		arg.CreateUserID,
 		arg.CreateTimestamp,

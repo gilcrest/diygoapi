@@ -27,8 +27,10 @@ roles: [_sysAdmin]
 #OrgKinds: "genesis" | "test" | "standard"
 
 #App: {
-	name:        !="" // must be specified and non-empty
-	description: !="" // must be specified and non-empty
+	name:                      !="" // must be specified and non-empty
+	description:               !="" // must be specified and non-empty
+	oauth2_provider:           #Oauth2Provider
+	oauth2_provider_client_id: !="" // must be specified and non-empty
 }
 
 // Auth is the permissions and roles required for the Role Based Access Control (RBAC) setup of the app

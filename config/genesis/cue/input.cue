@@ -15,5 +15,7 @@ org: description: "An organization dedicated to creating movies in a demo app."
 org: kind:        "standard"
 
 // The initial app created along with the Organization created above
-org: app: name:        "Movie Makers App"
-org: app: description: "The first app dedicated to creating movies in a demo app."
+org: app: name:                      "Movie Makers App"
+org: app: description:               "The first app dedicated to creating movies in a demo app."
+org: app: oauth2_provider:           "google"
+org: app: oauth2_provider_client_id: "REPLACE_ME"

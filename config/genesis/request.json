@@ -9,7 +9,9 @@
         "kind": "standard",
         "app": {
             "name": "Movie Makers App",
-            "description": "The first app dedicated to creating movies in a demo app."
+            "description": "The first app dedicated to creating movies in a demo app.",
+            "oauth2_provider": "google",
+            "oauth2_provider_client_id": "REPLACE_ME"
         }
     },
     "permissions": [

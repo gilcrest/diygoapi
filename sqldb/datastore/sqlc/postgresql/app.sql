@@ -192,9 +192,11 @@ FROM app a
          LEFT JOIN users uu on uu.user_id = a.update_user_id;
 
 -- name: CreateApp :execrows
-INSERT INTO app (app_id, org_id, app_extl_id, app_name, app_description, create_app_id, create_user_id,
-                 create_timestamp, update_app_id, update_user_id, update_timestamp)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
+INSERT INTO app (app_id, org_id, app_extl_id, app_name, app_description,
+                 auth_provider_id, auth_provider_client_id,
+                 create_app_id, create_user_id, create_timestamp,
+                 update_app_id, update_user_id, update_timestamp)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);
 
 -- name: UpdateApp :execrows
 UPDATE app
