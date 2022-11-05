@@ -96,8 +96,7 @@ func CueGenerateGenesisConfig() (err error) {
 	return nil
 }
 
-// DBUp uses the psql cli to execute DDL scripts in the up directory
-// and creates all required DB objects,
+// DBUp executes DDL scripts which create all required DB objects,
 // example: mage -v dbup local.
 // All files will be executed, regardless of errors within an individual
 // file. Check output to determine if any errors occurred. Eventually,
@@ -123,8 +122,7 @@ func DBUp(env string) (err error) {
 	return nil
 }
 
-// DBDown uses the psql cli to execute DDL scripts
-// in the down directory and drops all project-specific DB objects,
+// DBDown executes DDL scripts which drops all project-specific DB objects,
 // example: mage -v dbdown local.
 // All files will be executed, regardless of errors within
 // an individual file. Check output to determine if any errors occurred.
@@ -207,7 +205,7 @@ func Run(env string) (err error) {
 }
 
 // GCP builds the app as a Docker container image to GCP Artifact Registry
-// and then deploys it to Google Cloud Run, example: mage -v gcp staging
+// and deploys it to Google Cloud Run, example: mage -v gcp staging
 func GCP(env string) error {
 
 	f, err := cmd.NewConfigFile(cmd.ParseEnv(env))
