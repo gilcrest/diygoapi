@@ -299,5 +299,5 @@ type PermissionServicer interface {
 // RoleServicer allows for creating, updating, reading and deleting a Role
 // as well as assigning permissions and users to it.
 type RoleServicer interface {
-	Create(ctx context.Context, r *Role, adt Audit) (Role, error)
+	Create(ctx context.Context, r *CreateRoleRequest, adt Audit) (Role, error)
 }
