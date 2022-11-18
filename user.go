@@ -11,8 +11,8 @@ import (
 	"github.com/gilcrest/diy-go-api/secure"
 )
 
-// RegisterPersonServicer registers a new person
-type RegisterPersonServicer interface {
+// RegisterUserServicer registers a new user
+type RegisterUserServicer interface {
 	SelfRegister(ctx context.Context, adt Audit) error
 }
 
