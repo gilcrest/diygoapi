@@ -50,7 +50,7 @@ const pathPrefix string = "/api"
 type Services struct {
 	OrgServicer            diy.OrgServicer
 	AppServicer            diy.AppServicer
-	RegisterUserService    diy.RegisterPersonServicer
+	RegisterUserService    diy.RegisterUserServicer
 	PingService            diy.PingServicer
 	LoggerService          diy.LoggerServicer
 	GenesisServicer        diy.GenesisServicer
