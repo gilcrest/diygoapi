@@ -179,7 +179,7 @@ func findAuthByProviderExternalID(ctx context.Context, tx pgx.Tx, params findAut
 	dbAuth, err = datastore.New(tx).FindAuthByProviderUserID(ctx, findAuthByProviderUserIDParams)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return diy.Auth{}, errs.E(errs.Unauthenticated, errs.Realm(params.Realm), fmt.Sprintf("no authorization object, Provider: %s, Provider ID: %s, email: %s", params.ProviderInfo.Provider.String(), params.ProviderInfo.UserInfo.ExternalID, params.ProviderInfo.UserInfo.Email))
+			return diy.Auth{}, errs.E(errs.Unauthenticated, errs.Realm(params.Realm), fmt.Sprintf("no authorization object, Provider: %s, Provider Person ID: %s, email: %s", params.ProviderInfo.Provider.String(), params.ProviderInfo.UserInfo.ExternalID, params.ProviderInfo.UserInfo.Email))
 		} else {
 			return diy.Auth{}, errs.E(errs.Database, err)
 		}
