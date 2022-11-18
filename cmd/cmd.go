@@ -239,6 +239,9 @@ func Run(args []string) (err error) {
 			LanguageMatcher: matcher,
 		},
 		AuthorizationServicer: &service.DBAuthorizationService{Datastorer: db},
+		PermissionServicer:    &service.PermissionService{Datastorer: db},
+		RoleServicer:          &service.RoleService{Datastorer: db},
+		MovieServicer:         &service.MovieService{Datastorer: db},
 	}
 
 	return s.ListenAndServe()
