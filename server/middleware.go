@@ -87,6 +87,8 @@ func (s *Server) appHandler(h http.Handler) http.Handler {
 		// get a new context with app added
 		ctx = diy.NewContextWithApp(ctx, a)
 
+		lgr.Debug().Msgf("Internal app authentication successful for: %s", a.Name)
+
 		// call original, adding app to request context
 		h.ServeHTTP(w, r.WithContext(ctx))
 	})
