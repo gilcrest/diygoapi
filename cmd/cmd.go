@@ -81,24 +81,23 @@ type flags struct {
 func newFlags(args []string) (flags, error) {
 	// create new FlagSet using the program name being executed (args[0])
 	// as the name of the FlagSet
-	flagSet := flag.NewFlagSet(args[0], flag.ContinueOnError)
-
+	fs := flag.NewFlagSet(args[0], flag.ContinueOnError)
 	var (
-		logLvlMin     = flagSet.String("log-level-min", "trace", fmt.Sprintf("sets minimum log level (trace, debug, info, warn, error, fatal, panic, disabled), (also via %s)", logLevelMinEnv))
-		loglvl        = flagSet.String("log-level", "info", fmt.Sprintf("sets log level (trace, debug, info, warn, error, fatal, panic, disabled), (also via %s)", loglevelEnv))
-		logErrorStack = flagSet.Bool("log-error-stack", true, fmt.Sprintf("if true, log full error stacktrace, else just log error, (also via %s)", logErrorStackEnv))
-		port          = flagSet.Int("port", 8080, fmt.Sprintf("listen port for server (also via %s)", portEnv))
-		dbhost        = flagSet.String("db-host", "", fmt.Sprintf("postgresql database host (also via %s)", sqldb.DBHostEnv))
-		dbport        = flagSet.Int("db-port", 5432, fmt.Sprintf("postgresql database port (also via %s)", sqldb.DBPortEnv))
-		dbname        = flagSet.String("db-name", "", fmt.Sprintf("postgresql database name (also via %s)", sqldb.DBNameEnv))
-		dbuser        = flagSet.String("db-user", "", fmt.Sprintf("postgresql database user (also via %s)", sqldb.DBUserEnv))
-		dbpassword    = flagSet.String("db-password", "", fmt.Sprintf("postgresql database password (also via %s)", sqldb.DBPasswordEnv))
-		dbsearchpath  = flagSet.String("db-search-path", "", fmt.Sprintf("postgresql database search path (also via %s)", sqldb.DBSearchPathEnv))
-		encryptkey    = flagSet.String("encrypt-key", "", fmt.Sprintf("encryption key (also via %s)", encryptKeyEnv))
+		logLvlMin     = fs.String("log-level-min", "trace", fmt.Sprintf("sets minimum log level (trace, debug, info, warn, error, fatal, panic, disabled), (also via %s)", logLevelMinEnv))
+		loglvl        = fs.String("log-level", "info", fmt.Sprintf("sets log level (trace, debug, info, warn, error, fatal, panic, disabled), (also via %s)", loglevelEnv))
+		logErrorStack = fs.Bool("log-error-stack", true, fmt.Sprintf("if true, log full error stacktrace, else just log error, (also via %s)", logErrorStackEnv))
+		port          = fs.Int("port", 8080, fmt.Sprintf("listen port for server (also via %s)", portEnv))
+		dbhost        = fs.String("db-host", "", fmt.Sprintf("postgresql database host (also via %s)", sqldb.DBHostEnv))
+		dbport        = fs.Int("db-port", 5432, fmt.Sprintf("postgresql database port (also via %s)", sqldb.DBPortEnv))
+		dbname        = fs.String("db-name", "", fmt.Sprintf("postgresql database name (also via %s)", sqldb.DBNameEnv))
+		dbuser        = fs.String("db-user", "", fmt.Sprintf("postgresql database user (also via %s)", sqldb.DBUserEnv))
+		dbpassword    = fs.String("db-password", "", fmt.Sprintf("postgresql database password (also via %s)", sqldb.DBPasswordEnv))
+		dbsearchpath  = fs.String("db-search-path", "", fmt.Sprintf("postgresql database search path (also via %s)", sqldb.DBSearchPathEnv))
+		encryptkey    = fs.String("encrypt-key", "", fmt.Sprintf("encryption key (also via %s)", encryptKeyEnv))
 	)
 
 	// Parse the command line flags from above
-	err := ff.Parse(flagSet, args[1:], ff.WithEnvVarNoPrefix())
+	err := ff.Parse(fs, args[1:], ff.WithEnvVars())
 	if err != nil {
 		return flags{}, err
 	}
