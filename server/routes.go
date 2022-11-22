@@ -215,6 +215,7 @@ func (s *Server) registerRoutes() {
 	// Match only POST requests at /api/v1/genesis
 	s.router.Handle(genesisV1PathRoot,
 		s.loggerChain().
+			Append(s.genesisAuthHandler).
 			Append(s.jsonContentTypeResponseHandler).
 			ThenFunc(s.handleGenesis)).
 		Methods(http.MethodPost)

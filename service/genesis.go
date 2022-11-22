@@ -173,7 +173,26 @@ func (s *GenesisService) Arche(ctx context.Context, r *diy.GenesisRequest) (gr d
 }
 
 func (s *GenesisService) seedPrincipal(ctx context.Context, tx pgx.Tx, r *diy.GenesisRequest) (principalSeed, error) {
-	var err error
+	var (
+		provider   diy.Provider
+		token      *oauth2.Token
+		authParams *diy.AuthenticationParams
+		realm      string
+		err        error
+	)
+
+	const seedPrincipalRealm string = "seedPrincipal"
+
+	authParams, _ = diy.AuthParamsFromContext(ctx)
+	if authParams != nil {
+		provider = authParams.Provider
+		token = authParams.Token
+		realm = authParams.Realm
+	} else {
+		provider = diy.ParseProvider(r.User.Provider)
+		token = &oauth2.Token{AccessToken: r.User.Token, TokenType: diy.BearerTokenType}
+		realm = seedPrincipalRealm
+	}
 
 	// create Org
 	o := &diy.Org{
@@ -198,15 +217,11 @@ func (s *GenesisService) seedPrincipal(ctx context.Context, tx pgx.Tx, r *diy.Ge
 		return principalSeed{}, err
 	}
 
-	token := &oauth2.Token{AccessToken: r.User.Token, TokenType: diy.BearerTokenType}
-
-	provider := diy.ParseProvider(r.User.Provider)
-
 	// initialize "The Creator" user from request data
 	// auth could not be found by access token in the db
 	// get ProviderInfo from provider API
 	var providerInfo *diy.ProviderInfo
-	providerInfo, err = s.TokenExchanger.Exchange(ctx, "seedPrincipal", provider, token)
+	providerInfo, err = s.TokenExchanger.Exchange(ctx, realm, provider, token)
 	if err != nil {
 		return principalSeed{}, err
 	}

@@ -324,3 +324,45 @@ func parseAuthorizationHeader(realm string, header http.Header) (*oauth2.Token, 
 
 	return &oauth2.Token{AccessToken: token, TokenType: diy.BearerTokenType}, nil
 }
+
+// genesisAuthHandler middleware is used to parse the request authentication
+// provider and authorization Bearer token HTTP headers (X-AUTH-PROVIDER +
+// Authorization respectively) and determine authentication. Authentication
+// is determined only by validating the User (Genesis is a one-time startup event,
+// so App authentication is not possible yet).
+func (s *Server) genesisAuthHandler(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		lgr := *hlog.FromRequest(r)
+
+		// retrieve the context from the http.Request
+		ctx := r.Context()
+
+		var (
+			provider diy.Provider
+			err      error
+		)
+		provider, err = parseProviderHeader(defaultRealm, r.Header)
+		if err != nil {
+			errs.HTTPErrorResponse(w, lgr, err)
+			return
+		}
+
+		var token *oauth2.Token
+		token, err = parseAuthorizationHeader(defaultRealm, r.Header)
+		if err != nil {
+			errs.HTTPErrorResponse(w, lgr, err)
+			return
+		}
+
+		params := &diy.AuthenticationParams{
+			Realm:    defaultRealm,
+			Provider: provider,
+			Token:    token,
+		}
+
+		ctx = diy.NewContextWithAuthParams(ctx, params)
+
+		// call original, with new context
+		h.ServeHTTP(w, r.WithContext(ctx))
+	})
+}

@@ -11,8 +11,9 @@ import (
 type contextKey string
 
 const (
-	appContextKey  = contextKey("app")
-	contextKeyUser = contextKey("user")
+	appContextKey        = contextKey("app")
+	contextKeyUser       = contextKey("user")
+	authParamsContextKey = contextKey("authParams")
 )
 
 // NewContextWithApp returns a new context with the given App
@@ -74,4 +75,18 @@ func AuditFromRequest(r *http.Request) (adt Audit, err error) {
 	adt.Moment = time.Now()
 
 	return adt, nil
+}
+
+// NewContextWithAuthParams returns a new context with the given AuthenticationParams
+func NewContextWithAuthParams(ctx context.Context, ap *AuthenticationParams) context.Context {
+	return context.WithValue(ctx, authParamsContextKey, ap)
+}
+
+// AuthParamsFromContext returns the AuthenticationParams from the given context
+func AuthParamsFromContext(ctx context.Context) (*AuthenticationParams, error) {
+	a, ok := ctx.Value(authParamsContextKey).(*AuthenticationParams)
+	if !ok {
+		return a, errs.E(errs.NotExist, "Authentication Params not set to context")
+	}
+	return a, nil
 }
