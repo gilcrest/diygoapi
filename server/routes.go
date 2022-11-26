@@ -203,7 +203,7 @@ func (s *Server) registerRoutes() {
 		Methods(http.MethodPost).
 		Headers(contentTypeHeaderKey, appJSONContentTypeHeaderVal)
 
-	// Match only POST requests at /api/v1/permissions
+	// Match only GET requests at /api/v1/permissions
 	s.router.Handle(permissionV1PathRoot,
 		s.loggerChain().
 			Append(s.appHandler).
@@ -211,6 +211,15 @@ func (s *Server) registerRoutes() {
 			Append(s.jsonContentTypeResponseHandler).
 			ThenFunc(s.handlePermissionFindAll)).
 		Methods(http.MethodGet)
+
+	// Match only DELETE requests at /api/v1/permissions
+	s.router.Handle(permissionV1PathRoot,
+		s.loggerChain().
+			Append(s.appHandler).
+			Append(s.authHandler).
+			Append(s.jsonContentTypeResponseHandler).
+			ThenFunc(s.handlePermissionDelete)).
+		Methods(http.MethodDelete)
 
 	// Match only POST requests at /api/v1/genesis
 	s.router.Handle(genesisV1PathRoot,

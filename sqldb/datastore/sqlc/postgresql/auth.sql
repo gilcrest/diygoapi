@@ -19,6 +19,10 @@ FROM permission
 WHERE resource = $1
   AND operation = $2;
 
+-- name: DeletePermissionByExternalID :execrows
+DELETE FROM permission
+WHERE permission_extl_id = $1;
+
 -- name: CreateRole :execrows
 insert into role (role_id, role_extl_id, role_cd, role_description, active, create_app_id, create_user_id,
                   create_timestamp, update_app_id, update_user_id, update_timestamp)

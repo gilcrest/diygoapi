@@ -294,6 +294,7 @@ type PermissionRequest struct {
 type PermissionServicer interface {
 	Create(ctx context.Context, r *PermissionRequest, adt Audit) (Permission, error)
 	FindAll(ctx context.Context) ([]Permission, error)
+	Delete(ctx context.Context, extlID string) (dr DeleteResponse, err error)
 }
 
 // RoleServicer allows for creating, updating, reading and deleting a Role

@@ -701,6 +701,44 @@ func (s *PermissionService) FindAll(ctx context.Context) (permissions []diy.Perm
 	return sp, nil
 }
 
+// Delete is used to delete a Permission
+func (s *PermissionService) Delete(ctx context.Context, extlID string) (dr diy.DeleteResponse, err error) {
+
+	// start db txn using pgxpool
+	var tx pgx.Tx
+	tx, err = s.Datastorer.BeginTx(ctx)
+	if err != nil {
+		return diy.DeleteResponse{}, err
+	}
+	// defer transaction rollback and handle error, if any
+	defer func() {
+		err = s.Datastorer.RollbackTx(ctx, tx, err)
+	}()
+
+	var rowsAffected int64
+	rowsAffected, err = datastore.New(tx).DeletePermissionByExternalID(ctx, extlID)
+	if err != nil {
+		return diy.DeleteResponse{}, errs.E(errs.Database, err)
+	}
+
+	if rowsAffected != 1 {
+		return diy.DeleteResponse{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
+	}
+
+	// commit db txn using pgxpool
+	err = s.Datastorer.CommitTx(ctx, tx)
+	if err != nil {
+		return diy.DeleteResponse{}, err
+	}
+
+	response := diy.DeleteResponse{
+		ExternalID: extlID,
+		Deleted:    true,
+	}
+
+	return response, nil
+}
+
 // newPermission initializes a diy.Permission given a datastore.Permission
 func newPermission(ap datastore.Permission) *diy.Permission {
 	return &diy.Permission{

@@ -185,6 +185,12 @@
                     "active": true
                 },
                 {
+                    "resource": "/api/v1/permissions",
+                    "operation": "DELETE",
+                    "description": "allows for deleting a permission",
+                    "active": true
+                },
+                {
                     "resource": "/api/v1/movies",
                     "operation": "POST",
                     "description": "allows for creating a movie",

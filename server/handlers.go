@@ -569,3 +569,26 @@ func (s *Server) handlePermissionFindAll(w http.ResponseWriter, r *http.Request)
 		return
 	}
 }
+
+// handlePermissionDelete handles DELETE requests for the /permission endpoint
+func (s *Server) handlePermissionDelete(w http.ResponseWriter, r *http.Request) {
+	lgr := *hlog.FromRequest(r)
+
+	// gorilla mux Vars function returns the route variables for the
+	// current request, if any. ID is the external id given for the resource
+	vars := mux.Vars(r)
+	extlID := vars["extlID"]
+
+	response, err := s.PermissionServicer.Delete(r.Context(), extlID)
+	if err != nil {
+		errs.HTTPErrorResponse(w, lgr, err)
+		return
+	}
+
+	// Encode response struct to JSON for the response body
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		errs.HTTPErrorResponse(w, lgr, errs.E(errs.Internal, err))
+		return
+	}
+}
