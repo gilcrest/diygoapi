@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -254,9 +255,14 @@ func (s *MovieService) Delete(ctx context.Context, extlID string) (dr diy.Delete
 		return diy.DeleteResponse{}, errs.E(errs.Database, err)
 	}
 
-	err = datastore.New(tx).DeleteMovie(ctx, dbm.MovieID)
+	var rowsAffected int64
+	rowsAffected, err = datastore.New(tx).DeleteMovie(ctx, dbm.MovieID)
 	if err != nil {
 		return diy.DeleteResponse{}, errs.E(errs.Database, err)
+	}
+
+	if rowsAffected != 1 {
+		return diy.DeleteResponse{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
 	}
 
 	// commit db txn using pgxpool
