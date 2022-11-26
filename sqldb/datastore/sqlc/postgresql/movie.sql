@@ -88,6 +88,6 @@ SET title            = $1,
     update_timestamp = $9
 WHERE movie_id = $10;
 
--- name: DeleteMovie :exec
+-- name: DeleteMovie :execrows
 DELETE FROM movie
 WHERE movie_id = $1;
