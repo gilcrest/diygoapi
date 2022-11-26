@@ -80,10 +80,10 @@ func (o Org) Validate() (err error) {
 
 // CreateOrgRequest is the request struct for Creating an Org
 type CreateOrgRequest struct {
-	Name        string            `json:"name"`
-	Description string            `json:"description"`
-	Kind        string            `json:"kind"`
-	App         *CreateAppRequest `json:"app"`
+	Name             string            `json:"name"`
+	Description      string            `json:"description"`
+	Kind             string            `json:"kind"`
+	CreateAppRequest *CreateAppRequest `json:"app"`
 }
 
 // Validate determines whether the CreateOrgRequest has proper data to be considered valid

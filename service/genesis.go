@@ -463,16 +463,16 @@ func (s *GenesisService) seedUserInitiatedData(ctx context.Context, tx pgx.Tx, p
 		Kind:        ps.StandardOrgKind,
 	}
 
-	provider := diy.ParseProvider(r.UserInitiatedOrg.App.Oauth2Provider)
+	provider := diy.ParseProvider(r.UserInitiatedOrg.CreateAppRequest.Oauth2Provider)
 
 	nap := newAppParams{
-		Name:             r.UserInitiatedOrg.App.Name,
-		Description:      r.UserInitiatedOrg.App.Description,
+		Name:             r.UserInitiatedOrg.CreateAppRequest.Name,
+		Description:      r.UserInitiatedOrg.CreateAppRequest.Description,
 		Org:              o,
 		ApiKeyGenerator:  s.APIKeyGenerator,
 		EncryptionKey:    s.EncryptionKey,
 		Provider:         provider,
-		ProviderClientID: r.UserInitiatedOrg.App.Oauth2ProviderClientID,
+		ProviderClientID: r.UserInitiatedOrg.CreateAppRequest.Oauth2ProviderClientID,
 	}
 
 	var a *diy.App
