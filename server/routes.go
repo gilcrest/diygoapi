@@ -212,8 +212,8 @@ func (s *Server) registerRoutes() {
 			ThenFunc(s.handlePermissionFindAll)).
 		Methods(http.MethodGet)
 
-	// Match only DELETE requests at /api/v1/permissions
-	s.router.Handle(permissionV1PathRoot,
+	// Match only DELETE requests at /api/v1/permissions/{extlID}
+	s.router.Handle(permissionV1PathRoot+extlIDPathDir,
 		s.loggerChain().
 			Append(s.appHandler).
 			Append(s.authHandler).
