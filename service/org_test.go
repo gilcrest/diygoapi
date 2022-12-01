@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v4"
 
 	"github.com/gilcrest/diy-go-api"
+	"github.com/gilcrest/diy-go-api/errs"
 	"github.com/gilcrest/diy-go-api/secure"
 	"github.com/gilcrest/diy-go-api/service"
 	"github.com/gilcrest/diy-go-api/sqldb/datastore"
@@ -26,7 +27,7 @@ const (
 )
 
 func TestOrgService(t *testing.T) {
-	t.Run("create (without app)", func(t *testing.T) {
+	t.Run("create no request error", func(t *testing.T) {
 		c := qt.New(t)
 
 		eks := os.Getenv("ENCRYPT_KEY")
@@ -43,6 +44,7 @@ func TestOrgService(t *testing.T) {
 		if err != nil {
 			t.Fatal("secure.ParseEncryptionKey() error")
 		}
+
 		db, cleanup := sqldbtest.NewDB(t)
 		c.Cleanup(cleanup)
 
@@ -63,30 +65,13 @@ func TestOrgService(t *testing.T) {
 			APIKeyGenerator: secure.RandomGenerator{},
 			EncryptionKey:   ek,
 		}
-		r := diy.CreateOrgRequest{
-			Name:        testOrgServiceOrgName,
-			Description: testOrgServiceOrgDescription,
-			Kind:        testOrgServiceOrgKind,
-		}
-
 		adt := findPrincipalTestAudit(ctx, c, tx)
 
 		var got *diy.OrgResponse
-		got, err = s.Create(context.Background(), &r, adt)
-		want := &diy.OrgResponse{
-			ExternalID:          got.ExternalID,
-			Name:                testOrgServiceOrgName,
-			KindExternalID:      testOrgServiceOrgKind,
-			Description:         testOrgServiceOrgDescription,
-			CreateAppExtlID:     adt.App.ExternalID.String(),
-			CreateUserFirstName: adt.User.FirstName,
-			CreateUserLastName:  adt.User.LastName,
-			UpdateAppExtlID:     adt.App.ExternalID.String(),
-			UpdateUserFirstName: adt.User.FirstName,
-			UpdateUserLastName:  adt.User.LastName,
-		}
-		c.Assert(err, qt.IsNil)
-		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(diy.OrgResponse{}, "CreateDateTime", "UpdateDateTime")), want)
+		got, err = s.Create(context.Background(), nil, adt)
+		c.Assert(errs.KindIs(errs.Validation, err), qt.IsTrue)
+		c.Assert(err.Error(), qt.Equals, "CreateOrgRequest must have a value when creating an Org")
+		c.Assert(got, qt.IsNil)
 	})
 	t.Run("create (with app)", func(t *testing.T) {
 		c := qt.New(t)
@@ -130,7 +115,7 @@ func TestOrgService(t *testing.T) {
 			Name:        testOrgServiceOrgName + "_withApp",
 			Description: testOrgServiceOrgDescription + "_withApp",
 			Kind:        testOrgServiceOrgKind,
-			App: &diy.CreateAppRequest{
+			CreateAppRequest: &diy.CreateAppRequest{
 				Name:        testAppServiceAppName,
 				Description: testAppServiceAppDescription,
 			},
@@ -140,6 +125,7 @@ func TestOrgService(t *testing.T) {
 
 		var got *diy.OrgResponse
 		got, err = s.Create(context.Background(), &r, adt)
+		c.Assert(err, qt.IsNil)
 		want := &diy.OrgResponse{
 			ExternalID:          got.ExternalID,
 			Name:                testOrgServiceOrgName + "_withApp",
@@ -164,7 +150,6 @@ func TestOrgService(t *testing.T) {
 				APIKeys:             nil,
 			},
 		}
-		c.Assert(err, qt.IsNil)
 		ignoreFields := []string{"ExternalID", "CreateDateTime", "UpdateDateTime", "App.CreateDateTime", "App.UpdateDateTime", "App.APIKeys"}
 		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(diy.OrgResponse{}, ignoreFields...)), want)
 	})
