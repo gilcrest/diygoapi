@@ -54,7 +54,21 @@ type OrgService struct {
 
 // Create is used to create an Org
 func (s *OrgService) Create(ctx context.Context, r *diy.CreateOrgRequest, adt diy.Audit) (or *diy.OrgResponse, err error) {
+
+	if r == nil {
+		return nil, errs.E(errs.Validation, "CreateOrgRequest must have a value when creating an Org")
+	}
 	err = r.Validate()
+	if err != nil {
+		return nil, err
+	}
+
+	// ensure that CreateAppRequest field is not nil or not the zero value
+	if (r.CreateAppRequest != nil) || (*r.CreateAppRequest == (diy.CreateAppRequest{})) {
+		return nil, errs.E(errs.Validation, "CreateAppRequest must have a value when creating an Org")
+	}
+
+	err = r.CreateAppRequest.Validate()
 	if err != nil {
 		return nil, err
 	}
@@ -96,35 +110,32 @@ func (s *OrgService) Create(ctx context.Context, r *diy.CreateOrgRequest, adt di
 
 	// if there is an app request along with the Org request, process it as well
 	var (
-		car *diy.CreateAppRequest
-		a   *diy.App
-		aa  appAudit
+		a        *diy.App
+		aa       appAudit
+		provider diy.Provider
 	)
+	provider = diy.ParseProvider(r.CreateAppRequest.Oauth2Provider)
 
-	provider := diy.ParseProvider(r.App.Oauth2Provider)
-
-	if r.App != car {
-		err = r.App.Validate()
-		if err != nil {
-			return nil, err
-		}
-		nap := newAppParams{
-			Name:             r.App.Name,
-			Description:      r.App.Description,
-			Org:              o,
-			ApiKeyGenerator:  s.APIKeyGenerator,
-			EncryptionKey:    s.EncryptionKey,
-			Provider:         provider,
-			ProviderClientID: r.App.Oauth2ProviderClientID,
-		}
-		a, err = newApp(nap)
-		if err != nil {
-			return nil, err
-		}
-		aa = appAudit{
-			App:         a,
-			SimpleAudit: sa,
-		}
+	err = r.CreateAppRequest.Validate()
+	if err != nil {
+		return nil, err
+	}
+	nap := newAppParams{
+		Name:             r.CreateAppRequest.Name,
+		Description:      r.CreateAppRequest.Description,
+		Org:              o,
+		ApiKeyGenerator:  s.APIKeyGenerator,
+		EncryptionKey:    s.EncryptionKey,
+		Provider:         provider,
+		ProviderClientID: r.CreateAppRequest.Oauth2ProviderClientID,
+	}
+	a, err = newApp(nap)
+	if err != nil {
+		return nil, err
+	}
+	aa = appAudit{
+		App:         a,
+		SimpleAudit: sa,
 	}
 
 	// write org to the db
@@ -296,7 +307,6 @@ func (s *OrgService) Delete(ctx context.Context, extlID string) (dr diy.DeleteRe
 
 	if rowsAffected != 1 {
 		return diy.DeleteResponse{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
-
 	}
 
 	// commit db txn using pgxpool
