@@ -2,6 +2,12 @@ package diy
 
 import (
 	"context"
+	"time"
+
+	"github.com/google/uuid"
+
+	"github.com/gilcrest/diy-go-api/errs"
+	"github.com/gilcrest/diy-go-api/secure"
 )
 
 // MovieServicer is used to create, read, update and delete movies.
@@ -11,6 +17,40 @@ type MovieServicer interface {
 	Delete(ctx context.Context, extlID string) (DeleteResponse, error)
 	FindMovieByID(ctx context.Context, extlID string) (*MovieResponse, error)
 	FindAllMovies(ctx context.Context) ([]*MovieResponse, error)
+}
+
+// Movie holds details of a movie
+type Movie struct {
+	ID         uuid.UUID
+	ExternalID secure.Identifier
+	Title      string
+	Rated      string
+	Released   time.Time
+	RunTime    int
+	Director   string
+	Writer     string
+}
+
+// IsValid performs validation of the struct
+func (m *Movie) IsValid() error {
+	switch {
+	case m.ExternalID.String() == "":
+		return errs.E(errs.Validation, errs.Parameter("extlID"), errs.MissingField("extlID"))
+	case m.Title == "":
+		return errs.E(errs.Validation, errs.Parameter("title"), errs.MissingField("title"))
+	case m.Rated == "":
+		return errs.E(errs.Validation, errs.Parameter("rated"), errs.MissingField("rated"))
+	case m.Released.IsZero():
+		return errs.E(errs.Validation, errs.Parameter("release_date"), "release_date must have a value")
+	case m.RunTime <= 0:
+		return errs.E(errs.Validation, errs.Parameter("run_time"), "run_time must be greater than zero")
+	case m.Director == "":
+		return errs.E(errs.Validation, errs.Parameter("director"), errs.MissingField("director"))
+	case m.Writer == "":
+		return errs.E(errs.Validation, errs.Parameter("writer"), errs.MissingField("writer"))
+	}
+
+	return nil
 }
 
 // CreateMovieRequest is the request struct for Creating a Movie

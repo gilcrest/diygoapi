@@ -10,14 +10,13 @@ import (
 
 	"github.com/gilcrest/diy-go-api"
 	"github.com/gilcrest/diy-go-api/errs"
-	"github.com/gilcrest/diy-go-api/movie"
 	"github.com/gilcrest/diy-go-api/secure"
 	"github.com/gilcrest/diy-go-api/sqldb/datastore"
 )
 
 // movieAudit is the combination of a domain Movie and its audit data
 type movieAudit struct {
-	Movie       movie.Movie
+	Movie       diy.Movie
 	SimpleAudit diy.SimpleAudit
 }
 
@@ -59,7 +58,7 @@ func (s *MovieService) Create(ctx context.Context, r *diy.CreateMovieRequest, ad
 	}
 
 	// initialize Movie and inject dependent fields
-	m := movie.Movie{
+	m := diy.Movie{
 		ID:         uuid.New(),
 		ExternalID: secure.NewID(),
 		Title:      r.Title,
@@ -157,7 +156,7 @@ func (s *MovieService) Update(ctx context.Context, r *diy.UpdateMovieRequest, ad
 		return nil, errs.E(errs.Database, err)
 	}
 
-	m := movie.Movie{
+	m := diy.Movie{
 		ID:         row.MovieID,
 		ExternalID: secure.MustParseIdentifier(row.ExtlID),
 		Title:      row.Title,
@@ -302,7 +301,7 @@ func (s *MovieService) FindMovieByID(ctx context.Context, extlID string) (mr *di
 		return nil, errs.E(errs.Database, err)
 	}
 
-	m := movie.Movie{
+	m := diy.Movie{
 		ID:         row.MovieID,
 		ExternalID: secure.MustParseIdentifier(row.ExtlID),
 		Title:      row.Title,
@@ -377,7 +376,7 @@ func (s *MovieService) FindAllMovies(ctx context.Context) (smr []*diy.MovieRespo
 	}
 
 	for _, row := range rows {
-		m := movie.Movie{
+		m := diy.Movie{
 			ID:         row.MovieID,
 			ExternalID: secure.MustParseIdentifier(row.ExtlID),
 			Title:      row.Title,

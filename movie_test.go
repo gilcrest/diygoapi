@@ -1,4 +1,4 @@
-package movie
+package diy
 
 import (
 	"testing"
