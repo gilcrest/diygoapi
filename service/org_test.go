@@ -73,7 +73,7 @@ func TestOrgService(t *testing.T) {
 		c.Assert(err.Error(), qt.Equals, "CreateOrgRequest must have a value when creating an Org")
 		c.Assert(got, qt.IsNil)
 	})
-	t.Run("create (with app)", func(t *testing.T) {
+	t.Run("create org", func(t *testing.T) {
 		c := qt.New(t)
 
 		eks := os.Getenv("ENCRYPT_KEY")
@@ -111,9 +111,9 @@ func TestOrgService(t *testing.T) {
 			APIKeyGenerator: secure.RandomGenerator{},
 			EncryptionKey:   ek,
 		}
-		r := diy.CreateOrgRequest{
-			Name:        testOrgServiceOrgName + "_withApp",
-			Description: testOrgServiceOrgDescription + "_withApp",
+		r := &diy.CreateOrgRequest{
+			Name:        testOrgServiceOrgName,
+			Description: testOrgServiceOrgDescription,
 			Kind:        testOrgServiceOrgKind,
 			CreateAppRequest: &diy.CreateAppRequest{
 				Name:        testAppServiceAppName,
@@ -124,13 +124,13 @@ func TestOrgService(t *testing.T) {
 		adt := findPrincipalTestAudit(ctx, c, tx)
 
 		var got *diy.OrgResponse
-		got, err = s.Create(context.Background(), &r, adt)
+		got, err = s.Create(context.Background(), r, adt)
 		c.Assert(err, qt.IsNil)
 		want := &diy.OrgResponse{
 			ExternalID:          got.ExternalID,
-			Name:                testOrgServiceOrgName + "_withApp",
+			Name:                testOrgServiceOrgName,
 			KindExternalID:      testOrgServiceOrgKind,
-			Description:         testOrgServiceOrgDescription + "_withApp",
+			Description:         testOrgServiceOrgDescription,
 			CreateAppExtlID:     adt.App.ExternalID.String(),
 			CreateUserFirstName: adt.User.FirstName,
 			CreateUserLastName:  adt.User.LastName,
@@ -152,47 +152,6 @@ func TestOrgService(t *testing.T) {
 		}
 		ignoreFields := []string{"ExternalID", "CreateDateTime", "UpdateDateTime", "App.CreateDateTime", "App.UpdateDateTime", "App.APIKeys"}
 		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(diy.OrgResponse{}, ignoreFields...)), want)
-	})
-	t.Run("delete (with app)", func(t *testing.T) {
-		c := qt.New(t)
-
-		var (
-			testOrg datastore.FindOrgByNameRow
-			err     error
-		)
-
-		db, cleanup := sqldbtest.NewDB(t)
-		c.Cleanup(cleanup)
-
-		// start db txn using pgxpool
-		ctx := context.Background()
-		var tx pgx.Tx
-		tx, err = db.BeginTx(ctx)
-		if err != nil {
-			t.Fatalf("db.BeginTx error: %v", err)
-		}
-		// defer transaction rollback and handle error, if any
-		defer func() {
-			err = db.RollbackTx(ctx, tx, err)
-		}()
-
-		testOrg, err = datastore.New(tx).FindOrgByName(ctx, testOrgServiceOrgName+"_withApp")
-		if err != nil {
-			t.Fatalf("FindOrgByName() error = %v", err)
-		}
-
-		s := service.OrgService{
-			Datastorer: db,
-		}
-
-		var got diy.DeleteResponse
-		got, err = s.Delete(context.Background(), testOrg.OrgExtlID)
-		want := diy.DeleteResponse{
-			ExternalID: testOrg.OrgExtlID,
-			Deleted:    true,
-		}
-		c.Assert(err, qt.IsNil)
-		c.Assert(got, qt.CmpEquals(), want)
 	})
 	t.Run("update", func(t *testing.T) {
 		c := qt.New(t)
@@ -322,7 +281,7 @@ func TestOrgService(t *testing.T) {
 		c.Assert(len(got) >= 1, qt.IsTrue, qt.Commentf("orgs found = %d", len(got)))
 		c.Logf("orgs found = %d", len(got))
 	})
-	t.Run("delete", func(t *testing.T) {
+	t.Run("delete org", func(t *testing.T) {
 		c := qt.New(t)
 
 		var (

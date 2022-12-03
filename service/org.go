@@ -55,17 +55,12 @@ type OrgService struct {
 // Create is used to create an Org
 func (s *OrgService) Create(ctx context.Context, r *diy.CreateOrgRequest, adt diy.Audit) (or *diy.OrgResponse, err error) {
 
-	if r == nil {
+	if r == nil || *r.CreateAppRequest == (diy.CreateAppRequest{}) {
 		return nil, errs.E(errs.Validation, "CreateOrgRequest must have a value when creating an Org")
 	}
 	err = r.Validate()
 	if err != nil {
 		return nil, err
-	}
-
-	// ensure that CreateAppRequest field is not nil or not the zero value
-	if (r.CreateAppRequest != nil) || (*r.CreateAppRequest == (diy.CreateAppRequest{})) {
-		return nil, errs.E(errs.Validation, "CreateAppRequest must have a value when creating an Org")
 	}
 
 	err = r.CreateAppRequest.Validate()
