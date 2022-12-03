@@ -141,7 +141,7 @@ func (s *Server) handleFindMovieByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	extlID := vars["extlID"]
 
-	response, err := s.MovieServicer.FindMovieByID(r.Context(), extlID)
+	response, err := s.MovieServicer.FindMovieByExternalID(r.Context(), extlID)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, err)
 		return

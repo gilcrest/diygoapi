@@ -48,6 +48,11 @@ type MovieService struct {
 
 // Create is used to create a Movie
 func (s *MovieService) Create(ctx context.Context, r *diy.CreateMovieRequest, adt diy.Audit) (mr *diy.MovieResponse, err error) {
+
+	if r == nil {
+		return nil, errs.E(errs.Validation, "CreateMovieRequest must have a value when creating a Movie")
+	}
+
 	var released time.Time
 	released, err = time.Parse(time.RFC3339, r.Released)
 	if err != nil {
@@ -278,8 +283,8 @@ func (s *MovieService) Delete(ctx context.Context, extlID string) (dr diy.Delete
 	return response, nil
 }
 
-// FindMovieByID is used to find an individual movie
-func (s *MovieService) FindMovieByID(ctx context.Context, extlID string) (mr *diy.MovieResponse, err error) {
+// FindMovieByExternalID is used to find an individual movie
+func (s *MovieService) FindMovieByExternalID(ctx context.Context, extlID string) (mr *diy.MovieResponse, err error) {
 
 	// start db txn using pgxpool
 	var tx pgx.Tx

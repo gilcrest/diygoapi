@@ -305,6 +305,47 @@ func (q *Queries) FindMovies(ctx context.Context) ([]FindMoviesRow, error) {
 	return items, nil
 }
 
+const findMoviesByTitle = `-- name: FindMoviesByTitle :many
+SELECT m.movie_id, m.extl_id, m.title, m.rated, m.released, m.run_time, m.director, m.writer, m.create_app_id, m.create_user_id, m.create_timestamp, m.update_app_id, m.update_user_id, m.update_timestamp
+FROM movie m
+WHERE m.title = $1
+`
+
+func (q *Queries) FindMoviesByTitle(ctx context.Context, title string) ([]Movie, error) {
+	rows, err := q.db.Query(ctx, findMoviesByTitle, title)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Movie
+	for rows.Next() {
+		var i Movie
+		if err := rows.Scan(
+			&i.MovieID,
+			&i.ExtlID,
+			&i.Title,
+			&i.Rated,
+			&i.Released,
+			&i.RunTime,
+			&i.Director,
+			&i.Writer,
+			&i.CreateAppID,
+			&i.CreateUserID,
+			&i.CreateTimestamp,
+			&i.UpdateAppID,
+			&i.UpdateUserID,
+			&i.UpdateTimestamp,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateMovie = `-- name: UpdateMovie :exec
 UPDATE movie
 SET title            = $1,

@@ -42,6 +42,11 @@ FROM movie m
          LEFT JOIN users uu on uu.user_id = m.update_user_id
 WHERE m.extl_id = $1;
 
+-- name: FindMoviesByTitle :many
+SELECT m.*
+FROM movie m
+WHERE m.title = $1;
+
 -- name: FindMovies :many
 SELECT m.movie_id,
        m.extl_id,
