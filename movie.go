@@ -15,7 +15,7 @@ type MovieServicer interface {
 	Create(ctx context.Context, r *CreateMovieRequest, adt Audit) (*MovieResponse, error)
 	Update(ctx context.Context, r *UpdateMovieRequest, adt Audit) (*MovieResponse, error)
 	Delete(ctx context.Context, extlID string) (DeleteResponse, error)
-	FindMovieByID(ctx context.Context, extlID string) (*MovieResponse, error)
+	FindMovieByExternalID(ctx context.Context, extlID string) (*MovieResponse, error)
 	FindAllMovies(ctx context.Context) ([]*MovieResponse, error)
 }
 
