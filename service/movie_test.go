@@ -246,7 +246,7 @@ func TestMovieService(t *testing.T) {
 		}()
 
 		var movies []datastore.Movie
-		movies, err = datastore.New(tx).FindMoviesByTitle(ctx, "The Return of the Living Dead")
+		movies, err = datastore.New(tx).FindMoviesByTitle(ctx, "The Return of the Living Thread")
 		if err != nil {
 			t.Fatalf("FindMoviesByTitle() error = %v", err)
 		}
