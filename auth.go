@@ -219,7 +219,7 @@ type CreateRoleRequest struct {
 	// A boolean denoting whether the role is active (true) or not (false).
 	Active bool `json:"active"`
 	// The list of permissions to be given to the role
-	Permissions []PermissionRequest
+	Permissions []PermissionRequestResponse
 }
 
 // AuthenticationParams is the parameters needed for authenticating a User.
@@ -276,8 +276,8 @@ type TokenExchanger interface {
 	Exchange(ctx context.Context, realm string, provider Provider, token *oauth2.Token) (*ProviderInfo, error)
 }
 
-// PermissionRequest is the request struct for creating a permission
-type PermissionRequest struct {
+// PermissionRequestResponse is the request/response struct for a permission
+type PermissionRequestResponse struct {
 	// Unique External ID to be given to outside callers.
 	ExternalID string `json:"external_id"`
 	// A human-readable string which represents a resource (e.g. an HTTP route or document, etc.).
@@ -292,8 +292,8 @@ type PermissionRequest struct {
 
 // PermissionServicer allows for creating, updating, reading and deleting a Permission
 type PermissionServicer interface {
-	Create(ctx context.Context, r *PermissionRequest, adt Audit) (Permission, error)
-	FindAll(ctx context.Context) ([]Permission, error)
+	Create(ctx context.Context, r *PermissionRequestResponse, adt Audit) (PermissionRequestResponse, error)
+	FindAll(ctx context.Context) ([]PermissionRequestResponse, error)
 	Delete(ctx context.Context, extlID string) (dr DeleteResponse, err error)
 }
 

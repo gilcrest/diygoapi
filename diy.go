@@ -70,7 +70,7 @@ type GenesisRequest struct {
 	UserInitiatedOrg CreateOrgRequest `json:"org"`
 
 	// PermissionRequests: The list of permissions to be created as part of Genesis
-	PermissionRequests []PermissionRequest `json:"permissions"`
+	PermissionRequests []PermissionRequestResponse `json:"permissions"`
 
 	// CreateRoleRequests: The list of Roles to be created as part of Genesis
 	CreateRoleRequests []CreateRoleRequest `json:"roles"`

@@ -586,35 +586,44 @@ type PermissionService struct {
 }
 
 // Create is used to create a Permission
-func (s *PermissionService) Create(ctx context.Context, r *diy.PermissionRequest, adt diy.Audit) (p diy.Permission, err error) {
+func (s *PermissionService) Create(ctx context.Context, r *diy.PermissionRequestResponse, adt diy.Audit) (response diy.PermissionRequestResponse, err error) {
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
 	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
-		return diy.Permission{}, err
+		return diy.PermissionRequestResponse{}, err
 	}
 	// defer transaction rollback and handle error, if any
 	defer func() {
 		err = s.Datastorer.RollbackTx(ctx, tx, err)
 	}()
 
+	var p diy.Permission
 	p, err = createPermissionTx(ctx, tx, r, adt)
 	if err != nil {
-		return diy.Permission{}, err
+		return diy.PermissionRequestResponse{}, err
 	}
 
 	// commit db txn using pgxpool
 	err = s.Datastorer.CommitTx(ctx, tx)
 	if err != nil {
-		return diy.Permission{}, err
+		return diy.PermissionRequestResponse{}, err
 	}
 
-	return p, nil
+	response = diy.PermissionRequestResponse{
+		ExternalID:  p.ExternalID.String(),
+		Resource:    p.Resource,
+		Operation:   p.Operation,
+		Description: p.Description,
+		Active:      p.Active,
+	}
+
+	return response, nil
 }
 
 // createPermissionTX separates the transaction logic as it needs to also be called during Genesis
-func createPermissionTx(ctx context.Context, tx pgx.Tx, r *diy.PermissionRequest, adt diy.Audit) (p diy.Permission, err error) {
+func createPermissionTx(ctx context.Context, tx pgx.Tx, r *diy.PermissionRequestResponse, adt diy.Audit) (p diy.Permission, err error) {
 	p = diy.Permission{
 		ID:          uuid.New(),
 		ExternalID:  secure.NewID(),
@@ -666,7 +675,7 @@ func createPermissionTx(ctx context.Context, tx pgx.Tx, r *diy.PermissionRequest
 }
 
 // FindAll retrieves all permissions
-func (s *PermissionService) FindAll(ctx context.Context) (permissions []diy.Permission, err error) {
+func (s *PermissionService) FindAll(ctx context.Context) (permissions []diy.PermissionRequestResponse, err error) {
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
@@ -685,11 +694,10 @@ func (s *PermissionService) FindAll(ctx context.Context) (permissions []diy.Perm
 		return nil, errs.E(errs.Database, err)
 	}
 
-	var sp []diy.Permission
+	var sp []diy.PermissionRequestResponse
 	for _, row := range rows {
-		p := diy.Permission{
-			ID:          row.PermissionID,
-			ExternalID:  secure.MustParseIdentifier(row.PermissionExtlID),
+		p := diy.PermissionRequestResponse{
+			ExternalID:  row.PermissionExtlID,
 			Resource:    row.Resource,
 			Operation:   row.Operation,
 			Description: row.PermissionDescription,
@@ -954,7 +962,7 @@ func assignOrgRole(ctx context.Context, tx pgx.Tx, p assignOrgRoleParams) (err e
 	return nil
 }
 
-func findPermissionsFromPermissionRequest(ctx context.Context, tx pgx.Tx, prs []diy.PermissionRequest) (aps []*diy.Permission, err error) {
+func findPermissionsFromPermissionRequest(ctx context.Context, tx pgx.Tx, prs []diy.PermissionRequestResponse) (aps []*diy.Permission, err error) {
 
 	// it's fine for zero permissions to be added as part of a role
 	if len(prs) == 0 {
