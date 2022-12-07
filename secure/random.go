@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 
-	"github.com/gilcrest/diy-go-api/errs"
+	"github.com/gilcrest/saaswhip/errs"
 )
 
 // RandomGenerator produces cryptographically secure random data

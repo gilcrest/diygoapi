@@ -9,11 +9,11 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/jackc/pgx/v4"
 
-	"github.com/gilcrest/diy-go-api"
-	"github.com/gilcrest/diy-go-api/errs"
-	"github.com/gilcrest/diy-go-api/service"
-	"github.com/gilcrest/diy-go-api/sqldb/datastore"
-	"github.com/gilcrest/diy-go-api/sqldb/sqldbtest"
+	"github.com/gilcrest/saaswhip"
+	"github.com/gilcrest/saaswhip/errs"
+	"github.com/gilcrest/saaswhip/service"
+	"github.com/gilcrest/saaswhip/sqldb/datastore"
+	"github.com/gilcrest/saaswhip/sqldb/sqldbtest"
 )
 
 func TestMovieService(t *testing.T) {
@@ -39,7 +39,7 @@ func TestMovieService(t *testing.T) {
 		s := service.MovieService{Datastorer: db}
 		adt := findTestAudit(ctx, c, tx)
 
-		var got *diy.MovieResponse
+		var got *saaswhip.MovieResponse
 		got, err = s.Create(context.Background(), nil, adt)
 		c.Assert(errs.KindIs(errs.Validation, err), qt.IsTrue)
 		c.Assert(err.Error(), qt.Equals, "CreateMovieRequest must have a value when creating a Movie")
@@ -68,7 +68,7 @@ func TestMovieService(t *testing.T) {
 		s := service.MovieService{Datastorer: db}
 
 		rd, _ := time.Parse(time.RFC3339, "1985-08-16T00:00:00Z")
-		r := diy.CreateMovieRequest{
+		r := saaswhip.CreateMovieRequest{
 			Title:    "The Return of the Living Dead",
 			Rated:    "R",
 			Released: rd.Format(time.RFC3339),
@@ -79,11 +79,11 @@ func TestMovieService(t *testing.T) {
 
 		adt := findPrincipalTestAudit(ctx, c, tx)
 
-		var got *diy.MovieResponse
+		var got *saaswhip.MovieResponse
 		got, err = s.Create(context.Background(), &r, adt)
 		c.Assert(err, qt.IsNil)
 
-		want := &diy.MovieResponse{
+		want := &saaswhip.MovieResponse{
 			ExternalID:          got.ExternalID,
 			Title:               "The Return of the Living Dead",
 			Rated:               "R",
@@ -99,7 +99,7 @@ func TestMovieService(t *testing.T) {
 			UpdateUserLastName:  adt.User.LastName,
 		}
 		ignoreFields := []string{"ExternalID", "CreateDateTime", "UpdateDateTime"}
-		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(diy.MovieResponse{}, ignoreFields...)), want)
+		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(saaswhip.MovieResponse{}, ignoreFields...)), want)
 	})
 	t.Run("find Movie By External ID", func(t *testing.T) {
 		c := qt.New(t)
@@ -132,7 +132,7 @@ func TestMovieService(t *testing.T) {
 
 		s := service.MovieService{Datastorer: db}
 
-		var got *diy.MovieResponse
+		var got *saaswhip.MovieResponse
 		got, err = s.FindMovieByExternalID(context.Background(), dbm.ExtlID)
 		want := "The Return of the Living Dead"
 		c.Assert(err, qt.IsNil)
@@ -151,7 +151,7 @@ func TestMovieService(t *testing.T) {
 		}
 
 		var (
-			got []*diy.MovieResponse
+			got []*saaswhip.MovieResponse
 			err error
 		)
 		got, err = s.FindAllMovies(ctx)
@@ -191,7 +191,7 @@ func TestMovieService(t *testing.T) {
 		s := service.MovieService{Datastorer: db}
 
 		rd, _ := time.Parse(time.RFC3339, "1985-08-16T00:00:00Z")
-		r := diy.UpdateMovieRequest{
+		r := saaswhip.UpdateMovieRequest{
 			ExternalID: dbm.ExtlID,
 			Title:      "The Return of the Living Thread",
 			Rated:      "R",
@@ -203,11 +203,11 @@ func TestMovieService(t *testing.T) {
 
 		adt := findPrincipalTestAudit(ctx, c, tx)
 
-		var got *diy.MovieResponse
+		var got *saaswhip.MovieResponse
 		got, err = s.Update(context.Background(), &r, adt)
 		c.Assert(err, qt.IsNil)
 
-		want := &diy.MovieResponse{
+		want := &saaswhip.MovieResponse{
 			ExternalID:          got.ExternalID,
 			Title:               "The Return of the Living Thread",
 			Rated:               "R",
@@ -223,7 +223,7 @@ func TestMovieService(t *testing.T) {
 			UpdateUserLastName:  adt.User.LastName,
 		}
 		ignoreFields := []string{"ExternalID", "CreateDateTime", "UpdateDateTime"}
-		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(diy.MovieResponse{}, ignoreFields...)), want)
+		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(saaswhip.MovieResponse{}, ignoreFields...)), want)
 	})
 	t.Run("delete movie", func(t *testing.T) {
 		c := qt.New(t)
@@ -258,9 +258,9 @@ func TestMovieService(t *testing.T) {
 			Datastorer: db,
 		}
 
-		var got diy.DeleteResponse
+		var got saaswhip.DeleteResponse
 		got, err = s.Delete(context.Background(), dbm.ExtlID)
-		want := diy.DeleteResponse{
+		want := saaswhip.DeleteResponse{
 			ExternalID: dbm.ExtlID,
 			Deleted:    true,
 		}

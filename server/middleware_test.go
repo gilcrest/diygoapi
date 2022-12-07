@@ -14,30 +14,30 @@ import (
 	"github.com/rs/zerolog"
 	"golang.org/x/oauth2"
 
-	"github.com/gilcrest/diy-go-api"
-	"github.com/gilcrest/diy-go-api/errs"
-	"github.com/gilcrest/diy-go-api/logger"
+	"github.com/gilcrest/saaswhip"
+	"github.com/gilcrest/saaswhip/errs"
+	"github.com/gilcrest/saaswhip/logger"
 )
 
 type mockAuthenticationService struct{}
 
-func (mockAuthenticationService) SelfRegister(ctx context.Context, params diy.AuthenticationParams) (diy.Auth, error) {
+func (mockAuthenticationService) SelfRegister(ctx context.Context, params saaswhip.AuthenticationParams) (saaswhip.Auth, error) {
 	panic("implement me")
 }
 
-func (mockAuthenticationService) FindAuth(ctx context.Context, params diy.AuthenticationParams) (diy.Auth, error) {
+func (mockAuthenticationService) FindAuth(ctx context.Context, params saaswhip.AuthenticationParams) (saaswhip.Auth, error) {
 	panic("implement me")
 }
 
-func (mockAuthenticationService) FindAppByProviderClientID(ctx context.Context, realm string, auth diy.Auth) (a *diy.App, err error) {
+func (mockAuthenticationService) FindAppByProviderClientID(ctx context.Context, realm string, auth saaswhip.Auth) (a *saaswhip.App, err error) {
 	panic("implement me")
 }
 
-func (mockAuthenticationService) FindAppByAPIKey(ctx context.Context, realm, appExtlID, key string) (*diy.App, error) {
-	return &diy.App{
+func (mockAuthenticationService) FindAppByAPIKey(ctx context.Context, realm, appExtlID, key string) (*saaswhip.App, error) {
+	return &saaswhip.App{
 		ID:          uuid.UUID{},
 		ExternalID:  []byte("so random"),
-		Org:         &diy.Org{},
+		Org:         &saaswhip.Org{},
 		Name:        "",
 		Description: "",
 		APIKeys:     nil,
@@ -79,15 +79,15 @@ func TestServer_appHandler(t *testing.T) {
 		req.Header.Add(apiKeyHeaderKey, "test_app_api_key")
 
 		testAppHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			var a *diy.App
-			a, err = diy.AppFromRequest(r)
+			var a *saaswhip.App
+			a, err = saaswhip.AppFromRequest(r)
 			if err != nil {
 				t.Fatal("app.FromRequest() error", err)
 			}
-			wantApp := &diy.App{
+			wantApp := &saaswhip.App{
 				ID:          uuid.UUID{},
 				ExternalID:  []byte("so random"),
-				Org:         &diy.Org{},
+				Org:         &saaswhip.Org{},
 				Name:        "",
 				Description: "",
 				APIKeys:     nil,
@@ -182,7 +182,7 @@ func Test_parseAuthorizationHeader(t *testing.T) {
 		wantToken oauth2.Token
 		wantErr   error
 	}{
-		{"typical", args{realm: defaultRealm, header: hdr}, oauth2.Token{AccessToken: "foobarbbq", TokenType: diy.BearerTokenType}, nil},
+		{"typical", args{realm: defaultRealm, header: hdr}, oauth2.Token{AccessToken: "foobarbbq", TokenType: saaswhip.BearerTokenType}, nil},
 		{"no authorization header error", args{realm: defaultRealm, header: emptyHdr}, oauth2.Token{}, emptyHdrErr},
 		{"too many values error", args{realm: defaultRealm, header: tooManyValues}, oauth2.Token{}, tooManyValuesErr},
 		{"no bearer scheme error", args{realm: defaultRealm, header: noBearer}, oauth2.Token{}, noBearerErr},

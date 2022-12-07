@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
-	"github.com/gilcrest/diy-go-api/logger"
+	"github.com/gilcrest/saaswhip/logger"
 )
 
 func Test_httpErrorStatusCode(t *testing.T) {

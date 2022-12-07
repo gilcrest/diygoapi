@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/gilcrest/diy-go-api/cmd"
 	"os"
+
+	"github.com/gilcrest/saaswhip/cmd"
 )
 
 func main() {

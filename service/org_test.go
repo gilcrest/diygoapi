@@ -10,12 +10,12 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/jackc/pgx/v4"
 
-	"github.com/gilcrest/diy-go-api"
-	"github.com/gilcrest/diy-go-api/errs"
-	"github.com/gilcrest/diy-go-api/secure"
-	"github.com/gilcrest/diy-go-api/service"
-	"github.com/gilcrest/diy-go-api/sqldb/datastore"
-	"github.com/gilcrest/diy-go-api/sqldb/sqldbtest"
+	"github.com/gilcrest/saaswhip"
+	"github.com/gilcrest/saaswhip/errs"
+	"github.com/gilcrest/saaswhip/secure"
+	"github.com/gilcrest/saaswhip/service"
+	"github.com/gilcrest/saaswhip/sqldb/datastore"
+	"github.com/gilcrest/saaswhip/sqldb/sqldbtest"
 )
 
 const (
@@ -67,7 +67,7 @@ func TestOrgService(t *testing.T) {
 		}
 		adt := findPrincipalTestAudit(ctx, c, tx)
 
-		var got *diy.OrgResponse
+		var got *saaswhip.OrgResponse
 		got, err = s.Create(context.Background(), nil, adt)
 		c.Assert(errs.KindIs(errs.Validation, err), qt.IsTrue)
 		c.Assert(err.Error(), qt.Equals, "CreateOrgRequest must have a value when creating an Org")
@@ -111,11 +111,11 @@ func TestOrgService(t *testing.T) {
 			APIKeyGenerator: secure.RandomGenerator{},
 			EncryptionKey:   ek,
 		}
-		r := &diy.CreateOrgRequest{
+		r := &saaswhip.CreateOrgRequest{
 			Name:        testOrgServiceOrgName,
 			Description: testOrgServiceOrgDescription,
 			Kind:        testOrgServiceOrgKind,
-			CreateAppRequest: &diy.CreateAppRequest{
+			CreateAppRequest: &saaswhip.CreateAppRequest{
 				Name:        testAppServiceAppName,
 				Description: testAppServiceAppDescription,
 			},
@@ -123,10 +123,10 @@ func TestOrgService(t *testing.T) {
 
 		adt := findPrincipalTestAudit(ctx, c, tx)
 
-		var got *diy.OrgResponse
+		var got *saaswhip.OrgResponse
 		got, err = s.Create(context.Background(), r, adt)
 		c.Assert(err, qt.IsNil)
-		want := &diy.OrgResponse{
+		want := &saaswhip.OrgResponse{
 			ExternalID:          got.ExternalID,
 			Name:                testOrgServiceOrgName,
 			KindExternalID:      testOrgServiceOrgKind,
@@ -137,7 +137,7 @@ func TestOrgService(t *testing.T) {
 			UpdateAppExtlID:     adt.App.ExternalID.String(),
 			UpdateUserFirstName: adt.User.FirstName,
 			UpdateUserLastName:  adt.User.LastName,
-			App: &diy.AppResponse{
+			App: &saaswhip.AppResponse{
 				ExternalID:          got.App.ExternalID,
 				Name:                testAppServiceAppName,
 				Description:         testAppServiceAppDescription,
@@ -151,7 +151,7 @@ func TestOrgService(t *testing.T) {
 			},
 		}
 		ignoreFields := []string{"ExternalID", "CreateDateTime", "UpdateDateTime", "App.CreateDateTime", "App.UpdateDateTime", "App.APIKeys"}
-		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(diy.OrgResponse{}, ignoreFields...)), want)
+		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(saaswhip.OrgResponse{}, ignoreFields...)), want)
 	})
 	t.Run("update", func(t *testing.T) {
 		c := qt.New(t)
@@ -184,7 +184,7 @@ func TestOrgService(t *testing.T) {
 		s := service.OrgService{
 			Datastorer: db,
 		}
-		r := diy.UpdateOrgRequest{
+		r := saaswhip.UpdateOrgRequest{
 			ExternalID:  testOrg.OrgExtlID,
 			Name:        testOrgServiceUpdatedOrgName,
 			Description: testOrgServiceUpdatedOrgDescription,
@@ -192,9 +192,9 @@ func TestOrgService(t *testing.T) {
 
 		adt := findPrincipalTestAudit(ctx, c, tx)
 
-		var got *diy.OrgResponse
+		var got *saaswhip.OrgResponse
 		got, err = s.Update(context.Background(), &r, adt)
-		want := &diy.OrgResponse{
+		want := &saaswhip.OrgResponse{
 			ExternalID:          got.ExternalID,
 			Name:                testOrgServiceUpdatedOrgName,
 			KindExternalID:      testOrgServiceOrgKind,
@@ -207,7 +207,7 @@ func TestOrgService(t *testing.T) {
 			UpdateUserLastName:  adt.User.LastName,
 		}
 		c.Assert(err, qt.IsNil)
-		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(diy.OrgResponse{}, "CreateDateTime", "UpdateDateTime")), want)
+		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(saaswhip.OrgResponse{}, "CreateDateTime", "UpdateDateTime")), want)
 	})
 	t.Run("findByExtlID", func(t *testing.T) {
 		c := qt.New(t)
@@ -243,9 +243,9 @@ func TestOrgService(t *testing.T) {
 
 		adt := findPrincipalTestAudit(ctx, c, tx)
 
-		var got *diy.OrgResponse
+		var got *saaswhip.OrgResponse
 		got, err = s.FindByExternalID(context.Background(), testOrg.OrgExtlID)
-		want := &diy.OrgResponse{
+		want := &saaswhip.OrgResponse{
 			ExternalID:          got.ExternalID,
 			Name:                testOrgServiceUpdatedOrgName,
 			KindExternalID:      testOrgServiceOrgKind,
@@ -258,7 +258,7 @@ func TestOrgService(t *testing.T) {
 			UpdateUserLastName:  adt.User.LastName,
 		}
 		c.Assert(err, qt.IsNil)
-		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(diy.OrgResponse{}, "CreateDateTime", "UpdateDateTime")), want)
+		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(saaswhip.OrgResponse{}, "CreateDateTime", "UpdateDateTime")), want)
 	})
 	t.Run("findAll", func(t *testing.T) {
 		c := qt.New(t)
@@ -273,7 +273,7 @@ func TestOrgService(t *testing.T) {
 		}
 
 		var (
-			got []*diy.OrgResponse
+			got []*saaswhip.OrgResponse
 			err error
 		)
 		got, err = s.FindAll(ctx)
@@ -313,9 +313,9 @@ func TestOrgService(t *testing.T) {
 			Datastorer: db,
 		}
 
-		var got diy.DeleteResponse
+		var got saaswhip.DeleteResponse
 		got, err = s.Delete(context.Background(), testOrg.OrgExtlID)
-		want := diy.DeleteResponse{
+		want := saaswhip.DeleteResponse{
 			ExternalID: testOrg.OrgExtlID,
 			Deleted:    true,
 		}
@@ -324,8 +324,8 @@ func TestOrgService(t *testing.T) {
 	})
 }
 
-// findPrincipalTestAudit returns a diy.Audit with the Principal Org, App and a Test User
-func findPrincipalTestAudit(ctx context.Context, c *qt.C, tx pgx.Tx) diy.Audit {
+// findPrincipalTestAudit returns a saaswhip.Audit with the Principal Org, App and a Test User
+func findPrincipalTestAudit(ctx context.Context, c *qt.C, tx pgx.Tx) saaswhip.Audit {
 	c.Helper()
 
 	var (
@@ -337,13 +337,13 @@ func findPrincipalTestAudit(ctx context.Context, c *qt.C, tx pgx.Tx) diy.Audit {
 		c.Fatalf("FindOrgByName() error = %v", err)
 	}
 
-	k := &diy.OrgKind{
+	k := &saaswhip.OrgKind{
 		ID:          findOrgByNameRow.OrgKindID,
 		ExternalID:  findOrgByNameRow.OrgKindExtlID,
 		Description: findOrgByNameRow.OrgKindDesc,
 	}
 
-	genesisOrg := &diy.Org{
+	genesisOrg := &saaswhip.Org{
 		ID:          findOrgByNameRow.OrgID,
 		ExternalID:  secure.MustParseIdentifier(findOrgByNameRow.OrgExtlID),
 		Name:        findOrgByNameRow.OrgName,
@@ -362,7 +362,7 @@ func findPrincipalTestAudit(ctx context.Context, c *qt.C, tx pgx.Tx) diy.Audit {
 		c.Fatalf("FindTestApp() error = %v", err)
 	}
 
-	genesisApp := &diy.App{
+	genesisApp := &saaswhip.App{
 		ID:          genesisDBAppRow.AppID,
 		ExternalID:  secure.MustParseIdentifier(genesisDBAppRow.AppExtlID),
 		Org:         genesisOrg,
@@ -371,13 +371,13 @@ func findPrincipalTestAudit(ctx context.Context, c *qt.C, tx pgx.Tx) diy.Audit {
 		APIKeys:     nil,
 	}
 
-	var testOrg *diy.Org
+	var testOrg *saaswhip.Org
 	testOrg, err = service.FindOrgByName(ctx, tx, service.TestOrgName)
 	if err != nil {
 		c.Fatalf("FindOrgByName() error = %v", err)
 	}
 
-	var testRole diy.Role
+	var testRole saaswhip.Role
 	testRole, err = service.FindRoleByCode(ctx, tx, service.TestRoleCode)
 	if err != nil {
 		c.Fatalf("FindRoleByCode() error = %v", err)
@@ -394,7 +394,7 @@ func findPrincipalTestAudit(ctx context.Context, c *qt.C, tx pgx.Tx) diy.Audit {
 		c.Fatalf("FindUsersByOrgRole() error = %v", err)
 	}
 
-	var u *diy.User
+	var u *saaswhip.User
 	for i, ur := range usersRole {
 		u, err = service.FindUserByID(ctx, tx, ur.UserID)
 		if err != nil {
@@ -407,7 +407,7 @@ func findPrincipalTestAudit(ctx context.Context, c *qt.C, tx pgx.Tx) diy.Audit {
 		}
 	}
 
-	adt := diy.Audit{
+	adt := saaswhip.Audit{
 		App:    genesisApp,
 		User:   u,
 		Moment: time.Now(),

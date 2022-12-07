@@ -7,7 +7,7 @@ import (
 	"github.com/magefile/mage/sh"
 	"github.com/pkg/errors"
 
-	"github.com/gilcrest/diy-go-api/cmd"
+	"github.com/gilcrest/saaswhip/cmd"
 )
 
 // NewKey generates a new encryption key,

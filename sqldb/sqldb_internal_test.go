@@ -9,7 +9,7 @@ import (
 	qt "github.com/frankban/quicktest"
 	"github.com/rs/zerolog"
 
-	"github.com/gilcrest/diy-go-api/logger"
+	"github.com/gilcrest/saaswhip/logger"
 )
 
 func Test_NewPostgreSQLPool(t *testing.T) {

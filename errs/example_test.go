@@ -11,8 +11,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
-	"github.com/gilcrest/diy-go-api/errs"
-	"github.com/gilcrest/diy-go-api/logger"
+	"github.com/gilcrest/saaswhip/errs"
+	"github.com/gilcrest/saaswhip/logger"
 )
 
 func ExampleError() {

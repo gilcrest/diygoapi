@@ -1,4 +1,4 @@
-module github.com/gilcrest/diy-go-api
+module github.com/gilcrest/saaswhip
 
 go 1.18
 

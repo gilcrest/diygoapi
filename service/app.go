@@ -9,32 +9,32 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 
-	"github.com/gilcrest/diy-go-api"
-	"github.com/gilcrest/diy-go-api/errs"
-	"github.com/gilcrest/diy-go-api/secure"
-	"github.com/gilcrest/diy-go-api/sqldb/datastore"
+	"github.com/gilcrest/saaswhip"
+	"github.com/gilcrest/saaswhip/errs"
+	"github.com/gilcrest/saaswhip/secure"
+	"github.com/gilcrest/saaswhip/sqldb/datastore"
 )
 
 // appAudit is the combination of a domain App and its audit data
 type appAudit struct {
-	App         *diy.App
-	SimpleAudit *diy.SimpleAudit
+	App         *saaswhip.App
+	SimpleAudit *saaswhip.SimpleAudit
 }
 
 // newAPIKeyResponse initializes an APIKeyResponse. The app.APIKey is
 // decrypted and set to the Key field as part of initialization.
-func newAPIKeyResponse(key diy.APIKey) diy.APIKeyResponse {
-	return diy.APIKeyResponse{Key: key.Key(), DeactivationDate: key.DeactivationDate().String()}
+func newAPIKeyResponse(key saaswhip.APIKey) saaswhip.APIKeyResponse {
+	return saaswhip.APIKeyResponse{Key: key.Key(), DeactivationDate: key.DeactivationDate().String()}
 }
 
 // newAppResponse initializes an AppResponse
-func newAppResponse(aa appAudit) *diy.AppResponse {
-	var keys []diy.APIKeyResponse
+func newAppResponse(aa appAudit) *saaswhip.AppResponse {
+	var keys []saaswhip.APIKeyResponse
 	for _, key := range aa.App.APIKeys {
 		akr := newAPIKeyResponse(key)
 		keys = append(keys, akr)
 	}
-	return &diy.AppResponse{
+	return &saaswhip.AppResponse{
 		ExternalID:          aa.App.ExternalID.String(),
 		Name:                aa.App.Name,
 		Description:         aa.App.Description,
@@ -52,16 +52,16 @@ func newAppResponse(aa appAudit) *diy.AppResponse {
 
 // AppService is a service for creating an App
 type AppService struct {
-	Datastorer      diy.Datastorer
-	APIKeyGenerator diy.APIKeyGenerator
+	Datastorer      saaswhip.Datastorer
+	APIKeyGenerator saaswhip.APIKeyGenerator
 	EncryptionKey   *[32]byte
 }
 
 // Create is used to create an App
-func (s *AppService) Create(ctx context.Context, r *diy.CreateAppRequest, adt diy.Audit) (ar *diy.AppResponse, err error) {
+func (s *AppService) Create(ctx context.Context, r *saaswhip.CreateAppRequest, adt saaswhip.Audit) (ar *saaswhip.AppResponse, err error) {
 
 	var (
-		a  *diy.App
+		a  *saaswhip.App
 		aa appAudit
 	)
 	nap := newAppParams{
@@ -79,7 +79,7 @@ func (s *AppService) Create(ctx context.Context, r *diy.CreateAppRequest, adt di
 	}
 	aa = appAudit{
 		App: a,
-		SimpleAudit: &diy.SimpleAudit{
+		SimpleAudit: &saaswhip.SimpleAudit{
 			Create: adt,
 			Update: adt,
 		},
@@ -107,7 +107,7 @@ func (s *AppService) Create(ctx context.Context, r *diy.CreateAppRequest, adt di
 		return nil, err
 	}
 
-	return newAppResponse(appAudit{App: a, SimpleAudit: &diy.SimpleAudit{Create: adt, Update: adt}}), nil
+	return newAppResponse(appAudit{App: a, SimpleAudit: &saaswhip.SimpleAudit{Create: adt, Update: adt}}), nil
 }
 
 type newAppParams struct {
@@ -116,21 +116,21 @@ type newAppParams struct {
 	// description: app description
 	Description string
 	// org: the org the app belongs to
-	Org *diy.Org
+	Org *saaswhip.Org
 	// apiKeyGenerator: random string generator used to create API key for app
-	ApiKeyGenerator diy.APIKeyGenerator
+	ApiKeyGenerator saaswhip.APIKeyGenerator
 	// encryptionKey: encryption key used to encrypt the generated API key
 	EncryptionKey *[32]byte
 	// Provider is the OAuth2 provider
-	Provider diy.Provider
+	Provider saaswhip.Provider
 	// ProviderClientID is the unique Client ID given by the Provider
 	// which represents an application
 	ProviderClientID string
 }
 
-// newApp initializes a diy.App with a single API Key
-func newApp(nap newAppParams) (a *diy.App, err error) {
-	a = &diy.App{
+// newApp initializes a saaswhip.App with a single API Key
+func newApp(nap newAppParams) (a *saaswhip.App, err error) {
+	a = &saaswhip.App{
 		ID:               uuid.New(),
 		ExternalID:       secure.NewID(),
 		Org:              nap.Org,
@@ -142,8 +142,8 @@ func newApp(nap newAppParams) (a *diy.App, err error) {
 
 	// create new API key
 	keyDeactivation := time.Date(2099, 12, 31, 0, 0, 0, 0, time.UTC)
-	var key diy.APIKey
-	key, err = diy.NewAPIKey(nap.ApiKeyGenerator, nap.EncryptionKey, keyDeactivation)
+	var key saaswhip.APIKey
+	key, err = saaswhip.NewAPIKey(nap.ApiKeyGenerator, nap.EncryptionKey, keyDeactivation)
 	if err != nil {
 		return nil, err
 	}
@@ -166,8 +166,8 @@ func createAppTx(ctx context.Context, tx pgx.Tx, aa appAudit) (err error) {
 		AppExtlID:            aa.App.ExternalID.String(),
 		AppName:              aa.App.Name,
 		AppDescription:       aa.App.Description,
-		AuthProviderID:       diy.NewNullInt32(int32(aa.App.Provider)),
-		AuthProviderClientID: diy.NewNullString(aa.App.ProviderClientID),
+		AuthProviderID:       saaswhip.NewNullInt32(int32(aa.App.Provider)),
+		AuthProviderClientID: saaswhip.NewNullString(aa.App.ProviderClientID),
 		CreateAppID:          aa.SimpleAudit.Create.App.ID,
 		CreateUserID:         aa.SimpleAudit.Create.User.NullUUID(),
 		CreateTimestamp:      aa.SimpleAudit.Create.Moment,
@@ -217,7 +217,7 @@ func createAppTx(ctx context.Context, tx pgx.Tx, aa appAudit) (err error) {
 }
 
 // Update is used to update an App. API Keys for an App cannot be updated.
-func (s *AppService) Update(ctx context.Context, r *diy.UpdateAppRequest, adt diy.Audit) (ar *diy.AppResponse, err error) {
+func (s *AppService) Update(ctx context.Context, r *saaswhip.UpdateAppRequest, adt saaswhip.Audit) (ar *saaswhip.AppResponse, err error) {
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
@@ -275,13 +275,13 @@ func (s *AppService) Update(ctx context.Context, r *diy.UpdateAppRequest, adt di
 }
 
 // Delete is used to delete an App
-func (s *AppService) Delete(ctx context.Context, extlID string) (dr diy.DeleteResponse, err error) {
+func (s *AppService) Delete(ctx context.Context, extlID string) (dr saaswhip.DeleteResponse, err error) {
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
 	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
-		return diy.DeleteResponse{}, err
+		return saaswhip.DeleteResponse{}, err
 	}
 	// defer transaction rollback and handle error, if any
 	defer func() {
@@ -289,27 +289,27 @@ func (s *AppService) Delete(ctx context.Context, extlID string) (dr diy.DeleteRe
 	}()
 
 	// retrieve existing App
-	var a diy.App
+	var a saaswhip.App
 	a, err = findAppByExternalID(ctx, tx, extlID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return diy.DeleteResponse{}, errs.E(errs.Validation, "No app exists for the given external ID")
+			return saaswhip.DeleteResponse{}, errs.E(errs.Validation, "No app exists for the given external ID")
 		}
-		return diy.DeleteResponse{}, errs.E(errs.Database, err)
+		return saaswhip.DeleteResponse{}, errs.E(errs.Database, err)
 	}
 
 	err = deleteAppTx(ctx, tx, a)
 	if err != nil {
-		return diy.DeleteResponse{}, err
+		return saaswhip.DeleteResponse{}, err
 	}
 
 	// commit db txn using pgxpool
 	err = s.Datastorer.CommitTx(ctx, tx)
 	if err != nil {
-		return diy.DeleteResponse{}, err
+		return saaswhip.DeleteResponse{}, err
 	}
 
-	response := diy.DeleteResponse{
+	response := saaswhip.DeleteResponse{
 		ExternalID: extlID,
 		Deleted:    true,
 	}
@@ -317,7 +317,7 @@ func (s *AppService) Delete(ctx context.Context, extlID string) (dr diy.DeleteRe
 	return response, nil
 }
 
-func deleteAppTx(ctx context.Context, tx pgx.Tx, a diy.App) (err error) {
+func deleteAppTx(ctx context.Context, tx pgx.Tx, a saaswhip.App) (err error) {
 	// one-to-many API keys can be associated with an App. This will
 	// delete them all.
 	var apiKeysRowsAffected int64
@@ -344,7 +344,7 @@ func deleteAppTx(ctx context.Context, tx pgx.Tx, a diy.App) (err error) {
 }
 
 // FindByExternalID is used to find an App by its External ID
-func (s *AppService) FindByExternalID(ctx context.Context, extlID string) (ar *diy.AppResponse, err error) {
+func (s *AppService) FindByExternalID(ctx context.Context, extlID string) (ar *saaswhip.AppResponse, err error) {
 	// start db txn using pgxpool
 	var tx pgx.Tx
 	tx, err = s.Datastorer.BeginTx(ctx)
@@ -366,7 +366,7 @@ func (s *AppService) FindByExternalID(ctx context.Context, extlID string) (ar *d
 }
 
 // FindAll is used to list all apps in the datastore
-func (s *AppService) FindAll(ctx context.Context) (sar []*diy.AppResponse, err error) {
+func (s *AppService) FindAll(ctx context.Context) (sar []*saaswhip.AppResponse, err error) {
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
@@ -386,15 +386,15 @@ func (s *AppService) FindAll(ctx context.Context) (sar []*diy.AppResponse, err e
 	}
 
 	for _, row := range rows {
-		a := &diy.App{
+		a := &saaswhip.App{
 			ID:         row.AppID,
 			ExternalID: secure.MustParseIdentifier(row.AppExtlID),
-			Org: &diy.Org{
+			Org: &saaswhip.Org{
 				ID:          row.OrgID,
 				ExternalID:  secure.MustParseIdentifier(row.OrgExtlID),
 				Name:        row.OrgName,
 				Description: row.OrgDescription,
-				Kind: &diy.OrgKind{
+				Kind: &saaswhip.OrgKind{
 					ID:          row.OrgKindID,
 					ExternalID:  row.OrgKindExtlID,
 					Description: row.OrgKindDesc,
@@ -405,33 +405,33 @@ func (s *AppService) FindAll(ctx context.Context) (sar []*diy.AppResponse, err e
 			APIKeys:     nil,
 		}
 
-		sa := &diy.SimpleAudit{
-			Create: diy.Audit{
-				App: &diy.App{
+		sa := &saaswhip.SimpleAudit{
+			Create: saaswhip.Audit{
+				App: &saaswhip.App{
 					ID:          row.CreateAppID,
 					ExternalID:  secure.MustParseIdentifier(row.CreateAppExtlID),
-					Org:         &diy.Org{ID: row.CreateAppOrgID},
+					Org:         &saaswhip.Org{ID: row.CreateAppOrgID},
 					Name:        row.CreateAppName,
 					Description: row.CreateAppDescription,
 					APIKeys:     nil,
 				},
-				User: &diy.User{
+				User: &saaswhip.User{
 					ID:        row.CreateUserID.UUID,
 					FirstName: row.CreateUserFirstName.String,
 					LastName:  row.CreateUserLastName.String,
 				},
 				Moment: row.CreateTimestamp,
 			},
-			Update: diy.Audit{
-				App: &diy.App{
+			Update: saaswhip.Audit{
+				App: &saaswhip.App{
 					ID:          row.UpdateAppID,
 					ExternalID:  secure.MustParseIdentifier(row.UpdateAppExtlID),
-					Org:         &diy.Org{ID: row.UpdateAppOrgID},
+					Org:         &saaswhip.Org{ID: row.UpdateAppOrgID},
 					Name:        row.UpdateAppName,
 					Description: row.UpdateAppDescription,
 					APIKeys:     nil,
 				},
-				User: &diy.User{
+				User: &saaswhip.User{
 					ID:        row.UpdateUserID.UUID,
 					FirstName: row.UpdateUserFirstName.String,
 					LastName:  row.UpdateUserLastName.String,
@@ -447,21 +447,21 @@ func (s *AppService) FindAll(ctx context.Context) (sar []*diy.AppResponse, err e
 	return sar, nil
 }
 
-func findAppByID(ctx context.Context, dbtx datastore.DBTX, id uuid.UUID) (diy.App, error) {
+func findAppByID(ctx context.Context, dbtx datastore.DBTX, id uuid.UUID) (saaswhip.App, error) {
 	row, err := datastore.New(dbtx).FindAppByID(ctx, id)
 	if err != nil {
-		return diy.App{}, errs.E(errs.Database, err)
+		return saaswhip.App{}, errs.E(errs.Database, err)
 	}
 
-	a := diy.App{
+	a := saaswhip.App{
 		ID:         row.AppID,
 		ExternalID: secure.MustParseIdentifier(row.AppExtlID),
-		Org: &diy.Org{
+		Org: &saaswhip.Org{
 			ID:          row.OrgID,
 			ExternalID:  secure.MustParseIdentifier(row.OrgExtlID),
 			Name:        row.OrgName,
 			Description: row.OrgDescription,
-			Kind: &diy.OrgKind{
+			Kind: &saaswhip.OrgKind{
 				ID:          row.OrgKindID,
 				ExternalID:  row.OrgKindExtlID,
 				Description: row.OrgKindDesc,
@@ -475,21 +475,21 @@ func findAppByID(ctx context.Context, dbtx datastore.DBTX, id uuid.UUID) (diy.Ap
 	return a, nil
 }
 
-func findAppByExternalID(ctx context.Context, dbtx datastore.DBTX, extlID string) (diy.App, error) {
+func findAppByExternalID(ctx context.Context, dbtx datastore.DBTX, extlID string) (saaswhip.App, error) {
 	row, err := datastore.New(dbtx).FindAppByExternalID(ctx, extlID)
 	if err != nil {
-		return diy.App{}, errs.E(errs.Database, err)
+		return saaswhip.App{}, errs.E(errs.Database, err)
 	}
 
-	a := diy.App{
+	a := saaswhip.App{
 		ID:         row.AppID,
 		ExternalID: secure.MustParseIdentifier(row.AppExtlID),
-		Org: &diy.Org{
+		Org: &saaswhip.Org{
 			ID:          row.OrgID,
 			ExternalID:  secure.MustParseIdentifier(row.OrgExtlID),
 			Name:        row.OrgName,
 			Description: row.OrgDescription,
-			Kind: &diy.OrgKind{
+			Kind: &saaswhip.OrgKind{
 				ID:          row.OrgKindID,
 				ExternalID:  row.OrgKindExtlID,
 				Description: row.OrgKindDesc,
@@ -504,7 +504,7 @@ func findAppByExternalID(ctx context.Context, dbtx datastore.DBTX, extlID string
 }
 
 // findAppByExternalIDWithAudit retrieves App data from the datastore given a unique external ID.
-// This data is then hydrated into the diy.App struct along with the simple audit struct
+// This data is then hydrated into the saaswhip.App struct along with the simple audit struct
 func findAppByExternalIDWithAudit(ctx context.Context, dbtx datastore.DBTX, extlID string) (appAudit, error) {
 	var (
 		row datastore.FindAppByExternalIDWithAuditRow
@@ -516,15 +516,15 @@ func findAppByExternalIDWithAudit(ctx context.Context, dbtx datastore.DBTX, extl
 		return appAudit{}, errs.E(errs.Database, err)
 	}
 
-	a := &diy.App{
+	a := &saaswhip.App{
 		ID:         row.AppID,
 		ExternalID: secure.MustParseIdentifier(row.AppExtlID),
-		Org: &diy.Org{
+		Org: &saaswhip.Org{
 			ID:          row.OrgID,
 			ExternalID:  secure.MustParseIdentifier(row.OrgExtlID),
 			Name:        row.OrgName,
 			Description: row.OrgDescription,
-			Kind: &diy.OrgKind{
+			Kind: &saaswhip.OrgKind{
 				ID:          row.OrgKindID,
 				ExternalID:  row.OrgKindExtlID,
 				Description: row.OrgKindDesc,
@@ -535,33 +535,33 @@ func findAppByExternalIDWithAudit(ctx context.Context, dbtx datastore.DBTX, extl
 		APIKeys:     nil,
 	}
 
-	sa := &diy.SimpleAudit{
-		Create: diy.Audit{
-			App: &diy.App{
+	sa := &saaswhip.SimpleAudit{
+		Create: saaswhip.Audit{
+			App: &saaswhip.App{
 				ID:          row.CreateAppID,
 				ExternalID:  secure.MustParseIdentifier(row.CreateAppExtlID),
-				Org:         &diy.Org{ID: row.CreateAppOrgID},
+				Org:         &saaswhip.Org{ID: row.CreateAppOrgID},
 				Name:        row.CreateAppName,
 				Description: row.CreateAppDescription,
 				APIKeys:     nil,
 			},
-			User: &diy.User{
+			User: &saaswhip.User{
 				ID:        row.CreateUserID.UUID,
 				FirstName: row.CreateUserFirstName.String,
 				LastName:  row.CreateUserLastName.String,
 			},
 			Moment: row.CreateTimestamp,
 		},
-		Update: diy.Audit{
-			App: &diy.App{
+		Update: saaswhip.Audit{
+			App: &saaswhip.App{
 				ID:          row.UpdateAppID,
 				ExternalID:  secure.MustParseIdentifier(row.UpdateAppExtlID),
-				Org:         &diy.Org{ID: row.UpdateAppOrgID},
+				Org:         &saaswhip.Org{ID: row.UpdateAppOrgID},
 				Name:        row.UpdateAppName,
 				Description: row.UpdateAppDescription,
 				APIKeys:     nil,
 			},
-			User: &diy.User{
+			User: &saaswhip.User{
 				ID:        row.UpdateUserID.UUID,
 				FirstName: row.UpdateUserFirstName.String,
 				LastName:  row.UpdateUserLastName.String,
@@ -573,8 +573,8 @@ func findAppByExternalIDWithAudit(ctx context.Context, dbtx datastore.DBTX, extl
 	return appAudit{App: a, SimpleAudit: sa}, nil
 }
 
-func findAppByProviderClientID(ctx context.Context, tx pgx.Tx, id string) (*diy.App, error) {
-	row, err := datastore.New(tx).FindAppByProviderClientID(ctx, diy.NewNullString(id))
+func findAppByProviderClientID(ctx context.Context, tx pgx.Tx, id string) (*saaswhip.App, error) {
+	row, err := datastore.New(tx).FindAppByProviderClientID(ctx, saaswhip.NewNullString(id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errs.E(errs.NotExist, fmt.Sprintf("no app registered for provider client ID: %s", id))
@@ -583,15 +583,15 @@ func findAppByProviderClientID(ctx context.Context, tx pgx.Tx, id string) (*diy.
 		}
 	}
 
-	a := diy.App{
+	a := saaswhip.App{
 		ID:         row.AppID,
 		ExternalID: secure.MustParseIdentifier(row.AppExtlID),
-		Org: &diy.Org{
+		Org: &saaswhip.Org{
 			ID:          row.OrgID,
 			ExternalID:  secure.MustParseIdentifier(row.OrgExtlID),
 			Name:        row.OrgName,
 			Description: row.OrgDescription,
-			Kind: &diy.OrgKind{
+			Kind: &saaswhip.OrgKind{
 				ID:          row.OrgKindID,
 				ExternalID:  row.OrgKindExtlID,
 				Description: row.OrgKindDesc,
@@ -606,7 +606,7 @@ func findAppByProviderClientID(ctx context.Context, tx pgx.Tx, id string) (*diy.
 }
 
 // FindAppByName finds an App in the database given an org and app name.
-func FindAppByName(ctx context.Context, tx datastore.DBTX, o *diy.Org, name string) (*diy.App, error) {
+func FindAppByName(ctx context.Context, tx datastore.DBTX, o *saaswhip.Org, name string) (*saaswhip.App, error) {
 	findAppByNameParams := datastore.FindAppByNameParams{
 		OrgID:   o.ID,
 		AppName: name,
@@ -617,7 +617,7 @@ func FindAppByName(ctx context.Context, tx datastore.DBTX, o *diy.Org, name stri
 		return nil, errs.E(errs.Database, err)
 	}
 
-	a := &diy.App{
+	a := &saaswhip.App{
 		ID:          dbAppRow.AppID,
 		ExternalID:  secure.MustParseIdentifier(dbAppRow.AppExtlID),
 		Org:         o,

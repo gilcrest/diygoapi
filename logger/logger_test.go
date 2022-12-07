@@ -9,7 +9,7 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"github.com/gilcrest/diy-go-api/errs"
+	"github.com/gilcrest/saaswhip/errs"
 )
 
 func TestGCPSeverityHook_Run(t *testing.T) {

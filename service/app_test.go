@@ -10,11 +10,11 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/jackc/pgx/v4"
 
-	"github.com/gilcrest/diy-go-api"
-	"github.com/gilcrest/diy-go-api/secure"
-	"github.com/gilcrest/diy-go-api/service"
-	"github.com/gilcrest/diy-go-api/sqldb/datastore"
-	"github.com/gilcrest/diy-go-api/sqldb/sqldbtest"
+	"github.com/gilcrest/saaswhip"
+	"github.com/gilcrest/saaswhip/secure"
+	"github.com/gilcrest/saaswhip/service"
+	"github.com/gilcrest/saaswhip/sqldb/datastore"
+	"github.com/gilcrest/saaswhip/sqldb/sqldbtest"
 )
 
 const (
@@ -60,16 +60,16 @@ func TestAppService(t *testing.T) {
 			APIKeyGenerator: secure.RandomGenerator{},
 			EncryptionKey:   ek,
 		}
-		r := diy.CreateAppRequest{
+		r := saaswhip.CreateAppRequest{
 			Name:        testAppServiceAppName,
 			Description: testAppServiceAppDescription,
 		}
 
 		adt := findTestAudit(ctx, c, tx)
 
-		var got *diy.AppResponse
+		var got *saaswhip.AppResponse
 		got, err = s.Create(context.Background(), &r, adt)
-		want := &diy.AppResponse{
+		want := &saaswhip.AppResponse{
 			Name:                testAppServiceAppName,
 			Description:         testAppServiceAppDescription,
 			CreateAppExtlID:     adt.App.ExternalID.String(),
@@ -81,7 +81,7 @@ func TestAppService(t *testing.T) {
 		}
 		ignoreFields := []string{"ExternalID", "CreateDateTime", "UpdateDateTime", "APIKeys"}
 		c.Assert(err, qt.IsNil)
-		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(diy.AppResponse{}, ignoreFields...)), want)
+		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(saaswhip.AppResponse{}, ignoreFields...)), want)
 	})
 	t.Run("update", func(t *testing.T) {
 		c := qt.New(t)
@@ -116,15 +116,15 @@ func TestAppService(t *testing.T) {
 		s := service.AppService{
 			Datastorer: db,
 		}
-		r := diy.UpdateAppRequest{
+		r := saaswhip.UpdateAppRequest{
 			ExternalID:  testAppRow.AppExtlID,
 			Name:        testAppServiceUpdatedAppName,
 			Description: testAppServiceUpdatedAppDescription,
 		}
 
-		var got *diy.AppResponse
+		var got *saaswhip.AppResponse
 		got, err = s.Update(context.Background(), &r, adt)
-		want := &diy.AppResponse{
+		want := &saaswhip.AppResponse{
 			Name:                testAppServiceUpdatedAppName,
 			Description:         testAppServiceUpdatedAppDescription,
 			CreateAppExtlID:     adt.App.ExternalID.String(),
@@ -136,7 +136,7 @@ func TestAppService(t *testing.T) {
 		}
 		ignoreFields := []string{"ExternalID", "CreateDateTime", "UpdateDateTime", "APIKeys"}
 		c.Assert(err, qt.IsNil)
-		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(diy.AppResponse{}, ignoreFields...)), want)
+		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(saaswhip.AppResponse{}, ignoreFields...)), want)
 	})
 	t.Run("findByExtlID", func(t *testing.T) {
 		c := qt.New(t)
@@ -169,9 +169,9 @@ func TestAppService(t *testing.T) {
 			Datastorer: db,
 		}
 
-		var got *diy.AppResponse
+		var got *saaswhip.AppResponse
 		got, err = s.FindByExternalID(context.Background(), testAppRow.AppExtlID)
-		want := &diy.AppResponse{
+		want := &saaswhip.AppResponse{
 			ExternalID:          got.ExternalID,
 			Name:                testAppServiceUpdatedAppName,
 			Description:         testAppServiceUpdatedAppDescription,
@@ -183,7 +183,7 @@ func TestAppService(t *testing.T) {
 			UpdateUserLastName:  adt.User.LastName,
 		}
 		c.Assert(err, qt.IsNil)
-		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(diy.AppResponse{}, "CreateDateTime", "UpdateDateTime")), want)
+		c.Assert(got, qt.CmpEquals(cmpopts.IgnoreFields(saaswhip.AppResponse{}, "CreateDateTime", "UpdateDateTime")), want)
 	})
 	t.Run("findAll", func(t *testing.T) {
 		c := qt.New(t)
@@ -198,7 +198,7 @@ func TestAppService(t *testing.T) {
 		}
 
 		var (
-			got []*diy.AppResponse
+			got []*saaswhip.AppResponse
 			err error
 		)
 		got, err = s.FindAll(ctx)
@@ -240,9 +240,9 @@ func TestAppService(t *testing.T) {
 			Datastorer: db,
 		}
 
-		var got diy.DeleteResponse
+		var got saaswhip.DeleteResponse
 		got, err = s.Delete(context.Background(), testAppRow.AppExtlID)
-		want := diy.DeleteResponse{
+		want := saaswhip.DeleteResponse{
 			ExternalID: testAppRow.AppExtlID,
 			Deleted:    true,
 		}
@@ -251,24 +251,24 @@ func TestAppService(t *testing.T) {
 	})
 }
 
-func findTestAudit(ctx context.Context, c *qt.C, tx datastore.DBTX) diy.Audit {
+func findTestAudit(ctx context.Context, c *qt.C, tx datastore.DBTX) saaswhip.Audit {
 	c.Helper()
 
 	var err error
 
-	var testOrg *diy.Org
+	var testOrg *saaswhip.Org
 	testOrg, err = service.FindOrgByName(ctx, tx, service.TestOrgName)
 	if err != nil {
 		c.Fatalf("FindOrgByName() error = %v", err)
 	}
 
-	var testApp *diy.App
+	var testApp *saaswhip.App
 	testApp, err = service.FindAppByName(ctx, tx, testOrg, service.TestAppName)
 	if err != nil {
 		c.Fatalf("FindOrgByName() error = %v", err)
 	}
 
-	var testRole diy.Role
+	var testRole saaswhip.Role
 	testRole, err = service.FindRoleByCode(ctx, tx, service.TestRoleCode)
 	if err != nil {
 		c.Fatalf("FindRoleByCode() error = %v", err)
@@ -285,7 +285,7 @@ func findTestAudit(ctx context.Context, c *qt.C, tx datastore.DBTX) diy.Audit {
 		c.Fatalf("FindUsersByOrgRole() error = %v", err)
 	}
 
-	var u *diy.User
+	var u *saaswhip.User
 	for i, ur := range usersRole {
 		u, err = service.FindUserByID(ctx, tx, ur.UserID)
 		if err != nil {
@@ -298,7 +298,7 @@ func findTestAudit(ctx context.Context, c *qt.C, tx datastore.DBTX) diy.Audit {
 		}
 	}
 
-	adt := diy.Audit{
+	adt := saaswhip.Audit{
 		App:    testApp,
 		User:   u,
 		Moment: time.Now(),

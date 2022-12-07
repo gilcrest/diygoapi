@@ -1,4 +1,4 @@
-package diy
+package saaswhip
 
 import (
 	"context"
@@ -7,8 +7,8 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/text/language"
 
-	"github.com/gilcrest/diy-go-api/errs"
-	"github.com/gilcrest/diy-go-api/secure"
+	"github.com/gilcrest/saaswhip/errs"
+	"github.com/gilcrest/saaswhip/secure"
 )
 
 // RegisterUserServicer registers a new user

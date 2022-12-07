@@ -12,13 +12,13 @@ import (
 	"github.com/rs/zerolog"
 	"golang.org/x/text/language"
 
-	"github.com/gilcrest/diy-go-api"
-	"github.com/gilcrest/diy-go-api/errs"
-	"github.com/gilcrest/diy-go-api/gateway"
-	"github.com/gilcrest/diy-go-api/logger"
-	"github.com/gilcrest/diy-go-api/secure"
-	"github.com/gilcrest/diy-go-api/service"
-	"github.com/gilcrest/diy-go-api/sqldb"
+	"github.com/gilcrest/saaswhip"
+	"github.com/gilcrest/saaswhip/errs"
+	"github.com/gilcrest/saaswhip/gateway"
+	"github.com/gilcrest/saaswhip/logger"
+	"github.com/gilcrest/saaswhip/secure"
+	"github.com/gilcrest/saaswhip/service"
+	"github.com/gilcrest/saaswhip/sqldb"
 )
 
 // Genesis command runs the Genesis service and seeds the database.
@@ -111,13 +111,13 @@ func Genesis() (err error) {
 	if err != nil {
 		return errs.E(err)
 	}
-	f := diy.GenesisRequest{}
+	f := saaswhip.GenesisRequest{}
 	err = json.Unmarshal(b, &f)
 	if err != nil {
 		return errs.E(err)
 	}
 
-	var response diy.GenesisResponse
+	var response saaswhip.GenesisResponse
 	response, err = s.Arche(ctx, &f)
 	if err != nil {
 		var e *errs.Error

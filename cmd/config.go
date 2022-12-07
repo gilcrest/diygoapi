@@ -6,8 +6,8 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/gilcrest/diy-go-api/errs"
-	"github.com/gilcrest/diy-go-api/sqldb"
+	"github.com/gilcrest/saaswhip/errs"
+	"github.com/gilcrest/saaswhip/sqldb"
 )
 
 const (

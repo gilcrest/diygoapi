@@ -1,5 +1,5 @@
-// Package diy comprises application or business domain data types and functions.
-package diy
+// Package saaswhip comprises application or business domain data types and functions.
+package saaswhip
 
 import (
 	"context"

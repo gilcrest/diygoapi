@@ -11,10 +11,10 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/text/language"
 
-	"github.com/gilcrest/diy-go-api"
-	"github.com/gilcrest/diy-go-api/errs"
-	"github.com/gilcrest/diy-go-api/secure"
-	"github.com/gilcrest/diy-go-api/sqldb/datastore"
+	"github.com/gilcrest/saaswhip"
+	"github.com/gilcrest/saaswhip/errs"
+	"github.com/gilcrest/saaswhip/secure"
+	"github.com/gilcrest/saaswhip/sqldb/datastore"
 )
 
 const (
@@ -48,37 +48,37 @@ const (
 // principalSeed is used in the Genesis event to seed the principal
 // org, app, initial org Kinds, and Audit object from the event.
 type principalSeed struct {
-	PrincipalOrg    *diy.Org
-	PrincipalApp    *diy.App
-	StandardOrgKind *diy.OrgKind
-	TestOrgKind     *diy.OrgKind
-	Audit           diy.Audit
+	PrincipalOrg    *saaswhip.Org
+	PrincipalApp    *saaswhip.App
+	StandardOrgKind *saaswhip.OrgKind
+	TestOrgKind     *saaswhip.OrgKind
+	Audit           saaswhip.Audit
 }
 
 // testSeed is the Test Org, App and User
 type testSeed struct {
-	TestOrg  *diy.Org
-	TestApp  *diy.App
-	TestUser *diy.User
+	TestOrg  *saaswhip.Org
+	TestApp  *saaswhip.App
+	TestUser *saaswhip.User
 }
 
 // userInitiatedSeed is the User Initiated Org, App and User
 type userInitiatedSeed struct {
-	UserInitiatedOrg *diy.Org
-	UserInitiatedApp *diy.App
+	UserInitiatedOrg *saaswhip.Org
+	UserInitiatedApp *saaswhip.App
 }
 
 // GenesisService seeds the database. It should be run only once on initial database setup.
 type GenesisService struct {
-	Datastorer      diy.Datastorer
-	APIKeyGenerator diy.APIKeyGenerator
+	Datastorer      saaswhip.Datastorer
+	APIKeyGenerator saaswhip.APIKeyGenerator
 	EncryptionKey   *[32]byte
-	TokenExchanger  diy.TokenExchanger
+	TokenExchanger  saaswhip.TokenExchanger
 	LanguageMatcher language.Matcher
 }
 
 // Arche creates the initial seed data in the database.
-func (s *GenesisService) Arche(ctx context.Context, r *diy.GenesisRequest) (gr diy.GenesisResponse, err error) {
+func (s *GenesisService) Arche(ctx context.Context, r *saaswhip.GenesisRequest) (gr saaswhip.GenesisResponse, err error) {
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
@@ -154,16 +154,16 @@ func (s *GenesisService) Arche(ctx context.Context, r *diy.GenesisRequest) (gr d
 		return gr, err
 	}
 
-	pOrg := newOrgResponse(&orgAudit{Org: ps.PrincipalOrg, SimpleAudit: &diy.SimpleAudit{Create: ps.Audit, Update: ps.Audit}},
-		appAudit{App: ps.PrincipalApp, SimpleAudit: &diy.SimpleAudit{Create: ps.Audit, Update: ps.Audit}})
+	pOrg := newOrgResponse(&orgAudit{Org: ps.PrincipalOrg, SimpleAudit: &saaswhip.SimpleAudit{Create: ps.Audit, Update: ps.Audit}},
+		appAudit{App: ps.PrincipalApp, SimpleAudit: &saaswhip.SimpleAudit{Create: ps.Audit, Update: ps.Audit}})
 
-	tOrg := newOrgResponse(&orgAudit{Org: ts.TestOrg, SimpleAudit: &diy.SimpleAudit{Create: ps.Audit, Update: ps.Audit}},
-		appAudit{App: ts.TestApp, SimpleAudit: &diy.SimpleAudit{Create: ps.Audit, Update: ps.Audit}})
+	tOrg := newOrgResponse(&orgAudit{Org: ts.TestOrg, SimpleAudit: &saaswhip.SimpleAudit{Create: ps.Audit, Update: ps.Audit}},
+		appAudit{App: ts.TestApp, SimpleAudit: &saaswhip.SimpleAudit{Create: ps.Audit, Update: ps.Audit}})
 
-	uiOrg := newOrgResponse(&orgAudit{Org: uis.UserInitiatedOrg, SimpleAudit: &diy.SimpleAudit{Create: ps.Audit, Update: ps.Audit}},
-		appAudit{App: uis.UserInitiatedApp, SimpleAudit: &diy.SimpleAudit{Create: ps.Audit, Update: ps.Audit}})
+	uiOrg := newOrgResponse(&orgAudit{Org: uis.UserInitiatedOrg, SimpleAudit: &saaswhip.SimpleAudit{Create: ps.Audit, Update: ps.Audit}},
+		appAudit{App: uis.UserInitiatedApp, SimpleAudit: &saaswhip.SimpleAudit{Create: ps.Audit, Update: ps.Audit}})
 
-	response := diy.GenesisResponse{
+	response := saaswhip.GenesisResponse{
 		Principal:     pOrg,
 		Test:          tOrg,
 		UserInitiated: uiOrg,
@@ -172,30 +172,30 @@ func (s *GenesisService) Arche(ctx context.Context, r *diy.GenesisRequest) (gr d
 	return response, nil
 }
 
-func (s *GenesisService) seedPrincipal(ctx context.Context, tx pgx.Tx, r *diy.GenesisRequest) (principalSeed, error) {
+func (s *GenesisService) seedPrincipal(ctx context.Context, tx pgx.Tx, r *saaswhip.GenesisRequest) (principalSeed, error) {
 	var (
-		provider   diy.Provider
+		provider   saaswhip.Provider
 		token      *oauth2.Token
-		authParams *diy.AuthenticationParams
+		authParams *saaswhip.AuthenticationParams
 		realm      string
 		err        error
 	)
 
 	const seedPrincipalRealm string = "seedPrincipal"
 
-	authParams, _ = diy.AuthParamsFromContext(ctx)
+	authParams, _ = saaswhip.AuthParamsFromContext(ctx)
 	if authParams != nil {
 		provider = authParams.Provider
 		token = authParams.Token
 		realm = authParams.Realm
 	} else {
-		provider = diy.ParseProvider(r.User.Provider)
-		token = &oauth2.Token{AccessToken: r.User.Token, TokenType: diy.BearerTokenType}
+		provider = saaswhip.ParseProvider(r.User.Provider)
+		token = &oauth2.Token{AccessToken: r.User.Token, TokenType: saaswhip.BearerTokenType}
 		realm = seedPrincipalRealm
 	}
 
 	// create Org
-	o := &diy.Org{
+	o := &saaswhip.Org{
 		ID:          uuid.New(),
 		ExternalID:  secure.NewID(),
 		Name:        PrincipalOrgName,
@@ -211,7 +211,7 @@ func (s *GenesisService) seedPrincipal(ctx context.Context, tx pgx.Tx, r *diy.Ge
 		EncryptionKey:   s.EncryptionKey,
 	}
 
-	var a *diy.App
+	var a *saaswhip.App
 	a, err = newApp(nap)
 	if err != nil {
 		return principalSeed{}, err
@@ -220,7 +220,7 @@ func (s *GenesisService) seedPrincipal(ctx context.Context, tx pgx.Tx, r *diy.Ge
 	// initialize "The Creator" user from request data
 	// auth could not be found by access token in the db
 	// get ProviderInfo from provider API
-	var providerInfo *diy.ProviderInfo
+	var providerInfo *saaswhip.ProviderInfo
 	providerInfo, err = s.TokenExchanger.Exchange(ctx, realm, provider, token)
 	if err != nil {
 		return principalSeed{}, err
@@ -233,21 +233,21 @@ func (s *GenesisService) seedPrincipal(ctx context.Context, tx pgx.Tx, r *diy.Ge
 		return principalSeed{}, err
 	}
 
-	gPerson := diy.Person{
+	gPerson := saaswhip.Person{
 		ID:         uuid.New(),
 		ExternalID: secure.NewID(),
-		Users:      []*diy.User{gUser},
+		Users:      []*saaswhip.User{gUser},
 	}
 
-	adt := diy.Audit{
+	adt := saaswhip.Audit{
 		App:    a,
 		User:   gUser,
 		Moment: time.Now(),
 	}
 
 	cg := datastore.CreateAuthProviderParams{
-		AuthProviderID:   int64(diy.Google),
-		AuthProviderCd:   diy.Google.String(),
+		AuthProviderID:   int64(saaswhip.Google),
+		AuthProviderCd:   saaswhip.Google.String(),
 		AuthProviderDesc: "Google Oauth2",
 		CreateAppID:      adt.App.ID,
 		CreateUserID:     adt.User.NullUUID(),
@@ -279,7 +279,7 @@ func (s *GenesisService) seedPrincipal(ctx context.Context, tx pgx.Tx, r *diy.Ge
 	}
 
 	// create Auth for "The Creator"
-	auth := diy.Auth{
+	auth := saaswhip.Auth{
 		ID:               uuid.New(),
 		User:             gUser,
 		Provider:         providerInfo.Provider,
@@ -299,7 +299,7 @@ func (s *GenesisService) seedPrincipal(ctx context.Context, tx pgx.Tx, r *diy.Ge
 	if err != nil {
 		return principalSeed{}, errs.E(errs.Database, err)
 	}
-	o.Kind = &diy.OrgKind{
+	o.Kind = &saaswhip.OrgKind{
 		ID:          principalKindParams.OrgKindID,
 		ExternalID:  principalKindParams.OrgKindExtlID,
 		Description: principalKindParams.OrgKindDesc,
@@ -311,7 +311,7 @@ func (s *GenesisService) seedPrincipal(ctx context.Context, tx pgx.Tx, r *diy.Ge
 	if err != nil {
 		return principalSeed{}, errs.E(errs.Database, err)
 	}
-	tk := &diy.OrgKind{
+	tk := &saaswhip.OrgKind{
 		ID:          testKindParams.OrgKindID,
 		ExternalID:  testKindParams.OrgKindExtlID,
 		Description: testKindParams.OrgKindDesc,
@@ -322,13 +322,13 @@ func (s *GenesisService) seedPrincipal(ctx context.Context, tx pgx.Tx, r *diy.Ge
 	if err != nil {
 		return principalSeed{}, errs.E(errs.Database, err)
 	}
-	sk := &diy.OrgKind{
+	sk := &saaswhip.OrgKind{
 		ID:          standardOrgParams.OrgKindID,
 		ExternalID:  standardOrgParams.OrgKindExtlID,
 		Description: standardOrgParams.OrgKindDesc,
 	}
 
-	sa := &diy.SimpleAudit{
+	sa := &saaswhip.SimpleAudit{
 		Create: adt,
 		Update: adt,
 	}
@@ -360,7 +360,7 @@ func (s *GenesisService) seedTest(ctx context.Context, tx pgx.Tx, ps principalSe
 	var err error
 
 	// initialize test user in Genesis org
-	testUser := &diy.User{
+	testUser := &saaswhip.User{
 		ID:         uuid.New(),
 		ExternalID: secure.NewID(),
 		FirstName:  testUserFirstName,
@@ -368,10 +368,10 @@ func (s *GenesisService) seedTest(ctx context.Context, tx pgx.Tx, ps principalSe
 	}
 
 	// make Test User a whole Person
-	testPerson := diy.Person{
+	testPerson := saaswhip.Person{
 		ID:         uuid.New(),
 		ExternalID: secure.NewID(),
-		Users:      []*diy.User{testUser},
+		Users:      []*saaswhip.User{testUser},
 	}
 
 	// write Test Person/User to the database
@@ -392,7 +392,7 @@ func (s *GenesisService) seedTest(ctx context.Context, tx pgx.Tx, ps principalSe
 	}
 
 	// create Org
-	o := &diy.Org{
+	o := &saaswhip.Org{
 		ID:          uuid.New(),
 		ExternalID:  secure.NewID(),
 		Name:        TestOrgName,
@@ -408,13 +408,13 @@ func (s *GenesisService) seedTest(ctx context.Context, tx pgx.Tx, ps principalSe
 		EncryptionKey:   s.EncryptionKey,
 	}
 
-	var a *diy.App
+	var a *saaswhip.App
 	a, err = newApp(nap)
 	if err != nil {
 		return testSeed{}, errs.E(errs.Internal, err)
 	}
 
-	sa := &diy.SimpleAudit{
+	sa := &saaswhip.SimpleAudit{
 		Create: ps.Audit,
 		Update: ps.Audit,
 	}
@@ -451,11 +451,11 @@ func (s *GenesisService) seedTest(ctx context.Context, tx pgx.Tx, ps principalSe
 	return seed, nil
 }
 
-func (s *GenesisService) seedUserInitiatedData(ctx context.Context, tx pgx.Tx, ps principalSeed, r *diy.GenesisRequest) (userInitiatedSeed, error) {
+func (s *GenesisService) seedUserInitiatedData(ctx context.Context, tx pgx.Tx, ps principalSeed, r *saaswhip.GenesisRequest) (userInitiatedSeed, error) {
 	var err error
 
 	// create Org
-	o := &diy.Org{
+	o := &saaswhip.Org{
 		ID:          uuid.New(),
 		ExternalID:  secure.NewID(),
 		Name:        r.UserInitiatedOrg.Name,
@@ -463,7 +463,7 @@ func (s *GenesisService) seedUserInitiatedData(ctx context.Context, tx pgx.Tx, p
 		Kind:        ps.StandardOrgKind,
 	}
 
-	provider := diy.ParseProvider(r.UserInitiatedOrg.CreateAppRequest.Oauth2Provider)
+	provider := saaswhip.ParseProvider(r.UserInitiatedOrg.CreateAppRequest.Oauth2Provider)
 
 	nap := newAppParams{
 		Name:             r.UserInitiatedOrg.CreateAppRequest.Name,
@@ -475,13 +475,13 @@ func (s *GenesisService) seedUserInitiatedData(ctx context.Context, tx pgx.Tx, p
 		ProviderClientID: r.UserInitiatedOrg.CreateAppRequest.Oauth2ProviderClientID,
 	}
 
-	var a *diy.App
+	var a *saaswhip.App
 	a, err = newApp(nap)
 	if err != nil {
 		return userInitiatedSeed{}, errs.E(errs.Internal, err)
 	}
 
-	sa := &diy.SimpleAudit{
+	sa := &saaswhip.SimpleAudit{
 		Create: ps.Audit,
 		Update: ps.Audit,
 	}
@@ -552,21 +552,21 @@ func genesisHasOccurred(ctx context.Context, dbtx datastore.DBTX) (err error) {
 
 // ReadConfig reads the generated config file from Genesis
 // and returns it in the response body
-func (s *GenesisService) ReadConfig() (gr diy.GenesisResponse, err error) {
+func (s *GenesisService) ReadConfig() (gr saaswhip.GenesisResponse, err error) {
 	var b []byte
 	b, err = os.ReadFile(LocalJSONGenesisResponseFile)
 	if err != nil {
-		return diy.GenesisResponse{}, errs.E(err)
+		return saaswhip.GenesisResponse{}, errs.E(err)
 	}
 	err = json.Unmarshal(b, &gr)
 	if err != nil {
-		return diy.GenesisResponse{}, errs.E(err)
+		return saaswhip.GenesisResponse{}, errs.E(err)
 	}
 
 	return gr, nil
 }
 
-func seedPermissions(ctx context.Context, tx pgx.Tx, r *diy.GenesisRequest, adt diy.Audit) (err error) {
+func seedPermissions(ctx context.Context, tx pgx.Tx, r *saaswhip.GenesisRequest, adt saaswhip.Audit) (err error) {
 	for _, p := range r.CreatePermissionRequests {
 		_, err = createPermissionTx(ctx, tx, &p, adt)
 		if err != nil {
@@ -580,22 +580,22 @@ func seedPermissions(ctx context.Context, tx pgx.Tx, r *diy.GenesisRequest, adt 
 // roles created as part of Genesis event
 type genesisRoles struct {
 	// RequestRoles are roles created from the user request input
-	RequestRoles []diy.Role
+	RequestRoles []saaswhip.Role
 	// TestRole is the role created for designating test users
-	TestRole diy.Role
+	TestRole saaswhip.Role
 }
 
-func seedRoles(ctx context.Context, tx pgx.Tx, r *diy.GenesisRequest, adt diy.Audit) (genesisRoles, error) {
+func seedRoles(ctx context.Context, tx pgx.Tx, r *saaswhip.GenesisRequest, adt saaswhip.Audit) (genesisRoles, error) {
 	var (
-		requestRoles    []diy.Role
-		rolePermissions []*diy.Permission
+		requestRoles    []saaswhip.Role
+		rolePermissions []*saaswhip.Permission
 		err             error
 	)
 
 	// seed roles from Genesis request (slice of CreateRoleRequest contained within)
 	for _, crr := range r.CreateRoleRequests {
 
-		role := diy.Role{
+		role := saaswhip.Role{
 			ID:          uuid.New(),
 			ExternalID:  secure.NewID(),
 			Code:        crr.Code,
@@ -620,7 +620,7 @@ func seedRoles(ctx context.Context, tx pgx.Tx, r *diy.GenesisRequest, adt diy.Au
 
 	// seed testAdmin role
 	// all permissions are given to this role as it's for testing only
-	testRole := diy.Role{
+	testRole := saaswhip.Role{
 		ID:          uuid.New(),
 		ExternalID:  secure.NewID(),
 		Code:        TestRoleCode,

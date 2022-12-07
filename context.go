@@ -1,11 +1,11 @@
-package diy
+package saaswhip
 
 import (
 	"context"
 	"net/http"
 	"time"
 
-	"github.com/gilcrest/diy-go-api/errs"
+	"github.com/gilcrest/saaswhip/errs"
 )
 
 type contextKey string

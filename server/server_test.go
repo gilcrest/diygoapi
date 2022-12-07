@@ -9,7 +9,7 @@ import (
 
 	qt "github.com/frankban/quicktest"
 
-	"github.com/gilcrest/diy-go-api/errs"
+	"github.com/gilcrest/saaswhip/errs"
 )
 
 func TestDecoderErr(t *testing.T) {

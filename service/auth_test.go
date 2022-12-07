@@ -11,9 +11,9 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
 
-	"github.com/gilcrest/diy-go-api/logger"
-	"github.com/gilcrest/diy-go-api/service"
-	"github.com/gilcrest/diy-go-api/sqldb/sqldbtest"
+	"github.com/gilcrest/saaswhip/logger"
+	"github.com/gilcrest/saaswhip/service"
+	"github.com/gilcrest/saaswhip/sqldb/sqldbtest"
 )
 
 func TestDBAuthorizer_Authorize(t *testing.T) {

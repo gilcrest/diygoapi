@@ -1,4 +1,4 @@
-package diy
+package saaswhip
 
 import (
 	"testing"
@@ -8,8 +8,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 
-	"github.com/gilcrest/diy-go-api/errs"
-	"github.com/gilcrest/diy-go-api/secure"
+	"github.com/gilcrest/saaswhip/errs"
+	"github.com/gilcrest/saaswhip/secure"
 )
 
 func TestUser_Validate(t *testing.T) {

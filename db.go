@@ -1,4 +1,4 @@
-package diy
+package saaswhip
 
 import (
 	"context"
