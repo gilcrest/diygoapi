@@ -12,6 +12,17 @@ import (
 	"github.com/gilcrest/diy-go-api/secure"
 )
 
+// AppServicer manages the retrieval and manipulation of an App
+type AppServicer interface {
+	Create(ctx context.Context, r *CreateAppRequest, adt Audit) (*AppResponse, error)
+	Update(ctx context.Context, r *UpdateAppRequest, adt Audit) (*AppResponse, error)
+}
+
+// APIKeyGenerator creates a random, 128 API key string
+type APIKeyGenerator interface {
+	RandomString(n int) (string, error)
+}
+
 // App is an application that interacts with the system
 type App struct {
 	ID               uuid.UUID
@@ -110,17 +121,6 @@ type AppResponse struct {
 type APIKeyResponse struct {
 	Key              string `json:"key"`
 	DeactivationDate string `json:"deactivation_date"`
-}
-
-// AppServicer manages the retrieval and manipulation of an App
-type AppServicer interface {
-	Create(ctx context.Context, r *CreateAppRequest, adt Audit) (*AppResponse, error)
-	Update(ctx context.Context, r *UpdateAppRequest, adt Audit) (*AppResponse, error)
-}
-
-// APIKeyGenerator creates a random, 128 API key string
-type APIKeyGenerator interface {
-	RandomString(n int) (string, error)
 }
 
 // APIKey is an API key for interacting with the system. The API key string

@@ -2,17 +2,74 @@ package diy
 
 import (
 	"context"
+	"github.com/rs/zerolog"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/rs/zerolog"
 	"golang.org/x/oauth2"
 
 	"github.com/gilcrest/diy-go-api/errs"
 	"github.com/gilcrest/diy-go-api/secure"
 )
+
+// PermissionServicer allows for creating, updating, reading and deleting a Permission
+type PermissionServicer interface {
+	Create(ctx context.Context, r *CreatePermissionRequest, adt Audit) (*PermissionResponse, error)
+	FindAll(ctx context.Context) ([]*PermissionResponse, error)
+	Delete(ctx context.Context, extlID string) (dr DeleteResponse, err error)
+}
+
+// RoleServicer allows for creating, updating, reading and deleting a Role
+// as well as assigning permissions and users to it.
+type RoleServicer interface {
+	Create(ctx context.Context, r *CreateRoleRequest, adt Audit) (Role, error)
+}
+
+// AuthenticationServicer represents a service for managing authentication.
+//
+// For this project, Oauth2 is used for user authentication. It is assumed
+// that the actual user interaction is being orchestrated externally and
+// the server endpoints are being called after an access token has already
+// been retrieved from an authentication provider.
+//
+// In addition, this project provides for a custom application authentication.
+// If an endpoint request is sent using application credentials, then those
+// will be used. If none are sent, then the client id from the access token
+// must be registered in the system and that is used as the calling application.
+// The latter is likely the more common use case.
+type AuthenticationServicer interface {
+
+	// SelfRegister is used for first-time registration of a Person/User
+	// in the system (associated with an Organization). This is "self
+	// registration" as opposed to one person registering another person.
+	SelfRegister(ctx context.Context, params AuthenticationParams) (auth Auth, err error)
+
+	// FindAuth looks up a User given a Provider and Access Token.
+	// If a User is not found, an error is returned.
+	FindAuth(ctx context.Context, params AuthenticationParams) (Auth, error)
+
+	// FindAppByProviderClientID Finds an App given a Provider Client ID as part
+	// of an Auth object.
+	FindAppByProviderClientID(ctx context.Context, realm string, auth Auth) (a *App, err error)
+
+	// FindAppByAPIKey finds an app given its External ID and determines
+	// if the given API key is a valid key for it. It is used as part of
+	// app authentication.
+	FindAppByAPIKey(ctx context.Context, realm, appExtlID, key string) (*App, error)
+}
+
+// AuthorizationServicer represents a service for managing authorization.
+type AuthorizationServicer interface {
+	Authorize(r *http.Request, lgr zerolog.Logger, adt Audit) error
+}
+
+// TokenExchanger exchanges an oauth2.Token for a ProviderUserInfo
+// struct populated with information retrieved from an authentication provider.
+type TokenExchanger interface {
+	Exchange(ctx context.Context, realm string, provider Provider, token *oauth2.Token) (*ProviderInfo, error)
+}
 
 // BearerTokenType is used in authorization to access a resource
 const BearerTokenType string = "Bearer"
@@ -151,17 +208,17 @@ type Auth struct {
 // Permission stores an approval of a mode of access to a resource.
 type Permission struct {
 	// ID is the unique ID for the Permission.
-	ID uuid.UUID `json:"-"`
+	ID uuid.UUID
 	// ExternalID is the unique External ID to be given to outside callers.
-	ExternalID secure.Identifier `json:"external_id"`
+	ExternalID secure.Identifier
 	// Resource is a human-readable string which represents a resource (e.g. an HTTP route or document, etc.).
-	Resource string `json:"resource"`
+	Resource string
 	// Operation represents the action taken on the resource (e.g. POST, GET, edit, etc.)
-	Operation string `json:"operation"`
+	Operation string
 	// Description is what the permission is granting, e.g. "grants ability to edit a billing document".
-	Description string `json:"description"`
+	Description string
 	// Active is a boolean denoting whether the permission is active (true) or not (false).
-	Active bool `json:"active"`
+	Active bool
 }
 
 // Validate determines if the Permission is valid
@@ -179,18 +236,54 @@ func (p Permission) Validate() error {
 	return nil
 }
 
+// CreatePermissionRequest is the request struct for creating a permission
+type CreatePermissionRequest struct {
+	// A human-readable string which represents a resource (e.g. an HTTP route or document, etc.).
+	Resource string `json:"resource"`
+	// A string representing the action taken on the resource (e.g. POST, GET, edit, etc.)
+	Operation string `json:"operation"`
+	// A description of what the permission is granting, e.g. "grants ability to edit a billing document".
+	Description string `json:"description"`
+	// A boolean denoting whether the permission is active (true) or not (false).
+	Active bool `json:"active"`
+}
+
+// FindPermissionRequest is the response struct for finding a permission
+type FindPermissionRequest struct {
+	// Unique External ID to be given to outside callers.
+	ExternalID string `json:"external_id"`
+	// A human-readable string which represents a resource (e.g. an HTTP route or document, etc.).
+	Resource string `json:"resource"`
+	// A string representing the action taken on the resource (e.g. POST, GET, edit, etc.)
+	Operation string `json:"operation"`
+}
+
+// PermissionResponse is the response struct for a permission
+type PermissionResponse struct {
+	// Unique External ID to be given to outside callers.
+	ExternalID string `json:"external_id"`
+	// A human-readable string which represents a resource (e.g. an HTTP route or document, etc.).
+	Resource string `json:"resource"`
+	// A string representing the action taken on the resource (e.g. POST, GET, edit, etc.)
+	Operation string `json:"operation"`
+	// A description of what the permission is granting, e.g. "grants ability to edit a billing document".
+	Description string `json:"description"`
+	// A boolean denoting whether the permission is active (true) or not (false).
+	Active bool `json:"active"`
+}
+
 // Role is a job function or title which defines an authority level.
 type Role struct {
 	// The unique ID for the Role.
-	ID uuid.UUID `json:"-"`
+	ID uuid.UUID
 	// Unique External ID to be given to outside callers.
-	ExternalID secure.Identifier `json:"external_id"`
+	ExternalID secure.Identifier
 	// A human-readable code which represents the role.
-	Code string `json:"role_cd"`
+	Code string
 	// A longer description of the role.
-	Description string `json:"role_description"`
+	Description string
 	// A boolean denoting whether the role is active (true) or not (false).
-	Active bool `json:"active"`
+	Active bool
 	// Permissions is the list of permissions allowed for the role.
 	Permissions []*Permission
 }
@@ -219,7 +312,21 @@ type CreateRoleRequest struct {
 	// A boolean denoting whether the role is active (true) or not (false).
 	Active bool `json:"active"`
 	// The list of permissions to be given to the role
-	Permissions []PermissionRequestResponse
+	Permissions []*FindPermissionRequest
+}
+
+// RoleResponse is the response struct for a Role.
+type RoleResponse struct {
+	// Unique External ID to be given to outside callers.
+	ExternalID secure.Identifier `json:"external_id"`
+	// A human-readable code which represents the role.
+	Code string `json:"role_cd"`
+	// A longer description of the role.
+	Description string `json:"role_description"`
+	// A boolean denoting whether the role is active (true) or not (false).
+	Active bool `json:"active"`
+	// Permissions is the list of permissions allowed for the role.
+	Permissions []*Permission
 }
 
 // AuthenticationParams is the parameters needed for authenticating a User.
@@ -230,75 +337,4 @@ type AuthenticationParams struct {
 	Provider Provider
 	// Token is the authentication token sent as part of Oauth2.
 	Token *oauth2.Token
-}
-
-// AuthenticationServicer represents a service for managing authentication.
-//
-// For this project, Oauth2 is used for user authentication. It is assumed
-// that the actual user interaction is being orchestrated externally and
-// the server endpoints are being called after an access token has already
-// been retrieved from an authentication provider.
-//
-// In addition, this project provides for a custom application authentication.
-// If an endpoint request is sent using application credentials, then those
-// will be used. If none are sent, then the client id from the access token
-// must be registered in the system and that is used as the calling application.
-// The latter is likely the more common use case.
-type AuthenticationServicer interface {
-
-	// SelfRegister is used for first-time registration of a Person/User
-	// in the system (associated with an Organization). This is "self
-	// registration" as opposed to one person registering another person.
-	SelfRegister(ctx context.Context, params AuthenticationParams) (auth Auth, err error)
-
-	// FindAuth looks up a User given a Provider and Access Token.
-	// If a User is not found, an error is returned.
-	FindAuth(ctx context.Context, params AuthenticationParams) (Auth, error)
-
-	// FindAppByProviderClientID Finds an App given a Provider Client ID as part
-	// of an Auth object.
-	FindAppByProviderClientID(ctx context.Context, realm string, auth Auth) (a *App, err error)
-
-	// FindAppByAPIKey finds an app given its External ID and determines
-	// if the given API key is a valid key for it. It is used as part of
-	// app authentication.
-	FindAppByAPIKey(ctx context.Context, realm, appExtlID, key string) (*App, error)
-}
-
-// AuthorizationServicer represents a service for managing authorization.
-type AuthorizationServicer interface {
-	Authorize(r *http.Request, lgr zerolog.Logger, adt Audit) error
-}
-
-// TokenExchanger exchanges an oauth2.Token for a ProviderUserInfo
-// struct populated with information retrieved from an authentication provider.
-type TokenExchanger interface {
-	Exchange(ctx context.Context, realm string, provider Provider, token *oauth2.Token) (*ProviderInfo, error)
-}
-
-// PermissionRequestResponse is the request/response struct for a permission
-type PermissionRequestResponse struct {
-	// Unique External ID to be given to outside callers.
-	ExternalID string `json:"external_id"`
-	// A human-readable string which represents a resource (e.g. an HTTP route or document, etc.).
-	Resource string `json:"resource"`
-	// A string representing the action taken on the resource (e.g. POST, GET, edit, etc.)
-	Operation string `json:"operation"`
-	// A description of what the permission is granting, e.g. "grants ability to edit a billing document".
-	Description string `json:"description"`
-	// A boolean denoting whether the permission is active (true) or not (false).
-	Active bool `json:"active"`
-}
-
-// PermissionServicer allows for creating, updating, reading and deleting a Permission
-type PermissionServicer interface {
-	Create(ctx context.Context, r *PermissionRequestResponse, adt Audit) (PermissionRequestResponse, error)
-	FindAll(ctx context.Context) ([]PermissionRequestResponse, error)
-	Delete(ctx context.Context, extlID string) (dr DeleteResponse, err error)
-}
-
-// RoleServicer allows for creating, updating, reading and deleting a Role
-// as well as assigning permissions and users to it.
-type RoleServicer interface {
-	Create(ctx context.Context, r *CreateRoleRequest, adt Audit) (Role, error)
 }

@@ -523,7 +523,7 @@ func (s *Server) handlePermissionCreate(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Declare rb as an instance of service.PermissionRequest
-	rb := new(diy.PermissionRequestResponse)
+	rb := new(diy.CreatePermissionRequest)
 
 	// Decode JSON HTTP request body into a json.Decoder type
 	// and unmarshal that into rb
@@ -537,7 +537,7 @@ func (s *Server) handlePermissionCreate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	var response diy.PermissionRequestResponse
+	var response *diy.PermissionResponse
 	response, err = s.PermissionServicer.Create(r.Context(), rb, adt)
 	if err != nil {
 		errs.HTTPErrorResponse(w, lgr, err)

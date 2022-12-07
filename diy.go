@@ -6,6 +6,21 @@ import (
 	"time"
 )
 
+// LoggerServicer reads and updates the logger state
+type LoggerServicer interface {
+	Read() *LoggerResponse
+	Update(r *LoggerRequest) (*LoggerResponse, error)
+}
+
+// GenesisServicer initializes the database with dependent data
+type GenesisServicer interface {
+	// Arche creates the initial seed data in the database.
+	Arche(ctx context.Context, r *GenesisRequest) (GenesisResponse, error)
+	// ReadConfig reads the local config file generated as part of Seed (when run locally).
+	// Is only a utility to help with local testing.
+	ReadConfig() (GenesisResponse, error)
+}
+
 // Audit represents the moment an App/User interacted with the system.
 type Audit struct {
 	App    *App
@@ -42,21 +57,6 @@ type LoggerResponse struct {
 	LogErrorStack      bool   `json:"log_error_stack"`
 }
 
-// LoggerServicer reads and updates the logger state
-type LoggerServicer interface {
-	Read() *LoggerResponse
-	Update(r *LoggerRequest) (*LoggerResponse, error)
-}
-
-// GenesisServicer initializes the database with dependent data
-type GenesisServicer interface {
-	// Arche creates the initial seed data in the database.
-	Arche(ctx context.Context, r *GenesisRequest) (GenesisResponse, error)
-	// ReadConfig reads the local config file generated as part of Seed (when run locally).
-	// Is only a utility to help with local testing.
-	ReadConfig() (GenesisResponse, error)
-}
-
 // GenesisRequest is the request struct for the genesis service
 type GenesisRequest struct {
 	User struct {
@@ -70,7 +70,7 @@ type GenesisRequest struct {
 	UserInitiatedOrg CreateOrgRequest `json:"org"`
 
 	// PermissionRequests: The list of permissions to be created as part of Genesis
-	PermissionRequests []PermissionRequestResponse `json:"permissions"`
+	CreatePermissionRequests []CreatePermissionRequest `json:"permissions"`
 
 	// CreateRoleRequests: The list of Roles to be created as part of Genesis
 	CreateRoleRequests []CreateRoleRequest `json:"roles"`

@@ -567,7 +567,7 @@ func (s *GenesisService) ReadConfig() (gr diy.GenesisResponse, err error) {
 }
 
 func seedPermissions(ctx context.Context, tx pgx.Tx, r *diy.GenesisRequest, adt diy.Audit) (err error) {
-	for _, p := range r.PermissionRequests {
+	for _, p := range r.CreatePermissionRequests {
 		_, err = createPermissionTx(ctx, tx, &p, adt)
 		if err != nil {
 			return err
@@ -604,7 +604,7 @@ func seedRoles(ctx context.Context, tx pgx.Tx, r *diy.GenesisRequest, adt diy.Au
 		}
 
 		// find and add corresponding Permissions to the role
-		rolePermissions, err = findPermissionsFromPermissionRequest(ctx, tx, crr.Permissions)
+		rolePermissions, err = findPermissions(ctx, tx, crr.Permissions)
 		if err != nil {
 			return genesisRoles{}, err
 		}
