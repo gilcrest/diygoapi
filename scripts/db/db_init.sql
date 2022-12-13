@@ -6,7 +6,7 @@ create user demo_user with createdb password 'REPLACE_ME';
 alter user demo_user with nosuperuser;
 
 -- create database for the environment (dga_local, dga_nonprod, dga_prod, etc.)
--- dga = diy-go-api :)
+-- dga = "DIY Go API" :)
 create database dga_local with owner demo_user;
 
 -- !!!!!! switch to newly created dga_local database !!!!!

@@ -9,7 +9,7 @@
             "logErrorStack": true
         },
         "database": {
-            "host": "/cloudsql/diy-go-api:us-central1:diy-go-api-db",
+            "host": "/cloudsql/diygoapi:us-central1:diygoapi-db",
             "port": 5432,
             "name": "dga_staging",
             "user": "demo_user",
@@ -21,13 +21,13 @@
             "projectID": "diy-nonprod",
             "artifactRegistry": {
                 "repoLocation": "us-central1",
-                "repoName": "diy-go-api-docker-repo",
+                "repoName": "diygoapi-docker-repo",
                 "imageID": "staging",
                 "tag": "latest"
             },
             "cloudSQL": {
-                "instanceName": "diy-go-api-db",
-                "instanceConnectionName": "diy-go-api:us-central1:diy-go-api-db"
+                "instanceName": "diygoapi-db",
+                "instanceConnectionName": "diygoapi:us-central1:diygoapi-db"
             },
             "cloudRun": {
                 "serviceName": "staging"

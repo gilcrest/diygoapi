@@ -1,20 +1,18 @@
-# saaswhip
+# DIY Go API
 
-Whip up your own SAAS!
+A RESTful API template (built with Go)
 
-SAASwhip is an API/database first starter project for building a SAAS platform.
+The goal of this project is to be an example of a relational database-backed REST HTTP Web Server that has characteristics needed to ensure success in a high volume environment. This project co-opts the DIY ethos of the Go community and does its best to "use the standard library" whenever possible, bringing in third-party libraries when not doing so would be unduly burdensome (structured logging, Oauth2, etc.).
 
-The backend is a relational database-backed REST HTTP Web Server that has characteristics needed to ensure success in a high volume environment. This project co-opts the DIY ethos of the Go community and does its best to "use the standard library" whenever possible, bringing in third-party libraries when not doing so would be unduly burdensome (structured logging, Oauth2, etc.).
+I struggled a lot with parsing the myriad different patterns people have for package layouts over the past few years and have tried to coalesce what I've learned from others into my own take on a package layout. Below, I hope to communicate how this structure works. If you have any questions, open an issue or send me a note - I'm happy to help! Also, if you disagree or have suggestions, please do the same, I really enjoy getting both positive and negative feedback.
 
-If you have any questions, open an issue or send me a note - I'm happy to help! Also, if you disagree or have suggestions, please do the same, I really enjoy getting both positive and negative feedback.
-
-Currently, the focus of this project is strictly on the backend, however, an admin UI and example client-facing UI are on the roadmap.
-
-[![Go Reference](https://pkg.go.dev/badge/github.com/gilcrest/saaswhip.svg)](https://pkg.go.dev/github.com/gilcrest/saaswhip) [![Go Report Card](https://goreportcard.com/badge/github.com/gilcrest/saaswhip)](https://goreportcard.com/report/github.com/gilcrest/saaswhip)
+[![Go Reference](https://pkg.go.dev/badge/github.com/gilcrest/diygoapi.svg)](https://pkg.go.dev/github.com/gilcrest/diygoapi) [![Go Report Card](https://goreportcard.com/badge/github.com/gilcrest/diygoapi)](https://goreportcard.com/report/github.com/gilcrest/diygoapi)
 
 ## API Walkthrough
 
-The following is an in-depth walkthrough of this project. This includes a demo API implementation with a "business" intent of supporting basic CRUD (**C**reate, **R**ead, **U**pdate, **D**elete) operations for a movie database. All paths to files or directories are from the project root.
+The following is an in-depth walkthrough of this project. This is a demo API, so the "business" intent of it is to support basic CRUD (**C**reate, **R**ead, **U**pdate, **D**elete) operations for a movie database. All paths to files or directories are from the project root.
+
+> IMPORTANT (12/13/2022): I just completed a significant refactor of this app. Most of the below still applies, but I need to take some time to update a few things.
 
 ## Minimum Requirements
 
@@ -35,15 +33,15 @@ The following are basic instructions for getting started. For detailed explanati
 Clone the code:
 
 ```shell
-$ git clone https://github.com/gilcrest/saaswhip.git
-Cloning into 'saaswhip'...
+$ git clone https://github.com/gilcrest/diygoapi.git
+Cloning into 'diygoapi'...
 ```
 
 or use the [Github CLI](https://cli.github.com/) (also written in Go!):
 
 ```shell
-$ gh repo clone gilcrest/saaswhip
-Cloning into 'saaswhip'...
+$ gh repo clone gilcrest/diygoapi
+Cloning into 'diygoapi'...
 ```
 
 ### Step 2 - Authentication and Authorization
@@ -67,7 +65,7 @@ Once a user has authenticated through this flow, all calls to services require t
 
 ### Step 3 - Prepare Environment (2 options)
 
-Several Mage programs in this project take an environment (env) parameter (e.g., `func DBUp(env string)`). These must have certain environment variables set. These environment variables can be set independently [option 1](#option-1---set-your-environment-independently) or based on a configuration file [option 2](#option-2---set-your-environment-through-a-config-file). Depending on which environment method you choose, the values to pass to the env parameter when running Mage programs in this project are as follows:
+All Mage programs in this project which take an environment (env) parameter (e.g., `func DBUp(env string)`), must have certain environment variables set. These environment variables can be set independently [option 1](#option-1---set-your-environment-independently) or based on a configuration file [option 2](#option-2---set-your-environment-through-a-config-file). Depending on which environment method you choose, the values to pass to the env parameter when running Mage programs in this project are as follows:
 
 | env string | File Path             | Description                                                                                                    |
 |------------|-----------------------|----------------------------------------------------------------------------------------------------------------|
@@ -161,7 +159,7 @@ config: database: password:   "REPLACE_ME"
 config: database: searchPath: "demo"
 ```
 
-> Security Disclaimer: Config files make local development easier, however, putting any credentials (encryption keys, username and password, etc.) in a config file is a bad idea from a security perspective. At a minimum, you should have the `config/` directory added to your `.gitignore` file so these configs are not checked in. As this is a template repo, I have checked this all in for example purposes only. The data there is bogus. In an upcoming release, I will integrate with a secrets management platform like [GCP Secret Manager](https://cloud.google.com/secret-manager) or [HashiCorp Vault](https://learn.hashicorp.com/tutorials/vault/getting-started-intro?in=vault/getting-started) [Issue 91](https://github.com/gilcrest/saaswhip/issues/91).
+> Security Disclaimer: Config files make local development easier, however, putting any credentials (encryption keys, username and password, etc.) in a config file is a bad idea from a security perspective. At a minimum, you should have the `config/` directory added to your `.gitignore` file so these configs are not checked in. As this is a template repo, I have checked this all in for example purposes only. The data there is bogus. In an upcoming release, I will integrate with a secrets management platform like [GCP Secret Manager](https://cloud.google.com/secret-manager) or [HashiCorp Vault](https://learn.hashicorp.com/tutorials/vault/getting-started-intro?in=vault/getting-started) [Issue 91](https://github.com/gilcrest/diygoapi/issues/91).
 
 After modifying the above file, run the following from project root:
 
@@ -401,37 +399,37 @@ The project tests require that Genesis has been run successfully. If all went we
 $ mage -v testall false local
 Running target: TestAll
 exec: go "test" "./..."
-?       github.com/gilcrest/saaswhip  [no test files]
-?       github.com/gilcrest/saaswhip/app      [no test files]
-?       github.com/gilcrest/saaswhip/audit    [no test files]
-ok      github.com/gilcrest/saaswhip/auth     0.331s
-ok      github.com/gilcrest/saaswhip/command  0.724s
-ok      github.com/gilcrest/saaswhip/datastore        0.682s
-?       github.com/gilcrest/saaswhip/datastore/appstore       [no test files]
-?       github.com/gilcrest/saaswhip/datastore/authstore      [no test files]
-?       github.com/gilcrest/saaswhip/datastore/datastoretest  [no test files]
-?       github.com/gilcrest/saaswhip/datastore/moviestore     [no test files]
-?       github.com/gilcrest/saaswhip/datastore/orgstore       [no test files]
-?       github.com/gilcrest/saaswhip/datastore/personstore    [no test files]
-?       github.com/gilcrest/saaswhip/datastore/pingstore      [no test files]
-ok      github.com/gilcrest/saaswhip/datastore/userstore      0.742s
-ok      github.com/gilcrest/saaswhip/errs     0.490s
-?       github.com/gilcrest/saaswhip/gateway  [no test files]
-?       github.com/gilcrest/saaswhip/gateway/authgateway      [no test files]
-ok      github.com/gilcrest/saaswhip/logger   0.284s
-?       github.com/gilcrest/saaswhip/magefiles        [no test files]
-ok      github.com/gilcrest/saaswhip/movie    0.571s
-?       github.com/gilcrest/saaswhip/org      [no test files]
-?       github.com/gilcrest/saaswhip/person   [no test files]
-ok      github.com/gilcrest/saaswhip/random   0.333s
-?       github.com/gilcrest/saaswhip/random/randomtest        [no test files]
-ok      github.com/gilcrest/saaswhip/secure   0.574s
-?       github.com/gilcrest/saaswhip/secure/random    [no test files]
-ok      github.com/gilcrest/saaswhip/server   0.328s
-?       github.com/gilcrest/saaswhip/server/driver    [no test files]
-ok      github.com/gilcrest/saaswhip/service  0.504s
-ok      github.com/gilcrest/saaswhip/user     0.323s
-?       github.com/gilcrest/saaswhip/user/usertest    [no test files]
+?       github.com/gilcrest/diygoapi  [no test files]
+?       github.com/gilcrest/diygoapi/app      [no test files]
+?       github.com/gilcrest/diygoapi/audit    [no test files]
+ok      github.com/gilcrest/diygoapi/auth     0.331s
+ok      github.com/gilcrest/diygoapi/command  0.724s
+ok      github.com/gilcrest/diygoapi/datastore        0.682s
+?       github.com/gilcrest/diygoapi/datastore/appstore       [no test files]
+?       github.com/gilcrest/diygoapi/datastore/authstore      [no test files]
+?       github.com/gilcrest/diygoapi/datastore/datastoretest  [no test files]
+?       github.com/gilcrest/diygoapi/datastore/moviestore     [no test files]
+?       github.com/gilcrest/diygoapi/datastore/orgstore       [no test files]
+?       github.com/gilcrest/diygoapi/datastore/personstore    [no test files]
+?       github.com/gilcrest/diygoapi/datastore/pingstore      [no test files]
+ok      github.com/gilcrest/diygoapi/datastore/userstore      0.742s
+ok      github.com/gilcrest/diygoapi/errs     0.490s
+?       github.com/gilcrest/diygoapi/gateway  [no test files]
+?       github.com/gilcrest/diygoapi/gateway/authgateway      [no test files]
+ok      github.com/gilcrest/diygoapi/logger   0.284s
+?       github.com/gilcrest/diygoapi/magefiles        [no test files]
+ok      github.com/gilcrest/diygoapi/movie    0.571s
+?       github.com/gilcrest/diygoapi/org      [no test files]
+?       github.com/gilcrest/diygoapi/person   [no test files]
+ok      github.com/gilcrest/diygoapi/random   0.333s
+?       github.com/gilcrest/diygoapi/random/randomtest        [no test files]
+ok      github.com/gilcrest/diygoapi/secure   0.574s
+?       github.com/gilcrest/diygoapi/secure/random    [no test files]
+ok      github.com/gilcrest/diygoapi/server   0.328s
+?       github.com/gilcrest/diygoapi/server/driver    [no test files]
+ok      github.com/gilcrest/diygoapi/service  0.504s
+ok      github.com/gilcrest/diygoapi/user     0.323s
+?       github.com/gilcrest/diygoapi/user/usertest    [no test files]
 ```
 
 > Note: There are a number of packages without test files, but there is extensive testing as part of this project. More can and will be done, of course...
@@ -615,7 +613,7 @@ $ curl --location --request DELETE 'http://127.0.0.1:8080/api/v1/movies/IUAtsOQu
 
 The above image is a high-level view of an example request that is processed by the server (creating a movie). To summarize, after receiving an http request, the request path, method, etc. is matched to a registered route in the [gorilla mux](https://github.com/gorilla/mux) router (router initialization is part of server startup in the `command` package) as part of the routes.go file in the server package. The request is then sent through a sequence of middleware handlers for setting up request logging, response headers, authentication and authorization. Finally, the request is routed through a bespoke app handler, in this case `handleMovieCreate`.
 
-> `saaswhip` package layout is based on several projects, but the primary source of inspiration is the [WTF Dial app repo](https://github.com/benbjohnson/wtf) and [accompanying blog](https://www.gobeyond.dev/) from [Ben Johnson](https://github.com/benbjohnson). It's really a wonderful resource and I encourage everyone to read it.
+> `diygoapi` package layout is based on several projects, but the primary source of inspiration is the [WTF Dial app repo](https://github.com/benbjohnson/wtf) and [accompanying blog](https://www.gobeyond.dev/) from [Ben Johnson](https://github.com/benbjohnson). It's really a wonderful resource and I encourage everyone to read it.
 
 ### Errors
 
@@ -654,11 +652,11 @@ All errors should return a `Request-Id` response header with a unique request id
 
 #### Error Implementation
 
-All errors should be raised using custom errors from the [domain/errs](https://github.com/gilcrest/saaswhip/tree/main/domain/errs) package. The three custom errors correspond directly to the requirements above.
+All errors should be raised using custom errors from the [domain/errs](https://github.com/gilcrest/diygoapi/tree/main/domain/errs) package. The three custom errors correspond directly to the requirements above.
 
 ##### Typical Errors
 
-Typical errors raised throughout `saaswhip` are the custom `errs.Error`, which look like:
+Typical errors raised throughout `diygoapi` are the custom `errs.Error`, which look like:
 
  ```go
 type Error struct {
@@ -676,7 +674,7 @@ type Error struct {
 }
 ```
 
-This custom error type is raised using the `E` function from the [domain/errs](https://github.com/gilcrest/saaswhip/tree/main/domain/errs) package. `errs.E` is taken from Rob Pike's [upspin errors package](https://github.com/upspin/upspin/tree/master/errors) (but has been changed based on my requirements). The `errs.E` function call is [variadic](https://en.wikipedia.org/wiki/Variadic) and can take several different types to form the custom `errs.Error` struct.
+This custom error type is raised using the `E` function from the [domain/errs](https://github.com/gilcrest/diygoapi/tree/main/domain/errs) package. `errs.E` is taken from Rob Pike's [upspin errors package](https://github.com/upspin/upspin/tree/master/errors) (but has been changed based on my requirements). The `errs.E` function call is [variadic](https://en.wikipedia.org/wiki/Variadic) and can take several different types to form the custom `errs.Error` struct.
 
 Here is a simple example of creating an `error` using `errs.E`:
 
@@ -776,7 +774,7 @@ You can add additional context fields (`errs.Code`, `errs.Parameter`, `errs.Kind
 
 ##### Handler Flow
 
-At the top of the program flow for each route is the handler (for example, [Server.handleMovieCreate](https://github.com/gilcrest/saaswhip/blob/main/server/handlers.go)). In this handler, any error returned from any function or method is sent through the `errs.HTTPErrorResponse` function along with the `http.ResponseWriter` and a `zerolog.Logger`.
+At the top of the program flow for each route is the handler (for example, [Server.handleMovieCreate](https://github.com/gilcrest/diygoapi/blob/main/server/handlers.go)). In this handler, any error returned from any function or method is sent through the `errs.HTTPErrorResponse` function along with the `http.ResponseWriter` and a `zerolog.Logger`.
 
 For example:
 
@@ -883,9 +881,9 @@ The [spec](https://tools.ietf.org/html/rfc7235#section-3.1) for `401 Unauthorize
 
 ##### Unauthenticated Error Flow
 
-*Unauthenticated* errors should only be raised at points of authentication as part of a middleware handler. I will get into application flow in detail later, but authentication for `saaswhip` happens in middleware handlers prior to calling the final app handler for the given route.
+*Unauthenticated* errors should only be raised at points of authentication as part of a middleware handler. I will get into application flow in detail later, but authentication for `diygoapi` happens in middleware handlers prior to calling the final app handler for the given route.
 
-The example below demonstrates returning an *Unauthenticated* error if the Authorization header is not present. This is done using the `errs.E` function (common to all errors in this repo), but the `errs.Kind` is sent as `errs.Unauthenticated`. An `errs.Realm` type should be added as well. For now, the constant `defaultRealm` is set to `saaswhip` in the `server` package and is used for all unauthenticated errors. You can set this constant to whatever value you like for your application.
+The example below demonstrates returning an *Unauthenticated* error if the Authorization header is not present. This is done using the `errs.E` function (common to all errors in this repo), but the `errs.Kind` is sent as `errs.Unauthenticated`. An `errs.Realm` type should be added as well. For now, the constant `defaultRealm` is set to `diygoapi` in the `server` package and is used for all unauthenticated errors. You can set this constant to whatever value you like for your application.
 
 ```go
 // authHeader parses/validates the Authorization header and returns an Oauth2 token
@@ -903,12 +901,12 @@ func authHeader(realm string, header http.Header) (oauth2.Token, error) {
 
 ##### Unauthenticated Error Response
 
-Per requirements, `saaswhip` does not return a response body when returning an **Unauthenticated** error. The error response from [cURL](https://curl.se/) looks like the following:
+Per requirements, `diygoapi` does not return a response body when returning an **Unauthenticated** error. The error response from [cURL](https://curl.se/) looks like the following:
 
 ```bash
 HTTP/1.1 401 Unauthorized
 Request-Id: c30hkvua0brkj8qhk3e0
-Www-Authenticate: Bearer realm="saaswhip"
+Www-Authenticate: Bearer realm="diygoapi"
 Date: Wed, 09 Jun 2021 19:46:07 GMT
 Content-Length: 0
 ```
@@ -921,13 +919,13 @@ If the user is not authorized to use the API, an `HTTP 403 (Forbidden)` response
 
 ##### Unauthorized Error Flow
 
-*Unauthorized* errors are raised when there is a permission issue for a user attempting to access a resource. `saaswhip` currently has a custom database-driven RBAC (Role Based Access Control) authorization implementation (more about this later). The below example demonstrates raising an *Unauthorized* error and is found in the [DBAuthorizer.Authorize](https://github.com/gilcrest/saaswhip/blob/v0.47.3/service/rbac.go#L37) method.
+*Unauthorized* errors are raised when there is a permission issue for a user attempting to access a resource. `diygoapi` currently has a custom database-driven RBAC (Role Based Access Control) authorization implementation (more about this later). The below example demonstrates raising an *Unauthorized* error and is found in the [DBAuthorizer.Authorize](https://github.com/gilcrest/diygoapi/blob/v0.47.3/service/rbac.go#L37) method.
 
 ```go
 return errs.E(errs.Unauthorized, fmt.Sprintf("user %s does not have %s permission for %s", adt.User.Username, r.Method, pathTemplate))
 ```
 
-Per requirements, `saaswhip` does not return a response body when returning an **Unauthorized** error. The error response from [cURL](https://curl.se/) looks like the following:
+Per requirements, `diygoapi` does not return a response body when returning an **Unauthorized** error. The error response from [cURL](https://curl.se/) looks like the following:
 
 ```bash
 HTTP/1.1 403 Forbidden
@@ -938,11 +936,11 @@ Content-Length: 0
 
 ### Logging
 
-`saaswhip` uses the [zerolog](https://github.com/rs/zerolog) library from [Olivier Poitrey](https://github.com/rs). The mechanics for using `zerolog` are straightforward and are well documented in the library's [README](https://github.com/rs/zerolog#readme). `zerolog` takes an `io.Writer` as input to create a new logger; for simplicity in `saaswhip`, I use `os.Stdout`.
+`diygoapi` uses the [zerolog](https://github.com/rs/zerolog) library from [Olivier Poitrey](https://github.com/rs). The mechanics for using `zerolog` are straightforward and are well documented in the library's [README](https://github.com/rs/zerolog#readme). `zerolog` takes an `io.Writer` as input to create a new logger; for simplicity in `diygoapi`, I use `os.Stdout`.
 
 #### Setting Logger State on Startup
 
-When starting `saaswhip`, there are several flags which setup the logger:
+When starting `diygoapi`, there are several flags which setup the logger:
 
 | Flag Name       | Description                                             | Environment Variable | Default |
 |-----------------|---------------------------------------------------------|----------------------|---------|
@@ -952,7 +950,7 @@ When starting `saaswhip`, there are several flags which setup the logger:
 
 --------
 
-> As mentioned [above](https://github.com/gilcrest/saaswhip#command-line-flags), `saaswhip` uses the [ff](https://github.com/peterbourgon/ff) library from [Peter Bourgon](https://peter.bourgon.org), which allows for using either flags or environment variables. Going forward, we'll assume you've chosen flags.
+> As mentioned [above](https://github.com/gilcrest/diygoapi#command-line-flags), `diygoapi` uses the [ff](https://github.com/peterbourgon/ff) library from [Peter Bourgon](https://peter.bourgon.org), which allows for using either flags or environment variables. Going forward, we'll assume you've chosen flags.
 
 The `log-level` flag sets the Global logging level for your `zerolog.Logger`.
 
@@ -968,7 +966,7 @@ The `log-level` flag sets the Global logging level for your `zerolog.Logger`.
 
 The `log-level-min` flag sets the minimum accepted logging level, which means, for example, if you set the minimum level to error, the only logs that will be sent to your chosen output will be those that are greater than or equal to error (`error`, `fatal` and `panic`).
 
-The `log-error-stack` boolean flag tells whether to log stack traces for each error. If `true`, the `zerolog.ErrorStackMarshaler` will be set to `pkgerrors.MarshalStack` which means, for errors raised using the [github.com/pkg/errors](https://github.com/pkg/errors) package, the error stack trace will be captured and printed along with the log. All errors raised in `saaswhip` are raised using `github.com/pkg/errors`.
+The `log-error-stack` boolean flag tells whether to log stack traces for each error. If `true`, the `zerolog.ErrorStackMarshaler` will be set to `pkgerrors.MarshalStack` which means, for errors raised using the [github.com/pkg/errors](https://github.com/pkg/errors) package, the error stack trace will be captured and printed along with the log. All errors raised in `diygoapi` are raised using `github.com/pkg/errors`.
 
 After parsing the command line flags, `zerolog.Logger` is initialized in `main.go`
 
@@ -1064,7 +1062,7 @@ All error logs will have the same request metadata, including `request_id`. The 
     "request_id": "c3nppj6a0brt1dho9e2g",
     "error": "googleapi: Error 401: Request is missing required authentication credential. Expected OAuth 2 access token, login cookie or other valid authentication credential. See https://developers.google.com/identity/sign-in/web/devconsole-project., unauthorized",
     "http_statuscode": 401,
-    "realm": "saaswhip",
+    "realm": "diygoapi",
     "time": 1626315981,
     "severity": "ERROR",
     "message": "Unauthenticated Request"
