@@ -765,13 +765,13 @@ type RoleService struct {
 }
 
 // Create is used to create a Role
-func (s *RoleService) Create(ctx context.Context, r *saaswhip.CreateRoleRequest, adt saaswhip.Audit) (role saaswhip.Role, err error) {
+func (s *RoleService) Create(ctx context.Context, r *saaswhip.CreateRoleRequest, adt saaswhip.Audit) (response *saaswhip.RoleResponse, err error) {
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
 	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
-		return saaswhip.Role{}, err
+		return nil, err
 	}
 	// defer transaction rollback and handle error, if any
 	defer func() {
@@ -781,10 +781,10 @@ func (s *RoleService) Create(ctx context.Context, r *saaswhip.CreateRoleRequest,
 	var rolePermissions []*saaswhip.Permission
 	rolePermissions, err = findPermissions(ctx, tx, r.Permissions)
 	if err != nil {
-		return saaswhip.Role{}, err
+		return nil, err
 	}
 
-	role = saaswhip.Role{
+	role := saaswhip.Role{
 		ID:          uuid.New(),
 		ExternalID:  secure.NewID(),
 		Code:        r.Code,
@@ -795,16 +795,24 @@ func (s *RoleService) Create(ctx context.Context, r *saaswhip.CreateRoleRequest,
 
 	err = createRoleTx(ctx, tx, role, adt)
 	if err != nil {
-		return saaswhip.Role{}, err
+		return nil, err
 	}
 
 	// commit db txn using pgxpool
 	err = s.Datastorer.CommitTx(ctx, tx)
 	if err != nil {
-		return saaswhip.Role{}, err
+		return nil, err
 	}
 
-	return role, nil
+	response = &saaswhip.RoleResponse{
+		ExternalID:  role.ExternalID.String(),
+		Code:        role.Code,
+		Description: role.Description,
+		Active:      role.Active,
+		Permissions: role.Permissions,
+	}
+
+	return response, nil
 }
 
 // createRoleTx creates the role in the database
