@@ -18,13 +18,13 @@ import (
 type PermissionServicer interface {
 	Create(ctx context.Context, r *CreatePermissionRequest, adt Audit) (*PermissionResponse, error)
 	FindAll(ctx context.Context) ([]*PermissionResponse, error)
-	Delete(ctx context.Context, extlID string) (dr DeleteResponse, err error)
+	Delete(ctx context.Context, extlID string) (DeleteResponse, error)
 }
 
 // RoleServicer allows for creating, updating, reading and deleting a Role
 // as well as assigning permissions and users to it.
 type RoleServicer interface {
-	Create(ctx context.Context, r *CreateRoleRequest, adt Audit) (Role, error)
+	Create(ctx context.Context, r *CreateRoleRequest, adt Audit) (*RoleResponse, error)
 }
 
 // AuthenticationServicer represents a service for managing authentication.
@@ -318,7 +318,7 @@ type CreateRoleRequest struct {
 // RoleResponse is the response struct for a Role.
 type RoleResponse struct {
 	// Unique External ID to be given to outside callers.
-	ExternalID secure.Identifier `json:"external_id"`
+	ExternalID string `json:"external_id"`
 	// A human-readable code which represents the role.
 	Code string `json:"role_cd"`
 	// A longer description of the role.
