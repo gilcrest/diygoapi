@@ -9,8 +9,8 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/rs/zerolog"
 
-	"github.com/gilcrest/saaswhip/logger"
-	"github.com/gilcrest/saaswhip/sqldb"
+	"github.com/gilcrest/diygoapi/logger"
+	"github.com/gilcrest/diygoapi/sqldb"
 )
 
 // newPGDatasourceName is a test helper to get a PGDatasourceName

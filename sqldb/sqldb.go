@@ -16,7 +16,7 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/rs/zerolog"
 
-	"github.com/gilcrest/saaswhip/errs"
+	"github.com/gilcrest/diygoapi/errs"
 )
 
 const (

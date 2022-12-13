@@ -15,17 +15,17 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/text/language"
 
-	"github.com/gilcrest/saaswhip"
-	"github.com/gilcrest/saaswhip/errs"
-	"github.com/gilcrest/saaswhip/secure"
-	"github.com/gilcrest/saaswhip/sqldb/datastore"
+	"github.com/gilcrest/diygoapi"
+	"github.com/gilcrest/diygoapi/errs"
+	"github.com/gilcrest/diygoapi/secure"
+	"github.com/gilcrest/diygoapi/sqldb/datastore"
 )
 
 // DBAuthenticationService is a service which manages Oauth2 authentication
 // using the database.
 type DBAuthenticationService struct {
-	Datastorer      saaswhip.Datastorer
-	TokenExchanger  saaswhip.TokenExchanger
+	Datastorer      diygoapi.Datastorer
+	TokenExchanger  diygoapi.TokenExchanger
 	EncryptionKey   *[32]byte
 	LanguageMatcher language.Matcher
 }
@@ -45,12 +45,12 @@ type DBAuthenticationService struct {
 // exception is if an app is already set to the request context from upstream
 // authentication, in which case, the upstream app overrides the app derived
 // from the Oauth2 provider.
-func (s DBAuthenticationService) FindAuth(ctx context.Context, params saaswhip.AuthenticationParams) (auth saaswhip.Auth, err error) {
+func (s DBAuthenticationService) FindAuth(ctx context.Context, params diygoapi.AuthenticationParams) (auth diygoapi.Auth, err error) {
 	// start db txn using pgxpool
 	var tx pgx.Tx
 	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
-		return saaswhip.Auth{}, err
+		return diygoapi.Auth{}, err
 	}
 	// defer transaction rollback and handle error, if any
 	defer func() {
@@ -61,15 +61,15 @@ func (s DBAuthenticationService) FindAuth(ctx context.Context, params saaswhip.A
 	if err != nil {
 		// if error is something other than NotExist, then return error
 		if !errs.KindIs(errs.NotExist, err) {
-			return saaswhip.Auth{}, err
+			return diygoapi.Auth{}, err
 		}
 
 		// auth could not be found by access token in the db
 		// get ProviderInfo from provider API
-		var providerInfo *saaswhip.ProviderInfo
+		var providerInfo *diygoapi.ProviderInfo
 		providerInfo, err = s.TokenExchanger.Exchange(ctx, params.Realm, params.Provider, params.Token)
 		if err != nil {
-			return saaswhip.Auth{}, err
+			return diygoapi.Auth{}, err
 		}
 
 		fParams := findAuthByProviderExternalIDParams{
@@ -82,22 +82,22 @@ func (s DBAuthenticationService) FindAuth(ctx context.Context, params saaswhip.A
 		auth, err = findAuthByProviderExternalID(ctx, tx, fParams)
 		if err != nil {
 			if errs.KindIs(errs.NotExist, err) {
-				return saaswhip.Auth{}, errs.E(errs.Unauthenticated, errs.Realm(params.Realm), err)
+				return diygoapi.Auth{}, errs.E(errs.Unauthenticated, errs.Realm(params.Realm), err)
 			}
-			return saaswhip.Auth{}, err
+			return diygoapi.Auth{}, err
 		}
 	}
 
 	// commit db txn using pgxpool
 	err = s.Datastorer.CommitTx(ctx, tx)
 	if err != nil {
-		return saaswhip.Auth{}, err
+		return diygoapi.Auth{}, err
 	}
 
 	return auth, nil
 }
 
-// findAuthByAccessToken looks up an authentication object (saaswhip.Auth)
+// findAuthByAccessToken looks up an authentication object (Auth)
 // given an Access Token. If found, check if there is an app
 // present in the request context. If an app exists and matches the
 // app stored in the auth object from the datastore, use Auth as is.
@@ -107,7 +107,7 @@ func (s DBAuthenticationService) FindAuth(ctx context.Context, params saaswhip.A
 // the authentication provider.
 //
 // If none are found, an error with errs.NotExist kind is returned.
-func findAuthByAccessToken(ctx context.Context, tx pgx.Tx, params saaswhip.AuthenticationParams) (saaswhip.Auth, error) {
+func findAuthByAccessToken(ctx context.Context, tx pgx.Tx, params diygoapi.AuthenticationParams) (diygoapi.Auth, error) {
 
 	var (
 		dbAuth datastore.Auth
@@ -122,36 +122,36 @@ func findAuthByAccessToken(ctx context.Context, tx pgx.Tx, params saaswhip.Authe
 	dbAuth, err = datastore.New(tx).FindAuthByAccessToken(ctx, params.Token.AccessToken)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return saaswhip.Auth{}, errs.E(errs.NotExist, "No auth found in db for access token")
+			return diygoapi.Auth{}, errs.E(errs.NotExist, "No auth found in db for access token")
 		} else {
-			return saaswhip.Auth{}, errs.E(errs.Database, err)
+			return diygoapi.Auth{}, errs.E(errs.Database, err)
 		}
 	}
 
 	// populate Person
-	var u *saaswhip.User
+	var u *diygoapi.User
 	u, err = FindUserByID(ctx, tx, dbAuth.UserID)
 	if err != nil {
-		return saaswhip.Auth{}, err
+		return diygoapi.Auth{}, err
 	}
 
 	// populate Auth
-	auth := saaswhip.Auth{
+	auth := diygoapi.Auth{
 		ID:               dbAuth.AuthID,
 		User:             u,
-		Provider:         saaswhip.Provider(dbAuth.AuthProviderID),
+		Provider:         diygoapi.Provider(dbAuth.AuthProviderID),
 		ProviderClientID: dbAuth.AuthProviderClientID.String,
 		ProviderPersonID: dbAuth.AuthProviderPersonID,
 		Token: &oauth2.Token{
 			AccessToken:  dbAuth.AuthProviderAccessToken,
-			TokenType:    saaswhip.BearerTokenType,
+			TokenType:    diygoapi.BearerTokenType,
 			RefreshToken: dbAuth.AuthProviderRefreshToken.String,
 			Expiry:       dbAuth.AuthProviderAccessTokenExpiry.Time},
 	}
 
 	// if token is no longer valid, return an error
 	if !auth.Token.Valid() {
-		return saaswhip.Auth{}, errs.E(errs.Unauthenticated, errs.Realm(params.Realm), "token is no longer valid")
+		return diygoapi.Auth{}, errs.E(errs.Unauthenticated, errs.Realm(params.Realm), "token is no longer valid")
 	}
 
 	return auth, nil
@@ -159,14 +159,14 @@ func findAuthByAccessToken(ctx context.Context, tx pgx.Tx, params saaswhip.Authe
 
 type findAuthByProviderExternalIDParams struct {
 	Realm        string
-	ProviderInfo *saaswhip.ProviderInfo
+	ProviderInfo *diygoapi.ProviderInfo
 	Token        *oauth2.Token
 }
 
 // findAuthByProviderExternalID searches for an auth for the User using
 // the authentication provider's external ID. If an auth object exists, it
 // will be updated with the new access token details.
-func findAuthByProviderExternalID(ctx context.Context, tx pgx.Tx, params findAuthByProviderExternalIDParams) (saaswhip.Auth, error) {
+func findAuthByProviderExternalID(ctx context.Context, tx pgx.Tx, params findAuthByProviderExternalIDParams) (diygoapi.Auth, error) {
 	var err error
 
 	findAuthByProviderUserIDParams := datastore.FindAuthByProviderUserIDParams{
@@ -179,21 +179,21 @@ func findAuthByProviderExternalID(ctx context.Context, tx pgx.Tx, params findAut
 	dbAuth, err = datastore.New(tx).FindAuthByProviderUserID(ctx, findAuthByProviderUserIDParams)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return saaswhip.Auth{}, errs.E(errs.Unauthenticated, errs.Realm(params.Realm), fmt.Sprintf("no authorization object, Provider: %s, Provider Person ID: %s, email: %s", params.ProviderInfo.Provider.String(), params.ProviderInfo.UserInfo.ExternalID, params.ProviderInfo.UserInfo.Email))
+			return diygoapi.Auth{}, errs.E(errs.Unauthenticated, errs.Realm(params.Realm), fmt.Sprintf("no authorization object, Provider: %s, Provider Person ID: %s, email: %s", params.ProviderInfo.Provider.String(), params.ProviderInfo.UserInfo.ExternalID, params.ProviderInfo.UserInfo.Email))
 		} else {
-			return saaswhip.Auth{}, errs.E(errs.Database, err)
+			return diygoapi.Auth{}, errs.E(errs.Database, err)
 		}
 	}
 
 	// populate User
-	var u *saaswhip.User
+	var u *diygoapi.User
 	u, err = FindUserByID(ctx, tx, dbAuth.UserID)
 	if err != nil {
-		return saaswhip.Auth{}, err
+		return diygoapi.Auth{}, err
 	}
 
 	// populate Auth
-	auth := saaswhip.Auth{
+	auth := diygoapi.Auth{
 		ID:               dbAuth.AuthID,
 		User:             u,
 		Provider:         params.ProviderInfo.Provider,
@@ -204,14 +204,14 @@ func findAuthByProviderExternalID(ctx context.Context, tx pgx.Tx, params findAut
 
 	// if token is no longer valid, return an error
 	if !auth.Token.Valid() {
-		return saaswhip.Auth{}, errs.E(errs.Unauthenticated, errs.Realm(params.Realm), "token is no longer valid")
+		return diygoapi.Auth{}, errs.E(errs.Unauthenticated, errs.Realm(params.Realm), "token is no longer valid")
 	}
 
 	return auth, nil
 }
 
 // FindAppByProviderClientID finds an app given a Provider's Unique Client ID
-func (s DBAuthenticationService) FindAppByProviderClientID(ctx context.Context, realm string, auth saaswhip.Auth) (a *saaswhip.App, err error) {
+func (s DBAuthenticationService) FindAppByProviderClientID(ctx context.Context, realm string, auth diygoapi.Auth) (a *diygoapi.App, err error) {
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
@@ -238,7 +238,7 @@ func (s DBAuthenticationService) FindAppByProviderClientID(ctx context.Context, 
 // FindAppByAPIKey finds an app given its External ID and determines
 // if the given API key is a valid key for it. It is used as part of
 // app authentication
-func (s DBAuthenticationService) FindAppByAPIKey(ctx context.Context, realm, appExtlID, key string) (a *saaswhip.App, err error) {
+func (s DBAuthenticationService) FindAppByAPIKey(ctx context.Context, realm, appExtlID, key string) (a *diygoapi.App, err error) {
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
@@ -260,11 +260,11 @@ func (s DBAuthenticationService) FindAppByAPIKey(ctx context.Context, realm, app
 	}
 
 	var (
-		ak  saaswhip.APIKey
-		aks []saaswhip.APIKey
+		ak  diygoapi.APIKey
+		aks []diygoapi.APIKey
 	)
 
-	a = new(saaswhip.App)
+	a = new(diygoapi.App)
 
 	// for each row, decrypt the API key using the encryption key,
 	// initialize an app.APIKey and set to a slice of API keys.
@@ -277,7 +277,7 @@ func (s DBAuthenticationService) FindAppByAPIKey(ctx context.Context, realm, app
 			}
 			a.ID = row.AppID
 			a.ExternalID = extl
-			a.Org = &saaswhip.Org{
+			a.Org = &diygoapi.Org{
 				ID:          row.OrgID,
 				ExternalID:  extl,
 				Name:        row.OrgName,
@@ -286,7 +286,7 @@ func (s DBAuthenticationService) FindAppByAPIKey(ctx context.Context, realm, app
 			a.Name = row.AppName
 			a.Description = row.AppDescription
 		}
-		ak, err = saaswhip.NewAPIKeyFromCipher(row.ApiKey, s.EncryptionKey)
+		ak, err = diygoapi.NewAPIKeyFromCipher(row.ApiKey, s.EncryptionKey)
 		if err != nil {
 			return nil, err
 		}
@@ -313,31 +313,31 @@ func (s DBAuthenticationService) FindAppByAPIKey(ctx context.Context, realm, app
 // them in the database. A search is done prior to creation to
 // determine if user is already registered, and if so, the existing
 // user is returned.
-func (s DBAuthenticationService) SelfRegister(ctx context.Context, params saaswhip.AuthenticationParams) (auth saaswhip.Auth, err error) {
+func (s DBAuthenticationService) SelfRegister(ctx context.Context, params diygoapi.AuthenticationParams) (auth diygoapi.Auth, err error) {
 	// start db txn using pgxpool
 	var tx pgx.Tx
 	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
-		return saaswhip.Auth{}, err
+		return diygoapi.Auth{}, err
 	}
 	// defer transaction rollback and handle error, if any
 	defer func() {
 		err = s.Datastorer.RollbackTx(ctx, tx, err)
 	}()
 
-	var providerInfo *saaswhip.ProviderInfo
+	var providerInfo *diygoapi.ProviderInfo
 	auth, err = findAuthByAccessToken(ctx, tx, params)
 	if err != nil {
 		// if error is something other than NotExist, then return error
 		if !errs.KindIs(errs.NotExist, err) {
-			return saaswhip.Auth{}, err
+			return diygoapi.Auth{}, err
 		}
 
 		// auth could not be found by access token in the db
 		// get ProviderInfo from provider API
 		providerInfo, err = s.TokenExchanger.Exchange(ctx, params.Realm, params.Provider, params.Token)
 		if err != nil {
-			return saaswhip.Auth{}, err
+			return diygoapi.Auth{}, err
 		}
 
 		fParams := findAuthByProviderExternalIDParams{
@@ -352,7 +352,7 @@ func (s DBAuthenticationService) SelfRegister(ctx context.Context, params saaswh
 		if err != nil {
 			// if error is something other than NotExist, then return error
 			if !errs.KindIs(errs.NotExist, err) {
-				return saaswhip.Auth{}, err
+				return diygoapi.Auth{}, err
 			}
 		}
 	}
@@ -360,18 +360,18 @@ func (s DBAuthenticationService) SelfRegister(ctx context.Context, params saaswh
 	// if auth still has not been found (we know this by checking if auth ID is nil)
 	// then create a new Auth for the User
 	if auth.ID == uuid.Nil {
-		var a *saaswhip.App
+		var a *diygoapi.App
 		// check app from context first
-		a, _ = saaswhip.AppFromContext(ctx)
+		a, _ = diygoapi.AppFromContext(ctx)
 
 		// if no app in context, get app from Provider
 		if a == nil {
 			a, err = findAppByProviderClientID(ctx, tx, providerInfo.TokenInfo.ClientID)
 			if err != nil {
 				if errs.KindIs(errs.NotExist, err) {
-					return saaswhip.Auth{}, errs.E(errs.NotExist, fmt.Sprintf("no app registered for Provider: %s, Client ID: %s", params.Provider.String(), providerInfo.TokenInfo.ClientID))
+					return diygoapi.Auth{}, errs.E(errs.NotExist, fmt.Sprintf("no app registered for Provider: %s, Client ID: %s", params.Provider.String(), providerInfo.TokenInfo.ClientID))
 				}
-				return saaswhip.Auth{}, err
+				return diygoapi.Auth{}, err
 			}
 		}
 
@@ -379,16 +379,16 @@ func (s DBAuthenticationService) SelfRegister(ctx context.Context, params saaswh
 
 		err = u.Validate()
 		if err != nil {
-			return saaswhip.Auth{}, err
+			return diygoapi.Auth{}, err
 		}
 
-		p := saaswhip.Person{
+		p := diygoapi.Person{
 			ID:         uuid.New(),
 			ExternalID: secure.NewID(),
-			Users:      []*saaswhip.User{u},
+			Users:      []*diygoapi.User{u},
 		}
 
-		adt := saaswhip.Audit{
+		adt := diygoapi.Audit{
 			App:    a,
 			User:   u,
 			Moment: time.Now(),
@@ -397,7 +397,7 @@ func (s DBAuthenticationService) SelfRegister(ctx context.Context, params saaswh
 		// write Person/User from request to the database
 		err = createPersonTx(ctx, tx, p, adt)
 		if err != nil {
-			return saaswhip.Auth{}, err
+			return diygoapi.Auth{}, err
 		}
 
 		// associate user to the app's org
@@ -408,10 +408,10 @@ func (s DBAuthenticationService) SelfRegister(ctx context.Context, params saaswh
 		}
 		err = attachOrgAssociation(ctx, tx, aoaParams)
 		if err != nil {
-			return saaswhip.Auth{}, err
+			return diygoapi.Auth{}, err
 		}
 
-		auth = saaswhip.Auth{
+		auth = diygoapi.Auth{
 			ID:               uuid.New(),
 			User:             u,
 			Provider:         providerInfo.Provider,
@@ -422,7 +422,7 @@ func (s DBAuthenticationService) SelfRegister(ctx context.Context, params saaswh
 
 		err = createAuthTx(ctx, tx, createAuthTxParams{Auth: auth, Audit: adt})
 		if err != nil {
-			return saaswhip.Auth{}, err
+			return diygoapi.Auth{}, err
 		}
 
 	}
@@ -430,20 +430,20 @@ func (s DBAuthenticationService) SelfRegister(ctx context.Context, params saaswh
 	// commit db txn using pgxpool
 	err = s.Datastorer.CommitTx(ctx, tx)
 	if err != nil {
-		return saaswhip.Auth{}, err
+		return diygoapi.Auth{}, err
 	}
 
 	return auth, nil
 }
 
 // newUserFromProviderInfo creates a new User struct to be used in db user creation
-func newUserFromProviderInfo(pi *saaswhip.ProviderInfo, lm language.Matcher) *saaswhip.User {
+func newUserFromProviderInfo(pi *diygoapi.ProviderInfo, lm language.Matcher) *diygoapi.User {
 	var langPrefs []language.Tag
 	langPref, _, _ := lm.Match(language.Make(pi.UserInfo.Locale))
 	langPrefs = append(langPrefs, langPref)
 
 	// create User from ProviderInfo
-	u := &saaswhip.User{
+	u := &diygoapi.User{
 		ID:                  uuid.New(),
 		ExternalID:          secure.NewID(),
 		NamePrefix:          pi.UserInfo.NamePrefix,
@@ -467,8 +467,8 @@ func newUserFromProviderInfo(pi *saaswhip.ProviderInfo, lm language.Matcher) *sa
 }
 
 type createAuthTxParams struct {
-	Auth  saaswhip.Auth
-	Audit saaswhip.Audit
+	Auth  diygoapi.Auth
+	Audit diygoapi.Audit
 }
 
 func createAuthTx(ctx context.Context, tx pgx.Tx, params createAuthTxParams) (err error) {
@@ -477,11 +477,11 @@ func createAuthTx(ctx context.Context, tx pgx.Tx, params createAuthTxParams) (er
 		UserID:                        params.Auth.User.ID,
 		AuthProviderID:                int64(params.Auth.Provider),
 		AuthProviderCd:                params.Auth.Provider.String(),
-		AuthProviderClientID:          saaswhip.NewNullString(params.Auth.ProviderClientID),
+		AuthProviderClientID:          diygoapi.NewNullString(params.Auth.ProviderClientID),
 		AuthProviderPersonID:          params.Auth.ProviderPersonID,
 		AuthProviderAccessToken:       params.Auth.Token.AccessToken,
-		AuthProviderRefreshToken:      saaswhip.NewNullString(params.Auth.Token.RefreshToken),
-		AuthProviderAccessTokenExpiry: saaswhip.NewNullTime(params.Auth.Token.Expiry),
+		AuthProviderRefreshToken:      diygoapi.NewNullString(params.Auth.Token.RefreshToken),
+		AuthProviderAccessTokenExpiry: diygoapi.NewNullTime(params.Auth.Token.Expiry),
 		CreateAppID:                   params.Audit.App.ID,
 		CreateUserID:                  params.Audit.User.NullUUID(),
 		CreateTimestamp:               params.Audit.Moment,
@@ -506,10 +506,10 @@ func createAuthTx(ctx context.Context, tx pgx.Tx, params createAuthTxParams) (er
 
 // DBAuthorizationService manages authorization using the database.
 type DBAuthorizationService struct {
-	Datastorer saaswhip.Datastorer
+	Datastorer diygoapi.Datastorer
 }
 
-// Authorize ensures that a subject (saaswhip.User) can perform a
+// Authorize ensures that a subject (User) can perform a
 // particular action on a resource, e.g. subject otto.maddox711@gmail.com
 // can read (GET) the resource /api/v1/movies (path).
 //
@@ -519,7 +519,7 @@ type DBAuthorizationService struct {
 // Authorize implements Role Based Access Control (RBAC), in this case,
 // determining authorization for a user by running sql against tables
 // in the database
-func (s *DBAuthorizationService) Authorize(r *http.Request, lgr zerolog.Logger, adt saaswhip.Audit) (err error) {
+func (s *DBAuthorizationService) Authorize(r *http.Request, lgr zerolog.Logger, adt diygoapi.Audit) (err error) {
 	ctx := r.Context()
 
 	// start db txn using pgxpool
@@ -582,11 +582,11 @@ func (s *DBAuthorizationService) Authorize(r *http.Request, lgr zerolog.Logger, 
 
 // PermissionService is a service for creating, reading, updating and deleting a Permission
 type PermissionService struct {
-	Datastorer saaswhip.Datastorer
+	Datastorer diygoapi.Datastorer
 }
 
 // Create is used to create a Permission
-func (s *PermissionService) Create(ctx context.Context, r *saaswhip.CreatePermissionRequest, adt saaswhip.Audit) (response *saaswhip.PermissionResponse, err error) {
+func (s *PermissionService) Create(ctx context.Context, r *diygoapi.CreatePermissionRequest, adt diygoapi.Audit) (response *diygoapi.PermissionResponse, err error) {
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
@@ -599,7 +599,7 @@ func (s *PermissionService) Create(ctx context.Context, r *saaswhip.CreatePermis
 		err = s.Datastorer.RollbackTx(ctx, tx, err)
 	}()
 
-	var p saaswhip.Permission
+	var p diygoapi.Permission
 	p, err = createPermissionTx(ctx, tx, r, adt)
 	if err != nil {
 		return nil, err
@@ -611,7 +611,7 @@ func (s *PermissionService) Create(ctx context.Context, r *saaswhip.CreatePermis
 		return nil, err
 	}
 
-	response = &saaswhip.PermissionResponse{
+	response = &diygoapi.PermissionResponse{
 		ExternalID:  p.ExternalID.String(),
 		Resource:    p.Resource,
 		Operation:   p.Operation,
@@ -623,8 +623,8 @@ func (s *PermissionService) Create(ctx context.Context, r *saaswhip.CreatePermis
 }
 
 // createPermissionTX separates the transaction logic as it needs to also be called during Genesis
-func createPermissionTx(ctx context.Context, tx pgx.Tx, r *saaswhip.CreatePermissionRequest, adt saaswhip.Audit) (p saaswhip.Permission, err error) {
-	p = saaswhip.Permission{
+func createPermissionTx(ctx context.Context, tx pgx.Tx, r *diygoapi.CreatePermissionRequest, adt diygoapi.Audit) (p diygoapi.Permission, err error) {
+	p = diygoapi.Permission{
 		ID:          uuid.New(),
 		ExternalID:  secure.NewID(),
 		Resource:    r.Resource,
@@ -635,7 +635,7 @@ func createPermissionTx(ctx context.Context, tx pgx.Tx, r *saaswhip.CreatePermis
 
 	err = p.Validate()
 	if err != nil {
-		return saaswhip.Permission{}, err
+		return diygoapi.Permission{}, err
 	}
 
 	arg := datastore.CreatePermissionParams{
@@ -659,23 +659,23 @@ func createPermissionTx(ctx context.Context, tx pgx.Tx, r *saaswhip.CreatePermis
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == "23505" {
-				return saaswhip.Permission{}, errs.E(errs.Exist, errs.Exist.String())
+				return diygoapi.Permission{}, errs.E(errs.Exist, errs.Exist.String())
 			}
-			return saaswhip.Permission{}, errs.E(errs.Database, pgErr.Message)
+			return diygoapi.Permission{}, errs.E(errs.Database, pgErr.Message)
 		}
-		return saaswhip.Permission{}, errs.E(errs.Database, err)
+		return diygoapi.Permission{}, errs.E(errs.Database, err)
 	}
 
 	// should only impact exactly one record
 	if rowsAffected != 1 {
-		return saaswhip.Permission{}, errs.E(errs.Database, fmt.Sprintf("Create() should insert 1 row, actual: %d", rowsAffected))
+		return diygoapi.Permission{}, errs.E(errs.Database, fmt.Sprintf("Create() should insert 1 row, actual: %d", rowsAffected))
 	}
 
 	return p, nil
 }
 
 // FindAll retrieves all permissions
-func (s *PermissionService) FindAll(ctx context.Context) (permissions []*saaswhip.PermissionResponse, err error) {
+func (s *PermissionService) FindAll(ctx context.Context) (permissions []*diygoapi.PermissionResponse, err error) {
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
@@ -694,9 +694,9 @@ func (s *PermissionService) FindAll(ctx context.Context) (permissions []*saaswhi
 		return nil, errs.E(errs.Database, err)
 	}
 
-	var sp []*saaswhip.PermissionResponse
+	var sp []*diygoapi.PermissionResponse
 	for _, row := range rows {
-		p := &saaswhip.PermissionResponse{
+		p := &diygoapi.PermissionResponse{
 			ExternalID:  row.PermissionExtlID,
 			Resource:    row.Resource,
 			Operation:   row.Operation,
@@ -710,13 +710,13 @@ func (s *PermissionService) FindAll(ctx context.Context) (permissions []*saaswhi
 }
 
 // Delete is used to delete a Permission
-func (s *PermissionService) Delete(ctx context.Context, extlID string) (dr saaswhip.DeleteResponse, err error) {
+func (s *PermissionService) Delete(ctx context.Context, extlID string) (dr diygoapi.DeleteResponse, err error) {
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
 	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
-		return saaswhip.DeleteResponse{}, err
+		return diygoapi.DeleteResponse{}, err
 	}
 	// defer transaction rollback and handle error, if any
 	defer func() {
@@ -726,20 +726,20 @@ func (s *PermissionService) Delete(ctx context.Context, extlID string) (dr saasw
 	var rowsAffected int64
 	rowsAffected, err = datastore.New(tx).DeletePermissionByExternalID(ctx, extlID)
 	if err != nil {
-		return saaswhip.DeleteResponse{}, errs.E(errs.Database, err)
+		return diygoapi.DeleteResponse{}, errs.E(errs.Database, err)
 	}
 
 	if rowsAffected != 1 {
-		return saaswhip.DeleteResponse{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
+		return diygoapi.DeleteResponse{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
 	}
 
 	// commit db txn using pgxpool
 	err = s.Datastorer.CommitTx(ctx, tx)
 	if err != nil {
-		return saaswhip.DeleteResponse{}, err
+		return diygoapi.DeleteResponse{}, err
 	}
 
-	response := saaswhip.DeleteResponse{
+	response := diygoapi.DeleteResponse{
 		ExternalID: extlID,
 		Deleted:    true,
 	}
@@ -747,9 +747,9 @@ func (s *PermissionService) Delete(ctx context.Context, extlID string) (dr saasw
 	return response, nil
 }
 
-// newPermission initializes a saaswhip.Permission given a datastore.Permission
-func newPermission(ap datastore.Permission) *saaswhip.Permission {
-	return &saaswhip.Permission{
+// newPermission initializes a Permission given a datastore.Permission
+func newPermission(ap datastore.Permission) *diygoapi.Permission {
+	return &diygoapi.Permission{
 		ID:          ap.PermissionID,
 		ExternalID:  secure.MustParseIdentifier(ap.PermissionExtlID),
 		Resource:    ap.Resource,
@@ -761,11 +761,11 @@ func newPermission(ap datastore.Permission) *saaswhip.Permission {
 
 // RoleService is a service for creating, reading, updating and deleting a Role
 type RoleService struct {
-	Datastorer saaswhip.Datastorer
+	Datastorer diygoapi.Datastorer
 }
 
 // Create is used to create a Role
-func (s *RoleService) Create(ctx context.Context, r *saaswhip.CreateRoleRequest, adt saaswhip.Audit) (response *saaswhip.RoleResponse, err error) {
+func (s *RoleService) Create(ctx context.Context, r *diygoapi.CreateRoleRequest, adt diygoapi.Audit) (response *diygoapi.RoleResponse, err error) {
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
@@ -778,13 +778,13 @@ func (s *RoleService) Create(ctx context.Context, r *saaswhip.CreateRoleRequest,
 		err = s.Datastorer.RollbackTx(ctx, tx, err)
 	}()
 
-	var rolePermissions []*saaswhip.Permission
+	var rolePermissions []*diygoapi.Permission
 	rolePermissions, err = findPermissions(ctx, tx, r.Permissions)
 	if err != nil {
 		return nil, err
 	}
 
-	role := saaswhip.Role{
+	role := diygoapi.Role{
 		ID:          uuid.New(),
 		ExternalID:  secure.NewID(),
 		Code:        r.Code,
@@ -804,7 +804,7 @@ func (s *RoleService) Create(ctx context.Context, r *saaswhip.CreateRoleRequest,
 		return nil, err
 	}
 
-	response = &saaswhip.RoleResponse{
+	response = &diygoapi.RoleResponse{
 		ExternalID:  role.ExternalID.String(),
 		Code:        role.Code,
 		Description: role.Description,
@@ -816,7 +816,7 @@ func (s *RoleService) Create(ctx context.Context, r *saaswhip.CreateRoleRequest,
 }
 
 // createRoleTx creates the role in the database
-func createRoleTx(ctx context.Context, tx pgx.Tx, role saaswhip.Role, adt saaswhip.Audit) (err error) {
+func createRoleTx(ctx context.Context, tx pgx.Tx, role diygoapi.Role, adt diygoapi.Audit) (err error) {
 	err = role.Validate()
 	if err != nil {
 		return err
@@ -856,8 +856,8 @@ func createRoleTx(ctx context.Context, tx pgx.Tx, role saaswhip.Role, adt saaswh
 
 // UpdateRolePermissionsParams is the parameters for the UpdateRolePermissions function
 type UpdateRolePermissionsParams struct {
-	Role  saaswhip.Role
-	Audit saaswhip.Audit
+	Role  diygoapi.Role
+	Audit diygoapi.Audit
 }
 
 // UpdateRolePermissions writes the Permissions attached to the role to the database.
@@ -896,22 +896,22 @@ func UpdateRolePermissions(ctx context.Context, tx pgx.Tx, params UpdateRolePerm
 }
 
 // FindRoleByCode returns a Role and its permissions.
-func FindRoleByCode(ctx context.Context, tx datastore.DBTX, code string) (saaswhip.Role, error) {
+func FindRoleByCode(ctx context.Context, tx datastore.DBTX, code string) (diygoapi.Role, error) {
 	dbRole, err := datastore.New(tx).FindRoleByCode(ctx, code)
 	if err != nil {
-		return saaswhip.Role{}, errs.E(errs.Database, err)
+		return diygoapi.Role{}, errs.E(errs.Database, err)
 	}
 
 	var dbPermissions []datastore.Permission
 	dbPermissions, err = datastore.New(tx).FindRolePermissionsByRoleID(ctx, dbRole.RoleID)
 	if err != nil {
-		return saaswhip.Role{}, errs.E(errs.Database, err)
+		return diygoapi.Role{}, errs.E(errs.Database, err)
 	}
 
-	var permissions []*saaswhip.Permission
+	var permissions []*diygoapi.Permission
 	if dbPermissions != nil {
 		for _, dbp := range dbPermissions {
-			p := &saaswhip.Permission{
+			p := &diygoapi.Permission{
 				ID:          dbp.PermissionID,
 				ExternalID:  secure.MustParseIdentifier(dbp.PermissionExtlID),
 				Resource:    dbp.Resource,
@@ -923,7 +923,7 @@ func FindRoleByCode(ctx context.Context, tx datastore.DBTX, code string) (saaswh
 		}
 	}
 
-	role := saaswhip.Role{
+	role := diygoapi.Role{
 		ID:          dbRole.RoleID,
 		ExternalID:  secure.MustParseIdentifier(dbRole.RoleExtlID),
 		Code:        dbRole.RoleCd,
@@ -936,10 +936,10 @@ func FindRoleByCode(ctx context.Context, tx datastore.DBTX, code string) (saaswh
 }
 
 type assignOrgRoleParams struct {
-	Role  saaswhip.Role
-	User  *saaswhip.User
-	Org   *saaswhip.Org
-	Audit saaswhip.Audit
+	Role  diygoapi.Role
+	User  *diygoapi.User
+	Org   *diygoapi.Org
+	Audit diygoapi.Audit
 }
 
 // assignOrgRoles assigns a role to a user for a given org.
@@ -973,7 +973,7 @@ func assignOrgRole(ctx context.Context, tx pgx.Tx, p assignOrgRoleParams) (err e
 // findPermissions finds a list of permissions in the database using
 // the Permission External ID first and if not given, the resource and
 // operation.
-func findPermissions(ctx context.Context, tx pgx.Tx, prs []*saaswhip.FindPermissionRequest) (aps []*saaswhip.Permission, err error) {
+func findPermissions(ctx context.Context, tx pgx.Tx, prs []*diygoapi.FindPermissionRequest) (aps []*diygoapi.Permission, err error) {
 
 	// it's fine for zero permissions to be added as part of a role
 	if len(prs) == 0 {

@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gilcrest/saaswhip/sqldb"
+	"github.com/gilcrest/diygoapi/sqldb"
 )
 
 // GCPCloudRunDeployImage builds arguments for running a service on

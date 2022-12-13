@@ -7,22 +7,22 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog/hlog"
 
-	"github.com/gilcrest/saaswhip"
-	"github.com/gilcrest/saaswhip/errs"
+	"github.com/gilcrest/diygoapi"
+	"github.com/gilcrest/diygoapi/errs"
 )
 
 // CreateMovie is a HandlerFunc used to create a Movie
 func (s *Server) handleMovieCreate(w http.ResponseWriter, r *http.Request) {
 	logger := *hlog.FromRequest(r)
 
-	adt, err := saaswhip.AuditFromRequest(r)
+	adt, err := diygoapi.AuditFromRequest(r)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, err)
 		return
 	}
 
 	// Declare request body (rb) as an instance of service.MovieRequest
-	rb := new(saaswhip.CreateMovieRequest)
+	rb := new(diygoapi.CreateMovieRequest)
 
 	// Decode JSON HTTP request body into a Decoder type
 	// and unmarshal that into the CreateMovieRequest struct (rb)
@@ -36,7 +36,7 @@ func (s *Server) handleMovieCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var response *saaswhip.MovieResponse
+	var response *diygoapi.MovieResponse
 	response, err = s.MovieServicer.Create(r.Context(), rb, adt)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, err)
@@ -57,7 +57,7 @@ func (s *Server) handleMovieUpdate(w http.ResponseWriter, r *http.Request) {
 
 	logger := *hlog.FromRequest(r)
 
-	adt, err := saaswhip.AuditFromRequest(r)
+	adt, err := diygoapi.AuditFromRequest(r)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, err)
 		return
@@ -70,7 +70,7 @@ func (s *Server) handleMovieUpdate(w http.ResponseWriter, r *http.Request) {
 	extlid := vars["extlID"]
 
 	// Declare request body (rb) as an instance of service.MovieRequest
-	rb := new(saaswhip.UpdateMovieRequest)
+	rb := new(diygoapi.UpdateMovieRequest)
 
 	// Decode JSON HTTP request body into a Decoder type
 	// and unmarshal that into requestData
@@ -88,7 +88,7 @@ func (s *Server) handleMovieUpdate(w http.ResponseWriter, r *http.Request) {
 	// from decoding response body
 	rb.ExternalID = extlid
 
-	var response *saaswhip.MovieResponse
+	var response *diygoapi.MovieResponse
 	response, err = s.MovieServicer.Update(r.Context(), rb, adt)
 	if err != nil {
 		errs.HTTPErrorResponse(w, logger, err)
@@ -179,14 +179,14 @@ func (s *Server) handleFindAllMovies(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleOrgCreate(w http.ResponseWriter, r *http.Request) {
 	lgr := *hlog.FromRequest(r)
 
-	adt, err := saaswhip.AuditFromRequest(r)
+	adt, err := diygoapi.AuditFromRequest(r)
 	if err != nil {
 		errs.HTTPErrorResponse(w, lgr, err)
 		return
 	}
 
 	// Declare request body (rb) as an instance of service.MovieRequest
-	rb := new(saaswhip.CreateOrgRequest)
+	rb := new(diygoapi.CreateOrgRequest)
 
 	// Decode JSON HTTP request body into a Decoder type
 	// and unmarshal that into the MovieRequest struct in the
@@ -201,7 +201,7 @@ func (s *Server) handleOrgCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var response *saaswhip.OrgResponse
+	var response *diygoapi.OrgResponse
 	response, err = s.OrgServicer.Create(r.Context(), rb, adt)
 	if err != nil {
 		errs.HTTPErrorResponse(w, lgr, err)
@@ -220,14 +220,14 @@ func (s *Server) handleOrgCreate(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleOrgUpdate(w http.ResponseWriter, r *http.Request) {
 	lgr := *hlog.FromRequest(r)
 
-	adt, err := saaswhip.AuditFromRequest(r)
+	adt, err := diygoapi.AuditFromRequest(r)
 	if err != nil {
 		errs.HTTPErrorResponse(w, lgr, err)
 		return
 	}
 
 	// Declare request body (rb) as an instance of service.MovieRequest
-	rb := new(saaswhip.UpdateOrgRequest)
+	rb := new(diygoapi.UpdateOrgRequest)
 
 	// Decode JSON HTTP request body into a Decoder type
 	// and unmarshal that into the MovieRequest struct in the
@@ -247,7 +247,7 @@ func (s *Server) handleOrgUpdate(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	rb.ExternalID = vars["extlID"]
 
-	var response *saaswhip.OrgResponse
+	var response *diygoapi.OrgResponse
 	response, err = s.OrgServicer.Update(r.Context(), rb, adt)
 	if err != nil {
 		errs.HTTPErrorResponse(w, lgr, err)
@@ -331,14 +331,14 @@ func (s *Server) handleOrgFindByExtlID(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleAppCreate(w http.ResponseWriter, r *http.Request) {
 	lgr := *hlog.FromRequest(r)
 
-	adt, err := saaswhip.AuditFromRequest(r)
+	adt, err := diygoapi.AuditFromRequest(r)
 	if err != nil {
 		errs.HTTPErrorResponse(w, lgr, err)
 		return
 	}
 
 	// Declare request body (rb)
-	rb := new(saaswhip.CreateAppRequest)
+	rb := new(diygoapi.CreateAppRequest)
 
 	// Decode JSON HTTP request body into a Decoder type
 	// and unmarshal that into the MovieRequest struct in the
@@ -353,7 +353,7 @@ func (s *Server) handleAppCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var response *saaswhip.AppResponse
+	var response *diygoapi.AppResponse
 	response, err = s.AppServicer.Create(r.Context(), rb, adt)
 	if err != nil {
 		errs.HTTPErrorResponse(w, lgr, err)
@@ -372,7 +372,7 @@ func (s *Server) handleAppCreate(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 	lgr := *hlog.FromRequest(r)
 
-	adt, err := saaswhip.AuditFromRequest(r)
+	adt, err := diygoapi.AuditFromRequest(r)
 	if err != nil {
 		errs.HTTPErrorResponse(w, lgr, err)
 		return
@@ -405,7 +405,7 @@ func (s *Server) handleLoggerUpdate(w http.ResponseWriter, r *http.Request) {
 	lgr := *hlog.FromRequest(r)
 
 	// Declare rb as an instance of service.LoggerRequest
-	rb := new(saaswhip.LoggerRequest)
+	rb := new(diygoapi.LoggerRequest)
 
 	// Decode JSON HTTP request body into a json.Decoder type
 	// and unmarshal that into rb
@@ -419,7 +419,7 @@ func (s *Server) handleLoggerUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var response *saaswhip.LoggerResponse
+	var response *diygoapi.LoggerResponse
 	response, err = s.LoggerService.Update(rb)
 	if err != nil {
 		errs.HTTPErrorResponse(w, lgr, err)
@@ -457,7 +457,7 @@ func (s *Server) handleGenesis(w http.ResponseWriter, r *http.Request) {
 	lgr := *hlog.FromRequest(r)
 
 	// Declare rb as an instance of service.LoggerRequest
-	rb := new(saaswhip.GenesisRequest)
+	rb := new(diygoapi.GenesisRequest)
 
 	// Decode JSON HTTP request body into a json.Decoder type
 	// and unmarshal that into rb
@@ -471,7 +471,7 @@ func (s *Server) handleGenesis(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var response saaswhip.GenesisResponse
+	var response diygoapi.GenesisResponse
 	response, err = s.GenesisServicer.Arche(r.Context(), rb)
 	if err != nil {
 		errs.HTTPErrorResponse(w, lgr, err)
@@ -491,7 +491,7 @@ func (s *Server) handleGenesisRead(w http.ResponseWriter, r *http.Request) {
 	lgr := *hlog.FromRequest(r)
 
 	var (
-		response saaswhip.GenesisResponse
+		response diygoapi.GenesisResponse
 		err      error
 	)
 	response, err = s.GenesisServicer.ReadConfig()
@@ -514,16 +514,16 @@ func (s *Server) handlePermissionCreate(w http.ResponseWriter, r *http.Request) 
 
 	var (
 		err error
-		adt saaswhip.Audit
+		adt diygoapi.Audit
 	)
-	adt, err = saaswhip.AuditFromRequest(r)
+	adt, err = diygoapi.AuditFromRequest(r)
 	if err != nil {
 		errs.HTTPErrorResponse(w, lgr, err)
 		return
 	}
 
 	// Declare rb as an instance of service.PermissionRequest
-	rb := new(saaswhip.CreatePermissionRequest)
+	rb := new(diygoapi.CreatePermissionRequest)
 
 	// Decode JSON HTTP request body into a json.Decoder type
 	// and unmarshal that into rb
@@ -537,7 +537,7 @@ func (s *Server) handlePermissionCreate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	var response *saaswhip.PermissionResponse
+	var response *diygoapi.PermissionResponse
 	response, err = s.PermissionServicer.Create(r.Context(), rb, adt)
 	if err != nil {
 		errs.HTTPErrorResponse(w, lgr, err)

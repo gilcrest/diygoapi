@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/gilcrest/saaswhip/cmd"
+	"github.com/gilcrest/diygoapi/cmd"
 )
 
 func main() {

@@ -8,7 +8,7 @@ import (
 	"encoding/hex"
 	"io"
 
-	"github.com/gilcrest/saaswhip/errs"
+	"github.com/gilcrest/diygoapi/errs"
 )
 
 const defaultIDByteLength int = 12

@@ -39,26 +39,26 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
 
-	"github.com/gilcrest/saaswhip"
-	"github.com/gilcrest/saaswhip/errs"
-	"github.com/gilcrest/saaswhip/server/driver"
+	"github.com/gilcrest/diygoapi"
+	"github.com/gilcrest/diygoapi/errs"
+	"github.com/gilcrest/diygoapi/server/driver"
 )
 
 const pathPrefix string = "/api"
 
 // Services are used by the application service handlers
 type Services struct {
-	OrgServicer            saaswhip.OrgServicer
-	AppServicer            saaswhip.AppServicer
-	RegisterUserService    saaswhip.RegisterUserServicer
-	PingService            saaswhip.PingServicer
-	LoggerService          saaswhip.LoggerServicer
-	GenesisServicer        saaswhip.GenesisServicer
-	AuthenticationServicer saaswhip.AuthenticationServicer
-	AuthorizationServicer  saaswhip.AuthorizationServicer
-	PermissionServicer     saaswhip.PermissionServicer
-	RoleServicer           saaswhip.RoleServicer
-	MovieServicer          saaswhip.MovieServicer
+	OrgServicer            diygoapi.OrgServicer
+	AppServicer            diygoapi.AppServicer
+	RegisterUserService    diygoapi.RegisterUserServicer
+	PingService            diygoapi.PingServicer
+	LoggerService          diygoapi.LoggerServicer
+	GenesisServicer        diygoapi.GenesisServicer
+	AuthenticationServicer diygoapi.AuthenticationServicer
+	AuthorizationServicer  diygoapi.AuthorizationServicer
+	PermissionServicer     diygoapi.PermissionServicer
+	RoleServicer           diygoapi.RoleServicer
+	MovieServicer          diygoapi.MovieServicer
 }
 
 // Server represents an HTTP server.

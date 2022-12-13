@@ -10,8 +10,8 @@ import (
 	googleoauth "google.golang.org/api/oauth2/v2"
 	"google.golang.org/api/option"
 
-	"github.com/gilcrest/saaswhip"
-	"github.com/gilcrest/saaswhip/errs"
+	"github.com/gilcrest/diygoapi"
+	"github.com/gilcrest/diygoapi/errs"
 )
 
 // Oauth2TokenExchange is used to convert an oauth2.Token to a ProviderInfo
@@ -20,9 +20,9 @@ type Oauth2TokenExchange struct{}
 
 // Exchange calls the Google Userinfo API with the access token and converts
 // the Userinfo struct to a User struct
-func (e Oauth2TokenExchange) Exchange(ctx context.Context, realm string, provider saaswhip.Provider, token *oauth2.Token) (*saaswhip.ProviderInfo, error) {
+func (e Oauth2TokenExchange) Exchange(ctx context.Context, realm string, provider diygoapi.Provider, token *oauth2.Token) (*diygoapi.ProviderInfo, error) {
 	switch provider {
-	case saaswhip.Google:
+	case diygoapi.Google:
 		return googleTokenExchange(ctx, realm, token)
 	default:
 		return nil, errs.E(errs.Unauthenticated, errs.Realm(realm), "provider not recognized")
@@ -30,8 +30,8 @@ func (e Oauth2TokenExchange) Exchange(ctx context.Context, realm string, provide
 }
 
 // googleTokenExchange makes a request to Google's OAuth2 API and
-// populates a saaswhip.ProviderInfo based on the response.
-func googleTokenExchange(ctx context.Context, realm string, token *oauth2.Token) (*saaswhip.ProviderInfo, error) {
+// populates ProviderInfo based on the response.
+func googleTokenExchange(ctx context.Context, realm string, token *oauth2.Token) (*diygoapi.ProviderInfo, error) {
 	var (
 		oauthService *googleoauth.Service
 		err          error
@@ -52,7 +52,7 @@ func googleTokenExchange(ctx context.Context, realm string, token *oauth2.Token)
 	// calculate the token expiration based on ExpiresIn (seconds)
 	tokenExpiration := time.Now().Add(time.Duration(tokenInfo.ExpiresIn) * time.Second)
 
-	pti := saaswhip.ProviderTokenInfo{
+	pti := diygoapi.ProviderTokenInfo{
 		Expiration: tokenExpiration,
 		ClientID:   tokenInfo.IssuedTo,
 		Scope:      tokenInfo.Scope,
@@ -84,7 +84,7 @@ func googleTokenExchange(ctx context.Context, realm string, token *oauth2.Token)
 		return nil, errs.E(errs.Internal, "tokenInfo.UserId != tokenInfo.Id")
 	}
 
-	pui := saaswhip.ProviderUserInfo{
+	pui := diygoapi.ProviderUserInfo{
 		ExternalID:   userinfo.Id,
 		Email:        userinfo.Email,
 		FirstName:    userinfo.GivenName,
@@ -97,8 +97,8 @@ func googleTokenExchange(ctx context.Context, realm string, token *oauth2.Token)
 		Picture:      userinfo.Picture,
 	}
 
-	pi := saaswhip.ProviderInfo{
-		Provider:  saaswhip.Google,
+	pi := diygoapi.ProviderInfo{
+		Provider:  diygoapi.Google,
 		TokenInfo: &pti,
 		UserInfo:  &pui,
 	}

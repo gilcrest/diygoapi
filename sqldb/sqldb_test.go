@@ -17,10 +17,10 @@ import (
 	"github.com/jackc/puddle"
 	"github.com/rs/zerolog"
 
-	"github.com/gilcrest/saaswhip"
-	"github.com/gilcrest/saaswhip/errs"
-	"github.com/gilcrest/saaswhip/logger"
-	"github.com/gilcrest/saaswhip/sqldb"
+	"github.com/gilcrest/diygoapi"
+	"github.com/gilcrest/diygoapi/errs"
+	"github.com/gilcrest/diygoapi/logger"
+	"github.com/gilcrest/diygoapi/sqldb"
 )
 
 func TestPostgreSQLDSN_ConnectionKeywordValueString(t *testing.T) {
@@ -562,7 +562,7 @@ func TestNewNullString(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := saaswhip.NewNullString(tt.args.s)
+			got := diygoapi.NewNullString(tt.args.s)
 			c.Assert(got, qt.Equals, tt.want)
 		})
 	}
@@ -584,7 +584,7 @@ func TestNewNullInt64(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := saaswhip.NewNullInt64(tt.args.i)
+			got := diygoapi.NewNullInt64(tt.args.i)
 			c.Assert(got, qt.Equals, tt.want)
 		})
 	}

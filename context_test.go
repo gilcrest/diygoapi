@@ -1,4 +1,4 @@
-package saaswhip
+package diygoapi
 
 import (
 	"context"
@@ -11,8 +11,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 
-	"github.com/gilcrest/saaswhip/errs"
-	"github.com/gilcrest/saaswhip/secure"
+	"github.com/gilcrest/diygoapi/errs"
+	"github.com/gilcrest/diygoapi/secure"
 )
 
 func TestUserFromRequest(t *testing.T) {

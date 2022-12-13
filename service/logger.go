@@ -6,8 +6,8 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/pkgerrors"
 
-	"github.com/gilcrest/saaswhip"
-	"github.com/gilcrest/saaswhip/errs"
+	"github.com/gilcrest/diygoapi"
+	"github.com/gilcrest/diygoapi/errs"
 )
 
 // LoggerService reads and updates the logger state
@@ -16,14 +16,14 @@ type LoggerService struct {
 }
 
 // ReadLogger handles GET requests for the /logger endpoint
-func (ls *LoggerService) Read() *saaswhip.LoggerResponse {
+func (ls *LoggerService) Read() *diygoapi.LoggerResponse {
 
 	var logErrorStack bool
 	if zerolog.ErrorStackMarshaler != nil {
 		logErrorStack = true
 	}
 
-	response := &saaswhip.LoggerResponse{
+	response := &diygoapi.LoggerResponse{
 		LoggerMinimumLevel: ls.Logger.GetLevel().String(),
 		GlobalLogLevel:     zerolog.GlobalLevel().String(),
 		LogErrorStack:      logErrorStack,
@@ -34,7 +34,7 @@ func (ls *LoggerService) Read() *saaswhip.LoggerResponse {
 
 // Update handles PUT requests for the /logger endpoint
 // and updates the logger globals
-func (ls *LoggerService) Update(r *saaswhip.LoggerRequest) (*saaswhip.LoggerResponse, error) {
+func (ls *LoggerService) Update(r *diygoapi.LoggerRequest) (*diygoapi.LoggerResponse, error) {
 
 	if r.GlobalLogLevel != "" {
 		// parse input level from request (if present) and set to that
@@ -68,7 +68,7 @@ func (ls *LoggerService) Update(r *saaswhip.LoggerRequest) (*saaswhip.LoggerResp
 		logErrorStack = true
 	}
 
-	response := &saaswhip.LoggerResponse{
+	response := &diygoapi.LoggerResponse{
 		LoggerMinimumLevel: ls.Logger.GetLevel().String(),
 		GlobalLogLevel:     zerolog.GlobalLevel().String(),
 		LogErrorStack:      logErrorStack,

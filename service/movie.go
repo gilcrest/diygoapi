@@ -8,21 +8,21 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 
-	"github.com/gilcrest/saaswhip"
-	"github.com/gilcrest/saaswhip/errs"
-	"github.com/gilcrest/saaswhip/secure"
-	"github.com/gilcrest/saaswhip/sqldb/datastore"
+	"github.com/gilcrest/diygoapi"
+	"github.com/gilcrest/diygoapi/errs"
+	"github.com/gilcrest/diygoapi/secure"
+	"github.com/gilcrest/diygoapi/sqldb/datastore"
 )
 
 // movieAudit is the combination of a domain Movie and its audit data
 type movieAudit struct {
-	Movie       saaswhip.Movie
-	SimpleAudit saaswhip.SimpleAudit
+	Movie       diygoapi.Movie
+	SimpleAudit diygoapi.SimpleAudit
 }
 
 // newMovieResponse initializes MovieResponse
-func newMovieResponse(ma movieAudit) *saaswhip.MovieResponse {
-	return &saaswhip.MovieResponse{
+func newMovieResponse(ma movieAudit) *diygoapi.MovieResponse {
+	return &diygoapi.MovieResponse{
 		ExternalID:          ma.Movie.ExternalID.String(),
 		Title:               ma.Movie.Title,
 		Rated:               ma.Movie.Rated,
@@ -43,11 +43,11 @@ func newMovieResponse(ma movieAudit) *saaswhip.MovieResponse {
 
 // MovieService is a service for creating a Movie
 type MovieService struct {
-	Datastorer saaswhip.Datastorer
+	Datastorer diygoapi.Datastorer
 }
 
 // Create is used to create a Movie
-func (s *MovieService) Create(ctx context.Context, r *saaswhip.CreateMovieRequest, adt saaswhip.Audit) (mr *saaswhip.MovieResponse, err error) {
+func (s *MovieService) Create(ctx context.Context, r *diygoapi.CreateMovieRequest, adt diygoapi.Audit) (mr *diygoapi.MovieResponse, err error) {
 
 	if r == nil {
 		return nil, errs.E(errs.Validation, "CreateMovieRequest must have a value when creating a Movie")
@@ -63,7 +63,7 @@ func (s *MovieService) Create(ctx context.Context, r *saaswhip.CreateMovieReques
 	}
 
 	// initialize Movie and inject dependent fields
-	m := saaswhip.Movie{
+	m := diygoapi.Movie{
 		ID:         uuid.New(),
 		ExternalID: secure.NewID(),
 		Title:      r.Title,
@@ -74,7 +74,7 @@ func (s *MovieService) Create(ctx context.Context, r *saaswhip.CreateMovieReques
 		Writer:     r.Writer,
 	}
 
-	sa := saaswhip.SimpleAudit{
+	sa := diygoapi.SimpleAudit{
 		Create: adt,
 		Update: adt,
 	}
@@ -88,11 +88,11 @@ func (s *MovieService) Create(ctx context.Context, r *saaswhip.CreateMovieReques
 		MovieID:         m.ID,
 		ExtlID:          m.ExternalID.String(),
 		Title:           m.Title,
-		Rated:           saaswhip.NewNullString(m.Rated),
-		Released:        saaswhip.NewNullTime(released),
-		RunTime:         saaswhip.NewNullInt32(int32(m.RunTime)),
-		Director:        saaswhip.NewNullString(m.Director),
-		Writer:          saaswhip.NewNullString(m.Writer),
+		Rated:           diygoapi.NewNullString(m.Rated),
+		Released:        diygoapi.NewNullTime(released),
+		RunTime:         diygoapi.NewNullInt32(int32(m.RunTime)),
+		Director:        diygoapi.NewNullString(m.Director),
+		Writer:          diygoapi.NewNullString(m.Writer),
 		CreateAppID:     sa.Create.App.ID,
 		CreateUserID:    sa.Create.User.NullUUID(),
 		CreateTimestamp: sa.Create.Moment,
@@ -129,7 +129,7 @@ func (s *MovieService) Create(ctx context.Context, r *saaswhip.CreateMovieReques
 }
 
 // Update is used to update a movie
-func (s *MovieService) Update(ctx context.Context, r *saaswhip.UpdateMovieRequest, adt saaswhip.Audit) (mr *saaswhip.MovieResponse, err error) {
+func (s *MovieService) Update(ctx context.Context, r *diygoapi.UpdateMovieRequest, adt diygoapi.Audit) (mr *diygoapi.MovieResponse, err error) {
 
 	var released time.Time
 	released, err = time.Parse(time.RFC3339, r.Released)
@@ -161,7 +161,7 @@ func (s *MovieService) Update(ctx context.Context, r *saaswhip.UpdateMovieReques
 		return nil, errs.E(errs.Database, err)
 	}
 
-	m := saaswhip.Movie{
+	m := diygoapi.Movie{
 		ID:         row.MovieID,
 		ExternalID: secure.MustParseIdentifier(row.ExtlID),
 		Title:      row.Title,
@@ -185,17 +185,17 @@ func (s *MovieService) Update(ctx context.Context, r *saaswhip.UpdateMovieReques
 		return nil, err
 	}
 
-	sa := saaswhip.SimpleAudit{
-		Create: saaswhip.Audit{
-			App: &saaswhip.App{
+	sa := diygoapi.SimpleAudit{
+		Create: diygoapi.Audit{
+			App: &diygoapi.App{
 				ID:          row.CreateAppID,
 				ExternalID:  secure.MustParseIdentifier(row.CreateAppExtlID),
-				Org:         &saaswhip.Org{ID: row.CreateAppOrgID},
+				Org:         &diygoapi.Org{ID: row.CreateAppOrgID},
 				Name:        row.CreateAppName,
 				Description: row.CreateAppDescription,
 				APIKeys:     nil,
 			},
-			User: &saaswhip.User{
+			User: &diygoapi.User{
 				ID:        row.CreateUserID.UUID,
 				FirstName: row.CreateUserFirstName.String,
 				LastName:  row.CreateUserLastName.String,
@@ -208,11 +208,11 @@ func (s *MovieService) Update(ctx context.Context, r *saaswhip.UpdateMovieReques
 
 	updateMovieParams := datastore.UpdateMovieParams{
 		Title:           m.Title,
-		Rated:           saaswhip.NewNullString(m.Rated),
-		Released:        saaswhip.NewNullTime(released),
-		RunTime:         saaswhip.NewNullInt32(int32(m.RunTime)),
-		Director:        saaswhip.NewNullString(m.Director),
-		Writer:          saaswhip.NewNullString(m.Writer),
+		Rated:           diygoapi.NewNullString(m.Rated),
+		Released:        diygoapi.NewNullTime(released),
+		RunTime:         diygoapi.NewNullInt32(int32(m.RunTime)),
+		Director:        diygoapi.NewNullString(m.Director),
+		Writer:          diygoapi.NewNullString(m.Writer),
 		UpdateAppID:     adt.App.ID,
 		UpdateUserID:    adt.User.NullUUID(),
 		UpdateTimestamp: adt.Moment,
@@ -236,13 +236,13 @@ func (s *MovieService) Update(ctx context.Context, r *saaswhip.UpdateMovieReques
 }
 
 // Delete is used to delete a movie
-func (s *MovieService) Delete(ctx context.Context, extlID string) (dr saaswhip.DeleteResponse, err error) {
+func (s *MovieService) Delete(ctx context.Context, extlID string) (dr diygoapi.DeleteResponse, err error) {
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
 	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
-		return saaswhip.DeleteResponse{}, err
+		return diygoapi.DeleteResponse{}, err
 	}
 	// defer transaction rollback and handle error, if any
 	defer func() {
@@ -254,28 +254,28 @@ func (s *MovieService) Delete(ctx context.Context, extlID string) (dr saaswhip.D
 	dbm, err = datastore.New(tx).FindMovieByExternalID(ctx, extlID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return saaswhip.DeleteResponse{}, errs.E(errs.Validation, "No movie exists for the given external ID")
+			return diygoapi.DeleteResponse{}, errs.E(errs.Validation, "No movie exists for the given external ID")
 		}
-		return saaswhip.DeleteResponse{}, errs.E(errs.Database, err)
+		return diygoapi.DeleteResponse{}, errs.E(errs.Database, err)
 	}
 
 	var rowsAffected int64
 	rowsAffected, err = datastore.New(tx).DeleteMovie(ctx, dbm.MovieID)
 	if err != nil {
-		return saaswhip.DeleteResponse{}, errs.E(errs.Database, err)
+		return diygoapi.DeleteResponse{}, errs.E(errs.Database, err)
 	}
 
 	if rowsAffected != 1 {
-		return saaswhip.DeleteResponse{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
+		return diygoapi.DeleteResponse{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
 	}
 
 	// commit db txn using pgxpool
 	err = s.Datastorer.CommitTx(ctx, tx)
 	if err != nil {
-		return saaswhip.DeleteResponse{}, err
+		return diygoapi.DeleteResponse{}, err
 	}
 
-	response := saaswhip.DeleteResponse{
+	response := diygoapi.DeleteResponse{
 		ExternalID: dbm.ExtlID,
 		Deleted:    true,
 	}
@@ -284,7 +284,7 @@ func (s *MovieService) Delete(ctx context.Context, extlID string) (dr saaswhip.D
 }
 
 // FindMovieByExternalID is used to find an individual movie
-func (s *MovieService) FindMovieByExternalID(ctx context.Context, extlID string) (mr *saaswhip.MovieResponse, err error) {
+func (s *MovieService) FindMovieByExternalID(ctx context.Context, extlID string) (mr *diygoapi.MovieResponse, err error) {
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
@@ -306,7 +306,7 @@ func (s *MovieService) FindMovieByExternalID(ctx context.Context, extlID string)
 		return nil, errs.E(errs.Database, err)
 	}
 
-	m := saaswhip.Movie{
+	m := diygoapi.Movie{
 		ID:         row.MovieID,
 		ExternalID: secure.MustParseIdentifier(row.ExtlID),
 		Title:      row.Title,
@@ -317,33 +317,33 @@ func (s *MovieService) FindMovieByExternalID(ctx context.Context, extlID string)
 		Writer:     row.Writer.String,
 	}
 
-	sa := saaswhip.SimpleAudit{
-		Create: saaswhip.Audit{
-			App: &saaswhip.App{
+	sa := diygoapi.SimpleAudit{
+		Create: diygoapi.Audit{
+			App: &diygoapi.App{
 				ID:          row.CreateAppID,
 				ExternalID:  secure.MustParseIdentifier(row.CreateAppExtlID),
-				Org:         &saaswhip.Org{ID: row.CreateAppOrgID},
+				Org:         &diygoapi.Org{ID: row.CreateAppOrgID},
 				Name:        row.CreateAppName,
 				Description: row.CreateAppDescription,
 				APIKeys:     nil,
 			},
-			User: &saaswhip.User{
+			User: &diygoapi.User{
 				ID:        row.CreateUserID.UUID,
 				FirstName: row.CreateUserFirstName.String,
 				LastName:  row.CreateUserLastName.String,
 			},
 			Moment: row.CreateTimestamp,
 		},
-		Update: saaswhip.Audit{
-			App: &saaswhip.App{
+		Update: diygoapi.Audit{
+			App: &diygoapi.App{
 				ID:          row.UpdateAppID,
 				ExternalID:  secure.MustParseIdentifier(row.UpdateAppExtlID),
-				Org:         &saaswhip.Org{ID: row.UpdateAppOrgID},
+				Org:         &diygoapi.Org{ID: row.UpdateAppOrgID},
 				Name:        row.UpdateAppName,
 				Description: row.UpdateAppDescription,
 				APIKeys:     nil,
 			},
-			User: &saaswhip.User{
+			User: &diygoapi.User{
 				ID:        row.UpdateUserID.UUID,
 				FirstName: row.UpdateUserFirstName.String,
 				LastName:  row.UpdateUserLastName.String,
@@ -358,7 +358,7 @@ func (s *MovieService) FindMovieByExternalID(ctx context.Context, extlID string)
 }
 
 // FindAllMovies is used to list all movies in the db
-func (s *MovieService) FindAllMovies(ctx context.Context) (smr []*saaswhip.MovieResponse, err error) {
+func (s *MovieService) FindAllMovies(ctx context.Context) (smr []*diygoapi.MovieResponse, err error) {
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
@@ -381,7 +381,7 @@ func (s *MovieService) FindAllMovies(ctx context.Context) (smr []*saaswhip.Movie
 	}
 
 	for _, row := range rows {
-		m := saaswhip.Movie{
+		m := diygoapi.Movie{
 			ID:         row.MovieID,
 			ExternalID: secure.MustParseIdentifier(row.ExtlID),
 			Title:      row.Title,
@@ -391,33 +391,33 @@ func (s *MovieService) FindAllMovies(ctx context.Context) (smr []*saaswhip.Movie
 			Director:   row.Director.String,
 			Writer:     row.Writer.String,
 		}
-		sa := saaswhip.SimpleAudit{
-			Create: saaswhip.Audit{
-				App: &saaswhip.App{
+		sa := diygoapi.SimpleAudit{
+			Create: diygoapi.Audit{
+				App: &diygoapi.App{
 					ID:          row.CreateAppID,
 					ExternalID:  secure.MustParseIdentifier(row.CreateAppExtlID),
-					Org:         &saaswhip.Org{ID: row.CreateAppOrgID},
+					Org:         &diygoapi.Org{ID: row.CreateAppOrgID},
 					Name:        row.CreateAppName,
 					Description: row.CreateAppDescription,
 					APIKeys:     nil,
 				},
-				User: &saaswhip.User{
+				User: &diygoapi.User{
 					ID:        row.CreateUserID.UUID,
 					FirstName: row.CreateUserFirstName.String,
 					LastName:  row.CreateUserLastName.String,
 				},
 				Moment: row.CreateTimestamp,
 			},
-			Update: saaswhip.Audit{
-				App: &saaswhip.App{
+			Update: diygoapi.Audit{
+				App: &diygoapi.App{
 					ID:          row.UpdateAppID,
 					ExternalID:  secure.MustParseIdentifier(row.UpdateAppExtlID),
-					Org:         &saaswhip.Org{ID: row.UpdateAppOrgID},
+					Org:         &diygoapi.Org{ID: row.UpdateAppOrgID},
 					Name:        row.UpdateAppName,
 					Description: row.UpdateAppDescription,
 					APIKeys:     nil,
 				},
-				User: &saaswhip.User{
+				User: &diygoapi.User{
 					ID:        row.UpdateUserID.UUID,
 					FirstName: row.UpdateUserLastName.String,
 					LastName:  row.UpdateUserLastName.String,

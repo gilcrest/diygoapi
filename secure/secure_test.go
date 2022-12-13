@@ -6,7 +6,7 @@ import (
 
 	qt "github.com/frankban/quicktest"
 
-	"github.com/gilcrest/saaswhip/secure"
+	"github.com/gilcrest/diygoapi/secure"
 )
 
 func TestNewEncryptionKey(t *testing.T) {

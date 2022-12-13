@@ -9,16 +9,16 @@ import (
 	"github.com/jackc/pgx/v4"
 	"golang.org/x/text/language"
 
-	"github.com/gilcrest/saaswhip"
-	"github.com/gilcrest/saaswhip/errs"
-	"github.com/gilcrest/saaswhip/secure"
-	"github.com/gilcrest/saaswhip/sqldb/datastore"
+	"github.com/gilcrest/diygoapi"
+	"github.com/gilcrest/diygoapi/errs"
+	"github.com/gilcrest/diygoapi/secure"
+	"github.com/gilcrest/diygoapi/sqldb/datastore"
 )
 
 // createPersonTx creates a Person in the database
 // Any Users attached to the Person will also be created.
 // The created User will be associated to any Orgs attached.
-func createPersonTx(ctx context.Context, tx pgx.Tx, p saaswhip.Person, adt saaswhip.Audit) error {
+func createPersonTx(ctx context.Context, tx pgx.Tx, p diygoapi.Person, adt diygoapi.Audit) error {
 	var err error
 
 	createPersonParams := datastore.CreatePersonParams{
@@ -64,9 +64,9 @@ type createUserTxParams struct {
 	// The ID of the Person the User is associated to
 	PersonID uuid.UUID
 	// The User to be created
-	User *saaswhip.User
+	User *diygoapi.User
 	// The details for which app and user created/updated the User
-	Audit saaswhip.Audit
+	Audit diygoapi.Audit
 }
 
 // createUserTx creates a User in the database
@@ -75,26 +75,26 @@ func createUserTx(ctx context.Context, tx pgx.Tx, params createUserTxParams) err
 
 	var birthYear, birthMonth, birthDay sql.NullInt64
 	if !params.User.BirthDate.IsZero() {
-		birthYear = saaswhip.NewNullInt64(int64(params.User.BirthDate.Year()))
-		birthMonth = saaswhip.NewNullInt64(int64(params.User.BirthDate.Month()))
-		birthDay = saaswhip.NewNullInt64(int64(params.User.BirthDate.Day()))
+		birthYear = diygoapi.NewNullInt64(int64(params.User.BirthDate.Year()))
+		birthMonth = diygoapi.NewNullInt64(int64(params.User.BirthDate.Month()))
+		birthDay = diygoapi.NewNullInt64(int64(params.User.BirthDate.Day()))
 	}
 
 	cuParams := datastore.CreateUserParams{
 		UserID:          params.User.ID,
 		UserExtlID:      params.User.ExternalID.String(),
 		PersonID:        params.PersonID,
-		NamePrefix:      saaswhip.NewNullString(params.User.NamePrefix),
+		NamePrefix:      diygoapi.NewNullString(params.User.NamePrefix),
 		FirstName:       params.User.FirstName,
-		MiddleName:      saaswhip.NewNullString(params.User.MiddleName),
+		MiddleName:      diygoapi.NewNullString(params.User.MiddleName),
 		LastName:        params.User.LastName,
-		NameSuffix:      saaswhip.NewNullString(params.User.NameSuffix),
-		Nickname:        saaswhip.NewNullString(params.User.Nickname),
-		Email:           saaswhip.NewNullString(params.User.Email),
-		CompanyName:     saaswhip.NewNullString(params.User.CompanyName),
-		CompanyDept:     saaswhip.NewNullString(params.User.CompanyDepartment),
-		JobTitle:        saaswhip.NewNullString(params.User.JobTitle),
-		BirthDate:       saaswhip.NewNullTime(params.User.BirthDate),
+		NameSuffix:      diygoapi.NewNullString(params.User.NameSuffix),
+		Nickname:        diygoapi.NewNullString(params.User.Nickname),
+		Email:           diygoapi.NewNullString(params.User.Email),
+		CompanyName:     diygoapi.NewNullString(params.User.CompanyName),
+		CompanyDept:     diygoapi.NewNullString(params.User.CompanyDepartment),
+		JobTitle:        diygoapi.NewNullString(params.User.JobTitle),
+		BirthDate:       diygoapi.NewNullTime(params.User.BirthDate),
 		BirthYear:       birthYear,
 		BirthMonth:      birthMonth,
 		BirthDay:        birthDay,
@@ -122,7 +122,7 @@ func createUserTx(ctx context.Context, tx pgx.Tx, params createUserTxParams) err
 }
 
 // FindUserByID finds a User in the datastore given their User ID
-func FindUserByID(ctx context.Context, dbtx datastore.DBTX, id uuid.UUID) (*saaswhip.User, error) {
+func FindUserByID(ctx context.Context, dbtx datastore.DBTX, id uuid.UUID) (*diygoapi.User, error) {
 	dbUser, err := datastore.New(dbtx).FindUserByID(ctx, id)
 	if err != nil {
 		return nil, errs.E(errs.Database, err)
@@ -140,7 +140,7 @@ func FindUserByID(ctx context.Context, dbtx datastore.DBTX, id uuid.UUID) (*saas
 		langPrefs = append(langPrefs, tag)
 	}
 
-	u := &saaswhip.User{
+	u := &diygoapi.User{
 		ID:                  dbUser.UserID,
 		ExternalID:          secure.MustParseIdentifier(dbUser.UserExtlID),
 		NamePrefix:          dbUser.NamePrefix.String,
@@ -167,9 +167,9 @@ func FindUserByID(ctx context.Context, dbtx datastore.DBTX, id uuid.UUID) (*saas
 }
 
 type attachOrgAssociationParams struct {
-	Org   *saaswhip.Org
-	User  *saaswhip.User
-	Audit saaswhip.Audit
+	Org   *diygoapi.Org
+	User  *diygoapi.User
+	Audit diygoapi.Audit
 }
 
 // attachOrgAssociation associates an Org with a User in the database.
@@ -180,10 +180,10 @@ func attachOrgAssociation(ctx context.Context, tx pgx.Tx, params attachOrgAssoci
 		OrgID:           params.Org.ID,
 		UserID:          params.User.ID,
 		CreateAppID:     params.Audit.App.ID,
-		CreateUserID:    saaswhip.NewNullUUID(params.Audit.User.ID),
+		CreateUserID:    diygoapi.NewNullUUID(params.Audit.User.ID),
 		CreateTimestamp: params.Audit.Moment,
 		UpdateAppID:     params.Audit.App.ID,
-		UpdateUserID:    saaswhip.NewNullUUID(params.Audit.User.ID),
+		UpdateUserID:    diygoapi.NewNullUUID(params.Audit.User.ID),
 		UpdateTimestamp: params.Audit.Moment,
 	}
 

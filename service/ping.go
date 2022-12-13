@@ -6,16 +6,16 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/rs/zerolog"
 
-	"github.com/gilcrest/saaswhip"
+	"github.com/gilcrest/diygoapi"
 )
 
 // PingService pings the database.
 type PingService struct {
-	Datastorer saaswhip.Datastorer
+	Datastorer diygoapi.Datastorer
 }
 
 // Ping method pings the database
-func (s *PingService) Ping(ctx context.Context, lgr zerolog.Logger) saaswhip.PingResponse {
+func (s *PingService) Ping(ctx context.Context, lgr zerolog.Logger) diygoapi.PingResponse {
 	// start db txn using pgxpool
 	var (
 		tx  pgx.Tx
@@ -25,7 +25,7 @@ func (s *PingService) Ping(ctx context.Context, lgr zerolog.Logger) saaswhip.Pin
 	if err != nil {
 		// if error from PingDB, log the error, set DBUp to false
 		lgr.Error().Stack().Err(err).Msg("PingService.Ping BeginTx error")
-		return saaswhip.PingResponse{DBUp: false}
+		return diygoapi.PingResponse{DBUp: false}
 	}
 	// defer transaction rollback and handle error, if any
 	defer func() {
@@ -36,8 +36,8 @@ func (s *PingService) Ping(ctx context.Context, lgr zerolog.Logger) saaswhip.Pin
 	if err != nil {
 		// if error from PingDB, log the error, set DBUp to false
 		lgr.Error().Stack().Err(err).Msg("s.Datastorer.Ping error")
-		return saaswhip.PingResponse{DBUp: false}
+		return diygoapi.PingResponse{DBUp: false}
 	}
 
-	return saaswhip.PingResponse{DBUp: true}
+	return diygoapi.PingResponse{DBUp: true}
 }

@@ -11,8 +11,8 @@ import (
 	"github.com/rs/zerolog/hlog"
 	"golang.org/x/oauth2"
 
-	"github.com/gilcrest/saaswhip"
-	"github.com/gilcrest/saaswhip/errs"
+	"github.com/gilcrest/diygoapi"
+	"github.com/gilcrest/diygoapi/errs"
 )
 
 const (
@@ -77,7 +77,7 @@ func (s *Server) appHandler(h http.Handler) http.Handler {
 			return
 		}
 
-		var a *saaswhip.App
+		var a *diygoapi.App
 		a, err = s.AuthenticationServicer.FindAppByAPIKey(ctx, defaultRealm, appExtlID, apiKey)
 		if err != nil {
 			errs.HTTPErrorResponse(w, lgr, err)
@@ -85,7 +85,7 @@ func (s *Server) appHandler(h http.Handler) http.Handler {
 		}
 
 		// get a new context with app added
-		ctx = saaswhip.NewContextWithApp(ctx, a)
+		ctx = diygoapi.NewContextWithApp(ctx, a)
 
 		lgr.Debug().Msgf("Internal app authentication successful for: %s", a.Name)
 
@@ -126,7 +126,7 @@ func (s *Server) authHandler(h http.Handler) http.Handler {
 		ctx := r.Context()
 
 		var (
-			provider saaswhip.Provider
+			provider diygoapi.Provider
 			err      error
 		)
 		provider, err = parseProviderHeader(defaultRealm, r.Header)
@@ -142,32 +142,32 @@ func (s *Server) authHandler(h http.Handler) http.Handler {
 			return
 		}
 
-		params := saaswhip.AuthenticationParams{
+		params := diygoapi.AuthenticationParams{
 			Realm:    defaultRealm,
 			Provider: provider,
 			Token:    token,
 		}
 
-		var auth saaswhip.Auth
+		var auth diygoapi.Auth
 		auth, err = s.AuthenticationServicer.FindAuth(ctx, params)
 		if err != nil {
 			errs.HTTPErrorResponse(w, lgr, err)
 			return
 		}
 
-		ctx = saaswhip.NewContextWithUser(ctx, auth.User)
+		ctx = diygoapi.NewContextWithUser(ctx, auth.User)
 
-		_, err = saaswhip.AppFromRequest(r)
+		_, err = diygoapi.AppFromRequest(r)
 		if err != nil {
 			// no app found in request, lookup app from Auth
-			var a *saaswhip.App
+			var a *diygoapi.App
 			a, err = s.AuthenticationServicer.FindAppByProviderClientID(ctx, defaultRealm, auth)
 			if err != nil {
 				errs.HTTPErrorResponse(w, lgr, err)
 				return
 			}
 			// get a new context with App from Auth added to it
-			ctx = saaswhip.NewContextWithApp(ctx, a)
+			ctx = diygoapi.NewContextWithApp(ctx, a)
 		}
 
 		// call original, with new context
@@ -181,7 +181,7 @@ func (s *Server) authorizeUserHandler(h http.Handler) http.Handler {
 		lgr := *hlog.FromRequest(r)
 
 		// retrieve user from request context
-		adt, err := saaswhip.AuditFromRequest(r)
+		adt, err := diygoapi.AuditFromRequest(r)
 		if err != nil {
 			errs.HTTPErrorResponse(w, lgr, err)
 			return
@@ -253,17 +253,17 @@ func parseAppHeader(realm string, header http.Header, key string) (v string, err
 }
 
 // parseProviderHeader parses the X-AUTH-PROVIDER header and returns its value.
-func parseProviderHeader(realm string, header http.Header) (p saaswhip.Provider, err error) {
+func parseProviderHeader(realm string, header http.Header) (p diygoapi.Provider, err error) {
 	// Pull the header value from the Header map given the key
 	headerValue, ok := header[http.CanonicalHeaderKey(authProviderHeaderKey)]
 	if !ok {
-		return saaswhip.UnknownProvider, errs.E(errs.Unauthenticated, errs.Realm(realm), fmt.Sprintf("no %s header sent", authProviderHeaderKey))
+		return diygoapi.UnknownProvider, errs.E(errs.Unauthenticated, errs.Realm(realm), fmt.Sprintf("no %s header sent", authProviderHeaderKey))
 
 	}
 
 	// too many values sent - should only be one value
 	if len(headerValue) > 1 {
-		return saaswhip.UnknownProvider, errs.E(errs.Unauthenticated, errs.Realm(realm), fmt.Sprintf("%s header value > 1", authProviderHeaderKey))
+		return diygoapi.UnknownProvider, errs.E(errs.Unauthenticated, errs.Realm(realm), fmt.Sprintf("%s header value > 1", authProviderHeaderKey))
 	}
 
 	// retrieve header value from map
@@ -274,12 +274,12 @@ func parseProviderHeader(realm string, header http.Header) (p saaswhip.Provider,
 
 	// should not be empty
 	if v == "" {
-		return saaswhip.UnknownProvider, errs.E(errs.Unauthenticated, errs.Realm(realm), fmt.Sprintf("unauthenticated: %s header value not found", authProviderHeaderKey))
+		return diygoapi.UnknownProvider, errs.E(errs.Unauthenticated, errs.Realm(realm), fmt.Sprintf("unauthenticated: %s header value not found", authProviderHeaderKey))
 	}
 
-	p = saaswhip.ParseProvider(v)
+	p = diygoapi.ParseProvider(v)
 
-	if p == saaswhip.UnknownProvider {
+	if p == diygoapi.UnknownProvider {
 		return p, errs.E(errs.Unauthenticated, errs.Realm(realm), fmt.Sprintf("unknown provider given: %s", v))
 	}
 
@@ -306,13 +306,13 @@ func parseAuthorizationHeader(realm string, header http.Header) (*oauth2.Token, 
 	token := headerValue[0]
 
 	// Oauth2 should have "Bearer " as the prefix as the authentication scheme
-	hasBearer := strings.HasPrefix(token, saaswhip.BearerTokenType+" ")
+	hasBearer := strings.HasPrefix(token, diygoapi.BearerTokenType+" ")
 	if !hasBearer {
 		return nil, errs.E(errs.Unauthenticated, errs.Realm(realm), "unauthenticated: Bearer authentication scheme not found")
 	}
 
 	// remove "Bearer " authentication scheme from header value
-	token = strings.TrimPrefix(token, saaswhip.BearerTokenType+" ")
+	token = strings.TrimPrefix(token, diygoapi.BearerTokenType+" ")
 
 	// remove all leading/trailing white space
 	token = strings.TrimSpace(token)
@@ -322,7 +322,7 @@ func parseAuthorizationHeader(realm string, header http.Header) (*oauth2.Token, 
 		return nil, errs.E(errs.Unauthenticated, errs.Realm(realm), "unauthenticated: Authorization header sent with Bearer scheme, but no token found")
 	}
 
-	return &oauth2.Token{AccessToken: token, TokenType: saaswhip.BearerTokenType}, nil
+	return &oauth2.Token{AccessToken: token, TokenType: diygoapi.BearerTokenType}, nil
 }
 
 // genesisAuthHandler middleware is used to parse the request authentication
@@ -338,7 +338,7 @@ func (s *Server) genesisAuthHandler(h http.Handler) http.Handler {
 		ctx := r.Context()
 
 		var (
-			provider saaswhip.Provider
+			provider diygoapi.Provider
 			err      error
 		)
 		provider, err = parseProviderHeader(defaultRealm, r.Header)
@@ -354,13 +354,13 @@ func (s *Server) genesisAuthHandler(h http.Handler) http.Handler {
 			return
 		}
 
-		params := &saaswhip.AuthenticationParams{
+		params := &diygoapi.AuthenticationParams{
 			Realm:    defaultRealm,
 			Provider: provider,
 			Token:    token,
 		}
 
-		ctx = saaswhip.NewContextWithAuthParams(ctx, params)
+		ctx = diygoapi.NewContextWithAuthParams(ctx, params)
 
 		// call original, with new context
 		h.ServeHTTP(w, r.WithContext(ctx))

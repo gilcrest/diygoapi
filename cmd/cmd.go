@@ -11,13 +11,13 @@ import (
 	"github.com/rs/zerolog"
 	"golang.org/x/text/language"
 
-	"github.com/gilcrest/saaswhip/errs"
-	"github.com/gilcrest/saaswhip/gateway"
-	"github.com/gilcrest/saaswhip/logger"
-	"github.com/gilcrest/saaswhip/secure"
-	"github.com/gilcrest/saaswhip/server"
-	"github.com/gilcrest/saaswhip/service"
-	"github.com/gilcrest/saaswhip/sqldb"
+	"github.com/gilcrest/diygoapi/errs"
+	"github.com/gilcrest/diygoapi/gateway"
+	"github.com/gilcrest/diygoapi/logger"
+	"github.com/gilcrest/diygoapi/secure"
+	"github.com/gilcrest/diygoapi/server"
+	"github.com/gilcrest/diygoapi/service"
+	"github.com/gilcrest/diygoapi/sqldb"
 )
 
 const (

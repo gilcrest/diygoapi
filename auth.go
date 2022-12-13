@@ -1,4 +1,4 @@
-package saaswhip
+package diygoapi
 
 import (
 	"context"
@@ -10,8 +10,8 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/oauth2"
 
-	"github.com/gilcrest/saaswhip/errs"
-	"github.com/gilcrest/saaswhip/secure"
+	"github.com/gilcrest/diygoapi/errs"
+	"github.com/gilcrest/diygoapi/secure"
 )
 
 // PermissionServicer allows for creating, updating, reading and deleting a Permission

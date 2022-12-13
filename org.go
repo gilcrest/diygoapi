@@ -1,12 +1,12 @@
-package saaswhip
+package diygoapi
 
 import (
 	"context"
 
 	"github.com/google/uuid"
 
-	"github.com/gilcrest/saaswhip/errs"
-	"github.com/gilcrest/saaswhip/secure"
+	"github.com/gilcrest/diygoapi/errs"
+	"github.com/gilcrest/diygoapi/secure"
 )
 
 // OrgServicer manages the retrieval and manipulation of an Org

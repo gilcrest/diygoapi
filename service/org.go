@@ -9,21 +9,21 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 
-	"github.com/gilcrest/saaswhip"
-	"github.com/gilcrest/saaswhip/errs"
-	"github.com/gilcrest/saaswhip/secure"
-	"github.com/gilcrest/saaswhip/sqldb/datastore"
+	"github.com/gilcrest/diygoapi"
+	"github.com/gilcrest/diygoapi/errs"
+	"github.com/gilcrest/diygoapi/secure"
+	"github.com/gilcrest/diygoapi/sqldb/datastore"
 )
 
 // orgAudit is the combination of a domain Org and its audit data
 type orgAudit struct {
-	Org         *saaswhip.Org
-	SimpleAudit *saaswhip.SimpleAudit
+	Org         *diygoapi.Org
+	SimpleAudit *diygoapi.SimpleAudit
 }
 
-// newOrgResponse initializes OrgResponse given a saaswhip.Org.
-func newOrgResponse(oa *orgAudit, aa appAudit) *saaswhip.OrgResponse {
-	r := &saaswhip.OrgResponse{
+// newOrgResponse initializes OrgResponse given an Org.
+func newOrgResponse(oa *orgAudit, aa appAudit) *diygoapi.OrgResponse {
+	r := &diygoapi.OrgResponse{
 		ExternalID:          oa.Org.ExternalID.String(),
 		Name:                oa.Org.Name,
 		Description:         oa.Org.Description,
@@ -47,15 +47,15 @@ func newOrgResponse(oa *orgAudit, aa appAudit) *saaswhip.OrgResponse {
 
 // OrgService is a service for updating, reading and deleting an Org
 type OrgService struct {
-	Datastorer      saaswhip.Datastorer
-	APIKeyGenerator saaswhip.APIKeyGenerator
+	Datastorer      diygoapi.Datastorer
+	APIKeyGenerator diygoapi.APIKeyGenerator
 	EncryptionKey   *[32]byte
 }
 
 // Create is used to create an Org
-func (s *OrgService) Create(ctx context.Context, r *saaswhip.CreateOrgRequest, adt saaswhip.Audit) (or *saaswhip.OrgResponse, err error) {
+func (s *OrgService) Create(ctx context.Context, r *diygoapi.CreateOrgRequest, adt diygoapi.Audit) (or *diygoapi.OrgResponse, err error) {
 
-	if r == nil || *r.CreateAppRequest == (saaswhip.CreateAppRequest{}) {
+	if r == nil || *r.CreateAppRequest == (diygoapi.CreateAppRequest{}) {
 		return nil, errs.E(errs.Validation, "CreateOrgRequest must have a value when creating an Org")
 	}
 	err = r.Validate()
@@ -68,7 +68,7 @@ func (s *OrgService) Create(ctx context.Context, r *saaswhip.CreateOrgRequest, a
 		return nil, err
 	}
 
-	sa := &saaswhip.SimpleAudit{
+	sa := &diygoapi.SimpleAudit{
 		Create: adt,
 		Update: adt,
 	}
@@ -84,14 +84,14 @@ func (s *OrgService) Create(ctx context.Context, r *saaswhip.CreateOrgRequest, a
 		err = s.Datastorer.RollbackTx(ctx, tx, err)
 	}()
 
-	var kind *saaswhip.OrgKind
+	var kind *diygoapi.OrgKind
 	kind, err = findOrgKindByExtlID(ctx, tx, r.Kind)
 	if err != nil {
 		return nil, err
 	}
 
 	// initialize Org and inject dependent fields
-	o := &saaswhip.Org{
+	o := &diygoapi.Org{
 		ID:          uuid.New(),
 		ExternalID:  secure.NewID(),
 		Name:        r.Name,
@@ -105,11 +105,11 @@ func (s *OrgService) Create(ctx context.Context, r *saaswhip.CreateOrgRequest, a
 
 	// if there is an app request along with the Org request, process it as well
 	var (
-		a        *saaswhip.App
+		a        *diygoapi.App
 		aa       appAudit
-		provider saaswhip.Provider
+		provider diygoapi.Provider
 	)
-	provider = saaswhip.ParseProvider(r.CreateAppRequest.Oauth2Provider)
+	provider = diygoapi.ParseProvider(r.CreateAppRequest.Oauth2Provider)
 
 	err = r.CreateAppRequest.Validate()
 	if err != nil {
@@ -197,7 +197,7 @@ func newCreateOrgParams(oa *orgAudit) datastore.CreateOrgParams {
 }
 
 // Update is used to update an Org
-func (s *OrgService) Update(ctx context.Context, r *saaswhip.UpdateOrgRequest, adt saaswhip.Audit) (or *saaswhip.OrgResponse, err error) {
+func (s *OrgService) Update(ctx context.Context, r *diygoapi.UpdateOrgRequest, adt diygoapi.Audit) (or *diygoapi.OrgResponse, err error) {
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
@@ -257,13 +257,13 @@ func (s *OrgService) Update(ctx context.Context, r *saaswhip.UpdateOrgRequest, a
 }
 
 // Delete is used to delete an Org
-func (s *OrgService) Delete(ctx context.Context, extlID string) (dr saaswhip.DeleteResponse, err error) {
+func (s *OrgService) Delete(ctx context.Context, extlID string) (dr diygoapi.DeleteResponse, err error) {
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
 	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
-		return saaswhip.DeleteResponse{}, err
+		return diygoapi.DeleteResponse{}, err
 	}
 	// defer transaction rollback and handle error, if any
 	defer func() {
@@ -271,46 +271,46 @@ func (s *OrgService) Delete(ctx context.Context, extlID string) (dr saaswhip.Del
 	}()
 
 	// retrieve existing Org
-	var o saaswhip.Org
+	var o diygoapi.Org
 	o, err = findOrgByExternalID(ctx, tx, extlID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return saaswhip.DeleteResponse{}, errs.E(errs.Validation, "No org exists for the given external ID")
+			return diygoapi.DeleteResponse{}, errs.E(errs.Validation, "No org exists for the given external ID")
 		}
-		return saaswhip.DeleteResponse{}, errs.E(errs.Database, err)
+		return diygoapi.DeleteResponse{}, errs.E(errs.Database, err)
 	}
 
 	var dbApps []datastore.App
 	dbApps, err = datastore.New(tx).FindAppsByOrg(ctx, o.ID)
 	if err != nil {
-		return saaswhip.DeleteResponse{}, errs.E(errs.Database, err)
+		return diygoapi.DeleteResponse{}, errs.E(errs.Database, err)
 	}
 
 	for _, aa := range dbApps {
-		a := saaswhip.App{ID: aa.AppID}
+		a := diygoapi.App{ID: aa.AppID}
 		err = deleteAppTx(ctx, tx, a)
 		if err != nil {
-			return saaswhip.DeleteResponse{}, errs.E(errs.Database, err)
+			return diygoapi.DeleteResponse{}, errs.E(errs.Database, err)
 		}
 	}
 
 	var rowsAffected int64
 	rowsAffected, err = datastore.New(tx).DeleteOrg(ctx, o.ID)
 	if err != nil {
-		return saaswhip.DeleteResponse{}, errs.E(errs.Database, err)
+		return diygoapi.DeleteResponse{}, errs.E(errs.Database, err)
 	}
 
 	if rowsAffected != 1 {
-		return saaswhip.DeleteResponse{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
+		return diygoapi.DeleteResponse{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
 	}
 
 	// commit db txn using pgxpool
 	err = s.Datastorer.CommitTx(ctx, tx)
 	if err != nil {
-		return saaswhip.DeleteResponse{}, err
+		return diygoapi.DeleteResponse{}, err
 	}
 
-	response := saaswhip.DeleteResponse{
+	response := diygoapi.DeleteResponse{
 		ExternalID: extlID,
 		Deleted:    true,
 	}
@@ -319,7 +319,7 @@ func (s *OrgService) Delete(ctx context.Context, extlID string) (dr saaswhip.Del
 }
 
 // FindAll is used to list all orgs in the datastore
-func (s *OrgService) FindAll(ctx context.Context) (responses []*saaswhip.OrgResponse, err error) {
+func (s *OrgService) FindAll(ctx context.Context) (responses []*diygoapi.OrgResponse, err error) {
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
@@ -342,45 +342,45 @@ func (s *OrgService) FindAll(ctx context.Context) (responses []*saaswhip.OrgResp
 	}
 
 	for _, row := range rows {
-		o := saaswhip.Org{
+		o := diygoapi.Org{
 			ID:          row.OrgID,
 			ExternalID:  secure.MustParseIdentifier(row.OrgExtlID),
 			Name:        row.OrgName,
 			Description: row.OrgDescription,
-			Kind: &saaswhip.OrgKind{
+			Kind: &diygoapi.OrgKind{
 				ID:          row.OrgKindID,
 				ExternalID:  row.OrgKindExtlID,
 				Description: row.OrgKindDesc,
 			},
 		}
 
-		sa := saaswhip.SimpleAudit{
-			Create: saaswhip.Audit{
-				App: &saaswhip.App{
+		sa := diygoapi.SimpleAudit{
+			Create: diygoapi.Audit{
+				App: &diygoapi.App{
 					ID:          row.CreateAppID,
 					ExternalID:  secure.MustParseIdentifier(row.CreateAppExtlID),
-					Org:         &saaswhip.Org{ID: row.CreateAppOrgID},
+					Org:         &diygoapi.Org{ID: row.CreateAppOrgID},
 					Name:        row.CreateAppName,
 					Description: row.CreateAppDescription,
 					APIKeys:     nil,
 				},
-				User: &saaswhip.User{
+				User: &diygoapi.User{
 					ID:        row.CreateUserID.UUID,
 					FirstName: row.CreateUserFirstName,
 					LastName:  row.CreateUserLastName,
 				},
 				Moment: row.CreateTimestamp,
 			},
-			Update: saaswhip.Audit{
-				App: &saaswhip.App{
+			Update: diygoapi.Audit{
+				App: &diygoapi.App{
 					ID:          row.UpdateAppID,
 					ExternalID:  secure.MustParseIdentifier(row.UpdateAppExtlID),
-					Org:         &saaswhip.Org{ID: row.UpdateAppOrgID},
+					Org:         &diygoapi.Org{ID: row.UpdateAppOrgID},
 					Name:        row.UpdateAppName,
 					Description: row.UpdateAppDescription,
 					APIKeys:     nil,
 				},
-				User: &saaswhip.User{
+				User: &diygoapi.User{
 					ID:        row.UpdateUserID.UUID,
 					FirstName: row.UpdateUserFirstName,
 					LastName:  row.UpdateUserLastName,
@@ -397,7 +397,7 @@ func (s *OrgService) FindAll(ctx context.Context) (responses []*saaswhip.OrgResp
 }
 
 // FindByExternalID is used to find an Org by its External ID
-func (s *OrgService) FindByExternalID(ctx context.Context, extlID string) (or *saaswhip.OrgResponse, err error) {
+func (s *OrgService) FindByExternalID(ctx context.Context, extlID string) (or *diygoapi.OrgResponse, err error) {
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
@@ -420,18 +420,18 @@ func (s *OrgService) FindByExternalID(ctx context.Context, extlID string) (or *s
 }
 
 // findOrgByExternalID retrieves an Org from the datastore given a unique external ID
-func findOrgByExternalID(ctx context.Context, dbtx saaswhip.DBTX, extlID string) (saaswhip.Org, error) {
+func findOrgByExternalID(ctx context.Context, dbtx diygoapi.DBTX, extlID string) (diygoapi.Org, error) {
 	row, err := datastore.New(dbtx).FindOrgByExtlID(ctx, extlID)
 	if err != nil {
-		return saaswhip.Org{}, errs.E(errs.Database, err)
+		return diygoapi.Org{}, errs.E(errs.Database, err)
 	}
 
-	o := saaswhip.Org{
+	o := diygoapi.Org{
 		ID:          row.OrgID,
 		ExternalID:  secure.MustParseIdentifier(row.OrgExtlID),
 		Name:        row.OrgName,
 		Description: row.OrgDescription,
-		Kind: &saaswhip.OrgKind{
+		Kind: &diygoapi.OrgKind{
 			ID:          row.OrgKindID,
 			ExternalID:  row.OrgKindExtlID,
 			Description: row.OrgKindDesc,
@@ -441,9 +441,9 @@ func findOrgByExternalID(ctx context.Context, dbtx saaswhip.DBTX, extlID string)
 	return o, nil
 }
 
-// findOrgByExternalID retrieves Org data from the datastore given a unique external ID.
-// This data is then hydrated into the saaswhip.Org struct along with the simple audit struct
-func findOrgByExternalIDWithAudit(ctx context.Context, dbtx saaswhip.DBTX, extlID string) (*orgAudit, error) {
+// findOrgByExternalID retrieves Org data from the datastore given a
+// unique external ID, which is then hydrated into Org and audit structs.
+func findOrgByExternalIDWithAudit(ctx context.Context, dbtx diygoapi.DBTX, extlID string) (*orgAudit, error) {
 	var (
 		row datastore.FindOrgByExtlIDWithAuditRow
 		err error
@@ -458,45 +458,45 @@ func findOrgByExternalIDWithAudit(ctx context.Context, dbtx saaswhip.DBTX, extlI
 		}
 	}
 
-	o := &saaswhip.Org{
+	o := &diygoapi.Org{
 		ID:          row.OrgID,
 		ExternalID:  secure.MustParseIdentifier(row.OrgExtlID),
 		Name:        row.OrgName,
 		Description: row.OrgDescription,
-		Kind: &saaswhip.OrgKind{
+		Kind: &diygoapi.OrgKind{
 			ID:          row.OrgKindID,
 			ExternalID:  row.OrgKindExtlID,
 			Description: row.OrgKindDesc,
 		},
 	}
 
-	sa := &saaswhip.SimpleAudit{
-		Create: saaswhip.Audit{
-			App: &saaswhip.App{
+	sa := &diygoapi.SimpleAudit{
+		Create: diygoapi.Audit{
+			App: &diygoapi.App{
 				ID:          row.CreateAppID,
 				ExternalID:  secure.MustParseIdentifier(row.CreateAppExtlID),
-				Org:         &saaswhip.Org{ID: row.CreateAppOrgID},
+				Org:         &diygoapi.Org{ID: row.CreateAppOrgID},
 				Name:        row.CreateAppName,
 				Description: row.CreateAppDescription,
 				APIKeys:     nil,
 			},
-			User: &saaswhip.User{
+			User: &diygoapi.User{
 				ID:        row.CreateUserID.UUID,
 				FirstName: row.CreateUserFirstName,
 				LastName:  row.CreateUserLastName,
 			},
 			Moment: row.CreateTimestamp,
 		},
-		Update: saaswhip.Audit{
-			App: &saaswhip.App{
+		Update: diygoapi.Audit{
+			App: &diygoapi.App{
 				ID:          row.UpdateAppID,
 				ExternalID:  secure.MustParseIdentifier(row.UpdateAppExtlID),
-				Org:         &saaswhip.Org{ID: row.UpdateAppOrgID},
+				Org:         &diygoapi.Org{ID: row.UpdateAppOrgID},
 				Name:        row.UpdateAppName,
 				Description: row.UpdateAppDescription,
 				APIKeys:     nil,
 			},
-			User: &saaswhip.User{
+			User: &diygoapi.User{
 				ID:        row.UpdateUserID.UUID,
 				FirstName: row.UpdateUserFirstName,
 				LastName:  row.UpdateUserLastName,
@@ -509,18 +509,18 @@ func findOrgByExternalIDWithAudit(ctx context.Context, dbtx saaswhip.DBTX, extlI
 }
 
 // FindOrgByName finds an Org in the database using its unique name.
-func FindOrgByName(ctx context.Context, tx datastore.DBTX, name string) (*saaswhip.Org, error) {
+func FindOrgByName(ctx context.Context, tx datastore.DBTX, name string) (*diygoapi.Org, error) {
 	findOrgByNameRow, err := datastore.New(tx).FindOrgByName(ctx, name)
 	if err != nil {
 		return nil, errs.E(errs.Database, err)
 	}
 
-	o := &saaswhip.Org{
+	o := &diygoapi.Org{
 		ID:          findOrgByNameRow.OrgID,
 		ExternalID:  secure.MustParseIdentifier(findOrgByNameRow.OrgExtlID),
 		Name:        findOrgByNameRow.OrgName,
 		Description: findOrgByNameRow.OrgDescription,
-		Kind: &saaswhip.OrgKind{
+		Kind: &diygoapi.OrgKind{
 			ID:          findOrgByNameRow.OrgKindID,
 			ExternalID:  findOrgByNameRow.OrgKindExtlID,
 			Description: findOrgByNameRow.OrgKindDesc,
@@ -531,13 +531,13 @@ func FindOrgByName(ctx context.Context, tx datastore.DBTX, name string) (*saaswh
 }
 
 // findOrgKindByExtlID finds an org kind from the datastore given its External ID
-func findOrgKindByExtlID(ctx context.Context, dbtx saaswhip.DBTX, extlID string) (*saaswhip.OrgKind, error) {
+func findOrgKindByExtlID(ctx context.Context, dbtx diygoapi.DBTX, extlID string) (*diygoapi.OrgKind, error) {
 	kind, err := datastore.New(dbtx).FindOrgKindByExtlID(ctx, extlID)
 	if err != nil {
 		return nil, errs.E(errs.Database, err)
 	}
 
-	orgKind := &saaswhip.OrgKind{
+	orgKind := &diygoapi.OrgKind{
 		ID:          kind.OrgKindID,
 		ExternalID:  kind.OrgKindExtlID,
 		Description: kind.OrgKindDesc,
@@ -547,7 +547,7 @@ func findOrgKindByExtlID(ctx context.Context, dbtx saaswhip.DBTX, extlID string)
 }
 
 // createPrincipalOrgKind initializes the org_kind lookup table with the genesis kind record
-func createPrincipalOrgKind(ctx context.Context, tx pgx.Tx, adt saaswhip.Audit) (datastore.CreateOrgKindParams, error) {
+func createPrincipalOrgKind(ctx context.Context, tx pgx.Tx, adt diygoapi.Audit) (datastore.CreateOrgKindParams, error) {
 	createOrgKindParams := datastore.CreateOrgKindParams{
 		OrgKindID:       uuid.New(),
 		OrgKindExtlID:   principalOrgKind,
@@ -577,7 +577,7 @@ func createPrincipalOrgKind(ctx context.Context, tx pgx.Tx, adt saaswhip.Audit) 
 }
 
 // createTestOrgKind initializes the org_kind lookup table with the test kind record
-func createTestOrgKind(ctx context.Context, tx pgx.Tx, adt saaswhip.Audit) (datastore.CreateOrgKindParams, error) {
+func createTestOrgKind(ctx context.Context, tx pgx.Tx, adt diygoapi.Audit) (datastore.CreateOrgKindParams, error) {
 	testParams := datastore.CreateOrgKindParams{
 		OrgKindID:       uuid.New(),
 		OrgKindExtlID:   "test",
@@ -607,7 +607,7 @@ func createTestOrgKind(ctx context.Context, tx pgx.Tx, adt saaswhip.Audit) (data
 }
 
 // createStandardOrgKind initializes the org_kind lookup table with the standard kind record
-func createStandardOrgKind(ctx context.Context, tx pgx.Tx, adt saaswhip.Audit) (datastore.CreateOrgKindParams, error) {
+func createStandardOrgKind(ctx context.Context, tx pgx.Tx, adt diygoapi.Audit) (datastore.CreateOrgKindParams, error) {
 	standardParams := datastore.CreateOrgKindParams{
 		OrgKindID:       uuid.New(),
 		OrgKindExtlID:   "standard",

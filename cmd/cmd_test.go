@@ -6,8 +6,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"testing"
 
-	"github.com/gilcrest/saaswhip/errs"
-	"github.com/gilcrest/saaswhip/sqldb"
+	"github.com/gilcrest/diygoapi/errs"
+	"github.com/gilcrest/diygoapi/sqldb"
 )
 
 func Test_portRange(t *testing.T) {

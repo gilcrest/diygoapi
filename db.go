@@ -1,4 +1,4 @@
-package saaswhip
+package diygoapi
 
 import (
 	"context"

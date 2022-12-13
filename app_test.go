@@ -1,4 +1,4 @@
-package saaswhip_test
+package diygoapi_test
 
 import (
 	"encoding/base64"
@@ -10,23 +10,23 @@ import (
 	qt "github.com/frankban/quicktest"
 	"github.com/google/uuid"
 
-	"github.com/gilcrest/saaswhip"
-	"github.com/gilcrest/saaswhip/secure"
+	"github.com/gilcrest/diygoapi"
+	"github.com/gilcrest/diygoapi/secure"
 )
 
 func TestApp_AddKey(t *testing.T) {
 	t.Run("add valid key", func(t *testing.T) {
 		c := qt.New(t)
 
-		o := &saaswhip.Org{
+		o := &diygoapi.Org{
 			ID:          uuid.New(),
 			ExternalID:  secure.NewID(),
 			Name:        "app test",
 			Description: "test app",
-			Kind:        &saaswhip.OrgKind{},
+			Kind:        &diygoapi.OrgKind{},
 		}
 
-		a := saaswhip.App{
+		a := diygoapi.App{
 			ID:          uuid.New(),
 			ExternalID:  secure.NewID(),
 			Org:         o,
@@ -41,8 +41,8 @@ func TestApp_AddKey(t *testing.T) {
 		ek, err = secure.NewEncryptionKey()
 		c.Assert(err, qt.IsNil)
 
-		var key saaswhip.APIKey
-		key, err = saaswhip.NewAPIKey(secure.RandomGenerator{}, ek, time.Now().Add(time.Hour*100))
+		var key diygoapi.APIKey
+		key, err = diygoapi.NewAPIKey(secure.RandomGenerator{}, ek, time.Now().Add(time.Hour*100))
 		c.Assert(err, qt.IsNil)
 
 		err = a.AddKey(key)
@@ -52,15 +52,15 @@ func TestApp_AddKey(t *testing.T) {
 	t.Run("add expired key", func(t *testing.T) {
 		c := qt.New(t)
 
-		o := &saaswhip.Org{
+		o := &diygoapi.Org{
 			ID:          uuid.New(),
 			ExternalID:  secure.NewID(),
 			Name:        "app test",
 			Description: "test app",
-			Kind:        &saaswhip.OrgKind{},
+			Kind:        &diygoapi.OrgKind{},
 		}
 
-		a := saaswhip.App{
+		a := diygoapi.App{
 			ID:          uuid.New(),
 			ExternalID:  secure.NewID(),
 			Org:         o,
@@ -75,8 +75,8 @@ func TestApp_AddKey(t *testing.T) {
 		ek, err = secure.NewEncryptionKey()
 		c.Assert(err, qt.IsNil)
 
-		var key saaswhip.APIKey
-		key, err = saaswhip.NewAPIKey(secure.RandomGenerator{}, ek, time.Now().Add(time.Hour*-100))
+		var key diygoapi.APIKey
+		key, err = diygoapi.NewAPIKey(secure.RandomGenerator{}, ek, time.Now().Add(time.Hour*-100))
 		c.Assert(err, qt.IsNil)
 
 		err = a.AddKey(key)
@@ -88,15 +88,15 @@ func TestApp_ValidateKey(t *testing.T) {
 	t.Run("valid key", func(t *testing.T) {
 		c := qt.New(t)
 
-		o := &saaswhip.Org{
+		o := &diygoapi.Org{
 			ID:          uuid.New(),
 			ExternalID:  secure.NewID(),
 			Name:        "app test",
 			Description: "test app",
-			Kind:        &saaswhip.OrgKind{},
+			Kind:        &diygoapi.OrgKind{},
 		}
 
-		a := saaswhip.App{
+		a := diygoapi.App{
 			ID:          uuid.New(),
 			ExternalID:  secure.NewID(),
 			Org:         o,
@@ -111,8 +111,8 @@ func TestApp_ValidateKey(t *testing.T) {
 		ek, err = secure.NewEncryptionKey()
 		c.Assert(err, qt.IsNil)
 
-		var key saaswhip.APIKey
-		key, err = saaswhip.NewAPIKey(secure.RandomGenerator{}, ek, time.Now().Add(time.Hour*100))
+		var key diygoapi.APIKey
+		key, err = diygoapi.NewAPIKey(secure.RandomGenerator{}, ek, time.Now().Add(time.Hour*100))
 		c.Assert(err, qt.IsNil)
 
 		err = a.AddKey(key)
@@ -124,15 +124,15 @@ func TestApp_ValidateKey(t *testing.T) {
 	t.Run("key does not match", func(t *testing.T) {
 		c := qt.New(t)
 
-		o := &saaswhip.Org{
+		o := &diygoapi.Org{
 			ID:          uuid.New(),
 			ExternalID:  secure.NewID(),
 			Name:        "app test",
 			Description: "test app",
-			Kind:        &saaswhip.OrgKind{},
+			Kind:        &diygoapi.OrgKind{},
 		}
 
-		a := saaswhip.App{
+		a := diygoapi.App{
 			ID:          uuid.New(),
 			ExternalID:  secure.NewID(),
 			Org:         o,
@@ -147,15 +147,15 @@ func TestApp_ValidateKey(t *testing.T) {
 	t.Run("key matches but invalid", func(t *testing.T) {
 		c := qt.New(t)
 
-		o := &saaswhip.Org{
+		o := &diygoapi.Org{
 			ID:          uuid.New(),
 			ExternalID:  secure.NewID(),
 			Name:        "app test",
 			Description: "test app",
-			Kind:        &saaswhip.OrgKind{},
+			Kind:        &diygoapi.OrgKind{},
 		}
 
-		a := saaswhip.App{
+		a := diygoapi.App{
 			ID:          uuid.New(),
 			ExternalID:  secure.NewID(),
 			Org:         o,
@@ -170,8 +170,8 @@ func TestApp_ValidateKey(t *testing.T) {
 		ek, err = secure.NewEncryptionKey()
 		c.Assert(err, qt.IsNil)
 
-		var key saaswhip.APIKey
-		key, err = saaswhip.NewAPIKey(secure.RandomGenerator{}, ek, time.Now().Add(time.Hour*-100))
+		var key diygoapi.APIKey
+		key, err = diygoapi.NewAPIKey(secure.RandomGenerator{}, ek, time.Now().Add(time.Hour*-100))
 		c.Assert(err, qt.IsNil)
 
 		a.APIKeys = append(a.APIKeys, key)
@@ -191,8 +191,8 @@ func TestNewAPIKey(t *testing.T) {
 		ek, err = secure.NewEncryptionKey()
 		c.Assert(err, qt.IsNil)
 
-		var key saaswhip.APIKey
-		key, err = saaswhip.NewAPIKey(secure.RandomGenerator{}, ek, time.Date(2999, 12, 31, 0, 0, 0, 0, time.UTC))
+		var key diygoapi.APIKey
+		key, err = diygoapi.NewAPIKey(secure.RandomGenerator{}, ek, time.Date(2999, 12, 31, 0, 0, 0, 0, time.UTC))
 		c.Assert(err, qt.IsNil)
 
 		// decode base64
@@ -211,8 +211,8 @@ func TestNewAPIKey(t *testing.T) {
 		ek, err = secure.NewEncryptionKey()
 		c.Assert(err, qt.IsNil)
 
-		var key saaswhip.APIKey
-		key, err = saaswhip.NewAPIKey(secure.RandomGenerator{}, ek, time.Date(2999, 12, 31, 0, 0, 0, 0, time.UTC))
+		var key diygoapi.APIKey
+		key, err = diygoapi.NewAPIKey(secure.RandomGenerator{}, ek, time.Date(2999, 12, 31, 0, 0, 0, 0, time.UTC))
 		c.Assert(err, qt.IsNil)
 
 		// Ciphertext method returns the bytes as a hex encoded string.

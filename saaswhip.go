@@ -1,5 +1,5 @@
-// Package saaswhip comprises application or business domain data types and functions.
-package saaswhip
+// Package diygoapi comprises application or business domain data types and functions.
+package diygoapi
 
 import (
 	"context"
