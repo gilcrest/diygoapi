@@ -5,9 +5,9 @@ import (
 	"os"
 
 	"github.com/magefile/mage/sh"
-	"github.com/pkg/errors"
 
 	"github.com/gilcrest/diygoapi/cmd"
+	"github.com/gilcrest/diygoapi/errs"
 )
 
 // NewKey generates a new encryption key,
@@ -23,11 +23,12 @@ func NewKey() {
 //
 // Acceptable environment values are: local, staging, production
 func CueGenerateConfig(env string) (err error) {
+	const op errs.Op = "main/CueGenerateConfig"
 
 	var paths cmd.ConfigCueFilePaths
 	paths, err = cmd.CUEPaths(cmd.ParseEnv(env))
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	// Vet input files
@@ -35,7 +36,7 @@ func CueGenerateConfig(env string) (err error) {
 	vetArgs = append(vetArgs, paths.Input...)
 	err = sh.Run("cue", vetArgs...)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	// format input files
@@ -43,7 +44,7 @@ func CueGenerateConfig(env string) (err error) {
 	fmtArgs = append(fmtArgs, paths.Input...)
 	err = sh.Run("cue", fmtArgs...)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	// Export output files
@@ -53,7 +54,7 @@ func CueGenerateConfig(env string) (err error) {
 
 	err = sh.Run("cue", exportArgs...)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	return nil
@@ -64,6 +65,7 @@ func CueGenerateConfig(env string) (err error) {
 // The files are run through cue vet to ensure they are acceptable given
 // the schema and are then run through cue "fmt" to format the files
 func CueGenerateGenesisConfig() (err error) {
+	const op errs.Op = "main/CueGenerateGenesisConfig"
 
 	paths := cmd.CUEGenesisPaths()
 
@@ -72,7 +74,7 @@ func CueGenerateGenesisConfig() (err error) {
 	vetArgs = append(vetArgs, paths.Input...)
 	err = sh.Run("cue", vetArgs...)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	// format input files
@@ -80,7 +82,7 @@ func CueGenerateGenesisConfig() (err error) {
 	fmtArgs = append(fmtArgs, paths.Input...)
 	err = sh.Run("cue", fmtArgs...)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	// Export output files
@@ -90,7 +92,7 @@ func CueGenerateGenesisConfig() (err error) {
 
 	err = sh.Run("cue", exportArgs...)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	return nil
@@ -102,21 +104,23 @@ func CueGenerateGenesisConfig() (err error) {
 // file. Check output to determine if any errors occurred. Eventually,
 // I will write this to stop on errors, but for now it is what it is.
 func DBUp(env string) (err error) {
+	const op errs.Op = "main/DBUp"
+
 	var args []string
 
 	err = cmd.LoadEnv(cmd.ParseEnv(env))
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	args, err = cmd.PSQLArgs(true)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	err = sh.Run("psql", args...)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	return nil
@@ -129,21 +133,23 @@ func DBUp(env string) (err error) {
 // Eventually, I will write this to stop on errors, but for now it is
 // what it is.
 func DBDown(env string) (err error) {
+	const op errs.Op = "main/DBDown"
+
 	var args []string
 
 	err = cmd.LoadEnv(cmd.ParseEnv(env))
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	args, err = cmd.PSQLArgs(false)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	err = sh.Run("psql", args...)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	return nil
@@ -152,14 +158,16 @@ func DBDown(env string) (err error) {
 // Genesis runs all tests including executing the Genesis service,
 // example: mage -v genesis local
 func Genesis(env string) (err error) {
+	const op errs.Op = "main/Genesis"
+
 	err = cmd.LoadEnv(cmd.ParseEnv(env))
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	err = cmd.Genesis()
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	return nil
@@ -169,9 +177,11 @@ func Genesis(env string) (err error) {
 // example: mage -v testall false local.
 // If verbose is true, tests will be run in verbose mode.
 func TestAll(verbose bool, env string) (err error) {
+	const op errs.Op = "main/TestAll"
+
 	err = cmd.LoadEnv(cmd.ParseEnv(env))
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	args := []string{"test"}
@@ -182,7 +192,7 @@ func TestAll(verbose bool, env string) (err error) {
 
 	err = sh.Run("go", args...)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	return nil
@@ -191,14 +201,16 @@ func TestAll(verbose bool, env string) (err error) {
 // Run runs program using the given environment configuration,
 // example: mage -v run local
 func Run(env string) (err error) {
+	const op errs.Op = "main/Run"
+
 	err = cmd.LoadEnv(cmd.ParseEnv(env))
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	err = sh.Run("go", "run", "./cmd/diy/main.go")
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	return nil
@@ -207,10 +219,11 @@ func Run(env string) (err error) {
 // GCP builds the app as a Docker container image to GCP Artifact Registry
 // and deploys it to Google Cloud Run, example: mage -v gcp staging
 func GCP(env string) error {
+	const op errs.Op = "main/GCP"
 
 	f, err := cmd.NewConfigFile(cmd.ParseEnv(env))
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	image := cmd.GCPArtifactRegistryContainerImage{
@@ -223,17 +236,17 @@ func GCP(env string) error {
 
 	err = gcpArtifactRegistryBuild(image)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	args := cmd.GCPCloudRunDeployImage(f, image)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	err = sh.Run("gcloud", args...)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	return nil
@@ -241,20 +254,21 @@ func GCP(env string) error {
 
 func gcpArtifactRegistryBuild(image cmd.GCPArtifactRegistryContainerImage) error {
 	const (
-		dockerfileOrigin      = "./magefiles/Dockerfile"
-		dockerfileDestination = "Dockerfile"
+		dockerfileOrigin              = "./magefiles/Dockerfile"
+		dockerfileDestination         = "Dockerfile"
+		op                    errs.Op = "main/gcpArtifactRegistryBuild"
 	)
 	var err error
 
 	// move the Dockerfile to the project root directory
 	err = os.Rename(dockerfileOrigin, dockerfileDestination)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 	var cwd string
 	cwd, err = os.Getwd()
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 	fmt.Printf("Dockerfile moved from %s to %s\n", dockerfileOrigin, cwd)
 
@@ -263,7 +277,7 @@ func gcpArtifactRegistryBuild(image cmd.GCPArtifactRegistryContainerImage) error
 		deferErr := os.Rename(dockerfileDestination, dockerfileOrigin)
 		if deferErr != nil {
 			if err != nil {
-				err = errors.Wrap(err, deferErr.Error())
+				err = errs.E(op, err)
 				return
 			}
 			err = deferErr
@@ -277,7 +291,7 @@ func gcpArtifactRegistryBuild(image cmd.GCPArtifactRegistryContainerImage) error
 
 	err = sh.Run("gcloud", args...)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	return nil
@@ -286,17 +300,19 @@ func gcpArtifactRegistryBuild(image cmd.GCPArtifactRegistryContainerImage) error
 // StartGCPDB starts the GCP Cloud SQL database for the environment/config given,
 // example: mage -v startgcpdb staging
 func StartGCPDB(env string) (err error) {
+	const op errs.Op = "main/StartGCPDB"
+
 	var f cmd.ConfigFile
 	f, err = cmd.NewConfigFile(cmd.ParseEnv(env))
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	args := []string{"sql", "instances", "patch", f.Config.GCP.CloudSQL.InstanceName, "--activation-policy=ALWAYS"}
 
 	err = sh.Run("gcloud", args...)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	return nil
@@ -305,17 +321,19 @@ func StartGCPDB(env string) (err error) {
 // StopGCPDB stops the GCP Cloud SQL database for the environment/config given,
 // example: mage -v stopgcpdb staging
 func StopGCPDB(env string) (err error) {
+	const op errs.Op = "main/StopGCPDB"
+
 	var f cmd.ConfigFile
 	f, err = cmd.NewConfigFile(cmd.ParseEnv(env))
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	args := []string{"sql", "instances", "patch", f.Config.GCP.CloudSQL.InstanceName, "--activation-policy=NEVER"}
 
 	err = sh.Run("gcloud", args...)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	return nil

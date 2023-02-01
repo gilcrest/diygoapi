@@ -226,16 +226,18 @@ func (s *Server) loggerChain() alice.Chain {
 
 // parseAppHeader parses an app header and returns its value.
 func parseAppHeader(realm string, header http.Header, key string) (v string, err error) {
+	const op errs.Op = "server/parseAppHeader"
+
 	// Pull the header value from the Header map given the key
 	headerValue, ok := header[http.CanonicalHeaderKey(key)]
 	if !ok {
-		return "", errs.E(errs.NotExist, errs.Realm(realm), fmt.Sprintf("no %s header sent", key))
+		return "", errs.E(op, errs.NotExist, errs.Realm(realm), fmt.Sprintf("no %s header sent", key))
 
 	}
 
 	// too many values sent - should only be one value
 	if len(headerValue) > 1 {
-		return "", errs.E(errs.Unauthenticated, errs.Realm(realm), fmt.Sprintf("%s header value > 1", key))
+		return "", errs.E(op, errs.Unauthenticated, errs.Realm(realm), fmt.Sprintf("%s header value > 1", key))
 	}
 
 	// retrieve header value from map
@@ -246,7 +248,7 @@ func parseAppHeader(realm string, header http.Header, key string) (v string, err
 
 	// should not be empty
 	if v == "" {
-		return "", errs.E(errs.Unauthenticated, errs.Realm(realm), fmt.Sprintf("unauthenticated: %s header value not found", key))
+		return "", errs.E(op, errs.Unauthenticated, errs.Realm(realm), fmt.Sprintf("unauthenticated: %s header value not found", key))
 	}
 
 	return v, nil
@@ -254,16 +256,18 @@ func parseAppHeader(realm string, header http.Header, key string) (v string, err
 
 // parseProviderHeader parses the X-AUTH-PROVIDER header and returns its value.
 func parseProviderHeader(realm string, header http.Header) (p diygoapi.Provider, err error) {
+	const op errs.Op = "server/parseProviderHeader"
+
 	// Pull the header value from the Header map given the key
 	headerValue, ok := header[http.CanonicalHeaderKey(authProviderHeaderKey)]
 	if !ok {
-		return diygoapi.UnknownProvider, errs.E(errs.Unauthenticated, errs.Realm(realm), fmt.Sprintf("no %s header sent", authProviderHeaderKey))
+		return diygoapi.UnknownProvider, errs.E(op, errs.Unauthenticated, errs.Realm(realm), fmt.Sprintf("no %s header sent", authProviderHeaderKey))
 
 	}
 
 	// too many values sent - should only be one value
 	if len(headerValue) > 1 {
-		return diygoapi.UnknownProvider, errs.E(errs.Unauthenticated, errs.Realm(realm), fmt.Sprintf("%s header value > 1", authProviderHeaderKey))
+		return diygoapi.UnknownProvider, errs.E(op, errs.Unauthenticated, errs.Realm(realm), fmt.Sprintf("%s header value > 1", authProviderHeaderKey))
 	}
 
 	// retrieve header value from map
@@ -274,13 +278,13 @@ func parseProviderHeader(realm string, header http.Header) (p diygoapi.Provider,
 
 	// should not be empty
 	if v == "" {
-		return diygoapi.UnknownProvider, errs.E(errs.Unauthenticated, errs.Realm(realm), fmt.Sprintf("unauthenticated: %s header value not found", authProviderHeaderKey))
+		return diygoapi.UnknownProvider, errs.E(op, errs.Unauthenticated, errs.Realm(realm), fmt.Sprintf("unauthenticated: %s header value not found", authProviderHeaderKey))
 	}
 
 	p = diygoapi.ParseProvider(v)
 
 	if p == diygoapi.UnknownProvider {
-		return p, errs.E(errs.Unauthenticated, errs.Realm(realm), fmt.Sprintf("unknown provider given: %s", v))
+		return p, errs.E(op, errs.Unauthenticated, errs.Realm(realm), fmt.Sprintf("unknown provider given: %s", v))
 	}
 
 	return p, nil
@@ -288,18 +292,20 @@ func parseProviderHeader(realm string, header http.Header) (p diygoapi.Provider,
 
 // parseAuthorizationHeader parses/validates the Authorization header and returns an Oauth2 token
 func parseAuthorizationHeader(realm string, header http.Header) (*oauth2.Token, error) {
+	const op errs.Op = "server/parseAuthorizationHeader"
+
 	// Pull the token from the Authorization header by retrieving the
 	// value from the Header map with "Authorization" as the key
 	//
 	// format: Authorization: Bearer
 	headerValue, ok := header["Authorization"]
 	if !ok {
-		return nil, errs.E(errs.Unauthenticated, errs.Realm(realm), "unauthenticated: no Authorization header sent")
+		return nil, errs.E(op, errs.Unauthenticated, errs.Realm(realm), "unauthenticated: no Authorization header sent")
 	}
 
 	// too many values sent - spec allows for only one token
 	if len(headerValue) > 1 {
-		return nil, errs.E(errs.Unauthenticated, errs.Realm(realm), "header value > 1")
+		return nil, errs.E(op, errs.Unauthenticated, errs.Realm(realm), "header value > 1")
 	}
 
 	// retrieve token from map
@@ -308,7 +314,7 @@ func parseAuthorizationHeader(realm string, header http.Header) (*oauth2.Token, 
 	// Oauth2 should have "Bearer " as the prefix as the authentication scheme
 	hasBearer := strings.HasPrefix(token, diygoapi.BearerTokenType+" ")
 	if !hasBearer {
-		return nil, errs.E(errs.Unauthenticated, errs.Realm(realm), "unauthenticated: Bearer authentication scheme not found")
+		return nil, errs.E(op, errs.Unauthenticated, errs.Realm(realm), "unauthenticated: Bearer authentication scheme not found")
 	}
 
 	// remove "Bearer " authentication scheme from header value
@@ -319,7 +325,7 @@ func parseAuthorizationHeader(realm string, header http.Header) (*oauth2.Token, 
 
 	// token should not be empty
 	if token == "" {
-		return nil, errs.E(errs.Unauthenticated, errs.Realm(realm), "unauthenticated: Authorization header sent with Bearer scheme, but no token found")
+		return nil, errs.E(op, errs.Unauthenticated, errs.Realm(realm), "unauthenticated: Authorization header sent with Bearer scheme, but no token found")
 	}
 
 	return &oauth2.Token{AccessToken: token, TokenType: diygoapi.BearerTokenType}, nil

@@ -48,15 +48,16 @@ type MovieService struct {
 
 // Create is used to create a Movie
 func (s *MovieService) Create(ctx context.Context, r *diygoapi.CreateMovieRequest, adt diygoapi.Audit) (mr *diygoapi.MovieResponse, err error) {
+	const op errs.Op = "service/MovieService.Create"
 
 	if r == nil {
-		return nil, errs.E(errs.Validation, "CreateMovieRequest must have a value when creating a Movie")
+		return nil, errs.E(op, errs.Validation, "CreateMovieRequest must have a value when creating a Movie")
 	}
 
 	var released time.Time
 	released, err = time.Parse(time.RFC3339, r.Released)
 	if err != nil {
-		return nil, errs.E(errs.Validation,
+		return nil, errs.E(op, errs.Validation,
 			errs.Code("invalid_date_format"),
 			errs.Parameter("release_date"),
 			err)
@@ -81,7 +82,7 @@ func (s *MovieService) Create(ctx context.Context, r *diygoapi.CreateMovieReques
 
 	err = m.IsValid()
 	if err != nil {
-		return nil, err
+		return nil, errs.E(op, err)
 	}
 
 	createMovieParams := datastore.CreateMovieParams{
@@ -105,7 +106,7 @@ func (s *MovieService) Create(ctx context.Context, r *diygoapi.CreateMovieReques
 	var tx pgx.Tx
 	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
-		return nil, err
+		return nil, errs.E(op, err)
 	}
 	// defer transaction rollback and handle error, if any
 	defer func() {
@@ -114,13 +115,13 @@ func (s *MovieService) Create(ctx context.Context, r *diygoapi.CreateMovieReques
 
 	_, err = datastore.New(tx).CreateMovie(ctx, createMovieParams)
 	if err != nil {
-		return nil, errs.E(errs.Database, err)
+		return nil, errs.E(op, errs.Database, err)
 	}
 
 	// commit db txn using pgxpool
 	err = s.Datastorer.CommitTx(ctx, tx)
 	if err != nil {
-		return nil, err
+		return nil, errs.E(op, err)
 	}
 
 	mr = newMovieResponse(movieAudit{m, sa})
@@ -130,11 +131,12 @@ func (s *MovieService) Create(ctx context.Context, r *diygoapi.CreateMovieReques
 
 // Update is used to update a movie
 func (s *MovieService) Update(ctx context.Context, r *diygoapi.UpdateMovieRequest, adt diygoapi.Audit) (mr *diygoapi.MovieResponse, err error) {
+	const op errs.Op = "service/MovieService.Update"
 
 	var released time.Time
 	released, err = time.Parse(time.RFC3339, r.Released)
 	if err != nil {
-		return nil, errs.E(errs.Validation,
+		return nil, errs.E(op, errs.Validation,
 			errs.Code("invalid_date_format"),
 			errs.Parameter("release_date"),
 			err)
@@ -144,7 +146,7 @@ func (s *MovieService) Update(ctx context.Context, r *diygoapi.UpdateMovieReques
 	var tx pgx.Tx
 	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
-		return nil, err
+		return nil, errs.E(op, err)
 	}
 	// defer transaction rollback and handle error, if any
 	defer func() {
@@ -156,9 +158,9 @@ func (s *MovieService) Update(ctx context.Context, r *diygoapi.UpdateMovieReques
 	row, err = datastore.New(tx).FindMovieByExternalIDWithAudit(ctx, r.ExternalID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return nil, errs.E(errs.Validation, "No movie exists for the given external ID")
+			return nil, errs.E(op, errs.Validation, "No movie exists for the given external ID")
 		}
-		return nil, errs.E(errs.Database, err)
+		return nil, errs.E(op, errs.Database, err)
 	}
 
 	m := diygoapi.Movie{
@@ -182,7 +184,7 @@ func (s *MovieService) Update(ctx context.Context, r *diygoapi.UpdateMovieReques
 
 	err = m.IsValid()
 	if err != nil {
-		return nil, err
+		return nil, errs.E(op, err)
 	}
 
 	sa := diygoapi.SimpleAudit{
@@ -221,13 +223,13 @@ func (s *MovieService) Update(ctx context.Context, r *diygoapi.UpdateMovieReques
 
 	err = datastore.New(tx).UpdateMovie(ctx, updateMovieParams)
 	if err != nil {
-		return nil, errs.E(errs.Database, err)
+		return nil, errs.E(op, errs.Database, err)
 	}
 
 	// commit db txn using pgxpool
 	err = s.Datastorer.CommitTx(ctx, tx)
 	if err != nil {
-		return nil, err
+		return nil, errs.E(op, err)
 	}
 
 	mr = newMovieResponse(movieAudit{m, sa})
@@ -237,12 +239,13 @@ func (s *MovieService) Update(ctx context.Context, r *diygoapi.UpdateMovieReques
 
 // Delete is used to delete a movie
 func (s *MovieService) Delete(ctx context.Context, extlID string) (dr diygoapi.DeleteResponse, err error) {
+	const op errs.Op = "service/MovieService.Delete"
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
 	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
-		return diygoapi.DeleteResponse{}, err
+		return diygoapi.DeleteResponse{}, errs.E(op, err)
 	}
 	// defer transaction rollback and handle error, if any
 	defer func() {
@@ -254,25 +257,25 @@ func (s *MovieService) Delete(ctx context.Context, extlID string) (dr diygoapi.D
 	dbm, err = datastore.New(tx).FindMovieByExternalID(ctx, extlID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return diygoapi.DeleteResponse{}, errs.E(errs.Validation, "No movie exists for the given external ID")
+			return diygoapi.DeleteResponse{}, errs.E(op, errs.Validation, "No movie exists for the given external ID")
 		}
-		return diygoapi.DeleteResponse{}, errs.E(errs.Database, err)
+		return diygoapi.DeleteResponse{}, errs.E(op, errs.Database, err)
 	}
 
 	var rowsAffected int64
 	rowsAffected, err = datastore.New(tx).DeleteMovie(ctx, dbm.MovieID)
 	if err != nil {
-		return diygoapi.DeleteResponse{}, errs.E(errs.Database, err)
+		return diygoapi.DeleteResponse{}, errs.E(op, errs.Database, err)
 	}
 
 	if rowsAffected != 1 {
-		return diygoapi.DeleteResponse{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
+		return diygoapi.DeleteResponse{}, errs.E(op, errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
 	}
 
 	// commit db txn using pgxpool
 	err = s.Datastorer.CommitTx(ctx, tx)
 	if err != nil {
-		return diygoapi.DeleteResponse{}, err
+		return diygoapi.DeleteResponse{}, errs.E(op, err)
 	}
 
 	response := diygoapi.DeleteResponse{
@@ -285,12 +288,13 @@ func (s *MovieService) Delete(ctx context.Context, extlID string) (dr diygoapi.D
 
 // FindMovieByExternalID is used to find an individual movie
 func (s *MovieService) FindMovieByExternalID(ctx context.Context, extlID string) (mr *diygoapi.MovieResponse, err error) {
+	const op errs.Op = "service/MovieService.FindMovieByExternalID"
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
 	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
-		return nil, err
+		return nil, errs.E(op, err)
 	}
 	// defer transaction rollback and handle error, if any
 	defer func() {
@@ -301,9 +305,9 @@ func (s *MovieService) FindMovieByExternalID(ctx context.Context, extlID string)
 	row, err = datastore.New(tx).FindMovieByExternalIDWithAudit(ctx, extlID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return nil, errs.E(errs.Validation, "no movie exists for the given external ID")
+			return nil, errs.E(op, errs.Validation, "no movie exists for the given external ID")
 		}
-		return nil, errs.E(errs.Database, err)
+		return nil, errs.E(op, errs.Database, err)
 	}
 
 	m := diygoapi.Movie{
@@ -359,12 +363,13 @@ func (s *MovieService) FindMovieByExternalID(ctx context.Context, extlID string)
 
 // FindAllMovies is used to list all movies in the db
 func (s *MovieService) FindAllMovies(ctx context.Context) (smr []*diygoapi.MovieResponse, err error) {
+	const op errs.Op = "service/MovieService.FindAllMovies"
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
 	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
-		return nil, err
+		return nil, errs.E(op, err)
 	}
 	// defer transaction rollback and handle error, if any
 	defer func() {
@@ -375,9 +380,9 @@ func (s *MovieService) FindAllMovies(ctx context.Context) (smr []*diygoapi.Movie
 	rows, err = datastore.New(tx).FindMovies(ctx)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return nil, errs.E(errs.Validation, "no movies exists")
+			return nil, errs.E(op, errs.Validation, "no movies exists")
 		}
-		return nil, errs.E(errs.Database, err)
+		return nil, errs.E(op, errs.Database, err)
 	}
 
 	for _, row := range rows {

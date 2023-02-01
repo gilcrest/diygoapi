@@ -31,13 +31,15 @@ type OrgKind struct {
 
 // Validate determines whether the Person has proper data to be considered valid
 func (o OrgKind) Validate() error {
+	const op errs.Op = "diygoapi/OrgKind.Validate"
+
 	switch {
 	case o.ID == uuid.Nil:
-		return errs.E(errs.Validation, "OrgKind ID cannot be nil")
+		return errs.E(op, errs.Validation, "OrgKind ID cannot be nil")
 	case o.ExternalID == "":
-		return errs.E(errs.Validation, "OrgKind ExternalID cannot be empty")
+		return errs.E(op, errs.Validation, "OrgKind ExternalID cannot be empty")
 	case o.Description == "":
-		return errs.E(errs.Validation, "OrgKind Description cannot be empty")
+		return errs.E(op, errs.Validation, "OrgKind Description cannot be empty")
 	}
 
 	return nil
@@ -60,19 +62,21 @@ type Org struct {
 
 // Validate determines whether the Org has proper data to be considered valid
 func (o Org) Validate() (err error) {
+	const op errs.Op = "diygoapi/Org.Validate"
+
 	switch {
 	case o.ID == uuid.Nil:
-		return errs.E(errs.Validation, "Org ID cannot be nil")
+		return errs.E(op, errs.Validation, "Org ID cannot be nil")
 	case o.ExternalID.String() == "":
-		return errs.E(errs.Validation, "Org ExternalID cannot be empty")
+		return errs.E(op, errs.Validation, "Org ExternalID cannot be empty")
 	case o.Name == "":
-		return errs.E(errs.Validation, "Org Name cannot be empty")
+		return errs.E(op, errs.Validation, "Org Name cannot be empty")
 	case o.Description == "":
-		return errs.E(errs.Validation, "Org Description cannot be empty")
+		return errs.E(op, errs.Validation, "Org Description cannot be empty")
 	}
 
 	if err = o.Kind.Validate(); err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	return nil
@@ -88,13 +92,15 @@ type CreateOrgRequest struct {
 
 // Validate determines whether the CreateOrgRequest has proper data to be considered valid
 func (r CreateOrgRequest) Validate() error {
+	const op errs.Op = "diygoapi/CreateOrgRequest.Validate"
+
 	switch {
 	case r.Name == "":
-		return errs.E(errs.Validation, "org name is required")
+		return errs.E(op, errs.Validation, "org name is required")
 	case r.Description == "":
-		return errs.E(errs.Validation, "org description is required")
+		return errs.E(op, errs.Validation, "org description is required")
 	case r.Kind == "":
-		return errs.E(errs.Validation, "org kind is required")
+		return errs.E(op, errs.Validation, "org kind is required")
 	}
 	return nil
 }

@@ -123,6 +123,7 @@ func (dsn PostgreSQLDSN) KeywordValueConnectionString() string {
 // NewPostgreSQLPool creates a new db pool and establishes a connection.
 // In addition, returns a Close function to defer closing the pool.
 func NewPostgreSQLPool(ctx context.Context, lgr zerolog.Logger, dsn PostgreSQLDSN) (pool *pgxpool.Pool, close func(), err error) {
+	const op errs.Op = "sqldb/NewPostgreSQLPool"
 
 	f := func() {}
 
@@ -130,7 +131,7 @@ func NewPostgreSQLPool(ctx context.Context, lgr zerolog.Logger, dsn PostgreSQLDS
 	// func Open(driverName, dataSourceName string) (*DB, error)
 	pool, err = pgxpool.Connect(ctx, dsn.KeywordValueConnectionString())
 	if err != nil {
-		return nil, f, errs.E(errs.Database, err)
+		return nil, f, errs.E(op, errs.Database, err)
 	}
 
 	lgr.Info().Msgf("sql database opened for %s on port %d", dsn.Host, dsn.Port)
@@ -154,9 +155,11 @@ func NewDB(pool *pgxpool.Pool) *DB {
 // an empty sql statement against it. If the sql returns without error,
 // the database Ping is considered successful, otherwise, the error is returned."
 func (db *DB) Ping(ctx context.Context) error {
+	const op errs.Op = "sqldb/DB.Ping"
+
 	err := db.pool.Ping(ctx)
 	if err != nil {
-		return errs.E(errs.Database, err)
+		return errs.E(op, errs.Database, err)
 	}
 	return err
 }
@@ -164,9 +167,11 @@ func (db *DB) Ping(ctx context.Context) error {
 // ValidatePool pings the database and logs the current user and database.
 // ValidatePool is used for logging db status on startup.
 func (db *DB) ValidatePool(ctx context.Context, log zerolog.Logger) error {
+	const op errs.Op = "sqldb/DB.ValidatePool"
+
 	err := db.pool.Ping(ctx)
 	if err != nil {
-		return errs.E(errs.Database, err)
+		return errs.E(op, errs.Database, err)
 	}
 	log.Info().Msg("sql database Ping returned successfully")
 
@@ -181,9 +186,9 @@ func (db *DB) ValidatePool(ctx context.Context, log zerolog.Logger) error {
 	err = row.Scan(&currentDatabase, &currentUser, &dbVersion)
 	switch {
 	case err == sql.ErrNoRows:
-		return errs.E(errs.Database, "no rows returned")
+		return errs.E(op, errs.Database, "no rows returned")
 	case err != nil:
-		return errs.E(errs.Database, err)
+		return errs.E(op, errs.Database, err)
 	default:
 		log.Info().Msgf("database version: %s", dbVersion)
 		log.Info().Msgf("current database user: %s", currentUser)
@@ -195,9 +200,9 @@ func (db *DB) ValidatePool(ctx context.Context, log zerolog.Logger) error {
 	err = searchPathRow.Scan(&searchPath)
 	switch {
 	case err == sql.ErrNoRows:
-		return errs.E(errs.Database, "no rows returned for search_path")
+		return errs.E(op, errs.Database, "no rows returned for search_path")
 	case err != nil:
-		return errs.E(errs.Database, err)
+		return errs.E(op, errs.Database, err)
 	default:
 		log.Info().Msgf("current search_path: %s", searchPath)
 	}
@@ -208,13 +213,15 @@ func (db *DB) ValidatePool(ctx context.Context, log zerolog.Logger) error {
 // BeginTx returns an acquired transaction from the db pool and
 // adds app specific error handling
 func (db *DB) BeginTx(ctx context.Context) (pgx.Tx, error) {
+	const op errs.Op = "sqldb/DB.BeginTx"
+
 	if db.pool == nil {
-		return nil, errs.E(errs.Database, "db pool cannot be nil")
+		return nil, errs.E(op, errs.Database, "db pool cannot be nil")
 	}
 
 	tx, err := db.pool.Begin(ctx)
 	if err != nil {
-		return nil, errs.E(errs.Database, err)
+		return nil, errs.E(op, errs.Database, err)
 	}
 
 	return tx, nil
@@ -223,11 +230,13 @@ func (db *DB) BeginTx(ctx context.Context) (pgx.Tx, error) {
 // RollbackTx is a wrapper for sql.Tx.Rollback in order to expose from
 // the Datastore interface. Proper error handling is also considered.
 func (db *DB) RollbackTx(ctx context.Context, tx pgx.Tx, err error) error {
+	const op errs.Op = "sqldb/DB.RollbackTx"
+
 	if tx == nil {
 		if err != nil {
-			return errs.E(errs.Database, errs.Code("nil_tx"), fmt.Sprintf("RollbackTx() error = tx cannot be nil: Original error = %s", err.Error()))
+			return errs.E(op, errs.Database, errs.Code("nil_tx"), fmt.Sprintf("RollbackTx() error = tx cannot be nil: Original error = %s", err.Error()))
 		}
-		return errs.E(errs.Database, errs.Code("nil_tx"), fmt.Sprintf("RollbackTx() error = tx cannot be nil: Original error is nil"))
+		return errs.E(op, errs.Database, errs.Code("nil_tx"), fmt.Sprintf("RollbackTx() error = tx cannot be nil: Original error is nil"))
 	}
 
 	// Attempt to roll back the transaction
@@ -242,10 +251,10 @@ func (db *DB) RollbackTx(ctx context.Context, tx pgx.Tx, err error) error {
 		// any other error should be reported, it should be a *pgconn.PgError type
 		var pgErr *pgconn.PgError
 		if errors.As(rollbackErr, &pgErr) {
-			return errs.E(errs.Database, errs.Code("rollback_err"), fmt.Sprintf("PG Error Code: %s, PG Error Message: %s, RollbackTx() error = %v: Original error = %s", pgErr.Code, pgErr.Message, rollbackErr, err.Error()))
+			return errs.E(op, errs.Database, errs.Code("rollback_err"), fmt.Sprintf("PG Error Code: %s, PG Error Message: %s, RollbackTx() error = %v: Original error = %s", pgErr.Code, pgErr.Message, rollbackErr, err.Error()))
 		}
 		// in case it is somehow not a &pgconn.PgError type
-		return errs.E(errs.Database, errs.Code("rollback_err"), fmt.Sprintf("RollbackTx() error = %v: Original error = %s", rollbackErr, err.Error()))
+		return errs.E(op, errs.Database, errs.Code("rollback_err"), fmt.Sprintf("RollbackTx() error = %v: Original error = %s", rollbackErr, err.Error()))
 	}
 
 	// If rollback was successful, send back original error
@@ -255,12 +264,14 @@ func (db *DB) RollbackTx(ctx context.Context, tx pgx.Tx, err error) error {
 // CommitTx is a wrapper for sql.Tx.Commit in order to expose from
 // the Datastore interface. Proper error handling is also considered.
 func (db *DB) CommitTx(ctx context.Context, tx pgx.Tx) error {
+	const op errs.Op = "sqldb/DB.CommitTx"
+
 	if tx == nil {
-		return errs.E(errs.Database, errs.Code("nil_tx"), "CommitTx() error = tx cannot be nil")
+		return errs.E(op, errs.Database, errs.Code("nil_tx"), "CommitTx() error = tx cannot be nil")
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return errs.E(errs.Database, err)
+		return errs.E(op, errs.Database, err)
 	}
 
 	return nil

@@ -54,18 +54,19 @@ type OrgService struct {
 
 // Create is used to create an Org
 func (s *OrgService) Create(ctx context.Context, r *diygoapi.CreateOrgRequest, adt diygoapi.Audit) (or *diygoapi.OrgResponse, err error) {
+	const op errs.Op = "service/OrgService.Create"
 
 	if r == nil || *r.CreateAppRequest == (diygoapi.CreateAppRequest{}) {
-		return nil, errs.E(errs.Validation, "CreateOrgRequest must have a value when creating an Org")
+		return nil, errs.E(op, errs.Validation, "CreateOrgRequest must have a value when creating an Org")
 	}
 	err = r.Validate()
 	if err != nil {
-		return nil, err
+		return nil, errs.E(op, err)
 	}
 
 	err = r.CreateAppRequest.Validate()
 	if err != nil {
-		return nil, err
+		return nil, errs.E(op, err)
 	}
 
 	sa := &diygoapi.SimpleAudit{
@@ -77,7 +78,7 @@ func (s *OrgService) Create(ctx context.Context, r *diygoapi.CreateOrgRequest, a
 	var tx pgx.Tx
 	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
-		return nil, err
+		return nil, errs.E(op, err)
 	}
 	// defer transaction rollback and handle error, if any
 	defer func() {
@@ -87,7 +88,7 @@ func (s *OrgService) Create(ctx context.Context, r *diygoapi.CreateOrgRequest, a
 	var kind *diygoapi.OrgKind
 	kind, err = findOrgKindByExtlID(ctx, tx, r.Kind)
 	if err != nil {
-		return nil, err
+		return nil, errs.E(op, err)
 	}
 
 	// initialize Org and inject dependent fields
@@ -113,7 +114,7 @@ func (s *OrgService) Create(ctx context.Context, r *diygoapi.CreateOrgRequest, a
 
 	err = r.CreateAppRequest.Validate()
 	if err != nil {
-		return nil, err
+		return nil, errs.E(op, err)
 	}
 	nap := newAppParams{
 		Name:             r.CreateAppRequest.Name,
@@ -126,7 +127,7 @@ func (s *OrgService) Create(ctx context.Context, r *diygoapi.CreateOrgRequest, a
 	}
 	a, err = newApp(nap)
 	if err != nil {
-		return nil, err
+		return nil, errs.E(op, err)
 	}
 	aa = appAudit{
 		App:         a,
@@ -136,21 +137,21 @@ func (s *OrgService) Create(ctx context.Context, r *diygoapi.CreateOrgRequest, a
 	// write org to the db
 	err = createOrgTx(ctx, tx, oa)
 	if err != nil {
-		return nil, err
+		return nil, errs.E(op, err)
 	}
 
 	// if app is also to be created, write it to the db
 	if aa.App != nil {
 		err = createAppTx(ctx, tx, aa)
 		if err != nil {
-			return nil, err
+			return nil, errs.E(op, err)
 		}
 	}
 
 	// commit db txn using pgxpool
 	err = s.Datastorer.CommitTx(ctx, tx)
 	if err != nil {
-		return nil, err
+		return nil, errs.E(op, err)
 	}
 
 	response := newOrgResponse(oa, aa)
@@ -161,19 +162,21 @@ func (s *OrgService) Create(ctx context.Context, r *diygoapi.CreateOrgRequest, a
 // createOrgTx writes an Org and its audit information to the database.
 // separate function as it's used by genesis service as well
 func createOrgTx(ctx context.Context, tx pgx.Tx, oa *orgAudit) error {
+	const op errs.Op = "service/createOrgTx"
+
 	if oa.Org.Kind.ID == uuid.Nil {
-		return errs.E("org Kind is required")
+		return errs.E(op, "org Kind is required")
 	}
 
 	// create database record using datastore
 	rowsAffected, err := datastore.New(tx).CreateOrg(ctx, newCreateOrgParams(oa))
 	if err != nil {
-		return errs.E(errs.Database, err)
+		return errs.E(op, errs.Database, err)
 	}
 
 	// update should only update exactly one record
 	if rowsAffected != 1 {
-		return errs.E(errs.Database, fmt.Sprintf("CreateOrg() should insert 1 row, actual: %d", rowsAffected))
+		return errs.E(op, errs.Database, fmt.Sprintf("CreateOrg() should insert 1 row, actual: %d", rowsAffected))
 	}
 
 	return nil
@@ -198,12 +201,13 @@ func newCreateOrgParams(oa *orgAudit) datastore.CreateOrgParams {
 
 // Update is used to update an Org
 func (s *OrgService) Update(ctx context.Context, r *diygoapi.UpdateOrgRequest, adt diygoapi.Audit) (or *diygoapi.OrgResponse, err error) {
+	const op errs.Op = "service/OrgService.Update"
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
 	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
-		return nil, err
+		return nil, errs.E(op, err)
 	}
 	// defer transaction rollback and handle error, if any
 	defer func() {
@@ -215,9 +219,9 @@ func (s *OrgService) Update(ctx context.Context, r *diygoapi.UpdateOrgRequest, a
 	oa, err = findOrgByExternalIDWithAudit(ctx, tx, r.ExternalID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return nil, errs.E(errs.Validation, "No org exists for the given external ID")
+			return nil, errs.E(op, errs.Validation, "No org exists for the given external ID")
 		}
-		return nil, errs.E(errs.Database, err)
+		return nil, errs.E(op, errs.Database, err)
 	}
 	// overwrite Last audit with the current audit
 	oa.SimpleAudit.Update = adt
@@ -239,18 +243,18 @@ func (s *OrgService) Update(ctx context.Context, r *diygoapi.UpdateOrgRequest, a
 	var rowsAffected int64
 	rowsAffected, err = datastore.New(tx).UpdateOrg(ctx, params)
 	if err != nil {
-		return nil, errs.E(errs.Database, err)
+		return nil, errs.E(op, errs.Database, err)
 	}
 
 	// update should only update exactly one record
 	if rowsAffected != 1 {
-		return nil, errs.E(errs.Database, fmt.Sprintf("UpdateOrg() should update 1 row, actual: %d", rowsAffected))
+		return nil, errs.E(op, errs.Database, fmt.Sprintf("UpdateOrg() should update 1 row, actual: %d", rowsAffected))
 	}
 
 	// commit db txn using pgxpool
 	err = s.Datastorer.CommitTx(ctx, tx)
 	if err != nil {
-		return nil, err
+		return nil, errs.E(op, err)
 	}
 
 	return newOrgResponse(oa, appAudit{}), nil
@@ -258,12 +262,13 @@ func (s *OrgService) Update(ctx context.Context, r *diygoapi.UpdateOrgRequest, a
 
 // Delete is used to delete an Org
 func (s *OrgService) Delete(ctx context.Context, extlID string) (dr diygoapi.DeleteResponse, err error) {
+	const op errs.Op = "service/OrgService.Delete"
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
 	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
-		return diygoapi.DeleteResponse{}, err
+		return diygoapi.DeleteResponse{}, errs.E(op, err)
 	}
 	// defer transaction rollback and handle error, if any
 	defer func() {
@@ -275,39 +280,39 @@ func (s *OrgService) Delete(ctx context.Context, extlID string) (dr diygoapi.Del
 	o, err = findOrgByExternalID(ctx, tx, extlID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return diygoapi.DeleteResponse{}, errs.E(errs.Validation, "No org exists for the given external ID")
+			return diygoapi.DeleteResponse{}, errs.E(op, errs.Validation, "No org exists for the given external ID")
 		}
-		return diygoapi.DeleteResponse{}, errs.E(errs.Database, err)
+		return diygoapi.DeleteResponse{}, errs.E(op, errs.Database, err)
 	}
 
 	var dbApps []datastore.App
 	dbApps, err = datastore.New(tx).FindAppsByOrg(ctx, o.ID)
 	if err != nil {
-		return diygoapi.DeleteResponse{}, errs.E(errs.Database, err)
+		return diygoapi.DeleteResponse{}, errs.E(op, errs.Database, err)
 	}
 
 	for _, aa := range dbApps {
 		a := diygoapi.App{ID: aa.AppID}
 		err = deleteAppTx(ctx, tx, a)
 		if err != nil {
-			return diygoapi.DeleteResponse{}, errs.E(errs.Database, err)
+			return diygoapi.DeleteResponse{}, errs.E(op, errs.Database, err)
 		}
 	}
 
 	var rowsAffected int64
 	rowsAffected, err = datastore.New(tx).DeleteOrg(ctx, o.ID)
 	if err != nil {
-		return diygoapi.DeleteResponse{}, errs.E(errs.Database, err)
+		return diygoapi.DeleteResponse{}, errs.E(op, errs.Database, err)
 	}
 
 	if rowsAffected != 1 {
-		return diygoapi.DeleteResponse{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
+		return diygoapi.DeleteResponse{}, errs.E(op, errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
 	}
 
 	// commit db txn using pgxpool
 	err = s.Datastorer.CommitTx(ctx, tx)
 	if err != nil {
-		return diygoapi.DeleteResponse{}, err
+		return diygoapi.DeleteResponse{}, errs.E(op, err)
 	}
 
 	response := diygoapi.DeleteResponse{
@@ -320,12 +325,13 @@ func (s *OrgService) Delete(ctx context.Context, extlID string) (dr diygoapi.Del
 
 // FindAll is used to list all orgs in the datastore
 func (s *OrgService) FindAll(ctx context.Context) (responses []*diygoapi.OrgResponse, err error) {
+	const op errs.Op = "service/OrgService.FindAll"
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
 	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
-		return nil, err
+		return nil, errs.E(op, err)
 	}
 	// defer transaction rollback and handle error, if any
 	defer func() {
@@ -338,7 +344,7 @@ func (s *OrgService) FindAll(ctx context.Context) (responses []*diygoapi.OrgResp
 
 	rows, err = datastore.New(tx).FindOrgsWithAudit(ctx)
 	if err != nil {
-		return nil, errs.E(errs.Database, err)
+		return nil, errs.E(op, errs.Database, err)
 	}
 
 	for _, row := range rows {
@@ -398,12 +404,13 @@ func (s *OrgService) FindAll(ctx context.Context) (responses []*diygoapi.OrgResp
 
 // FindByExternalID is used to find an Org by its External ID
 func (s *OrgService) FindByExternalID(ctx context.Context, extlID string) (or *diygoapi.OrgResponse, err error) {
+	const op errs.Op = "service/OrgService.FindByExternalID"
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
 	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
-		return nil, err
+		return nil, errs.E(op, err)
 	}
 	// defer transaction rollback and handle error, if any
 	defer func() {
@@ -413,7 +420,7 @@ func (s *OrgService) FindByExternalID(ctx context.Context, extlID string) (or *d
 	var oa *orgAudit
 	oa, err = findOrgByExternalIDWithAudit(ctx, tx, extlID)
 	if err != nil {
-		return nil, err
+		return nil, errs.E(op, err)
 	}
 
 	return newOrgResponse(oa, appAudit{}), nil
@@ -421,9 +428,11 @@ func (s *OrgService) FindByExternalID(ctx context.Context, extlID string) (or *d
 
 // findOrgByExternalID retrieves an Org from the datastore given a unique external ID
 func findOrgByExternalID(ctx context.Context, dbtx diygoapi.DBTX, extlID string) (diygoapi.Org, error) {
+	const op errs.Op = "service/findOrgByExternalID"
+
 	row, err := datastore.New(dbtx).FindOrgByExtlID(ctx, extlID)
 	if err != nil {
-		return diygoapi.Org{}, errs.E(errs.Database, err)
+		return diygoapi.Org{}, errs.E(op, errs.Database, err)
 	}
 
 	o := diygoapi.Org{
@@ -444,6 +453,8 @@ func findOrgByExternalID(ctx context.Context, dbtx diygoapi.DBTX, extlID string)
 // findOrgByExternalID retrieves Org data from the datastore given a
 // unique external ID, which is then hydrated into Org and audit structs.
 func findOrgByExternalIDWithAudit(ctx context.Context, dbtx diygoapi.DBTX, extlID string) (*orgAudit, error) {
+	const op errs.Op = "service/findOrgByExternalIDWithAudit"
+
 	var (
 		row datastore.FindOrgByExtlIDWithAuditRow
 		err error
@@ -452,9 +463,9 @@ func findOrgByExternalIDWithAudit(ctx context.Context, dbtx diygoapi.DBTX, extlI
 	row, err = datastore.New(dbtx).FindOrgByExtlIDWithAudit(ctx, extlID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, errs.E(errs.NotExist, fmt.Sprintf("no org found with external ID: %s", extlID))
+			return nil, errs.E(op, errs.NotExist, fmt.Sprintf("no org found with external ID: %s", extlID))
 		} else {
-			return nil, errs.E(errs.Database, err)
+			return nil, errs.E(op, errs.Database, err)
 		}
 	}
 
@@ -510,9 +521,11 @@ func findOrgByExternalIDWithAudit(ctx context.Context, dbtx diygoapi.DBTX, extlI
 
 // FindOrgByName finds an Org in the database using its unique name.
 func FindOrgByName(ctx context.Context, tx datastore.DBTX, name string) (*diygoapi.Org, error) {
+	const op errs.Op = "service/FindOrgByName"
+
 	findOrgByNameRow, err := datastore.New(tx).FindOrgByName(ctx, name)
 	if err != nil {
-		return nil, errs.E(errs.Database, err)
+		return nil, errs.E(op, errs.Database, err)
 	}
 
 	o := &diygoapi.Org{
@@ -532,9 +545,11 @@ func FindOrgByName(ctx context.Context, tx datastore.DBTX, name string) (*diygoa
 
 // findOrgKindByExtlID finds an org kind from the datastore given its External ID
 func findOrgKindByExtlID(ctx context.Context, dbtx diygoapi.DBTX, extlID string) (*diygoapi.OrgKind, error) {
+	const op errs.Op = "service/findOrgKindByExtlID"
+
 	kind, err := datastore.New(dbtx).FindOrgKindByExtlID(ctx, extlID)
 	if err != nil {
-		return nil, errs.E(errs.Database, err)
+		return nil, errs.E(op, errs.Database, err)
 	}
 
 	orgKind := &diygoapi.OrgKind{
@@ -548,6 +563,8 @@ func findOrgKindByExtlID(ctx context.Context, dbtx diygoapi.DBTX, extlID string)
 
 // createPrincipalOrgKind initializes the org_kind lookup table with the genesis kind record
 func createPrincipalOrgKind(ctx context.Context, tx pgx.Tx, adt diygoapi.Audit) (datastore.CreateOrgKindParams, error) {
+	const op errs.Op = "service/createPrincipalOrgKind"
+
 	createOrgKindParams := datastore.CreateOrgKindParams{
 		OrgKindID:       uuid.New(),
 		OrgKindExtlID:   principalOrgKind,
@@ -566,11 +583,11 @@ func createPrincipalOrgKind(ctx context.Context, tx pgx.Tx, adt diygoapi.Audit) 
 	)
 	rowsAffected, err = datastore.New(tx).CreateOrgKind(ctx, createOrgKindParams)
 	if err != nil {
-		return datastore.CreateOrgKindParams{}, errs.E(errs.Database, err)
+		return datastore.CreateOrgKindParams{}, errs.E(op, errs.Database, err)
 	}
 
 	if rowsAffected != 1 {
-		return datastore.CreateOrgKindParams{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
+		return datastore.CreateOrgKindParams{}, errs.E(op, errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
 	}
 
 	return createOrgKindParams, nil
@@ -578,6 +595,8 @@ func createPrincipalOrgKind(ctx context.Context, tx pgx.Tx, adt diygoapi.Audit) 
 
 // createTestOrgKind initializes the org_kind lookup table with the test kind record
 func createTestOrgKind(ctx context.Context, tx pgx.Tx, adt diygoapi.Audit) (datastore.CreateOrgKindParams, error) {
+	const op errs.Op = "service/createTestOrgKind"
+
 	testParams := datastore.CreateOrgKindParams{
 		OrgKindID:       uuid.New(),
 		OrgKindExtlID:   "test",
@@ -596,11 +615,11 @@ func createTestOrgKind(ctx context.Context, tx pgx.Tx, adt diygoapi.Audit) (data
 	)
 	rowsAffected, err = datastore.New(tx).CreateOrgKind(ctx, testParams)
 	if err != nil {
-		return datastore.CreateOrgKindParams{}, errs.E(errs.Database, err)
+		return datastore.CreateOrgKindParams{}, errs.E(op, errs.Database, err)
 	}
 
 	if rowsAffected != 1 {
-		return datastore.CreateOrgKindParams{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
+		return datastore.CreateOrgKindParams{}, errs.E(op, errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
 	}
 
 	return testParams, nil
@@ -608,6 +627,8 @@ func createTestOrgKind(ctx context.Context, tx pgx.Tx, adt diygoapi.Audit) (data
 
 // createStandardOrgKind initializes the org_kind lookup table with the standard kind record
 func createStandardOrgKind(ctx context.Context, tx pgx.Tx, adt diygoapi.Audit) (datastore.CreateOrgKindParams, error) {
+	const op errs.Op = "service/createStandardOrgKind"
+
 	standardParams := datastore.CreateOrgKindParams{
 		OrgKindID:       uuid.New(),
 		OrgKindExtlID:   "standard",
@@ -626,11 +647,11 @@ func createStandardOrgKind(ctx context.Context, tx pgx.Tx, adt diygoapi.Audit) (
 	)
 	rowsAffected, err = datastore.New(tx).CreateOrgKind(ctx, standardParams)
 	if err != nil {
-		return datastore.CreateOrgKindParams{}, errs.E(errs.Database, err)
+		return datastore.CreateOrgKindParams{}, errs.E(op, errs.Database, err)
 	}
 
 	if rowsAffected != 1 {
-		return datastore.CreateOrgKindParams{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
+		return datastore.CreateOrgKindParams{}, errs.E(op, errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
 	}
 
 	return standardParams, nil

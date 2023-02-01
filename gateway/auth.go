@@ -21,17 +21,21 @@ type Oauth2TokenExchange struct{}
 // Exchange calls the Google Userinfo API with the access token and converts
 // the Userinfo struct to a User struct
 func (e Oauth2TokenExchange) Exchange(ctx context.Context, realm string, provider diygoapi.Provider, token *oauth2.Token) (*diygoapi.ProviderInfo, error) {
+	const op errs.Op = "gateway/Oauth2TokenExchange.Exchange"
+
 	switch provider {
 	case diygoapi.Google:
 		return googleTokenExchange(ctx, realm, token)
 	default:
-		return nil, errs.E(errs.Unauthenticated, errs.Realm(realm), "provider not recognized")
+		return nil, errs.E(op, errs.Unauthenticated, errs.Realm(realm), "provider not recognized")
 	}
 }
 
 // googleTokenExchange makes a request to Google's OAuth2 API and
 // populates ProviderInfo based on the response.
 func googleTokenExchange(ctx context.Context, realm string, token *oauth2.Token) (*diygoapi.ProviderInfo, error) {
+	const op errs.Op = "gateway/googleTokenExchange"
+
 	var (
 		oauthService *googleoauth.Service
 		err          error
@@ -39,14 +43,14 @@ func googleTokenExchange(ctx context.Context, realm string, token *oauth2.Token)
 	// initialize the Oauth2 service
 	oauthService, err = googleoauth.NewService(ctx, option.WithTokenSource(oauth2.StaticTokenSource(token)))
 	if err != nil {
-		return nil, errs.E(errs.Internal, err)
+		return nil, errs.E(op, errs.Internal, err)
 	}
 
 	// make api call to get metadata about the token
 	var tokenInfo *googleoauth.Tokeninfo
 	tokenInfo, err = oauthService.Tokeninfo().Do()
 	if err != nil {
-		return nil, errs.E(errs.Unauthenticated, errs.Realm(realm), err)
+		return nil, errs.E(op, errs.Unauthenticated, errs.Realm(realm), err)
 	}
 
 	// calculate the token expiration based on ExpiresIn (seconds)
@@ -67,7 +71,7 @@ func googleTokenExchange(ctx context.Context, realm string, token *oauth2.Token)
 		// requested operation on the given resource."
 		// In this case, we are getting a bad response from Google service, assume
 		// they are not able to authenticate properly
-		return nil, errs.E(errs.Unauthenticated, errs.Realm(realm), err)
+		return nil, errs.E(op, errs.Unauthenticated, errs.Realm(realm), err)
 	}
 
 	// according to Google's docs, IssuedTo and Audience are mostly the same,
@@ -75,13 +79,13 @@ func googleTokenExchange(ctx context.Context, realm string, token *oauth2.Token)
 	// which is the most reliable, hopefully this error never occurs, and they're
 	// in actuality always the same.
 	if tokenInfo.IssuedTo != tokenInfo.Audience {
-		return nil, errs.E(errs.Internal, "tokenInfo.IssuedTo != tokenInfo.Audience")
+		return nil, errs.E(op, errs.Internal, "tokenInfo.IssuedTo != tokenInfo.Audience")
 	}
 
 	// Again, I believe from docs that these are the same, but adding this
 	// validation as I need a reliable external key.
 	if tokenInfo.UserId != userinfo.Id {
-		return nil, errs.E(errs.Internal, "tokenInfo.UserId != tokenInfo.Id")
+		return nil, errs.E(op, errs.Internal, "tokenInfo.UserId != tokenInfo.Id")
 	}
 
 	pui := diygoapi.ProviderUserInfo{

@@ -50,11 +50,13 @@ func (p Person) NullUUID() uuid.NullUUID {
 
 // Validate determines whether the Person has proper data to be considered valid
 func (p Person) Validate() (err error) {
+	const op errs.Op = "diygoapi/Person.Validate"
+
 	switch {
 	case p.ID == uuid.Nil:
-		return errs.E(errs.Validation, "Person ID cannot be nil")
+		return errs.E(op, errs.Validation, "Person ID cannot be nil")
 	case p.ExternalID.String() == "":
-		return errs.E(errs.Validation, "Person ExternalID cannot be empty")
+		return errs.E(op, errs.Validation, "Person ExternalID cannot be empty")
 	}
 
 	return nil
@@ -133,15 +135,17 @@ type User struct {
 
 // Validate determines whether the Person has proper data to be considered valid
 func (u User) Validate() error {
+	const op errs.Op = "diygoapi/User.Validate"
+
 	switch {
 	case u.ID == uuid.Nil:
-		return errs.E(errs.Validation, "User ID cannot be nil")
+		return errs.E(op, errs.Validation, "User ID cannot be nil")
 	case u.ExternalID.String() == "":
-		return errs.E(errs.Validation, "User ExternalID cannot be empty")
+		return errs.E(op, errs.Validation, "User ExternalID cannot be empty")
 	case u.LastName == "":
-		return errs.E(errs.Validation, "User LastName cannot be empty")
+		return errs.E(op, errs.Validation, "User LastName cannot be empty")
 	case u.FirstName == "":
-		return errs.E(errs.Validation, "User FirstName cannot be empty")
+		return errs.E(op, errs.Validation, "User FirstName cannot be empty")
 	}
 
 	return nil

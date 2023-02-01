@@ -15,11 +15,13 @@ type RandomGenerator struct{}
 // function correctly, in which case the caller should not continue.
 // Taken from https://stackoverflow.com/questions/35781197/generating-a-random-fixed-length-byte-array-in-go
 func (g RandomGenerator) RandomBytes(n int) ([]byte, error) {
+	const op errs.Op = "secure/RandomGenerator.RandomBytes"
+
 	b := make([]byte, n)
 	_, err := rand.Read(b)
 	// Note that err == nil only if we read len(b) bytes.
 	if err != nil {
-		return nil, errs.E(errs.Internal, err)
+		return nil, errs.E(op, errs.Internal, err)
 	}
 
 	return b, nil
@@ -31,9 +33,11 @@ func (g RandomGenerator) RandomBytes(n int) ([]byte, error) {
 // used when there are concerns about security and need something cryptographically
 // secure.
 func (g RandomGenerator) RandomString(n int) (string, error) {
+	const op errs.Op = "secure/RandomGenerator.RandomString"
+
 	b, err := g.RandomBytes(n)
 	if err != nil {
-		return "", err
+		return "", errs.E(op, err)
 	}
-	return base64.URLEncoding.EncodeToString(b), err
+	return base64.URLEncoding.EncodeToString(b), nil
 }

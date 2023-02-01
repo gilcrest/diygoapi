@@ -62,6 +62,7 @@ func HTTPErrorResponse(w http.ResponseWriter, lgr zerolog.Logger, err error) {
 // Taken from standard library and modified.
 // https://golang.org/pkg/net/http/#Error
 func typicalErrorResponse(w http.ResponseWriter, lgr zerolog.Logger, e *Error) {
+	const op Op = "errs/typicalErrorResponse"
 
 	httpStatusCode := httpErrorStatusCode(e.Kind)
 
@@ -70,20 +71,32 @@ func typicalErrorResponse(w http.ResponseWriter, lgr zerolog.Logger, e *Error) {
 	// Status Code as response. Error should not be empty, but it's
 	// theoretically possible, so this is just in case...
 	if e.isZero() {
-		lgr.Error().Stack().Int("http_statuscode", httpStatusCode).Msg("empty error")
+		lgr.Error().Msgf("error sent to %s, but empty - very strange, investigate", op)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	// typical errors
 
-	// log the error with stacktrace
-	lgr.Error().Stack().Err(e.Err).
-		Int("http_statuscode", httpStatusCode).
-		Str("Kind", e.Kind.String()).
-		Str("Parameter", string(e.Param)).
-		Str("Code", string(e.Code)).
-		Msg("Error Response Sent")
+	ops := OpStack(e)
+	if len(ops) > 0 {
+		j, _ := json.Marshal(ops)
+		// log the error with the op stack
+		lgr.Error().RawJSON("stack", j).Err(e.Err).
+			Int("http_statuscode", httpStatusCode).
+			Str("Kind", e.Kind.String()).
+			Str("Parameter", string(e.Param)).
+			Str("Code", string(e.Code)).
+			Msg("error response sent to client")
+	} else {
+		// log the error without the op stack
+		lgr.Error().Err(e.Err).
+			Int("http_statuscode", httpStatusCode).
+			Str("Kind", e.Kind.String()).
+			Str("Parameter", string(e.Param)).
+			Str("Code", string(e.Code)).
+			Msg("error response sent to client")
+	}
 
 	// get ErrResponse
 	er := newErrResponse(e)

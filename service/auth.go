@@ -46,11 +46,13 @@ type DBAuthenticationService struct {
 // authentication, in which case, the upstream app overrides the app derived
 // from the Oauth2 provider.
 func (s DBAuthenticationService) FindAuth(ctx context.Context, params diygoapi.AuthenticationParams) (auth diygoapi.Auth, err error) {
+	const op errs.Op = "service/DBAuthenticationService.FindAuth"
+
 	// start db txn using pgxpool
 	var tx pgx.Tx
 	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
-		return diygoapi.Auth{}, err
+		return diygoapi.Auth{}, errs.E(op, err)
 	}
 	// defer transaction rollback and handle error, if any
 	defer func() {
@@ -61,7 +63,7 @@ func (s DBAuthenticationService) FindAuth(ctx context.Context, params diygoapi.A
 	if err != nil {
 		// if error is something other than NotExist, then return error
 		if !errs.KindIs(errs.NotExist, err) {
-			return diygoapi.Auth{}, err
+			return diygoapi.Auth{}, errs.E(op, err)
 		}
 
 		// auth could not be found by access token in the db
@@ -69,7 +71,7 @@ func (s DBAuthenticationService) FindAuth(ctx context.Context, params diygoapi.A
 		var providerInfo *diygoapi.ProviderInfo
 		providerInfo, err = s.TokenExchanger.Exchange(ctx, params.Realm, params.Provider, params.Token)
 		if err != nil {
-			return diygoapi.Auth{}, err
+			return diygoapi.Auth{}, errs.E(op, err)
 		}
 
 		fParams := findAuthByProviderExternalIDParams{
@@ -82,7 +84,7 @@ func (s DBAuthenticationService) FindAuth(ctx context.Context, params diygoapi.A
 		auth, err = findAuthByProviderExternalID(ctx, tx, fParams)
 		if err != nil {
 			if errs.KindIs(errs.NotExist, err) {
-				return diygoapi.Auth{}, errs.E(errs.Unauthenticated, errs.Realm(params.Realm), err)
+				return diygoapi.Auth{}, errs.E(op, errs.Unauthenticated, errs.Realm(params.Realm), err)
 			}
 			return diygoapi.Auth{}, err
 		}
@@ -91,7 +93,7 @@ func (s DBAuthenticationService) FindAuth(ctx context.Context, params diygoapi.A
 	// commit db txn using pgxpool
 	err = s.Datastorer.CommitTx(ctx, tx)
 	if err != nil {
-		return diygoapi.Auth{}, err
+		return diygoapi.Auth{}, errs.E(op, err)
 	}
 
 	return auth, nil
@@ -108,6 +110,7 @@ func (s DBAuthenticationService) FindAuth(ctx context.Context, params diygoapi.A
 //
 // If none are found, an error with errs.NotExist kind is returned.
 func findAuthByAccessToken(ctx context.Context, tx pgx.Tx, params diygoapi.AuthenticationParams) (diygoapi.Auth, error) {
+	const op errs.Op = "service/findAuthByAccessToken"
 
 	var (
 		dbAuth datastore.Auth
@@ -122,9 +125,9 @@ func findAuthByAccessToken(ctx context.Context, tx pgx.Tx, params diygoapi.Authe
 	dbAuth, err = datastore.New(tx).FindAuthByAccessToken(ctx, params.Token.AccessToken)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return diygoapi.Auth{}, errs.E(errs.NotExist, "No auth found in db for access token")
+			return diygoapi.Auth{}, errs.E(op, errs.NotExist, "No auth found in db for access token")
 		} else {
-			return diygoapi.Auth{}, errs.E(errs.Database, err)
+			return diygoapi.Auth{}, errs.E(op, errs.Database, err)
 		}
 	}
 
@@ -132,7 +135,7 @@ func findAuthByAccessToken(ctx context.Context, tx pgx.Tx, params diygoapi.Authe
 	var u *diygoapi.User
 	u, err = FindUserByID(ctx, tx, dbAuth.UserID)
 	if err != nil {
-		return diygoapi.Auth{}, err
+		return diygoapi.Auth{}, errs.E(op, err)
 	}
 
 	// populate Auth
@@ -151,7 +154,7 @@ func findAuthByAccessToken(ctx context.Context, tx pgx.Tx, params diygoapi.Authe
 
 	// if token is no longer valid, return an error
 	if !auth.Token.Valid() {
-		return diygoapi.Auth{}, errs.E(errs.Unauthenticated, errs.Realm(params.Realm), "token is no longer valid")
+		return diygoapi.Auth{}, errs.E(op, errs.Unauthenticated, errs.Realm(params.Realm), "token is no longer valid")
 	}
 
 	return auth, nil
@@ -167,6 +170,8 @@ type findAuthByProviderExternalIDParams struct {
 // the authentication provider's external ID. If an auth object exists, it
 // will be updated with the new access token details.
 func findAuthByProviderExternalID(ctx context.Context, tx pgx.Tx, params findAuthByProviderExternalIDParams) (diygoapi.Auth, error) {
+	const op errs.Op = "service/findAuthByProviderExternalID"
+
 	var err error
 
 	findAuthByProviderUserIDParams := datastore.FindAuthByProviderUserIDParams{
@@ -179,9 +184,9 @@ func findAuthByProviderExternalID(ctx context.Context, tx pgx.Tx, params findAut
 	dbAuth, err = datastore.New(tx).FindAuthByProviderUserID(ctx, findAuthByProviderUserIDParams)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return diygoapi.Auth{}, errs.E(errs.Unauthenticated, errs.Realm(params.Realm), fmt.Sprintf("no authorization object, Provider: %s, Provider Person ID: %s, email: %s", params.ProviderInfo.Provider.String(), params.ProviderInfo.UserInfo.ExternalID, params.ProviderInfo.UserInfo.Email))
+			return diygoapi.Auth{}, errs.E(op, errs.Unauthenticated, errs.Realm(params.Realm), fmt.Sprintf("no authorization object, Provider: %s, Provider Person ID: %s, email: %s", params.ProviderInfo.Provider.String(), params.ProviderInfo.UserInfo.ExternalID, params.ProviderInfo.UserInfo.Email))
 		} else {
-			return diygoapi.Auth{}, errs.E(errs.Database, err)
+			return diygoapi.Auth{}, errs.E(op, errs.Database, err)
 		}
 	}
 
@@ -189,7 +194,7 @@ func findAuthByProviderExternalID(ctx context.Context, tx pgx.Tx, params findAut
 	var u *diygoapi.User
 	u, err = FindUserByID(ctx, tx, dbAuth.UserID)
 	if err != nil {
-		return diygoapi.Auth{}, err
+		return diygoapi.Auth{}, errs.E(op, err)
 	}
 
 	// populate Auth
@@ -204,7 +209,7 @@ func findAuthByProviderExternalID(ctx context.Context, tx pgx.Tx, params findAut
 
 	// if token is no longer valid, return an error
 	if !auth.Token.Valid() {
-		return diygoapi.Auth{}, errs.E(errs.Unauthenticated, errs.Realm(params.Realm), "token is no longer valid")
+		return diygoapi.Auth{}, errs.E(op, errs.Unauthenticated, errs.Realm(params.Realm), "token is no longer valid")
 	}
 
 	return auth, nil
@@ -212,12 +217,13 @@ func findAuthByProviderExternalID(ctx context.Context, tx pgx.Tx, params findAut
 
 // FindAppByProviderClientID finds an app given a Provider's Unique Client ID
 func (s DBAuthenticationService) FindAppByProviderClientID(ctx context.Context, realm string, auth diygoapi.Auth) (a *diygoapi.App, err error) {
+	const op errs.Op = "service/DBAuthenticationService.FindAppByProviderClientID"
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
 	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
-		return nil, err
+		return nil, errs.E(op, err)
 	}
 	// defer transaction rollback and handle error, if any
 	defer func() {
@@ -227,9 +233,9 @@ func (s DBAuthenticationService) FindAppByProviderClientID(ctx context.Context, 
 	a, err = findAppByProviderClientID(ctx, tx, auth.ProviderClientID)
 	if err != nil {
 		if errs.KindIs(errs.NotExist, err) {
-			return nil, errs.E(errs.Unauthenticated, errs.Realm(realm), fmt.Sprintf("No app mapped to Client ID: %s for Provider: %s", auth.ProviderClientID, auth.Provider.String()))
+			return nil, errs.E(op, errs.Unauthenticated, errs.Realm(realm), fmt.Sprintf("No app mapped to Client ID: %s for Provider: %s", auth.ProviderClientID, auth.Provider.String()))
 		}
-		return nil, errs.E(errs.Unauthenticated, errs.Realm(realm), err)
+		return nil, errs.E(op, errs.Unauthenticated, errs.Realm(realm), err)
 	}
 
 	return a, nil
@@ -239,12 +245,13 @@ func (s DBAuthenticationService) FindAppByProviderClientID(ctx context.Context, 
 // if the given API key is a valid key for it. It is used as part of
 // app authentication
 func (s DBAuthenticationService) FindAppByAPIKey(ctx context.Context, realm, appExtlID, key string) (a *diygoapi.App, err error) {
+	const op errs.Op = "service/DBAuthenticationService.FindAppByAPIKey"
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
 	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
-		return nil, err
+		return nil, errs.E(op, err)
 	}
 	// defer transaction rollback and handle error, if any
 	defer func() {
@@ -256,7 +263,7 @@ func (s DBAuthenticationService) FindAppByAPIKey(ctx context.Context, realm, app
 	// retrieve the list of encrypted API keys from the database
 	kr, err = datastore.New(tx).FindAppAPIKeysByAppExtlID(ctx, appExtlID)
 	if err != nil {
-		return nil, errs.E(errs.Unauthenticated, errs.Realm(realm), err)
+		return nil, errs.E(op, errs.Unauthenticated, errs.Realm(realm), err)
 	}
 
 	var (
@@ -273,7 +280,7 @@ func (s DBAuthenticationService) FindAppByAPIKey(ctx context.Context, realm, app
 			var extl secure.Identifier
 			extl, err = secure.ParseIdentifier(row.OrgExtlID)
 			if err != nil {
-				return nil, err
+				return nil, errs.E(op, err)
 			}
 			a.ID = row.AppID
 			a.ExternalID = extl
@@ -288,7 +295,7 @@ func (s DBAuthenticationService) FindAppByAPIKey(ctx context.Context, realm, app
 		}
 		ak, err = diygoapi.NewAPIKeyFromCipher(row.ApiKey, s.EncryptionKey)
 		if err != nil {
-			return nil, err
+			return nil, errs.E(op, err)
 		}
 		ak.SetDeactivationDate(row.DeactvDate)
 		aks = append(aks, ak)
@@ -299,7 +306,7 @@ func (s DBAuthenticationService) FindAppByAPIKey(ctx context.Context, realm, app
 	// match the input key and are still valid.
 	err = a.ValidateKey(realm, key)
 	if err != nil {
-		return nil, err
+		return nil, errs.E(op, err)
 	}
 
 	return a, nil
@@ -314,11 +321,13 @@ func (s DBAuthenticationService) FindAppByAPIKey(ctx context.Context, realm, app
 // determine if user is already registered, and if so, the existing
 // user is returned.
 func (s DBAuthenticationService) SelfRegister(ctx context.Context, params diygoapi.AuthenticationParams) (auth diygoapi.Auth, err error) {
+	const op errs.Op = "service/DBAuthenticationService.SelfRegister"
+
 	// start db txn using pgxpool
 	var tx pgx.Tx
 	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
-		return diygoapi.Auth{}, err
+		return diygoapi.Auth{}, errs.E(op, err)
 	}
 	// defer transaction rollback and handle error, if any
 	defer func() {
@@ -330,14 +339,14 @@ func (s DBAuthenticationService) SelfRegister(ctx context.Context, params diygoa
 	if err != nil {
 		// if error is something other than NotExist, then return error
 		if !errs.KindIs(errs.NotExist, err) {
-			return diygoapi.Auth{}, err
+			return diygoapi.Auth{}, errs.E(op, err)
 		}
 
 		// auth could not be found by access token in the db
 		// get ProviderInfo from provider API
 		providerInfo, err = s.TokenExchanger.Exchange(ctx, params.Realm, params.Provider, params.Token)
 		if err != nil {
-			return diygoapi.Auth{}, err
+			return diygoapi.Auth{}, errs.E(op, err)
 		}
 
 		fParams := findAuthByProviderExternalIDParams{
@@ -352,7 +361,7 @@ func (s DBAuthenticationService) SelfRegister(ctx context.Context, params diygoa
 		if err != nil {
 			// if error is something other than NotExist, then return error
 			if !errs.KindIs(errs.NotExist, err) {
-				return diygoapi.Auth{}, err
+				return diygoapi.Auth{}, errs.E(op, err)
 			}
 		}
 	}
@@ -369,9 +378,9 @@ func (s DBAuthenticationService) SelfRegister(ctx context.Context, params diygoa
 			a, err = findAppByProviderClientID(ctx, tx, providerInfo.TokenInfo.ClientID)
 			if err != nil {
 				if errs.KindIs(errs.NotExist, err) {
-					return diygoapi.Auth{}, errs.E(errs.NotExist, fmt.Sprintf("no app registered for Provider: %s, Client ID: %s", params.Provider.String(), providerInfo.TokenInfo.ClientID))
+					return diygoapi.Auth{}, errs.E(op, errs.NotExist, fmt.Sprintf("no app registered for Provider: %s, Client ID: %s", params.Provider.String(), providerInfo.TokenInfo.ClientID))
 				}
-				return diygoapi.Auth{}, err
+				return diygoapi.Auth{}, errs.E(op, err)
 			}
 		}
 
@@ -379,7 +388,7 @@ func (s DBAuthenticationService) SelfRegister(ctx context.Context, params diygoa
 
 		err = u.Validate()
 		if err != nil {
-			return diygoapi.Auth{}, err
+			return diygoapi.Auth{}, errs.E(op, err)
 		}
 
 		p := diygoapi.Person{
@@ -397,7 +406,7 @@ func (s DBAuthenticationService) SelfRegister(ctx context.Context, params diygoa
 		// write Person/User from request to the database
 		err = createPersonTx(ctx, tx, p, adt)
 		if err != nil {
-			return diygoapi.Auth{}, err
+			return diygoapi.Auth{}, errs.E(op, err)
 		}
 
 		// associate user to the app's org
@@ -408,7 +417,7 @@ func (s DBAuthenticationService) SelfRegister(ctx context.Context, params diygoa
 		}
 		err = attachOrgAssociation(ctx, tx, aoaParams)
 		if err != nil {
-			return diygoapi.Auth{}, err
+			return diygoapi.Auth{}, errs.E(op, err)
 		}
 
 		auth = diygoapi.Auth{
@@ -422,7 +431,7 @@ func (s DBAuthenticationService) SelfRegister(ctx context.Context, params diygoa
 
 		err = createAuthTx(ctx, tx, createAuthTxParams{Auth: auth, Audit: adt})
 		if err != nil {
-			return diygoapi.Auth{}, err
+			return diygoapi.Auth{}, errs.E(op, err)
 		}
 
 	}
@@ -430,7 +439,7 @@ func (s DBAuthenticationService) SelfRegister(ctx context.Context, params diygoa
 	// commit db txn using pgxpool
 	err = s.Datastorer.CommitTx(ctx, tx)
 	if err != nil {
-		return diygoapi.Auth{}, err
+		return diygoapi.Auth{}, errs.E(op, err)
 	}
 
 	return auth, nil
@@ -472,6 +481,8 @@ type createAuthTxParams struct {
 }
 
 func createAuthTx(ctx context.Context, tx pgx.Tx, params createAuthTxParams) (err error) {
+	const op errs.Op = "service/createAuthTx"
+
 	createAuthParams := datastore.CreateAuthParams{
 		AuthID:                        params.Auth.ID,
 		UserID:                        params.Auth.User.ID,
@@ -493,12 +504,12 @@ func createAuthTx(ctx context.Context, tx pgx.Tx, params createAuthTxParams) (er
 	var rowsAffected int64
 	rowsAffected, err = datastore.New(tx).CreateAuth(ctx, createAuthParams)
 	if err != nil {
-		return errs.E(errs.Database, err)
+		return errs.E(op, errs.Database, err)
 	}
 
 	// should only create exactly one record
 	if rowsAffected != 1 {
-		return errs.E(errs.Database, fmt.Sprintf("CreateAuth() should insert 1 row, actual: %d", rowsAffected))
+		return errs.E(op, errs.Database, fmt.Sprintf("CreateAuth() should insert 1 row, actual: %d", rowsAffected))
 	}
 
 	return nil
@@ -520,13 +531,15 @@ type DBAuthorizationService struct {
 // determining authorization for a user by running sql against tables
 // in the database
 func (s *DBAuthorizationService) Authorize(r *http.Request, lgr zerolog.Logger, adt diygoapi.Audit) (err error) {
+	const op errs.Op = "service/DBAuthorizationService.Authorize"
+
 	ctx := r.Context()
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
 	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 	// defer transaction rollback and handle error, if any
 	defer func() {
@@ -539,13 +552,13 @@ func (s *DBAuthorizationService) Authorize(r *http.Request, lgr zerolog.Logger, 
 	// CurrentRoute can return a nil if route not setup properly or
 	// is being called outside the handler of the matched route
 	if route == nil {
-		return errs.E(errs.Unauthorized, "nil route returned from mux.CurrentRoute")
+		return errs.E(op, errs.Unauthorized, "nil route returned from mux.CurrentRoute")
 	}
 
 	var pathTemplate string
 	pathTemplate, err = route.GetPathTemplate()
 	if err != nil {
-		return errs.E(errs.Unauthorized, err)
+		return errs.E(op, errs.Unauthorized, err)
 	}
 
 	arg := datastore.IsAuthorizedParams{
@@ -571,7 +584,7 @@ func (s *DBAuthorizationService) Authorize(r *http.Request, lgr zerolog.Logger, 
 		// requested operation on the given resource."
 		// If the user has gotten here, they have gotten through authentication
 		// but do have the right access, this they are Unauthorized
-		return errs.E(errs.Unauthorized, fmt.Sprintf("User_extl_id %s does not have %s permission for %s", adt.User.ExternalID.String(), r.Method, pathTemplate))
+		return errs.E(op, errs.Unauthorized, fmt.Sprintf("User_extl_id %s does not have %s permission for %s", adt.User.ExternalID.String(), r.Method, pathTemplate))
 	}
 
 	lgr.Debug().Str("user_extl_id", adt.User.ExternalID.String()).Str("resource", pathTemplate).Str("operation", r.Method).
@@ -587,12 +600,13 @@ type PermissionService struct {
 
 // Create is used to create a Permission
 func (s *PermissionService) Create(ctx context.Context, r *diygoapi.CreatePermissionRequest, adt diygoapi.Audit) (response *diygoapi.PermissionResponse, err error) {
+	const op errs.Op = "service/PermissionService.Create"
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
 	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
-		return nil, err
+		return nil, errs.E(op, err)
 	}
 	// defer transaction rollback and handle error, if any
 	defer func() {
@@ -602,13 +616,13 @@ func (s *PermissionService) Create(ctx context.Context, r *diygoapi.CreatePermis
 	var p diygoapi.Permission
 	p, err = createPermissionTx(ctx, tx, r, adt)
 	if err != nil {
-		return nil, err
+		return nil, errs.E(op, err)
 	}
 
 	// commit db txn using pgxpool
 	err = s.Datastorer.CommitTx(ctx, tx)
 	if err != nil {
-		return nil, err
+		return nil, errs.E(op, err)
 	}
 
 	response = &diygoapi.PermissionResponse{
@@ -624,6 +638,8 @@ func (s *PermissionService) Create(ctx context.Context, r *diygoapi.CreatePermis
 
 // createPermissionTX separates the transaction logic as it needs to also be called during Genesis
 func createPermissionTx(ctx context.Context, tx pgx.Tx, r *diygoapi.CreatePermissionRequest, adt diygoapi.Audit) (p diygoapi.Permission, err error) {
+	const op errs.Op = "service/createPermissionTx"
+
 	p = diygoapi.Permission{
 		ID:          uuid.New(),
 		ExternalID:  secure.NewID(),
@@ -635,7 +651,7 @@ func createPermissionTx(ctx context.Context, tx pgx.Tx, r *diygoapi.CreatePermis
 
 	err = p.Validate()
 	if err != nil {
-		return diygoapi.Permission{}, err
+		return diygoapi.Permission{}, errs.E(op, err)
 	}
 
 	arg := datastore.CreatePermissionParams{
@@ -661,14 +677,14 @@ func createPermissionTx(ctx context.Context, tx pgx.Tx, r *diygoapi.CreatePermis
 			if pgErr.Code == "23505" {
 				return diygoapi.Permission{}, errs.E(errs.Exist, errs.Exist.String())
 			}
-			return diygoapi.Permission{}, errs.E(errs.Database, pgErr.Message)
+			return diygoapi.Permission{}, errs.E(op, errs.Database, pgErr.Message)
 		}
-		return diygoapi.Permission{}, errs.E(errs.Database, err)
+		return diygoapi.Permission{}, errs.E(op, errs.Database, err)
 	}
 
 	// should only impact exactly one record
 	if rowsAffected != 1 {
-		return diygoapi.Permission{}, errs.E(errs.Database, fmt.Sprintf("Create() should insert 1 row, actual: %d", rowsAffected))
+		return diygoapi.Permission{}, errs.E(op, errs.Database, fmt.Sprintf("Create() should insert 1 row, actual: %d", rowsAffected))
 	}
 
 	return p, nil
@@ -676,12 +692,13 @@ func createPermissionTx(ctx context.Context, tx pgx.Tx, r *diygoapi.CreatePermis
 
 // FindAll retrieves all permissions
 func (s *PermissionService) FindAll(ctx context.Context) (permissions []*diygoapi.PermissionResponse, err error) {
+	const op errs.Op = "service/PermissionService.FindAll"
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
 	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
-		return nil, err
+		return nil, errs.E(op, err)
 	}
 	// defer transaction rollback and handle error, if any
 	defer func() {
@@ -691,7 +708,7 @@ func (s *PermissionService) FindAll(ctx context.Context) (permissions []*diygoap
 	var rows []datastore.Permission
 	rows, err = datastore.New(tx).FindAllPermissions(ctx)
 	if err != nil {
-		return nil, errs.E(errs.Database, err)
+		return nil, errs.E(op, errs.Database, err)
 	}
 
 	var sp []*diygoapi.PermissionResponse
@@ -711,12 +728,13 @@ func (s *PermissionService) FindAll(ctx context.Context) (permissions []*diygoap
 
 // Delete is used to delete a Permission
 func (s *PermissionService) Delete(ctx context.Context, extlID string) (dr diygoapi.DeleteResponse, err error) {
+	const op errs.Op = "service/PermissionService.Delete"
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
 	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
-		return diygoapi.DeleteResponse{}, err
+		return diygoapi.DeleteResponse{}, errs.E(op, err)
 	}
 	// defer transaction rollback and handle error, if any
 	defer func() {
@@ -726,17 +744,17 @@ func (s *PermissionService) Delete(ctx context.Context, extlID string) (dr diygo
 	var rowsAffected int64
 	rowsAffected, err = datastore.New(tx).DeletePermissionByExternalID(ctx, extlID)
 	if err != nil {
-		return diygoapi.DeleteResponse{}, errs.E(errs.Database, err)
+		return diygoapi.DeleteResponse{}, errs.E(op, errs.Database, err)
 	}
 
 	if rowsAffected != 1 {
-		return diygoapi.DeleteResponse{}, errs.E(errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
+		return diygoapi.DeleteResponse{}, errs.E(op, errs.Database, fmt.Sprintf("rows affected should be 1, actual: %d", rowsAffected))
 	}
 
 	// commit db txn using pgxpool
 	err = s.Datastorer.CommitTx(ctx, tx)
 	if err != nil {
-		return diygoapi.DeleteResponse{}, err
+		return diygoapi.DeleteResponse{}, errs.E(op, err)
 	}
 
 	response := diygoapi.DeleteResponse{
@@ -766,12 +784,13 @@ type RoleService struct {
 
 // Create is used to create a Role
 func (s *RoleService) Create(ctx context.Context, r *diygoapi.CreateRoleRequest, adt diygoapi.Audit) (response *diygoapi.RoleResponse, err error) {
+	const op errs.Op = "service/RoleService.Create"
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
 	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
-		return nil, err
+		return nil, errs.E(op, err)
 	}
 	// defer transaction rollback and handle error, if any
 	defer func() {
@@ -781,7 +800,7 @@ func (s *RoleService) Create(ctx context.Context, r *diygoapi.CreateRoleRequest,
 	var rolePermissions []*diygoapi.Permission
 	rolePermissions, err = findPermissions(ctx, tx, r.Permissions)
 	if err != nil {
-		return nil, err
+		return nil, errs.E(op, err)
 	}
 
 	role := diygoapi.Role{
@@ -795,13 +814,13 @@ func (s *RoleService) Create(ctx context.Context, r *diygoapi.CreateRoleRequest,
 
 	err = createRoleTx(ctx, tx, role, adt)
 	if err != nil {
-		return nil, err
+		return nil, errs.E(op, err)
 	}
 
 	// commit db txn using pgxpool
 	err = s.Datastorer.CommitTx(ctx, tx)
 	if err != nil {
-		return nil, err
+		return nil, errs.E(op, err)
 	}
 
 	response = &diygoapi.RoleResponse{
@@ -817,9 +836,11 @@ func (s *RoleService) Create(ctx context.Context, r *diygoapi.CreateRoleRequest,
 
 // createRoleTx creates the role in the database
 func createRoleTx(ctx context.Context, tx pgx.Tx, role diygoapi.Role, adt diygoapi.Audit) (err error) {
+	const op errs.Op = "service/createRoleTx"
+
 	err = role.Validate()
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	arg := datastore.CreateRoleParams{
@@ -838,17 +859,17 @@ func createRoleTx(ctx context.Context, tx pgx.Tx, role diygoapi.Role, adt diygoa
 	var rowsAffected int64
 	rowsAffected, err = datastore.New(tx).CreateRole(ctx, arg)
 	if err != nil {
-		return errs.E(errs.Database, err)
+		return errs.E(op, errs.Database, err)
 	}
 
 	// should only impact exactly one record
 	if rowsAffected != 1 {
-		return errs.E(errs.Database, fmt.Sprintf("Create() should insert 1 row, actual: %d", rowsAffected))
+		return errs.E(op, errs.Database, fmt.Sprintf("Create() should insert 1 row, actual: %d", rowsAffected))
 	}
 
 	err = UpdateRolePermissions(ctx, tx, UpdateRolePermissionsParams{Role: role, Audit: adt})
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	return nil
@@ -863,9 +884,11 @@ type UpdateRolePermissionsParams struct {
 // UpdateRolePermissions writes the Permissions attached to the role to the database.
 // If there are existing permissions, in the database, they are removed.
 func UpdateRolePermissions(ctx context.Context, tx pgx.Tx, params UpdateRolePermissionsParams) (err error) {
+	const op errs.Op = "service/UpdateRolePermissions"
+
 	_, err = datastore.New(tx).DeleteAllPermissions4Role(ctx, params.Role.ID)
 	if err != nil {
-		return errs.E(errs.Database, err)
+		return errs.E(op, errs.Database, err)
 	}
 
 	for _, rp := range params.Role.Permissions {
@@ -883,12 +906,12 @@ func UpdateRolePermissions(ctx context.Context, tx pgx.Tx, params UpdateRolePerm
 		var rowsAffected int64
 		rowsAffected, err = datastore.New(tx).CreateRolePermission(ctx, createRolePermissionParams)
 		if err != nil {
-			return errs.E(errs.Database, err)
+			return errs.E(op, errs.Database, err)
 		}
 
 		// should only impact exactly one record
 		if rowsAffected != 1 {
-			return errs.E(errs.Database, fmt.Sprintf("Create() should insert 1 row, actual: %d", rowsAffected))
+			return errs.E(op, errs.Database, fmt.Sprintf("Create() should insert 1 row, actual: %d", rowsAffected))
 		}
 	}
 
@@ -897,15 +920,17 @@ func UpdateRolePermissions(ctx context.Context, tx pgx.Tx, params UpdateRolePerm
 
 // FindRoleByCode returns a Role and its permissions.
 func FindRoleByCode(ctx context.Context, tx datastore.DBTX, code string) (diygoapi.Role, error) {
+	const op errs.Op = "service/FindRoleByCode"
+
 	dbRole, err := datastore.New(tx).FindRoleByCode(ctx, code)
 	if err != nil {
-		return diygoapi.Role{}, errs.E(errs.Database, err)
+		return diygoapi.Role{}, errs.E(op, errs.Database, err)
 	}
 
 	var dbPermissions []datastore.Permission
 	dbPermissions, err = datastore.New(tx).FindRolePermissionsByRoleID(ctx, dbRole.RoleID)
 	if err != nil {
-		return diygoapi.Role{}, errs.E(errs.Database, err)
+		return diygoapi.Role{}, errs.E(op, errs.Database, err)
 	}
 
 	var permissions []*diygoapi.Permission
@@ -944,6 +969,8 @@ type assignOrgRoleParams struct {
 
 // assignOrgRoles assigns a role to a user for a given org.
 func assignOrgRole(ctx context.Context, tx pgx.Tx, p assignOrgRoleParams) (err error) {
+	const op errs.Op = "service/assignOrgRole"
+
 	params := datastore.CreateUsersRoleParams{
 		UserID:          p.User.ID,
 		RoleID:          p.Role.ID,
@@ -959,12 +986,12 @@ func assignOrgRole(ctx context.Context, tx pgx.Tx, p assignOrgRoleParams) (err e
 	var rowsAffected int64
 	rowsAffected, err = datastore.New(tx).CreateUsersRole(ctx, params)
 	if err != nil {
-		return errs.E(errs.Database, err)
+		return errs.E(op, errs.Database, err)
 	}
 
 	// should only impact exactly one record
 	if rowsAffected != 1 {
-		return errs.E(errs.Database, fmt.Sprintf("CreateUsersRole() should insert 1 row, actual: %d", rowsAffected))
+		return errs.E(op, errs.Database, fmt.Sprintf("CreateUsersRole() should insert 1 row, actual: %d", rowsAffected))
 	}
 
 	return nil
@@ -974,6 +1001,7 @@ func assignOrgRole(ctx context.Context, tx pgx.Tx, p assignOrgRoleParams) (err e
 // the Permission External ID first and if not given, the resource and
 // operation.
 func findPermissions(ctx context.Context, tx pgx.Tx, prs []*diygoapi.FindPermissionRequest) (aps []*diygoapi.Permission, err error) {
+	const op errs.Op = "service/findPermissions"
 
 	// it's fine for zero permissions to be added as part of a role
 	if len(prs) == 0 {
@@ -987,13 +1015,13 @@ func findPermissions(ctx context.Context, tx pgx.Tx, prs []*diygoapi.FindPermiss
 		if pr.ExternalID != "" {
 			ap, err = datastore.New(tx).FindPermissionByExternalID(ctx, pr.ExternalID)
 			if err != nil {
-				return nil, errs.E(errs.Database, err)
+				return nil, errs.E(op, errs.Database, err)
 			}
 			aps = append(aps, newPermission(ap))
 		} else {
 			ap, err = datastore.New(tx).FindPermissionByResourceOperation(ctx, datastore.FindPermissionByResourceOperationParams{Resource: pr.Resource, Operation: pr.Operation})
 			if err != nil {
-				return nil, errs.E(errs.Database, err)
+				return nil, errs.E(op, errs.Database, err)
 			}
 			aps = append(aps, newPermission(ap))
 		}

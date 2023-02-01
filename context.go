@@ -24,14 +24,23 @@ func NewContextWithApp(ctx context.Context, a *App) context.Context {
 // AppFromRequest is a helper function which returns the App from the
 // request context.
 func AppFromRequest(r *http.Request) (*App, error) {
-	return AppFromContext(r.Context())
+	const op errs.Op = "diygoapi/AppFromRequest"
+
+	app, err := AppFromContext(r.Context())
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	return app, nil
 }
 
 // AppFromContext returns the App from the given context
 func AppFromContext(ctx context.Context) (*App, error) {
+	const op errs.Op = "diygoapi/AppFromContext"
+
 	a, ok := ctx.Value(appContextKey).(*App)
 	if !ok {
-		return a, errs.E(errs.NotExist, "App not set to context")
+		return a, errs.E(op, errs.NotExist, "App not set to context")
 	}
 	return a, nil
 }
@@ -43,10 +52,12 @@ func NewContextWithUser(ctx context.Context, u *User) context.Context {
 
 // UserFromRequest returns the User from the request context
 func UserFromRequest(r *http.Request) (u *User, err error) {
+	const op errs.Op = "diygoapi/UserFromRequest"
+
 	var ok bool
 	u, ok = r.Context().Value(contextKeyUser).(*User)
 	if !ok {
-		return nil, errs.E(errs.Internal, "User not set properly to context")
+		return nil, errs.E(op, errs.Internal, "User not set properly to context")
 	}
 	if err = u.Validate(); err != nil {
 		return nil, err
@@ -58,16 +69,18 @@ func UserFromRequest(r *http.Request) (u *User, err error) {
 // struct from the App and User set to the request context.
 // The moment is also set to time.Now
 func AuditFromRequest(r *http.Request) (adt Audit, err error) {
+	const op errs.Op = "diygoapi/AuditFromRequest"
+
 	var a *App
 	a, err = AppFromRequest(r)
 	if err != nil {
-		return Audit{}, err
+		return Audit{}, errs.E(op, err)
 	}
 
 	var u *User
 	u, err = UserFromRequest(r)
 	if err != nil {
-		return Audit{}, err
+		return Audit{}, errs.E(op, err)
 	}
 
 	adt.App = a
@@ -84,9 +97,11 @@ func NewContextWithAuthParams(ctx context.Context, ap *AuthenticationParams) con
 
 // AuthParamsFromContext returns the AuthenticationParams from the given context
 func AuthParamsFromContext(ctx context.Context) (*AuthenticationParams, error) {
+	const op errs.Op = "diygoapi/AuthParamsFromContext"
+
 	a, ok := ctx.Value(authParamsContextKey).(*AuthenticationParams)
 	if !ok {
-		return a, errs.E(errs.NotExist, "Authentication Params not set to context")
+		return a, errs.E(op, errs.NotExist, "Authentication Params not set to context")
 	}
 	return a, nil
 }

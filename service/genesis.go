@@ -79,12 +79,13 @@ type GenesisService struct {
 
 // Arche creates the initial seed data in the database.
 func (s *GenesisService) Arche(ctx context.Context, r *diygoapi.GenesisRequest) (gr diygoapi.GenesisResponse, err error) {
+	const op errs.Op = "service/GenesisService.Arche"
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
 	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
-		return gr, err
+		return gr, errs.E(op, err)
 	}
 	// defer transaction rollback and handle error, if any
 	defer func() {
@@ -94,7 +95,7 @@ func (s *GenesisService) Arche(ctx context.Context, r *diygoapi.GenesisRequest) 
 	// ensure the Genesis event has not already taken place
 	err = genesisHasOccurred(ctx, tx)
 	if err != nil {
-		return gr, err
+		return gr, errs.E(op, err)
 	}
 
 	var (
@@ -107,32 +108,32 @@ func (s *GenesisService) Arche(ctx context.Context, r *diygoapi.GenesisRequest) 
 	// principalSeed struct is returned for use in subsequent steps
 	ps, err = s.seedPrincipal(ctx, tx, r)
 	if err != nil {
-		return gr, err
+		return gr, errs.E(op, err)
 	}
 
 	// seed Test org data.
 	ts, err = s.seedTest(ctx, tx, ps)
 	if err != nil {
-		return gr, err
+		return gr, errs.E(op, err)
 	}
 
 	// seed User Initiated org data.
 	uis, err = s.seedUserInitiatedData(ctx, tx, ps, r)
 	if err != nil {
-		return gr, err
+		return gr, errs.E(op, err)
 	}
 
 	// seed Permissions
 	err = seedPermissions(ctx, tx, r, ps.Audit)
 	if err != nil {
-		return gr, err
+		return gr, errs.E(op, err)
 	}
 
 	// seed Roles
 	var gRoles genesisRoles
 	gRoles, err = seedRoles(ctx, tx, r, ps.Audit)
 	if err != nil {
-		return gr, err
+		return gr, errs.E(op, err)
 	}
 
 	ar2gup := assignRoles2GenesisUsersParams{
@@ -145,13 +146,13 @@ func (s *GenesisService) Arche(ctx context.Context, r *diygoapi.GenesisRequest) 
 	// assign Roles to users
 	err = assignRoles2GenesisUsers(ctx, tx, ar2gup)
 	if err != nil {
-		return gr, err
+		return gr, errs.E(op, err)
 	}
 
 	// commit db txn using pgxpool
 	err = s.Datastorer.CommitTx(ctx, tx)
 	if err != nil {
-		return gr, err
+		return gr, errs.E(op, err)
 	}
 
 	pOrg := newOrgResponse(&orgAudit{Org: ps.PrincipalOrg, SimpleAudit: &diygoapi.SimpleAudit{Create: ps.Audit, Update: ps.Audit}},
@@ -173,6 +174,11 @@ func (s *GenesisService) Arche(ctx context.Context, r *diygoapi.GenesisRequest) 
 }
 
 func (s *GenesisService) seedPrincipal(ctx context.Context, tx pgx.Tx, r *diygoapi.GenesisRequest) (principalSeed, error) {
+	const (
+		seedPrincipalRealm string  = "seedPrincipal"
+		op                 errs.Op = "service/GenesisService.seedPrincipal"
+	)
+
 	var (
 		provider   diygoapi.Provider
 		token      *oauth2.Token
@@ -180,8 +186,6 @@ func (s *GenesisService) seedPrincipal(ctx context.Context, tx pgx.Tx, r *diygoa
 		realm      string
 		err        error
 	)
-
-	const seedPrincipalRealm string = "seedPrincipal"
 
 	authParams, _ = diygoapi.AuthParamsFromContext(ctx)
 	if authParams != nil {
@@ -214,7 +218,7 @@ func (s *GenesisService) seedPrincipal(ctx context.Context, tx pgx.Tx, r *diygoa
 	var a *diygoapi.App
 	a, err = newApp(nap)
 	if err != nil {
-		return principalSeed{}, err
+		return principalSeed{}, errs.E(op, err)
 	}
 
 	// initialize "The Creator" user from request data
@@ -223,14 +227,14 @@ func (s *GenesisService) seedPrincipal(ctx context.Context, tx pgx.Tx, r *diygoa
 	var providerInfo *diygoapi.ProviderInfo
 	providerInfo, err = s.TokenExchanger.Exchange(ctx, realm, provider, token)
 	if err != nil {
-		return principalSeed{}, err
+		return principalSeed{}, errs.E(op, err)
 	}
 
 	gUser := newUserFromProviderInfo(providerInfo, s.LanguageMatcher)
 
 	err = gUser.Validate()
 	if err != nil {
-		return principalSeed{}, err
+		return principalSeed{}, errs.E(op, err)
 	}
 
 	gPerson := diygoapi.Person{
@@ -258,13 +262,13 @@ func (s *GenesisService) seedPrincipal(ctx context.Context, tx pgx.Tx, r *diygoa
 	}
 	_, err = datastore.New(tx).CreateAuthProvider(ctx, cg)
 	if err != nil {
-		return principalSeed{}, errs.E(errs.Database, err)
+		return principalSeed{}, errs.E(op, errs.Database, err)
 	}
 
 	// write Person/User from request to the database
 	err = createPersonTx(ctx, tx, gPerson, adt)
 	if err != nil {
-		return principalSeed{}, err
+		return principalSeed{}, errs.E(op, err)
 	}
 
 	// associate Genesis org to "The Creator"
@@ -275,7 +279,7 @@ func (s *GenesisService) seedPrincipal(ctx context.Context, tx pgx.Tx, r *diygoa
 	}
 	err = attachOrgAssociation(ctx, tx, aoaParams)
 	if err != nil {
-		return principalSeed{}, err
+		return principalSeed{}, errs.E(op, err)
 	}
 
 	// create Auth for "The Creator"
@@ -290,14 +294,14 @@ func (s *GenesisService) seedPrincipal(ctx context.Context, tx pgx.Tx, r *diygoa
 
 	err = createAuthTx(ctx, tx, createAuthTxParams{Auth: auth, Audit: adt})
 	if err != nil {
-		return principalSeed{}, err
+		return principalSeed{}, errs.E(op, err)
 	}
 
 	// create Principal org kind
 	var principalKindParams datastore.CreateOrgKindParams
 	principalKindParams, err = createPrincipalOrgKind(ctx, tx, adt)
 	if err != nil {
-		return principalSeed{}, errs.E(errs.Database, err)
+		return principalSeed{}, errs.E(op, errs.Database, err)
 	}
 	o.Kind = &diygoapi.OrgKind{
 		ID:          principalKindParams.OrgKindID,
@@ -309,7 +313,7 @@ func (s *GenesisService) seedPrincipal(ctx context.Context, tx pgx.Tx, r *diygoa
 	var testKindParams datastore.CreateOrgKindParams
 	testKindParams, err = createTestOrgKind(ctx, tx, adt)
 	if err != nil {
-		return principalSeed{}, errs.E(errs.Database, err)
+		return principalSeed{}, errs.E(op, errs.Database, err)
 	}
 	tk := &diygoapi.OrgKind{
 		ID:          testKindParams.OrgKindID,
@@ -320,7 +324,7 @@ func (s *GenesisService) seedPrincipal(ctx context.Context, tx pgx.Tx, r *diygoa
 	var standardOrgParams datastore.CreateOrgKindParams
 	standardOrgParams, err = createStandardOrgKind(ctx, tx, adt)
 	if err != nil {
-		return principalSeed{}, errs.E(errs.Database, err)
+		return principalSeed{}, errs.E(op, errs.Database, err)
 	}
 	sk := &diygoapi.OrgKind{
 		ID:          standardOrgParams.OrgKindID,
@@ -336,13 +340,13 @@ func (s *GenesisService) seedPrincipal(ctx context.Context, tx pgx.Tx, r *diygoa
 	// write the Org to the database
 	err = createOrgTx(ctx, tx, &orgAudit{Org: o, SimpleAudit: sa})
 	if err != nil {
-		return principalSeed{}, err
+		return principalSeed{}, errs.E(op, err)
 	}
 
 	// app is also to be created, write it to the db
 	err = createAppTx(ctx, tx, appAudit{App: a, SimpleAudit: sa})
 	if err != nil {
-		return principalSeed{}, err
+		return principalSeed{}, errs.E(op, err)
 	}
 
 	seed := principalSeed{
@@ -357,6 +361,8 @@ func (s *GenesisService) seedPrincipal(ctx context.Context, tx pgx.Tx, r *diygoa
 }
 
 func (s *GenesisService) seedTest(ctx context.Context, tx pgx.Tx, ps principalSeed) (testSeed, error) {
+	const op errs.Op = "service/GenesisService.seedTest"
+
 	var err error
 
 	// initialize test user in Genesis org
@@ -377,7 +383,7 @@ func (s *GenesisService) seedTest(ctx context.Context, tx pgx.Tx, ps principalSe
 	// write Test Person/User to the database
 	err = createPersonTx(ctx, tx, testPerson, ps.Audit)
 	if err != nil {
-		return testSeed{}, err
+		return testSeed{}, errs.E(op, err)
 	}
 
 	// associate Principal org to the Test User
@@ -388,7 +394,7 @@ func (s *GenesisService) seedTest(ctx context.Context, tx pgx.Tx, ps principalSe
 	}
 	err = attachOrgAssociation(ctx, tx, aoaParams)
 	if err != nil {
-		return testSeed{}, err
+		return testSeed{}, errs.E(op, err)
 	}
 
 	// create Org
@@ -411,7 +417,7 @@ func (s *GenesisService) seedTest(ctx context.Context, tx pgx.Tx, ps principalSe
 	var a *diygoapi.App
 	a, err = newApp(nap)
 	if err != nil {
-		return testSeed{}, errs.E(errs.Internal, err)
+		return testSeed{}, errs.E(op, errs.Internal, err)
 	}
 
 	sa := &diygoapi.SimpleAudit{
@@ -422,13 +428,13 @@ func (s *GenesisService) seedTest(ctx context.Context, tx pgx.Tx, ps principalSe
 	// write the Org to the database
 	err = createOrgTx(ctx, tx, &orgAudit{Org: o, SimpleAudit: sa})
 	if err != nil {
-		return testSeed{}, err
+		return testSeed{}, errs.E(op, err)
 	}
 
 	// app is also to be created, write it to the db
 	err = createAppTx(ctx, tx, appAudit{App: a, SimpleAudit: sa})
 	if err != nil {
-		return testSeed{}, err
+		return testSeed{}, errs.E(op, err)
 	}
 
 	// attach test org to test user
@@ -439,7 +445,7 @@ func (s *GenesisService) seedTest(ctx context.Context, tx pgx.Tx, ps principalSe
 	}
 	err = attachOrgAssociation(ctx, tx, aoaParams)
 	if err != nil {
-		return testSeed{}, err
+		return testSeed{}, errs.E(op, err)
 	}
 
 	seed := testSeed{
@@ -452,6 +458,8 @@ func (s *GenesisService) seedTest(ctx context.Context, tx pgx.Tx, ps principalSe
 }
 
 func (s *GenesisService) seedUserInitiatedData(ctx context.Context, tx pgx.Tx, ps principalSeed, r *diygoapi.GenesisRequest) (userInitiatedSeed, error) {
+	const op errs.Op = "service/GenesisService.seedUserInitiatedData"
+
 	var err error
 
 	// create Org
@@ -478,7 +486,7 @@ func (s *GenesisService) seedUserInitiatedData(ctx context.Context, tx pgx.Tx, p
 	var a *diygoapi.App
 	a, err = newApp(nap)
 	if err != nil {
-		return userInitiatedSeed{}, errs.E(errs.Internal, err)
+		return userInitiatedSeed{}, errs.E(op, errs.Internal, err)
 	}
 
 	sa := &diygoapi.SimpleAudit{
@@ -489,13 +497,13 @@ func (s *GenesisService) seedUserInitiatedData(ctx context.Context, tx pgx.Tx, p
 	// write the Org to the database
 	err = createOrgTx(ctx, tx, &orgAudit{Org: o, SimpleAudit: sa})
 	if err != nil {
-		return userInitiatedSeed{}, err
+		return userInitiatedSeed{}, errs.E(op, err)
 	}
 
 	// app is also to be created, write it to the db
 	err = createAppTx(ctx, tx, appAudit{App: a, SimpleAudit: sa})
 	if err != nil {
-		return userInitiatedSeed{}, err
+		return userInitiatedSeed{}, errs.E(op, err)
 	}
 
 	// associate existing User to newly created Org
@@ -506,7 +514,7 @@ func (s *GenesisService) seedUserInitiatedData(ctx context.Context, tx pgx.Tx, p
 	}
 	err = attachOrgAssociation(ctx, tx, aoaParams)
 	if err != nil {
-		return userInitiatedSeed{}, err
+		return userInitiatedSeed{}, errs.E(op, err)
 	}
 
 	ui := userInitiatedSeed{
@@ -518,6 +526,8 @@ func (s *GenesisService) seedUserInitiatedData(ctx context.Context, tx pgx.Tx, p
 }
 
 func genesisHasOccurred(ctx context.Context, dbtx datastore.DBTX) (err error) {
+	const op errs.Op = "service/genesisHasOccurred"
+
 	var (
 		existingOrgs         []datastore.FindOrgsByKindExtlIDRow
 		hasGenesisOrgTypeRow = true
@@ -529,7 +539,7 @@ func genesisHasOccurred(ctx context.Context, dbtx datastore.DBTX) (err error) {
 	_, err = datastore.New(dbtx).FindOrgKindByExtlID(ctx, principalOrgKind)
 	if err != nil {
 		if err != pgx.ErrNoRows {
-			return errs.E(errs.Database, err)
+			return errs.E(op, errs.Database, err)
 		}
 		hasGenesisOrgTypeRow = false
 	}
@@ -537,14 +547,14 @@ func genesisHasOccurred(ctx context.Context, dbtx datastore.DBTX) (err error) {
 	// last: check org
 	existingOrgs, err = datastore.New(dbtx).FindOrgsByKindExtlID(ctx, principalOrgKind)
 	if err != nil {
-		return errs.E(errs.Database, err)
+		return errs.E(op, errs.Database, err)
 	}
 	if len(existingOrgs) == 0 {
 		hasGenesisOrgRow = false
 	}
 
 	if hasGenesisOrgTypeRow || hasGenesisOrgRow {
-		return errs.E(errs.Validation, "No prior data should exist when executing Genesis Service")
+		return errs.E(op, errs.Validation, "No prior data should exist when executing Genesis Service")
 	}
 
 	return nil
@@ -553,24 +563,28 @@ func genesisHasOccurred(ctx context.Context, dbtx datastore.DBTX) (err error) {
 // ReadConfig reads the generated config file from Genesis
 // and returns it in the response body
 func (s *GenesisService) ReadConfig() (gr diygoapi.GenesisResponse, err error) {
+	const op errs.Op = "service/GenesisService.ReadConfig"
+
 	var b []byte
 	b, err = os.ReadFile(LocalJSONGenesisResponseFile)
 	if err != nil {
-		return diygoapi.GenesisResponse{}, errs.E(err)
+		return diygoapi.GenesisResponse{}, errs.E(op, err)
 	}
 	err = json.Unmarshal(b, &gr)
 	if err != nil {
-		return diygoapi.GenesisResponse{}, errs.E(err)
+		return diygoapi.GenesisResponse{}, errs.E(op, err)
 	}
 
 	return gr, nil
 }
 
 func seedPermissions(ctx context.Context, tx pgx.Tx, r *diygoapi.GenesisRequest, adt diygoapi.Audit) (err error) {
+	const op errs.Op = "service/seedPermissions"
+
 	for _, p := range r.CreatePermissionRequests {
 		_, err = createPermissionTx(ctx, tx, &p, adt)
 		if err != nil {
-			return err
+			return errs.E(op, err)
 		}
 	}
 
@@ -586,6 +600,8 @@ type genesisRoles struct {
 }
 
 func seedRoles(ctx context.Context, tx pgx.Tx, r *diygoapi.GenesisRequest, adt diygoapi.Audit) (genesisRoles, error) {
+	const op errs.Op = "service/seedRoles"
+
 	var (
 		requestRoles    []diygoapi.Role
 		rolePermissions []*diygoapi.Permission
@@ -606,14 +622,14 @@ func seedRoles(ctx context.Context, tx pgx.Tx, r *diygoapi.GenesisRequest, adt d
 		// find and add corresponding Permissions to the role
 		rolePermissions, err = findPermissions(ctx, tx, crr.Permissions)
 		if err != nil {
-			return genesisRoles{}, err
+			return genesisRoles{}, errs.E(op, err)
 		}
 		role.Permissions = rolePermissions
 
 		// add the Test user and Genesis input user to roles by attaching their external ids
 		err = createRoleTx(ctx, tx, role, adt)
 		if err != nil {
-			return genesisRoles{}, err
+			return genesisRoles{}, errs.E(op, err)
 		}
 		requestRoles = append(requestRoles, role)
 	}
@@ -631,7 +647,7 @@ func seedRoles(ctx context.Context, tx pgx.Tx, r *diygoapi.GenesisRequest, adt d
 
 	err = createRoleTx(ctx, tx, testRole, adt)
 	if err != nil {
-		return genesisRoles{}, err
+		return genesisRoles{}, errs.E(op, err)
 	}
 
 	roles := genesisRoles{
@@ -653,6 +669,7 @@ type assignRoles2GenesisUsersParams struct {
 // part of the Genesis request as well as the testAdmin role to flag
 // the test user
 func assignRoles2GenesisUsers(ctx context.Context, tx pgx.Tx, params assignRoles2GenesisUsersParams) error {
+	const op errs.Op = "service/assignRoles2GenesisUsers"
 
 	var err error
 
@@ -667,7 +684,7 @@ func assignRoles2GenesisUsers(ctx context.Context, tx pgx.Tx, params assignRoles
 
 		err = assignOrgRole(ctx, tx, aorParams)
 		if err != nil {
-			return err
+			return errs.E(op, err)
 		}
 
 		p := assignOrgRoleParams{
@@ -679,7 +696,7 @@ func assignRoles2GenesisUsers(ctx context.Context, tx pgx.Tx, params assignRoles
 
 		err = assignOrgRole(ctx, tx, p)
 		if err != nil {
-			return err
+			return errs.E(op, err)
 		}
 	}
 
@@ -692,7 +709,7 @@ func assignRoles2GenesisUsers(ctx context.Context, tx pgx.Tx, params assignRoles
 
 	err = assignOrgRole(ctx, tx, aorParams)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	return nil

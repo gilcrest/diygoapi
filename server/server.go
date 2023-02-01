@@ -94,14 +94,15 @@ func New(rtr *mux.Router, serverDriver driver.Server, lgr zerolog.Logger) *Serve
 
 // ListenAndServe is a wrapper to use wherever http.ListenAndServe is used.
 func (s *Server) ListenAndServe() error {
+	const op errs.Op = "server/Server.ListenAndServe"
 	if s.Addr == "" {
-		return errs.E(errs.Internal, "Server Addr is empty")
+		return errs.E(op, errs.Internal, "Server Addr is empty")
 	}
 	if s.router == nil {
-		return errs.E(errs.Internal, "Server router is nil")
+		return errs.E(op, errs.Internal, "Server router is nil")
 	}
 	if s.Driver == nil {
-		return errs.E(errs.Internal, "Server driver is nil")
+		return errs.E(op, errs.Internal, "Server driver is nil")
 	}
 	return s.Driver.ListenAndServe(s.Addr, s.router)
 }
@@ -161,18 +162,20 @@ func NewMuxRouter() *mux.Router {
 // json.NewDecoder(r.Body).Decode(&data) and return the appropriate
 // error response
 func decoderErr(err error) error {
+	const op errs.Op = "server/decoderErr"
+
 	switch {
 	// If the request body is empty (io.EOF)
 	// return an error
 	case err == io.EOF:
-		return errs.E(errs.InvalidRequest, "request body cannot be empty")
+		return errs.E(op, errs.InvalidRequest, "request body cannot be empty")
 	// If the request body has malformed JSON (io.ErrUnexpectedEOF)
 	// return an error
 	case err == io.ErrUnexpectedEOF:
-		return errs.E(errs.InvalidRequest, "malformed JSON")
+		return errs.E(op, errs.InvalidRequest, "malformed JSON")
 	// return other errors
 	case err != nil:
-		return errs.E(err)
+		return errs.E(op, err)
 	}
 	return nil
 }

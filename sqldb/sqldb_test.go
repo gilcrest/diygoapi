@@ -340,6 +340,8 @@ func TestDatastore_RollbackTx(t *testing.T) {
 }
 
 func checkDefer(t *testing.T) (err error) {
+	const op errs.Op = "sqldb_test/checkDefer"
+
 	ctx := context.Background()
 	dsn := newPostgreSQLDSN(t)
 	lgr := logger.New(os.Stdout, zerolog.DebugLevel, true)
@@ -366,7 +368,7 @@ func checkDefer(t *testing.T) (err error) {
 		err = ds.RollbackTx(ctx, tx, err)
 	}()
 
-	err = errs.E(errs.Validation, errs.Code("DATA_VALIDATION"), "This validation happened.")
+	err = errs.E(op, errs.Validation, errs.Code("DATA_VALIDATION"), "This validation happened.")
 	if err != nil {
 		return err
 	}
@@ -374,7 +376,7 @@ func checkDefer(t *testing.T) (err error) {
 	// commit the tx
 	err = ds.CommitTx(ctx, tx)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	return nil
@@ -385,6 +387,8 @@ type fakeUser struct {
 }
 
 func checkDefer2FieldsNilError(t *testing.T) (fu fakeUser, err error) {
+	const op errs.Op = "sqldb_test/checkDefer2FieldsNilError"
+
 	ctx := context.Background()
 	dsn := newPostgreSQLDSN(t)
 	lgr := logger.New(os.Stdout, zerolog.DebugLevel, true)
@@ -414,13 +418,15 @@ func checkDefer2FieldsNilError(t *testing.T) (fu fakeUser, err error) {
 	// commit the tx
 	err = ds.CommitTx(ctx, tx)
 	if err != nil {
-		return fakeUser{}, err
+		return fakeUser{}, errs.E(op, err)
 	}
 
 	return fakeUser{}, nil
 }
 
 func checkDefer2FieldsNilTx(t *testing.T) (fu fakeUser, err error) {
+	const op errs.Op = "sqldb_test/checkDefer2FieldsNilTx"
+
 	ctx := context.Background()
 	dsn := newPostgreSQLDSN(t)
 	lgr := logger.New(os.Stdout, zerolog.DebugLevel, true)
@@ -450,13 +456,15 @@ func checkDefer2FieldsNilTx(t *testing.T) (fu fakeUser, err error) {
 	// commit the tx
 	err = ds.CommitTx(ctx, tx)
 	if err != nil {
-		return fakeUser{}, err
+		return fakeUser{}, errs.E(op, err)
 	}
 
 	return fakeUser{}, err
 }
 
 func checkDeferKillDB(t *testing.T) (err error) {
+	const op errs.Op = "sqldb_test/checkDeferKillDB"
+
 	ctx := context.Background()
 	dsn := newPostgreSQLDSN(t)
 	lgr := logger.New(os.Stdout, zerolog.DebugLevel, true)
@@ -482,7 +490,7 @@ func checkDeferKillDB(t *testing.T) (err error) {
 	t.Log("Go shutdown database server immediately for this test to work")
 	time.Sleep(30 * time.Second)
 
-	return errs.E(errs.Validation, errs.Code("DATA_VALIDATION"), "This validation happened.")
+	return errs.E(op, errs.Validation, errs.Code("DATA_VALIDATION"), "This validation happened.")
 }
 
 func TestDatastore_CommitTx(t *testing.T) {

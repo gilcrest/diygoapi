@@ -19,6 +19,8 @@ import (
 // Any Users attached to the Person will also be created.
 // The created User will be associated to any Orgs attached.
 func createPersonTx(ctx context.Context, tx pgx.Tx, p diygoapi.Person, adt diygoapi.Audit) error {
+	const op errs.Op = "service/createPersonTx"
+
 	var err error
 
 	createPersonParams := datastore.CreatePersonParams{
@@ -36,11 +38,11 @@ func createPersonTx(ctx context.Context, tx pgx.Tx, p diygoapi.Person, adt diygo
 	var rowsAffected int64
 	rowsAffected, err = datastore.New(tx).CreatePerson(ctx, createPersonParams)
 	if err != nil {
-		return errs.E(errs.Database, err)
+		return errs.E(op, errs.Database, err)
 	}
 
 	if rowsAffected != 1 {
-		return errs.E(errs.Database, fmt.Sprintf("person rows affected should be 1, actual: %d", rowsAffected))
+		return errs.E(op, errs.Database, fmt.Sprintf("person rows affected should be 1, actual: %d", rowsAffected))
 	}
 
 	// loop through all users associated to the Person and create them
@@ -52,7 +54,7 @@ func createPersonTx(ctx context.Context, tx pgx.Tx, p diygoapi.Person, adt diygo
 		}
 		err = createUserTx(ctx, tx, cuTxParams)
 		if err != nil {
-			return err
+			return errs.E(op, err)
 		}
 	}
 
@@ -71,6 +73,8 @@ type createUserTxParams struct {
 
 // createUserTx creates a User in the database
 func createUserTx(ctx context.Context, tx pgx.Tx, params createUserTxParams) error {
+	const op errs.Op = "service/createUserTx"
+
 	var err error
 
 	var birthYear, birthMonth, birthDay sql.NullInt64
@@ -110,11 +114,11 @@ func createUserTx(ctx context.Context, tx pgx.Tx, params createUserTxParams) err
 	var rowsAffected int64
 	rowsAffected, err = datastore.New(tx).CreateUser(ctx, cuParams)
 	if err != nil {
-		return errs.E(errs.Database, err)
+		return errs.E(op, errs.Database, err)
 	}
 
 	if rowsAffected != 1 {
-		return errs.E(errs.Database, fmt.Sprintf("user rows affected should be 1, actual: %d", rowsAffected))
+		return errs.E(op, errs.Database, fmt.Sprintf("user rows affected should be 1, actual: %d", rowsAffected))
 	}
 
 	return nil
@@ -123,15 +127,17 @@ func createUserTx(ctx context.Context, tx pgx.Tx, params createUserTxParams) err
 
 // FindUserByID finds a User in the datastore given their User ID
 func FindUserByID(ctx context.Context, dbtx datastore.DBTX, id uuid.UUID) (*diygoapi.User, error) {
+	const op errs.Op = "service/FindUserByID"
+
 	dbUser, err := datastore.New(dbtx).FindUserByID(ctx, id)
 	if err != nil {
-		return nil, errs.E(errs.Database, err)
+		return nil, errs.E(op, errs.Database, err)
 	}
 
 	var ulp []datastore.UsersLangPref
 	ulp, err = datastore.New(dbtx).FindUserLanguagePreferencesByUserID(ctx, id)
 	if err != nil {
-		return nil, errs.E(errs.Database, err)
+		return nil, errs.E(op, errs.Database, err)
 	}
 
 	var langPrefs []language.Tag
@@ -174,6 +180,7 @@ type attachOrgAssociationParams struct {
 
 // attachOrgAssociation associates an Org with a User in the database.
 func attachOrgAssociation(ctx context.Context, tx pgx.Tx, params attachOrgAssociationParams) error {
+	const op errs.Op = "service/attachOrgAssociation"
 
 	createUsersOrgParams := datastore.CreateUsersOrgParams{
 		UsersOrgID:      uuid.New(),
@@ -190,12 +197,12 @@ func attachOrgAssociation(ctx context.Context, tx pgx.Tx, params attachOrgAssoci
 	// create database record using datastore
 	rowsAffected, err := datastore.New(tx).CreateUsersOrg(ctx, createUsersOrgParams)
 	if err != nil {
-		return errs.E(errs.Database, err)
+		return errs.E(op, errs.Database, err)
 	}
 
 	// should only impact exactly one record
 	if rowsAffected != 1 {
-		return errs.E(errs.Database, fmt.Sprintf("CreateUsersOrg() should insert 1 row, actual: %d", rowsAffected))
+		return errs.E(op, errs.Database, fmt.Sprintf("CreateUsersOrg() should insert 1 row, actual: %d", rowsAffected))
 	}
 
 	return nil

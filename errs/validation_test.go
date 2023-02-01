@@ -1,9 +1,8 @@
 package errs
 
 import (
+	"errors"
 	"testing"
-
-	"github.com/pkg/errors"
 )
 
 func TestMissingField(t *testing.T) {

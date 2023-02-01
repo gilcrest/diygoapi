@@ -6,6 +6,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/gilcrest/diygoapi/errs"
 )
 
 // ddlFile represents a Data Definition Language (DDL) file
@@ -21,11 +23,13 @@ type ddlFile struct {
 // should be 001-user.sql where 001 represents the file number order
 // to be processed
 func newDDLFile(f string) (ddlFile, error) {
+	const op errs.Op = "cmd/newDDLFile"
+
 	i := strings.Index(f, "-")
 	fileNumber := f[:i]
 	fn, err := strconv.Atoi(fileNumber)
 	if err != nil {
-		return ddlFile{}, err
+		return ddlFile{}, errs.E(op, err)
 	}
 
 	return ddlFile{filename: f, fileNumber: fn}, nil
@@ -38,10 +42,11 @@ func (df ddlFile) String() string {
 // readDDLFiles reads and returns sorted DDL files from the
 // up or down directory
 func readDDLFiles(dir string) ([]ddlFile, error) {
+	const op errs.Op = "cmd/readDDLFiles"
 
 	files, err := os.ReadDir(dir)
 	if err != nil {
-		return nil, err
+		return nil, errs.E(op, err)
 	}
 
 	var ddlFiles []ddlFile
@@ -52,7 +57,7 @@ func readDDLFiles(dir string) ([]ddlFile, error) {
 		var df ddlFile
 		df, err = newDDLFile(file.Name())
 		if err != nil {
-			return nil, err
+			return nil, errs.E(op, err)
 		}
 		ddlFiles = append(ddlFiles, df)
 	}
@@ -85,6 +90,8 @@ func (bfn byFileNumber) Less(i, j int) bool { return bfn[i].fileNumber < bfn[j].
 //
 // -f flag is sent before each file to tell it to process the file
 func PSQLArgs(up bool) ([]string, error) {
+	const op errs.Op = "cmd/PSQLArgs"
+
 	dir := "./scripts/db/migrations"
 	if up {
 		dir += "/up"
@@ -95,17 +102,17 @@ func PSQLArgs(up bool) ([]string, error) {
 	// readDDLFiles reads and returns sorted DDL files from the up or down directory
 	ddlFiles, err := readDDLFiles(dir)
 	if err != nil {
-		return nil, err
+		return nil, errs.E(op, err)
 	}
 
 	if len(ddlFiles) == 0 {
-		return nil, fmt.Errorf("there are no DDL files to process in %s", dir)
+		return nil, errs.E(op, fmt.Sprintf("there are no DDL files to process in %s", dir))
 	}
 
 	// newFlags will retrieve the database info from the environment using ff
 	flgs, err := newFlags([]string{"server"})
 	if err != nil {
-		return nil, err
+		return nil, errs.E(op, err)
 	}
 
 	// command line args for psql are constructed

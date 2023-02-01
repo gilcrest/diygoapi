@@ -23,6 +23,8 @@ import (
 
 // Genesis command runs the Genesis service and seeds the database.
 func Genesis() (err error) {
+	const op errs.Op = "cmd/Genesis"
+
 	var (
 		flgs        flags
 		minlvl, lvl zerolog.Level
@@ -32,19 +34,19 @@ func Genesis() (err error) {
 	// newFlags will retrieve the database info from the environment using ff
 	flgs, err = newFlags([]string{"server"})
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	// determine minimum logging level based on flag input
 	minlvl, err = zerolog.ParseLevel(flgs.logLvlMin)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	// determine logging level based on flag input
 	lvl, err = zerolog.ParseLevel(flgs.loglvl)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	// setup logger with appropriate defaults
@@ -109,12 +111,12 @@ func Genesis() (err error) {
 	var b []byte
 	b, err = os.ReadFile(genesisRequestFile)
 	if err != nil {
-		return errs.E(err)
+		return errs.E(op, err)
 	}
 	f := diygoapi.GenesisRequest{}
 	err = json.Unmarshal(b, &f)
 	if err != nil {
-		return errs.E(err)
+		return errs.E(op, err)
 	}
 
 	var response diygoapi.GenesisResponse
@@ -127,22 +129,22 @@ func Genesis() (err error) {
 				Str("Parameter", string(e.Param)).
 				Str("Code", string(e.Code)).
 				Msg("Error Response Sent")
-			return err
+			return errs.E(op, err)
 		} else {
 			lgr.Error().Err(err).Send()
-			return err
+			return errs.E(op, err)
 		}
 	}
 
 	var responseJSON []byte
 	responseJSON, err = json.MarshalIndent(response, "", "  ")
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	err = os.WriteFile(service.LocalJSONGenesisResponseFile, responseJSON, 0644)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	fmt.Println(string(responseJSON))

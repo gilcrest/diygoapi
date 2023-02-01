@@ -2,13 +2,13 @@ package errs
 
 import (
 	"bytes"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
 
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
 	"github.com/gilcrest/diygoapi/logger"
@@ -99,8 +99,8 @@ func TestHTTPErrorResponse_Body(t *testing.T) {
 		{"empty Error", args{httptest.NewRecorder(), lgr, &Error{}}, ""},
 		{"unauthenticated", args{httptest.NewRecorder(), lgr, E(Unauthenticated, "some error from Google")}, ""},
 		{"unauthorized", args{httptest.NewRecorder(), lgr, E(Unauthorized, "some authorization error")}, ""},
-		{"normal", args{httptest.NewRecorder(), lgr, E(Exist, Parameter("some_param"), Code("some_code"), errors.New("some error"))}, `{"error":{"kind":"item_already_exists","code":"some_code","param":"some_param","message":"some error"}}`},
-		{"not via E", args{httptest.NewRecorder(), lgr, errors.New("some error")}, "{\"error\":{\"kind\":\"unanticipated_error\",\"code\":\"Unanticipated\",\"message\":\"Unexpected error - contact support\"}}"},
+		{"normal", args{httptest.NewRecorder(), lgr, E(Exist, Parameter("some_param"), Code("some_code"), errors.New("some error"))}, `{"error":{"kind":"item already exists","code":"some_code","param":"some_param","message":"some error"}}`},
+		{"not via E", args{httptest.NewRecorder(), lgr, errors.New("some error")}, "{\"error\":{\"kind\":\"unanticipated error\",\"code\":\"Unanticipated\",\"message\":\"Unexpected error - contact support\"}}"},
 		{"nil error", args{httptest.NewRecorder(), lgr, nil}, ""},
 	}
 

@@ -118,87 +118,91 @@ type ConfigFile struct {
 // relative to whichever environment is being set. If Existing is
 // passed as EnvConfig, the current environment is used and not overridden.
 func LoadEnv(env Env) (err error) {
+	const op errs.Op = "cmd/LoadEnv"
+
 	var f ConfigFile
 	f, err = NewConfigFile(env)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	err = overrideEnv(f)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 	return nil
 }
 
 // overrideEnv sets the environment
 func overrideEnv(f ConfigFile) error {
+	const op errs.Op = "cmd/overrideEnv"
+
 	var err error
 
 	// minimum accepted log level
 	err = os.Setenv(logLevelMinEnv, f.Config.Logger.MinLogLevel)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	// log level
 	err = os.Setenv(loglevelEnv, f.Config.Logger.LogLevel)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	// log error stack
 	err = os.Setenv(logErrorStackEnv, fmt.Sprintf("%t", f.Config.Logger.LogErrorStack))
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	// server port
 	err = os.Setenv(portEnv, strconv.Itoa(f.Config.HTTPServer.ListenPort))
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	// database host
 	err = os.Setenv(sqldb.DBHostEnv, f.Config.Database.Host)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	// database port
 	err = os.Setenv(sqldb.DBPortEnv, strconv.Itoa(f.Config.Database.Port))
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	// database name
 	err = os.Setenv(sqldb.DBNameEnv, f.Config.Database.Name)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	// database user
 	err = os.Setenv(sqldb.DBUserEnv, f.Config.Database.User)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	// database user password
 	err = os.Setenv(sqldb.DBPasswordEnv, f.Config.Database.Password)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	// database search path
 	err = os.Setenv(sqldb.DBSearchPathEnv, f.Config.Database.SearchPath)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	// encryption key
 	err = os.Setenv(encryptKeyEnv, f.Config.EncryptionKey)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	return nil
@@ -213,6 +217,8 @@ func overrideEnv(f ConfigFile) error {
 //
 // Local:      ./config/local.json
 func NewConfigFile(env Env) (ConfigFile, error) {
+	const op errs.Op = "cmd/NewConfigFile"
+
 	var (
 		b   []byte
 		err error
@@ -223,26 +229,26 @@ func NewConfigFile(env Env) (ConfigFile, error) {
 	case Local:
 		b, err = os.ReadFile(localJSONConfigFile)
 		if err != nil {
-			return ConfigFile{}, err
+			return ConfigFile{}, errs.E(op, err)
 		}
 	case Staging:
 		b, err = os.ReadFile(stagingJSONConfigFile)
 		if err != nil {
-			return ConfigFile{}, err
+			return ConfigFile{}, errs.E(op, err)
 		}
 	case Production:
 		b, err = os.ReadFile(productionJSONConfigFile)
 		if err != nil {
-			return ConfigFile{}, err
+			return ConfigFile{}, errs.E(op, err)
 		}
 	default:
-		return ConfigFile{}, errs.E("Invalid environment")
+		return ConfigFile{}, errs.E(op, "Invalid environment")
 	}
 
 	f := ConfigFile{}
 	err = json.Unmarshal(b, &f)
 	if err != nil {
-		return ConfigFile{}, err
+		return ConfigFile{}, errs.E(op, err)
 	}
 
 	return f, nil
@@ -260,10 +266,11 @@ type ConfigCueFilePaths struct {
 // Paths are relative to the project root.
 func CUEPaths(env Env) (ConfigCueFilePaths, error) {
 	const (
-		schemaInput  = "./config/cue/schema.cue"
-		localInput   = "./config/cue/local.cue"
-		stagingInput = "./config/cue/staging.cue"
-		prodInput    = "./config/cue/production.cue"
+		schemaInput          = "./config/cue/schema.cue"
+		localInput           = "./config/cue/local.cue"
+		stagingInput         = "./config/cue/staging.cue"
+		prodInput            = "./config/cue/production.cue"
+		op           errs.Op = "cmd/CUEPaths"
 	)
 
 	switch env {
@@ -283,7 +290,7 @@ func CUEPaths(env Env) (ConfigCueFilePaths, error) {
 			Output: productionJSONConfigFile,
 		}, nil
 	default:
-		return ConfigCueFilePaths{}, errs.E(fmt.Sprintf("There is no path configuration for the %s environment", env))
+		return ConfigCueFilePaths{}, errs.E(op, fmt.Sprintf("There is no path configuration for the %s environment", env))
 	}
 }
 

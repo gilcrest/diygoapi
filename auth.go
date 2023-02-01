@@ -223,15 +223,17 @@ type Permission struct {
 
 // Validate determines if the Permission is valid
 func (p Permission) Validate() error {
+	const op errs.Op = "diygoapi/Permission.Validate"
+
 	switch {
 	case p.ID == uuid.Nil:
-		return errs.E(errs.Validation, "ID is required")
+		return errs.E(op, errs.Validation, "ID is required")
 	case p.ExternalID.String() == "":
-		return errs.E(errs.Validation, "External ID is required")
+		return errs.E(op, errs.Validation, "External ID is required")
 	case p.Resource == "":
-		return errs.E(errs.Validation, "Resource is required")
+		return errs.E(op, errs.Validation, "Resource is required")
 	case p.Description == "":
-		return errs.E(errs.Validation, "Description is required")
+		return errs.E(op, errs.Validation, "Description is required")
 	}
 	return nil
 }
@@ -290,15 +292,17 @@ type Role struct {
 
 // Validate determines if the Role is valid.
 func (r Role) Validate() error {
+	const op errs.Op = "diygoapi/Role.Validate"
+
 	switch {
 	case r.ID == uuid.Nil:
-		return errs.E(errs.Validation, "ID is required")
+		return errs.E(op, errs.Validation, "ID is required")
 	case r.ExternalID.String() == "":
-		return errs.E(errs.Validation, "External ID is required")
+		return errs.E(op, errs.Validation, "External ID is required")
 	case r.Code == "":
-		return errs.E(errs.Validation, "Code is required")
+		return errs.E(op, errs.Validation, "Code is required")
 	case r.Description == "":
-		return errs.E(errs.Validation, "Description is required")
+		return errs.E(op, errs.Validation, "Description is required")
 	}
 	return nil
 }

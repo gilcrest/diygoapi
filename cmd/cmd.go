@@ -79,6 +79,7 @@ type flags struct {
 // newFlags parses the command line flags using ff and returns
 // a flags struct or an error
 func newFlags(args []string) (flags, error) {
+	const op errs.Op = "cmd/newFlags"
 	// create new FlagSet using the program name being executed (args[0])
 	// as the name of the FlagSet
 	fs := flag.NewFlagSet(args[0], flag.ContinueOnError)
@@ -99,7 +100,7 @@ func newFlags(args []string) (flags, error) {
 	// Parse the command line flags from above
 	err := ff.Parse(fs, args[1:], ff.WithEnvVars())
 	if err != nil {
-		return flags{}, err
+		return flags{}, errs.E(op, err)
 	}
 
 	return flags{
@@ -119,25 +120,26 @@ func newFlags(args []string) (flags, error) {
 
 // Run parses command line flags and starts the server
 func Run(args []string) (err error) {
+	const op errs.Op = "cmd/Run"
 
 	var flgs flags
 	flgs, err = newFlags(args)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	// determine minimum logging level based on flag input
 	var minlvl zerolog.Level
 	minlvl, err = zerolog.ParseLevel(flgs.logLvlMin)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	// determine logging level based on flag input
 	var lvl zerolog.Level
 	lvl, err = zerolog.ParseLevel(flgs.loglvl)
 	if err != nil {
-		return err
+		return errs.E(op, err)
 	}
 
 	// setup logger with appropriate defaults
@@ -260,8 +262,10 @@ func newPostgreSQLDSN(flgs flags) sqldb.PostgreSQLDSN {
 
 // portRange validates the port be in an acceptable range
 func portRange(port int) error {
+	const op errs.Op = "cmd/portRange"
+
 	if port < 0 || port > 65535 {
-		return errs.E(fmt.Sprintf("port %d is not within valid port range (0 to 65535)", port))
+		return errs.E(op, fmt.Sprintf("port %d is not within valid port range (0 to 65535)", port))
 	}
 	return nil
 }
