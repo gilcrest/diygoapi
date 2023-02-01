@@ -9,7 +9,7 @@ func (e MissingField) Error() string {
 }
 
 // InputUnwanted is an error type that can be used when
-// validating input fields that have a value, but should should not
+// validating input fields that have a value, but should not
 type InputUnwanted string
 
 func (e InputUnwanted) Error() string {
