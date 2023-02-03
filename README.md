@@ -12,7 +12,7 @@ I struggled a lot with parsing the myriad different patterns people have for pac
 
 The following is an in-depth walkthrough of this project. This is a demo API, so the "business" intent of it is to support basic CRUD (**C**reate, **R**ead, **U**pdate, **D**elete) operations for a movie database. All paths to files or directories are from the project root.
 
-> IMPORTANT (12/13/2022): I just completed a significant refactor of this app. Most of the below still applies, but I need to take some time to update a few things.
+> IMPORTANT (2/13/2022): I have recently changed the way errors are handled in this repo. I am no longer reliant on [github.com/pkg/errors](github.com/pkg/errors) for stack tracing. I now have a home-grown solution that I am going to prepare a blog about next. For the time being, one can still use github.com/pkg/errors with this project, however, by default it is not used. I also need to update the README below. The blog and README is my next priority. 
 
 ## Minimum Requirements
 
