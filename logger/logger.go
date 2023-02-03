@@ -74,11 +74,12 @@ func (h GCPSeverityHook) Run(e *zerolog.Event, level zerolog.Level, msg string) 
 	}
 }
 
-// WriteErrorStack is a convenience function to set the zerolog
-// ErrorStackMarshaler global variable. If true, writes error
-// stacks for logs. If false, will turn off error stack.
-func WriteErrorStack(writeStack bool) {
-	if !writeStack {
+// LogErrorStackViaPkgErrors is a convenience function to set the zerolog
+// ErrorStackMarshaler global variable.
+// If true, writes error stacks for logs using "github.com/pkg/errors".
+// If false, will use the internal errs.Op stack instead of "github.com/pkg/errors".
+func LogErrorStackViaPkgErrors(p bool) {
+	if !p {
 		zerolog.ErrorStackMarshaler = nil
 		return
 	}
