@@ -6,7 +6,7 @@
         "logger": {
             "minLogLevel": "trace",
             "logLevel": "debug",
-            "logErrorStack": true
+            "logErrorStack": false
         },
         "encryptionKey": "31f8cbffe80df0067fbfac4abf0bb76c51d44cb82d2556743e6bf1a5e25d4e06",
         "database": {

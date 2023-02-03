@@ -6,7 +6,7 @@
         "logger": {
             "minLogLevel": "trace",
             "logLevel": "debug",
-            "logErrorStack": true
+            "logErrorStack": false
         },
         "database": {
             "host": "/cloudsql/diygoapi:us-central1:diygoapi-db",

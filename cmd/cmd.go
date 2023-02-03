@@ -86,7 +86,7 @@ func newFlags(args []string) (flags, error) {
 	var (
 		logLvlMin     = fs.String("log-level-min", "trace", fmt.Sprintf("sets minimum log level (trace, debug, info, warn, error, fatal, panic, disabled), (also via %s)", logLevelMinEnv))
 		loglvl        = fs.String("log-level", "info", fmt.Sprintf("sets log level (trace, debug, info, warn, error, fatal, panic, disabled), (also via %s)", loglevelEnv))
-		logErrorStack = fs.Bool("log-error-stack", true, fmt.Sprintf("if true, log full error stacktrace, else just log error, (also via %s)", logErrorStackEnv))
+		logErrorStack = fs.Bool("log-error-stack", false, fmt.Sprintf("if true, log full error stacktrace using github.com/pkg/errors, else just log error, (also via %s)", logErrorStackEnv))
 		port          = fs.Int("port", 8080, fmt.Sprintf("listen port for server (also via %s)", portEnv))
 		dbhost        = fs.String("db-host", "", fmt.Sprintf("postgresql database host (also via %s)", sqldb.DBHostEnv))
 		dbport        = fs.Int("db-port", 5432, fmt.Sprintf("postgresql database port (also via %s)", sqldb.DBPortEnv))
@@ -161,7 +161,7 @@ func Run(args []string) (err error) {
 	lgr.Info().Msgf("logging level set to %s", lvl)
 
 	// set global to log errors with stack (or not) based on flag
-	logger.WriteErrorStack(flgs.logErrorStack)
+	logger.LogErrorStackViaPkgErrors(flgs.logErrorStack)
 	lgr.Info().Msgf("log error stack global set to %t", flgs.logErrorStack)
 
 	// validate port in acceptable range

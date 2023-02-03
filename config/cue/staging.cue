@@ -8,7 +8,7 @@ config: httpServer: listenPort: 8080
 
 config: logger: minLogLevel:   "trace"
 config: logger: logLevel:      "debug"
-config: logger: logErrorStack: true
+config: logger: logErrorStack: false
 
 config: database: host:       "/cloudsql/diygoapi:us-central1:diygoapi-db"
 config: database: port:       5432
