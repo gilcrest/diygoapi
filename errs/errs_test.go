@@ -5,9 +5,8 @@
 package errs
 
 import (
+	"errors"
 	"testing"
-
-	"github.com/pkg/errors"
 )
 
 func TestNoArgs(t *testing.T) {

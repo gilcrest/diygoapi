@@ -4,15 +4,14 @@
 package errs_test
 
 import (
+	"errors"
 	"fmt"
+	"github.com/gilcrest/diygoapi/logger"
+	"github.com/rs/zerolog"
 	"net/http/httptest"
 	"os"
 
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog"
-
 	"github.com/gilcrest/diygoapi/errs"
-	"github.com/gilcrest/diygoapi/logger"
 )
 
 func ExampleError() {
@@ -62,8 +61,8 @@ func ExampleHTTPErrorResponse() {
 	fmt.Println(w.Body)
 	// Output:
 	//
-	// {"level":"error","error":"Actual error message","http_statuscode":400,"Kind":"input_validation_error","Parameter":"testParam","Code":"0212","severity":"ERROR","message":"Error Response Sent"}
-	// {"error":{"kind":"input_validation_error","code":"0212","param":"testParam","message":"Actual error message"}}
+	// {"level":"error","error":"Actual error message","http_statuscode":400,"Kind":"input validation error","Parameter":"testParam","Code":"0212","severity":"ERROR","message":"error response sent to client"}
+	// {"error":{"kind":"input validation error","code":"0212","param":"testParam","message":"Actual error message"}}
 }
 
 func ExampleE() {

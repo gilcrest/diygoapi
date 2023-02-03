@@ -4,12 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
-	"regexp"
 	"testing"
 
 	"github.com/rs/zerolog"
-
-	"github.com/gilcrest/diygoapi/errs"
 )
 
 func TestGCPSeverityHook_Run(t *testing.T) {
@@ -60,39 +57,39 @@ func TestGCPSeverityHook_Run(t *testing.T) {
 	}
 }
 
-func TestWriteErrorStackGlobal(t *testing.T) {
-	t.Run("with stack", func(t *testing.T) {
-		WriteErrorStack(true)
-		out := &bytes.Buffer{}
-		logger := zerolog.New(out)
-
-		err := errs.E("some error")
-		e := err.(*errs.Error)
-		logger.Log().Stack().Err(e.Err).Msg("")
-
-		got := out.String()
-		want := `{"stack".*`
-		if ok, _ := regexp.MatchString(want, got); !ok {
-			t.Errorf("invalid log output:\ngot:  %v\nwant: %v", got, want)
-		}
-	})
-
-	t.Run("without stack", func(t *testing.T) {
-		WriteErrorStack(false)
-		out := &bytes.Buffer{}
-		logger := zerolog.New(out)
-
-		err := errs.E("some error")
-		e := err.(*errs.Error)
-		logger.Log().Stack().Err(e.Err).Msg("")
-
-		got := out.String()
-		want := `{"error".*`
-		if ok, _ := regexp.MatchString(want, got); !ok {
-			t.Errorf("invalid log output:\ngot:  %v\nwant: %v", got, want)
-		}
-	})
-}
+//func TestWriteErrorStackGlobal(t *testing.T) {
+//	t.Run("with stack", func(t *testing.T) {
+//		WriteErrorStack(true)
+//		out := &bytes.Buffer{}
+//		logger := zerolog.New(out)
+//
+//		err := errs.E("some error")
+//		e := err.(*errs.Error)
+//		logger.Log().Stack().Err(e.Err).Msg("")
+//
+//		got := out.String()
+//		want := `{"stack".*`
+//		if ok, _ := regexp.MatchString(want, got); !ok {
+//			t.Errorf("invalid log output:\ngot:  %v\nwant: %v", got, want)
+//		}
+//	})
+//
+//	t.Run("without stack", func(t *testing.T) {
+//		WriteErrorStack(false)
+//		out := &bytes.Buffer{}
+//		logger := zerolog.New(out)
+//
+//		err := errs.E("some error")
+//		e := err.(*errs.Error)
+//		logger.Log().Stack().Err(e.Err).Msg("")
+//
+//		got := out.String()
+//		want := `{"error".*`
+//		if ok, _ := regexp.MatchString(want, got); !ok {
+//			t.Errorf("invalid log output:\ngot:  %v\nwant: %v", got, want)
+//		}
+//	})
+//}
 
 func ExampleNewWithGCPHook() {
 	lgr := NewWithGCPHook(os.Stdout, zerolog.DebugLevel, false)

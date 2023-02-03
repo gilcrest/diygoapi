@@ -68,7 +68,7 @@ func Genesis() (err error) {
 	lgr.Info().Msgf("logging level set to %s", lvl)
 
 	// set global to log errors with stack (or not) based on flag
-	logger.WriteErrorStack(flgs.logErrorStack)
+	logger.LogErrorStackViaPkgErrors(flgs.logErrorStack)
 	lgr.Info().Msgf("log error stack global set to %t", flgs.logErrorStack)
 
 	if flgs.encryptkey == "" {

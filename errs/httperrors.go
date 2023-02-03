@@ -71,31 +71,45 @@ func typicalErrorResponse(w http.ResponseWriter, lgr zerolog.Logger, e *Error) {
 	// Status Code as response. Error should not be empty, but it's
 	// theoretically possible, so this is just in case...
 	if e.isZero() {
-		lgr.Error().Msgf("error sent to %s, but empty - very strange, investigate", op)
+		lgr.Error().Stack().Msgf("error sent to %s, but empty - very strange, investigate", op)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	// typical errors
+	const errMsg = "error response sent to client"
 
-	ops := OpStack(e)
-	if len(ops) > 0 {
-		j, _ := json.Marshal(ops)
-		// log the error with the op stack
-		lgr.Error().RawJSON("stack", j).Err(e.Err).
+	if zerolog.ErrorStackMarshaler != nil {
+		err := TopError(e)
+
+		// log the error with stacktrace from "github.com/pkg/errors"
+		// do not bother to log with op stack
+		lgr.Error().Stack().Err(err).
 			Int("http_statuscode", httpStatusCode).
 			Str("Kind", e.Kind.String()).
 			Str("Parameter", string(e.Param)).
 			Str("Code", string(e.Code)).
-			Msg("error response sent to client")
+			Msg(errMsg)
 	} else {
-		// log the error without the op stack
-		lgr.Error().Err(e.Err).
-			Int("http_statuscode", httpStatusCode).
-			Str("Kind", e.Kind.String()).
-			Str("Parameter", string(e.Param)).
-			Str("Code", string(e.Code)).
-			Msg("error response sent to client")
+		ops := OpStack(e)
+		if len(ops) > 0 {
+			j, _ := json.Marshal(ops)
+			// log the error with the op stack
+			lgr.Error().RawJSON("stack", j).Err(e.Err).
+				Int("http_statuscode", httpStatusCode).
+				Str("Kind", e.Kind.String()).
+				Str("Parameter", string(e.Param)).
+				Str("Code", string(e.Code)).
+				Msg(errMsg)
+		} else {
+			// no op stack present, log the error without that field
+			lgr.Error().Err(e.Err).
+				Int("http_statuscode", httpStatusCode).
+				Str("Kind", e.Kind.String()).
+				Str("Parameter", string(e.Param)).
+				Str("Code", string(e.Code)).
+				Msg(errMsg)
+		}
 	}
 
 	// get ErrResponse

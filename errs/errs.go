@@ -10,17 +10,23 @@
 package errs
 
 import (
+	"errors"
 	"fmt"
+	"github.com/rs/zerolog"
 	"runtime"
+	"sort"
 
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 )
 
 // Error is the type that implements the error interface.
 // It contains a number of fields, each of different type.
 // An Error value may leave some values unset.
 type Error struct {
-	// User is the username of the user attempting the operation.
+	// Op is the operation being performed, usually the name of the method
+	// being invoked.
+	Op Op
+	// User is the name of the user attempting the operation.
 	User UserName
 	// Kind is the class of error, such as permission failure,
 	// or "Other" if its class is unknown or irrelevant.
@@ -47,6 +53,57 @@ func (e *Error) Unwrap() error {
 func (e *Error) Error() string {
 	return e.Err.Error()
 }
+
+// OpStack returns the op stack information for an error
+func OpStack(err error) []string {
+	type o struct {
+		Op    string
+		Order int
+	}
+
+	e := err
+	i := 0
+	var os []o
+
+	// loop through all wrapped errors and add to struct
+	// order will be from top to bottom of stack
+	for errors.Unwrap(e) != nil {
+		var errsError *Error
+		if errors.As(e, &errsError) {
+			if errsError.Op != "" {
+				op := o{Op: string(errsError.Op), Order: i}
+				os = append(os, op)
+			}
+		}
+		e = errors.Unwrap(e)
+		i++
+	}
+
+	// reverse the order of the stack (bottom to top)
+	sort.Slice(os, func(i, j int) bool { return os[i].Order > os[j].Order })
+
+	// pull out just the stack info, now in reversed order
+	var ops []string
+	for _, op := range os {
+		ops = append(ops, op.Op)
+	}
+
+	return ops
+}
+
+// TopError recursively unwraps all errors and retrieves the topmost error
+func TopError(err error) error {
+	currentErr := err
+	for errors.Unwrap(currentErr) != nil {
+		currentErr = errors.Unwrap(currentErr)
+	}
+
+	return currentErr
+}
+
+// Op describes an operation, usually as the package and method,
+// such as "key/server.Lookup".
+type Op string
 
 // UserName is a string representing a user
 type UserName string
@@ -101,35 +158,35 @@ const (
 func (k Kind) String() string {
 	switch k {
 	case Other:
-		return "other_error"
+		return "other error"
 	case Invalid:
-		return "invalid_operation"
+		return "invalid operation"
 	case IO:
-		return "I/O_error"
+		return "I/O error"
 	case Exist:
-		return "item_already_exists"
+		return "item already exists"
 	case NotExist:
-		return "item_does_not_exist"
+		return "item does not exist"
 	case BrokenLink:
-		return "link_target_does_not_exist"
+		return "link target does not exist"
 	case Private:
-		return "information_withheld"
+		return "information withheld"
 	case Internal:
-		return "internal_error"
+		return "internal error"
 	case Database:
-		return "database_error"
+		return "database error"
 	case Validation:
-		return "input_validation_error"
+		return "input validation error"
 	case Unanticipated:
-		return "unanticipated_error"
+		return "unanticipated error"
 	case InvalidRequest:
-		return "invalid_request_error"
+		return "invalid request error"
 	case Unauthenticated:
-		return "unauthenticated_request"
+		return "unauthenticated request"
 	case Unauthorized:
-		return "unauthorized_request"
+		return "unauthorized request"
 	}
-	return "unknown_error_kind"
+	return "unknown error kind"
 }
 
 // E builds an error value from its arguments.
@@ -157,7 +214,7 @@ func (k Kind) String() string {
 // the underlying error.
 func E(args ...interface{}) error {
 	type stackTracer interface {
-		StackTrace() errors.StackTrace
+		StackTrace() pkgerrors.StackTrace
 	}
 
 	if len(args) == 0 {
@@ -166,23 +223,35 @@ func E(args ...interface{}) error {
 	e := &Error{}
 	for _, arg := range args {
 		switch arg := arg.(type) {
+		case Op:
+			e.Op = arg
 		case UserName:
 			e.User = arg
-		case string:
-			e.Err = errors.New(arg)
 		case Kind:
 			e.Kind = arg
-		case *Error:
-			e.Err = arg
-		case error:
-			// if the error implements stackTracer, then it is
-			// a pkg/errors error type and does not need to have
-			// the stack added
-			_, ok := arg.(stackTracer)
-			if ok {
-				e.Err = arg
+		case string:
+			if zerolog.ErrorStackMarshaler != nil {
+				e.Err = pkgerrors.New(arg)
 			} else {
-				e.Err = errors.WithStack(arg)
+				e.Err = Str(arg)
+			}
+		case *Error:
+			// Make a copy
+			errorCopy := *arg
+			e.Err = &errorCopy
+		case error:
+			if zerolog.ErrorStackMarshaler != nil {
+				// if the error implements stackTracer, then it is
+				// a pkg/errors error type and does not need to have
+				// the stack added
+				_, ok := arg.(stackTracer)
+				if ok {
+					e.Err = arg
+				} else {
+					e.Err = pkgerrors.New(arg.Error())
+				}
+			} else {
+				e.Err = arg
 			}
 		case Code:
 			e.Code = arg
@@ -200,6 +269,7 @@ func E(args ...interface{}) error {
 	if !ok {
 		return e
 	}
+
 	// If this error has Kind unset or Other, pull up the inner one.
 	if e.Kind == Other {
 		e.Kind = prev.Kind
@@ -236,9 +306,24 @@ func E(args ...interface{}) error {
 	return e
 }
 
+// Str returns an error that formats as the given text. It is intended to
+// be used as the error-typed argument to the E function.
+func Str(text string) error {
+	return &errorString{text}
+}
+
+// errorString is a trivial implementation of error.
+type errorString struct {
+	s string
+}
+
+func (e *errorString) Error() string {
+	return e.s
+}
+
 // Match compares its two error arguments. It can be used to check
 // for expected errors in tests. Both arguments must have underlying
-// type *Error or Match will return false. Otherwise it returns true
+// type *Error or Match will return false. Otherwise, it returns true
 // if every non-zero element of the first error is equal to the
 // corresponding element of the second.
 // If the Err field is a *Error, Match recurs on that field;
@@ -286,15 +371,14 @@ func Match(err1, err2 error) bool {
 // KindIs reports whether err is an *Error of the given Kind.
 // If err is nil then KindIs returns false.
 func KindIs(kind Kind, err error) bool {
-	e, ok := err.(*Error)
-	if !ok {
-		return false
-	}
-	if e.Kind != Other {
-		return e.Kind == kind
-	}
-	if e.Err != nil {
-		return KindIs(kind, e.Err)
+	var e *Error
+	if errors.As(err, &e) {
+		if e.Kind != Other {
+			return e.Kind == kind
+		}
+		if e.Err != nil {
+			return KindIs(kind, e.Err)
+		}
 	}
 	return false
 }
