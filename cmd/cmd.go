@@ -162,7 +162,7 @@ func Run(args []string) (err error) {
 
 	// set global to log errors with stack (or not) based on flag
 	logger.LogErrorStackViaPkgErrors(flgs.logErrorStack)
-	lgr.Info().Msgf("log error stack global set to %t", flgs.logErrorStack)
+	lgr.Info().Msgf("log error stack via github.com/pkg/errors set to %t", flgs.logErrorStack)
 
 	// validate port in acceptable range
 	err = portRange(flgs.port)
