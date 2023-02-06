@@ -308,7 +308,7 @@ func parseAuthorizationHeader(realm string, header http.Header) (*oauth2.Token, 
 		return nil, errs.E(op, errs.Unauthenticated, errs.Realm(realm), "header value > 1")
 	}
 
-	// retrieve token from map
+	// retrieve token
 	token := headerValue[0]
 
 	// Oauth2 should have "Bearer " as the prefix as the authentication scheme
