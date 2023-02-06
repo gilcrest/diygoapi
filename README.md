@@ -12,8 +12,6 @@ I struggled a lot with parsing the myriad different patterns people have for pac
 
 The following is an in-depth walkthrough of this project. This is a demo API, so the "business" intent of it is to support basic CRUD (**C**reate, **R**ead, **U**pdate, **D**elete) operations for a movie database. All paths to files or directories are from the project root.
 
-> IMPORTANT (2/13/2022): I have recently changed the way errors are handled in this repo. I am no longer reliant on [github.com/pkg/errors](github.com/pkg/errors) for stack tracing. I now have a home-grown solution that I am going to prepare a blog about next. For the time being, one can still use github.com/pkg/errors with this project, however, by default it is not used. I also need to update the README below. The blog and README is my next priority. 
-
 ## Minimum Requirements
 
 - [Go](https://go.dev/)
@@ -80,7 +78,7 @@ The base environment variables to be set are:
 | PORT                 | Port the server will listen on                                     |
 | LOG_LEVEL            | zerolog logging level (debug, info, etc.)                          |
 | LOG_LEVEL_MIN        | sets the minimum accepted logging level                            |
-| LOG_ERROR_STACK      | If true, log full error stacktrace, else just log error            |
+| LOG_ERROR_STACK      | If true, log error stacktrace using github.com/pkg/errors, else just log error (includes op stack) |
 | DB_HOST              | The host name of the database server.                              |
 | DB_PORT              | The port number the database server is listening on.               |
 | DB_NAME              | The database name.                                                 |
@@ -119,7 +117,7 @@ export PORT="8080"
 # logger environment variables
 export LOG_LEVEL_MIN="trace"
 export LOG_LEVEL="debug"
-export LOG_ERROR_STACK="true"
+export LOG_ERROR_STACK="false"
 
 # Database Environment variables
 export DB_HOST="localhost"
@@ -149,7 +147,7 @@ config: httpServer: listenPort: 8080
 
 config: logger: minLogLevel:   "trace"
 config: logger: logLevel:      "debug"
-config: logger: logErrorStack: true
+config: logger: logErrorStack: false
 
 config: database: host:       "localhost"
 config: database: port:       5432
@@ -182,7 +180,7 @@ exec: cue "export" "./config/cue/schema.cue" "./config/cue/local.cue" "--force" 
         "logger": {
             "minLogLevel": "trace",
             "logLevel": "debug",
-            "logErrorStack": true
+            "logErrorStack": false
         },
         "encryptionKey": "31f8cbffe80df0067fbfac4abf0bb76c51d44cb82d2556743e6bf1a5e25d4e06",
         "database": {
@@ -447,16 +445,16 @@ You can run the webserver with Mage. As in all examples above, Mage will either 
 ```shell
 $ mage -v run local
 Running target: Run
-exec: go "run" "main.go"
-{"level":"info","time":1655956480,"severity":"INFO","message":"minimum accepted logging level set to trace"}
-{"level":"info","time":1655956480,"severity":"INFO","message":"logging level set to debug"}
-{"level":"info","time":1655956480,"severity":"INFO","message":"log error stack global set to true"}
-{"level":"info","time":1655956480,"severity":"INFO","message":"sql database opened for localhost on port 5432"}
-{"level":"info","time":1655956480,"severity":"INFO","message":"sql database Ping returned successfully"}
-{"level":"info","time":1655956480,"severity":"INFO","message":"database version: PostgreSQL 14.4 on aarch64-apple-darwin20.6.0, compiled by Apple clang version 12.0.5 (clang-1205.0.22.9), 64-bit"}
-{"level":"info","time":1655956480,"severity":"INFO","message":"current database user: demo_user"}
-{"level":"info","time":1655956480,"severity":"INFO","message":"current database: dga_local"}
-{"level":"info","time":1655956480,"severity":"INFO","message":"current search_path: demo"}
+exec: go "run" "./cmd/diy/main.go"
+{"level":"info","time":1675700939,"severity":"INFO","message":"minimum accepted logging level set to trace"}
+{"level":"info","time":1675700939,"severity":"INFO","message":"logging level set to debug"}
+{"level":"info","time":1675700939,"severity":"INFO","message":"log error stack via github.com/pkg/errors set to false"}
+{"level":"info","time":1675700939,"severity":"INFO","message":"sql database opened for localhost on port 5432"}
+{"level":"info","time":1675700939,"severity":"INFO","message":"sql database Ping returned successfully"}
+{"level":"info","time":1675700939,"severity":"INFO","message":"database version: PostgreSQL 14.6 on aarch64-apple-darwin20.6.0, compiled by Apple clang version 12.0.5 (clang-1205.0.22.9), 64-bit"}
+{"level":"info","time":1675700939,"severity":"INFO","message":"current database user: demo_user"}
+{"level":"info","time":1675700939,"severity":"INFO","message":"current database: dga_local"}
+{"level":"info","time":1675700939,"severity":"INFO","message":"current search_path: demo"}
 ```
 
 #### Option 2 - Run web server using command line flags
@@ -468,7 +466,7 @@ The below are the list of the command line flags that can be used to start the w
 | port            | Port the server will listen on                                     | PORT                 | 8080    |
 | log-level       | zerolog logging level (debug, info, etc.)                          | LOG_LEVEL            | debug   |
 | log-level-min   | sets the minimum accepted logging level                            | LOG_LEVEL_MIN        | debug   |
-| log-error-stack | If true, log full error stacktrace, else just log error            | LOG_ERROR_STACK      | false   |
+| log-error-stack | If true, log error stacktrace using github.com/pkg/errors, else just log error (includes op stack) | LOG_ERROR_STACK      | false   |
 | db-host         | The host name of the database server.                              | DB_HOST              |         |
 | db-port         | The port number the database server is listening on.               | DB_PORT              | 5432    |
 | db-name         | The database name.                                                 | DB_NAME              |         |
@@ -617,7 +615,7 @@ The above image is a high-level view of an example request that is processed by 
 
 ### Errors
 
-Handling errors is really important in Go. Errors are first class citizens and there are many different approaches for handling them. Initially I started off basing my error handling almost entirely on a [blog post from Rob Pike](https://commandcenter.blogspot.com/2017/12/error-handling-in-upspin.html) and created a carve-out from his code to meet my needs. It served me well for a long time, but found over time I wanted a way to easily get a stacktrace of the error, which led me to Dave Cheney's [https://github.com/pkg/errors](https://github.com/pkg/errors) package. I now use a combination of the two.
+Handling errors is really important in Go. Errors are first class citizens and there are many different approaches for handling them. I have based my error handling on a [blog post from Rob Pike](https://commandcenter.blogspot.com/2017/12/error-handling-in-upspin.html) and have modified it to meet my needs. The post is many years old now, but I find the lessons there still hold true at least for my requirements.
 
 #### Error Requirements
 
@@ -659,8 +657,14 @@ All errors should be raised using custom errors from the [domain/errs](https://g
 Typical errors raised throughout `diygoapi` are the custom `errs.Error`, which look like:
 
  ```go
+// Error is the type that implements the error interface.
+// It contains a number of fields, each of different type.
+// An Error value may leave some values unset.
 type Error struct {
-    // User is the username of the user attempting the operation.
+    // Op is the operation being performed, usually the name of the method
+    // being invoked.
+    Op Op
+    // User is the name of the user attempting the operation.
     User UserName
     // Kind is the class of error, such as permission failure,
     // or "Other" if its class is unknown or irrelevant.
@@ -669,6 +673,8 @@ type Error struct {
     Param Parameter
     // Code is a human-readable, short representation of the error
     Code Code
+    // Realm is a description of a protected area, used in the WWW-Authenticate header.
+    Realm Realm
     // The underlying error that triggered this one, if any.
     Err error
 }
@@ -682,21 +688,40 @@ Here is a simple example of creating an `error` using `errs.E`:
 err := errs.E("seems we have an error here")
 ```
 
-When a string is sent, an error will be created using the `errors.New` function from `github.com/pkg/errors` and added to the `Err` element of the struct, which allows retrieval of the error stacktrace later on. In the above example, `User`, `Kind`, `Param` and `Code` would all remain unset.
+When a string is sent, a new error will be created and added to the `Err` element of the struct. In the above example, `Op`, `User`, `Kind`, `Param`, `Realm` and `Code` would all remain unset.
+
+By convention, we create an `op` constant to denote the method or function where the error is occuring (or being returned through). This `op` constant should always be the first argument in each call, though it is not actually required to be.
+
+```go
+package opdemo
+
+import (
+    "fmt"
+
+    "github.com/gilcrest/diygoapi/errs"
+)
+
+// IsEven returns an error if the number given is not even
+func IsEven(n int) error {
+    const op errs.Op = "opdemo/IsEven"
+
+    if n%2 != 0 {
+        return errs.E(op, fmt.Sprintf("%d is not even", n))
+    }
+    return nil
+}
+```
 
 You can set any of these custom `errs.Error` fields that you like, for example:
 
 ```go
-func (m *Movie) SetReleased(r string) (*Movie, error) {
-    t, err := time.Parse(time.RFC3339, r)
-    if err != nil {
-        return nil, errs.E(errs.Validation,
-            errs.Code("invalid_date_format"),
-            errs.Parameter("release_date"),
-            err)
-    }
-    m.Released = t
-    return m, nil
+var released time.Time
+released, err = time.Parse(time.RFC3339, r.Released)
+if err != nil {
+    return nil, errs.E(op, errs.Validation,
+        errs.Code("invalid_date_format"),
+        errs.Parameter("release_date"),
+        err)
 }
 ```
 
@@ -704,18 +729,29 @@ Above, we used `errs.Validation` to set the `errs.Kind` as `Validation`. Valid e
 
 ```go
 const (
-    Other           Kind = iota // Unclassified error. This value is not printed in the error message.
-    Invalid                     // Invalid operation for this type of item.
-    IO                          // External I/O error such as network failure.
-    Exist                       // Item already exists.
-    NotExist                    // Item does not exist.
-    Private                     // Information withheld.
-    Internal                    // Internal error or inconsistency.
-    BrokenLink                  // Link target does not exist.
-    Database                    // Error from database.
-    Validation                  // Input validation error.
-    Unanticipated               // Unanticipated error.
-    InvalidRequest              // Invalid Request
+    Other          Kind = iota // Unclassified error. This value is not printed in the error message.
+    Invalid                    // Invalid operation for this type of item.
+    IO                         // External I/O error such as network failure.
+    Exist                      // Item already exists.
+    NotExist                   // Item does not exist.
+    Private                    // Information withheld.
+    Internal                   // Internal error or inconsistency.
+    BrokenLink                 // Link target does not exist.
+    Database                   // Error from database.
+    Validation                 // Input validation error.
+    Unanticipated              // Unanticipated error.
+    InvalidRequest             // Invalid Request
+    // Unauthenticated is used when a request lacks valid authentication credentials.
+    //
+    // For Unauthenticated errors, the response body will be empty.
+    // The error is logged and http.StatusUnauthorized (401) is sent.
+    Unauthenticated // Unauthenticated Request
+    // Unauthorized is used when a user is authenticated, but is not authorized
+    // to access the resource.
+    //
+    // For Unauthorized errors, the response body should be empty.
+    // The error is logged and http.StatusForbidden (403) is sent.
+    Unauthorized
 )
 ```
 
@@ -732,9 +768,11 @@ Here is an example in practice:
 ```go
 // IsValid performs validation of the struct
 func (m *Movie) IsValid() error {
+    const op errs.Op = "diygoapi/Movie.IsValid"
+
     switch {
     case m.Title == "":
-        return errs.E(errs.Validation, errs.Parameter("title"), errs.MissingField("title"))
+        return errs.E(op, errs.Validation, errs.Parameter("title"), errs.MissingField("title"))
 ```
 
 The error message for the above would read **title is required**
@@ -743,34 +781,37 @@ There is also `errs.InputUnwanted` which is meant to be used when a field is pop
 
 ###### Typical Error Flow
 
-As errors created with `errs.E` move up the call stack, they can just be returned, like the following:
+As errors created with `errs.E` move up the call stack, the `op` can just be added to the error, like the following:
 
 ```go
-func inner() error {
-    return errs.E("seems we have an error here")
+func outer() error {
+    const op errs.Op = "opdemo/outer"
+
+    err := middle()
+    if err != nil {
+        return errs.E(op, err)
+    }
+    return nil
 }
 
 func middle() error {
     err := inner()
     if err != nil {
-        return err
+        return errs.E(errs.Op("opdemo/middle"), err)
     }
     return nil
 }
 
-func outer() error {
-    err := middle()
-    if err != nil {
-        return err
-    }
-    return nil
-}
+func inner() error {
+    const op errs.Op = "opdemo/inner"
 
+    return errs.E(op, "seems we have an error here")
+}
 ```
 
-> In the above example, the error is created in the `inner` function - `middle` and `outer` return the error as is typical in Go.
+> Note that `errs.Op` can be created inline as part of the error instead of creating a constant as done in the middle function, I just prefer to create the constant in most cases.
 
-You can add additional context fields (`errs.Code`, `errs.Parameter`, `errs.Kind`) as the error moves up the stack, however, I try to add as much context as possible at the point of error origin and only do this in rare cases.
+In addition, you can add context fields (`errs.Code`, `errs.Parameter`, `errs.Kind`) as the error moves up the stack, however, I try to add as much context as possible at the point of error origin and only do this in rare cases.
 
 ##### Handler Flow
 
@@ -814,15 +855,37 @@ When the error is returned to the client, the response body JSON looks like the 
 ```json
 {
     "error": {
-        "kind": "input_validation_error",
-        "code": "invalid_date_format",
-        "param": "release_date",
-        "message": "parsing time \"1984a-03-02T00:00:00Z\" as \"2006-01-02T15:04:05Z07:00\": cannot parse \"a-03-02T00:00:00Z\" as \"-\""
+        "kind": "input validation error",
+        "param": "title",
+        "message": "title is required"
     }
 }
 ```
 
-In addition, the error is logged. If `zerolog.ErrorStackMarshaler` is set to log error stacks (more about this below), the logger will log the full error stack, which can be super helpful when trying to identify issues.
+In addition, the error is logged. By default, the error ***stack*** is built using the `op` context added to errors and added to the log as a string array in the `stack` field (see below). For the majority of cases, I believe this is sufficient.
+
+```json
+{
+   "level": "error",
+   "remote_ip": "127.0.0.1:60382",
+   "user_agent": "PostmanRuntime/7.30.1",
+   "request_id": "cfgihljuns2hhjb77tq0",
+   "stack": [
+      "diygoapi/Movie.IsValid",
+      "service/MovieService.Create"
+   ],
+   "error": "title is required",
+   "http_statuscode": 400,
+   "Kind": "input validation error",
+   "Parameter": "title",
+   "Code": "",
+   "time": 1675700438,
+   "severity": "ERROR",
+   "message": "error response sent to client"
+}
+```
+
+If you feel you need the full error stack trace, you can set the flag, environment variable on startup or call the `PUT` method for the `{{base_url}}/api/v1/logger` service to update `zerolog.ErrorStackMarshaler` and set it to log error stacks (more about this below). The logger will log the full error stack, which can be super helpful when trying to identify issues.
 
 The error log will look like the following (*I cut off parts of the stack for brevity*):
 
@@ -886,15 +949,17 @@ The [spec](https://tools.ietf.org/html/rfc7235#section-3.1) for `401 Unauthorize
 The example below demonstrates returning an *Unauthenticated* error if the Authorization header is not present. This is done using the `errs.E` function (common to all errors in this repo), but the `errs.Kind` is sent as `errs.Unauthenticated`. An `errs.Realm` type should be added as well. For now, the constant `defaultRealm` is set to `diygoapi` in the `server` package and is used for all unauthenticated errors. You can set this constant to whatever value you like for your application.
 
 ```go
-// authHeader parses/validates the Authorization header and returns an Oauth2 token
-func authHeader(realm string, header http.Header) (oauth2.Token, error) {
+// parseAuthorizationHeader parses/validates the Authorization header and returns an Oauth2 token
+func parseAuthorizationHeader(realm string, header http.Header) (*oauth2.Token, error) {
+    const op errs.Op = "server/parseAuthorizationHeader"
+
     // Pull the token from the Authorization header by retrieving the
     // value from the Header map with "Authorization" as the key
     //
     // format: Authorization: Bearer
     headerValue, ok := header["Authorization"]
     if !ok {
-        return oauth2.Token{}, errs.E(errs.Unauthenticated, errs.Realm(realm), "unauthenticated: no Authorization header sent")
+        return nil, errs.E(op, errs.Unauthenticated, errs.Realm(realm), "unauthenticated: no Authorization header sent")
     }
 ...
 ```
@@ -946,7 +1011,7 @@ When starting `diygoapi`, there are several flags which setup the logger:
 |-----------------|---------------------------------------------------------|----------------------|---------|
 | log-level       | zerolog logging level (debug, info, etc.)               | LOG_LEVEL            | debug   |
 | log-level-min   | sets the minimum accepted logging level                 | LOG_LEVEL_MIN        | debug   |
-| log-error-stack | If true, log full error stacktrace, else just log error | LOG_ERROR_STACK      | false   |
+| log-error-stack | If true, log error stacktrace using github.com/pkg/errors, else just log error (includes op stack) | LOG_ERROR_STACK      | false   |
 
 --------
 
@@ -966,7 +1031,7 @@ The `log-level` flag sets the Global logging level for your `zerolog.Logger`.
 
 The `log-level-min` flag sets the minimum accepted logging level, which means, for example, if you set the minimum level to error, the only logs that will be sent to your chosen output will be those that are greater than or equal to error (`error`, `fatal` and `panic`).
 
-The `log-error-stack` boolean flag tells whether to log stack traces for each error. If `true`, the `zerolog.ErrorStackMarshaler` will be set to `pkgerrors.MarshalStack` which means, for errors raised using the [github.com/pkg/errors](https://github.com/pkg/errors) package, the error stack trace will be captured and printed along with the log. All errors raised in `diygoapi` are raised using `github.com/pkg/errors`.
+The `log-error-stack` boolean flag tells whether to log full stack traces for each error. If `true`, the `zerolog.ErrorStackMarshaler` will be set to `pkgerrors.MarshalStack` which means, for errors raised using the [github.com/pkg/errors](https://github.com/pkg/errors) package, the error stack trace will be captured and printed along with the log. All errors raised in `diygoapi` are raised using `github.com/pkg/errors` if this flag is set to true.
 
 After parsing the command line flags, `zerolog.Logger` is initialized in `main.go`
 
@@ -999,7 +1064,9 @@ func (s *Server) routes() {
     // Match only POST requests at /api/v1/movies
     // with Content-Type header = application/json
     s.router.Handle(moviesV1PathRoot,
-        s.loggerChain().Extend(s.ctxWithUserChain()).
+        s.loggerChain().
+            Append(s.appHandler).
+            Append(s.authHandler).
             Append(s.authorizeUserHandler).
             Append(s.jsonContentTypeResponseHandler).
             ThenFunc(s.handleMovieCreate)).
@@ -1037,18 +1104,18 @@ For every request, you'll get a request log that looks something like the follow
 
 ```json
 {
-    "level": "info",
-    "remote_ip": "127.0.0.1",
-    "user_agent": "PostmanRuntime/7.28.0",
-    "request_id": "c3npn8ea0brt0m3scvq0",
-    "method": "POST",
-    "url": "/api/v1/movies",
-    "status": 401,
-    "size": 0,
-    "duration": 392.254496,
-    "time": 1626315682,
-    "severity": "INFO",
-    "message": "request logged"
+   "level": "info",
+   "remote_ip": "127.0.0.1:60382",
+   "user_agent": "PostmanRuntime/7.30.1",
+   "request_id": "cfgihljuns2hhjb77tq0",
+   "method": "POST",
+   "url": "/api/v1/movies",
+   "status": 400,
+   "size": 90,
+   "duration": 85.747943,
+   "time": 1675700438,
+   "severity": "INFO",
+   "message": "request logged"
 }
 ```
 
