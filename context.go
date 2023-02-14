@@ -54,13 +54,21 @@ func NewContextWithUser(ctx context.Context, u *User) context.Context {
 func UserFromRequest(r *http.Request) (u *User, err error) {
 	const op errs.Op = "diygoapi/UserFromRequest"
 
-	var ok bool
-	u, ok = r.Context().Value(contextKeyUser).(*User)
-	if !ok {
-		return nil, errs.E(op, errs.Internal, "User not set properly to context")
+	u, err = UserFromContext(r.Context())
+	if err != nil {
+		return nil, errs.E(op, err)
 	}
-	if err = u.Validate(); err != nil {
-		return nil, err
+
+	return u, nil
+}
+
+// UserFromContext returns the User from the given Context
+func UserFromContext(ctx context.Context) (*User, error) {
+	const op errs.Op = "diygoapi/UserFromContext"
+
+	u, ok := ctx.Value(contextKeyUser).(*User)
+	if !ok {
+		return nil, errs.E(op, errs.NotExist, "User not set properly to context")
 	}
 	return u, nil
 }

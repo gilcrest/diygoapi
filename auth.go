@@ -14,6 +14,15 @@ import (
 	"github.com/gilcrest/diygoapi/secure"
 )
 
+const (
+	// AppIDHeaderKey is the App ID header key
+	AppIDHeaderKey string = "X-APP-ID"
+	// ApiKeyHeaderKey is the API key header key
+	ApiKeyHeaderKey string = "X-API-KEY"
+	// AuthProviderHeaderKey is the Authorization provider header key
+	AuthProviderHeaderKey string = "X-AUTH-PROVIDER"
+)
+
 // PermissionServicer allows for creating, updating, reading and deleting a Permission
 type PermissionServicer interface {
 	Create(ctx context.Context, r *CreatePermissionRequest, adt Audit) (*PermissionResponse, error)
@@ -44,20 +53,34 @@ type AuthenticationServicer interface {
 	// SelfRegister is used for first-time registration of a Person/User
 	// in the system (associated with an Organization). This is "self
 	// registration" as opposed to one person registering another person.
-	SelfRegister(ctx context.Context, params AuthenticationParams) (auth Auth, err error)
+	SelfRegister(ctx context.Context, params *AuthenticationParams) (ur *UserResponse, err error)
 
-	// FindAuth looks up a User given a Provider and Access Token.
+	// FindExistingAuth looks up a User given a Provider and Access Token.
 	// If a User is not found, an error is returned.
-	FindAuth(ctx context.Context, params AuthenticationParams) (Auth, error)
+	FindExistingAuth(r *http.Request, realm string) (Auth, error)
 
 	// FindAppByProviderClientID Finds an App given a Provider Client ID as part
 	// of an Auth object.
 	FindAppByProviderClientID(ctx context.Context, realm string, auth Auth) (a *App, err error)
 
+	// DetermineAppContext checks to see if the request already has an app as part of
+	// if it does, use that app as the app for session, if it does not, determine the
+	// app based on the user's provider client ID. In either case, return a new context
+	// with an app. If there is no app to be found for either, return an error.
+	DetermineAppContext(ctx context.Context, auth Auth, realm string) (context.Context, error)
+
 	// FindAppByAPIKey finds an app given its External ID and determines
 	// if the given API key is a valid key for it. It is used as part of
 	// app authentication.
-	FindAppByAPIKey(ctx context.Context, realm, appExtlID, key string) (*App, error)
+	FindAppByAPIKey(r *http.Request, realm string) (*App, error)
+
+	// AuthenticationParamExchange returns a ProviderInfo struct
+	// after calling remote Oauth2 provider.
+	AuthenticationParamExchange(ctx context.Context, params *AuthenticationParams) (*ProviderInfo, error)
+
+	// NewAuthenticationParams parses the provider and authorization
+	// headers and returns AuthenticationParams based on the results
+	NewAuthenticationParams(r *http.Request, realm string) (*AuthenticationParams, error)
 }
 
 // AuthorizationServicer represents a service for managing authorization.

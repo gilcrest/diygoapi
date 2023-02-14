@@ -2,38 +2,37 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 
 	qt "github.com/frankban/quicktest"
-	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
-	"golang.org/x/oauth2"
 
 	"github.com/gilcrest/diygoapi"
-	"github.com/gilcrest/diygoapi/errs"
 	"github.com/gilcrest/diygoapi/logger"
 )
 
 type mockAuthenticationService struct{}
 
-func (mockAuthenticationService) SelfRegister(ctx context.Context, params diygoapi.AuthenticationParams) (diygoapi.Auth, error) {
+func (s mockAuthenticationService) SelfRegister(ctx context.Context, params *diygoapi.AuthenticationParams) (ur *diygoapi.UserResponse, err error) {
+	//TODO implement me
 	panic("implement me")
 }
 
-func (mockAuthenticationService) FindAuth(ctx context.Context, params diygoapi.AuthenticationParams) (diygoapi.Auth, error) {
+func (s mockAuthenticationService) FindExistingAuth(r *http.Request, realm string) (diygoapi.Auth, error) {
+	//TODO implement me
 	panic("implement me")
 }
 
-func (mockAuthenticationService) FindAppByProviderClientID(ctx context.Context, realm string, auth diygoapi.Auth) (a *diygoapi.App, err error) {
+func (s mockAuthenticationService) DetermineAppContext(ctx context.Context, auth diygoapi.Auth, realm string) (context.Context, error) {
+	//TODO implement me
 	panic("implement me")
 }
 
-func (mockAuthenticationService) FindAppByAPIKey(ctx context.Context, realm, appExtlID, key string) (*diygoapi.App, error) {
+func (s mockAuthenticationService) FindAppByAPIKey(r *http.Request, realm string) (*diygoapi.App, error) {
 	return &diygoapi.App{
 		ID:          uuid.UUID{},
 		ExternalID:  []byte("so random"),
@@ -42,6 +41,24 @@ func (mockAuthenticationService) FindAppByAPIKey(ctx context.Context, realm, app
 		Description: "",
 		APIKeys:     nil,
 	}, nil
+}
+
+func (s mockAuthenticationService) AuthenticationParamExchange(ctx context.Context, params *diygoapi.AuthenticationParams) (*diygoapi.ProviderInfo, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s mockAuthenticationService) NewAuthenticationParams(r *http.Request, realm string) (*diygoapi.AuthenticationParams, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s mockAuthenticationService) FindAuth(ctx context.Context, params diygoapi.AuthenticationParams) (diygoapi.Auth, error) {
+	panic("implement me")
+}
+
+func (s mockAuthenticationService) FindAppByProviderClientID(ctx context.Context, realm string, auth diygoapi.Auth) (a *diygoapi.App, err error) {
+	panic("implement me")
 }
 
 func TestJSONContentTypeResponseHandler(t *testing.T) {
@@ -75,8 +92,8 @@ func TestServer_appHandler(t *testing.T) {
 		if err != nil {
 			t.Fatalf("http.NewRequest() error = %v", err)
 		}
-		req.Header.Add(appIDHeaderKey, "test_app_extl_id")
-		req.Header.Add(apiKeyHeaderKey, "test_app_api_key")
+		req.Header.Add(diygoapi.AppIDHeaderKey, "test_app_extl_id")
+		req.Header.Add(diygoapi.ApiKeyHeaderKey, "test_app_api_key")
 
 		testAppHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var a *diygoapi.App
@@ -109,98 +126,4 @@ func TestServer_appHandler(t *testing.T) {
 		// should be empty and the status code should be 401
 		c.Assert(rr.Code, qt.Equals, http.StatusOK)
 	})
-}
-
-func Test_parseAppHeader(t *testing.T) {
-	t.Run("x-app-id", func(t *testing.T) {
-		c := qt.New(t)
-		hdr := http.Header{}
-		hdr.Add(appIDHeaderKey, "appIdHeaderFakeText")
-
-		appID, err := parseAppHeader(defaultRealm, hdr, appIDHeaderKey)
-		c.Assert(err, qt.IsNil)
-		c.Assert(appID, qt.Equals, "appIdHeaderFakeText")
-	})
-	t.Run("no header error", func(t *testing.T) {
-		c := qt.New(t)
-		hdr := http.Header{}
-
-		_, err := parseAppHeader(defaultRealm, hdr, appIDHeaderKey)
-		c.Assert(err, qt.CmpEquals(cmp.Comparer(errs.Match)), errs.E(errs.NotExist, errs.Realm(defaultRealm), fmt.Sprintf("no %s header sent", appIDHeaderKey)))
-	})
-	t.Run("too many values error", func(t *testing.T) {
-		c := qt.New(t)
-		hdr := http.Header{}
-		hdr.Add(appIDHeaderKey, "value1")
-		hdr.Add(appIDHeaderKey, "value2")
-
-		_, err := parseAppHeader(defaultRealm, hdr, appIDHeaderKey)
-		c.Assert(err, qt.CmpEquals(cmp.Comparer(errs.Match)), errs.E(errs.Unauthenticated, errs.Realm(defaultRealm), fmt.Sprintf("%s header value > 1", appIDHeaderKey)))
-	})
-	t.Run("empty value error", func(t *testing.T) {
-		c := qt.New(t)
-		hdr := http.Header{}
-		hdr.Add(appIDHeaderKey, "")
-
-		_, err := parseAppHeader(defaultRealm, hdr, appIDHeaderKey)
-		c.Assert(err, qt.CmpEquals(cmp.Comparer(errs.Match)), errs.E(errs.Unauthenticated, errs.Realm(defaultRealm), fmt.Sprintf("unauthenticated: %s header value not found", appIDHeaderKey)))
-	})
-}
-
-func Test_parseAuthorizationHeader(t *testing.T) {
-	c := qt.New(t)
-
-	const reqHeader string = "Authorization"
-
-	type args struct {
-		realm  string
-		header http.Header
-	}
-
-	hdr := http.Header{}
-	hdr.Add(reqHeader, "Bearer foobarbbq")
-
-	emptyHdr := http.Header{}
-	emptyHdrErr := errs.E(errs.Unauthenticated, errs.Realm(defaultRealm), "unauthenticated: no Authorization header sent")
-
-	tooManyValues := http.Header{}
-	tooManyValues.Add(reqHeader, "value1")
-	tooManyValues.Add(reqHeader, "value2")
-	tooManyValuesErr := errs.E(errs.Unauthenticated, errs.Realm(defaultRealm), "header value > 1")
-
-	noBearer := http.Header{}
-	noBearer.Add(reqHeader, "xyz")
-	noBearerErr := errs.E(errs.Unauthenticated, errs.Realm(defaultRealm), "unauthenticated: Bearer authentication scheme not found")
-
-	hdrSpacesBearer := http.Header{}
-	hdrSpacesBearer.Add("Authorization", "Bearer  ")
-	spacesHdrErr := errs.E(errs.Unauthenticated, errs.Realm(defaultRealm), "unauthenticated: Authorization header sent with Bearer scheme, but no token found")
-
-	tests := []struct {
-		name      string
-		args      args
-		wantToken oauth2.Token
-		wantErr   error
-	}{
-		{"typical", args{realm: defaultRealm, header: hdr}, oauth2.Token{AccessToken: "foobarbbq", TokenType: diygoapi.BearerTokenType}, nil},
-		{"no authorization header error", args{realm: defaultRealm, header: emptyHdr}, oauth2.Token{}, emptyHdrErr},
-		{"too many values error", args{realm: defaultRealm, header: tooManyValues}, oauth2.Token{}, tooManyValuesErr},
-		{"no bearer scheme error", args{realm: defaultRealm, header: noBearer}, oauth2.Token{}, noBearerErr},
-		{"spaces as token error", args{realm: defaultRealm, header: hdrSpacesBearer}, oauth2.Token{}, spacesHdrErr},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			token, err := parseAuthorizationHeader(tt.args.realm, tt.args.header)
-			if (err != nil) && (tt.wantErr == nil) {
-				t.Errorf("authHeader() error = %v, nil expected", err)
-				return
-			}
-			var gotToken oauth2.Token
-			if token != nil {
-				gotToken = *token
-			}
-			c.Assert(err, qt.CmpEquals(cmp.Comparer(errs.Match)), tt.wantErr)
-			c.Assert(gotToken, qt.Equals, tt.wantToken)
-		})
-	}
 }

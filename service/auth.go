@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -30,7 +31,37 @@ type DBAuthenticationService struct {
 	LanguageMatcher language.Matcher
 }
 
-// FindAuth searches for an existing Auth object in the datastore.
+// FindAppByAPIKey finds an app given its External ID and determines
+// if the given API key is a valid key for it. It is used as part of
+// app authentication
+func (s DBAuthenticationService) FindAppByAPIKey(r *http.Request, realm string) (*diygoapi.App, error) {
+	const op errs.Op = "service/DBAuthenticationService.FindAppByAPIKey"
+
+	var (
+		appExtlID string
+		err       error
+	)
+	appExtlID, err = parseAppHeader(realm, r.Header, diygoapi.ApiKeyHeaderKey)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	var apiKey string
+	apiKey, err = parseAppHeader(realm, r.Header, diygoapi.ApiKeyHeaderKey)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	var a *diygoapi.App
+	a, err = s.findAppByAPIKeyDB(r.Context(), realm, appExtlID, apiKey)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	return a, nil
+}
+
+// FindExistingAuth searches for an existing Auth object in the datastore.
 //
 // If an auth object already exists in the datastore for the oauth2.AccessToken
 // and the oauth2.AccessToken is not past its expiration date, that auth is returned.
@@ -45,7 +76,40 @@ type DBAuthenticationService struct {
 // exception is if an app is already set to the request context from upstream
 // authentication, in which case, the upstream app overrides the app derived
 // from the Oauth2 provider.
-func (s DBAuthenticationService) FindAuth(ctx context.Context, params diygoapi.AuthenticationParams) (auth diygoapi.Auth, err error) {
+func (s DBAuthenticationService) FindExistingAuth(r *http.Request, realm string) (diygoapi.Auth, error) {
+	const op errs.Op = "service/DBAuthenticationService.FindExistingAuth"
+
+	var (
+		provider diygoapi.Provider
+		err      error
+	)
+	provider, err = parseProviderHeader(realm, r.Header)
+	if err != nil {
+		return diygoapi.Auth{}, errs.E(op, err)
+	}
+
+	var token *oauth2.Token
+	token, err = parseAuthorizationHeader(realm, r.Header)
+	if err != nil {
+		return diygoapi.Auth{}, errs.E(op, err)
+	}
+
+	params := &diygoapi.AuthenticationParams{
+		Realm:    realm,
+		Provider: provider,
+		Token:    token,
+	}
+
+	var auth diygoapi.Auth
+	auth, err = s.findAuthDB(r.Context(), params)
+	if err != nil {
+		return diygoapi.Auth{}, errs.E(op, err)
+	}
+
+	return auth, nil
+}
+
+func (s DBAuthenticationService) findAuthDB(ctx context.Context, params *diygoapi.AuthenticationParams) (auth diygoapi.Auth, err error) {
 	const op errs.Op = "service/DBAuthenticationService.FindAuth"
 
 	// start db txn using pgxpool
@@ -99,6 +163,32 @@ func (s DBAuthenticationService) FindAuth(ctx context.Context, params diygoapi.A
 	return auth, nil
 }
 
+// DetermineAppContext checks to see if the request already has an app as part of
+// if it does, use that app as the app for session, if it does not, determine the
+// app based on the user's provider client ID. In either case, return a new context
+// with an app. If there is no app to be found for either, return an error.
+func (s DBAuthenticationService) DetermineAppContext(ctx context.Context, auth diygoapi.Auth, realm string) (context.Context, error) {
+	const op errs.Op = "server/Server.determineAppContext"
+
+	var (
+		a   *diygoapi.App
+		err error
+	)
+	_, err = diygoapi.AppFromContext(ctx)
+	if err != nil {
+		// no app found in request, lookup app from Auth
+		a, err = s.FindAppByProviderClientID(ctx, realm, auth)
+		if err != nil {
+			return nil, errs.E(op, err)
+		}
+
+		// get a new context with App from Auth added to it
+		ctx = diygoapi.NewContextWithApp(ctx, a)
+	}
+
+	return ctx, nil
+}
+
 // findAuthByAccessToken looks up an authentication object (Auth)
 // given an Access Token. If found, check if there is an app
 // present in the request context. If an app exists and matches the
@@ -109,7 +199,7 @@ func (s DBAuthenticationService) FindAuth(ctx context.Context, params diygoapi.A
 // the authentication provider.
 //
 // If none are found, an error with errs.NotExist kind is returned.
-func findAuthByAccessToken(ctx context.Context, tx pgx.Tx, params diygoapi.AuthenticationParams) (diygoapi.Auth, error) {
+func findAuthByAccessToken(ctx context.Context, tx pgx.Tx, params *diygoapi.AuthenticationParams) (diygoapi.Auth, error) {
 	const op errs.Op = "service/findAuthByAccessToken"
 
 	var (
@@ -184,7 +274,7 @@ func findAuthByProviderExternalID(ctx context.Context, tx pgx.Tx, params findAut
 	dbAuth, err = datastore.New(tx).FindAuthByProviderUserID(ctx, findAuthByProviderUserIDParams)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return diygoapi.Auth{}, errs.E(op, errs.Unauthenticated, errs.Realm(params.Realm), fmt.Sprintf("no authorization object, Provider: %s, Provider Person ID: %s, email: %s", params.ProviderInfo.Provider.String(), params.ProviderInfo.UserInfo.ExternalID, params.ProviderInfo.UserInfo.Email))
+			return diygoapi.Auth{}, errs.E(op, errs.NotExist, errs.Realm(params.Realm), fmt.Sprintf("no authorization object found for user in db, Provider: %s, Provider Person ID: %s, email: %s", params.ProviderInfo.Provider.String(), params.ProviderInfo.UserInfo.ExternalID, params.ProviderInfo.UserInfo.Email))
 		} else {
 			return diygoapi.Auth{}, errs.E(op, errs.Database, err)
 		}
@@ -209,7 +299,7 @@ func findAuthByProviderExternalID(ctx context.Context, tx pgx.Tx, params findAut
 
 	// if token is no longer valid, return an error
 	if !auth.Token.Valid() {
-		return diygoapi.Auth{}, errs.E(op, errs.Unauthenticated, errs.Realm(params.Realm), "token is no longer valid")
+		return diygoapi.Auth{}, errs.E(op, errs.Unauthenticated, errs.Realm(params.Realm), "token exists in db for user, but is no longer valid")
 	}
 
 	return auth, nil
@@ -241,10 +331,7 @@ func (s DBAuthenticationService) FindAppByProviderClientID(ctx context.Context, 
 	return a, nil
 }
 
-// FindAppByAPIKey finds an app given its External ID and determines
-// if the given API key is a valid key for it. It is used as part of
-// app authentication
-func (s DBAuthenticationService) FindAppByAPIKey(ctx context.Context, realm, appExtlID, key string) (a *diygoapi.App, err error) {
+func (s DBAuthenticationService) findAppByAPIKeyDB(ctx context.Context, realm, appExtlID, key string) (a *diygoapi.App, err error) {
 	const op errs.Op = "service/DBAuthenticationService.FindAppByAPIKey"
 
 	// start db txn using pgxpool
@@ -312,6 +399,18 @@ func (s DBAuthenticationService) FindAppByAPIKey(ctx context.Context, realm, app
 	return a, nil
 }
 
+// AuthenticationParamExchange returns a ProviderInfo struct given Authentication parameters
+func (s DBAuthenticationService) AuthenticationParamExchange(ctx context.Context, params *diygoapi.AuthenticationParams) (*diygoapi.ProviderInfo, error) {
+	const op errs.Op = "service/DBAuthenticationService.TokenExchange"
+
+	providerInfo, err := s.TokenExchanger.Exchange(ctx, params.Realm, params.Provider, params.Token)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	return providerInfo, nil
+}
+
 // SelfRegister is used for first-time registration of a Person/User
 // in the system (associated with an Organization). This is "self
 // registration" as opposed to one person registering another person.
@@ -320,33 +419,36 @@ func (s DBAuthenticationService) FindAppByAPIKey(ctx context.Context, realm, app
 // them in the database. A search is done prior to creation to
 // determine if user is already registered, and if so, the existing
 // user is returned.
-func (s DBAuthenticationService) SelfRegister(ctx context.Context, params diygoapi.AuthenticationParams) (auth diygoapi.Auth, err error) {
+func (s DBAuthenticationService) SelfRegister(ctx context.Context, params *diygoapi.AuthenticationParams) (ur *diygoapi.UserResponse, err error) {
 	const op errs.Op = "service/DBAuthenticationService.SelfRegister"
 
 	// start db txn using pgxpool
 	var tx pgx.Tx
 	tx, err = s.Datastorer.BeginTx(ctx)
 	if err != nil {
-		return diygoapi.Auth{}, errs.E(op, err)
+		return nil, errs.E(op, err)
 	}
 	// defer transaction rollback and handle error, if any
 	defer func() {
 		err = s.Datastorer.RollbackTx(ctx, tx, err)
 	}()
 
-	var providerInfo *diygoapi.ProviderInfo
+	var (
+		providerInfo *diygoapi.ProviderInfo
+		auth         diygoapi.Auth
+	)
 	auth, err = findAuthByAccessToken(ctx, tx, params)
 	if err != nil {
 		// if error is something other than NotExist, then return error
 		if !errs.KindIs(errs.NotExist, err) {
-			return diygoapi.Auth{}, errs.E(op, err)
+			return nil, errs.E(op, err)
 		}
 
 		// auth could not be found by access token in the db
 		// get ProviderInfo from provider API
 		providerInfo, err = s.TokenExchanger.Exchange(ctx, params.Realm, params.Provider, params.Token)
 		if err != nil {
-			return diygoapi.Auth{}, errs.E(op, err)
+			return nil, errs.E(op, err)
 		}
 
 		fParams := findAuthByProviderExternalIDParams{
@@ -361,118 +463,90 @@ func (s DBAuthenticationService) SelfRegister(ctx context.Context, params diygoa
 		if err != nil {
 			// if error is something other than NotExist, then return error
 			if !errs.KindIs(errs.NotExist, err) {
-				return diygoapi.Auth{}, errs.E(op, err)
+				return nil, errs.E(op, err)
 			}
 		}
 	}
 
+	// if we have an auth, return the user from it
+	if auth.ID != uuid.Nil {
+		return newUserResponse(auth.User), nil
+	}
+
 	// if auth still has not been found (we know this by checking if auth ID is nil)
 	// then create a new Auth for the User
-	if auth.ID == uuid.Nil {
-		var a *diygoapi.App
-		// check app from context first
-		a, _ = diygoapi.AppFromContext(ctx)
+	var a *diygoapi.App
+	// check app from context first
+	a, _ = diygoapi.AppFromContext(ctx)
 
-		// if no app in context, get app from Provider
-		if a == nil {
-			a, err = findAppByProviderClientID(ctx, tx, providerInfo.TokenInfo.ClientID)
-			if err != nil {
-				if errs.KindIs(errs.NotExist, err) {
-					return diygoapi.Auth{}, errs.E(op, errs.NotExist, fmt.Sprintf("no app registered for Provider: %s, Client ID: %s", params.Provider.String(), providerInfo.TokenInfo.ClientID))
-				}
-				return diygoapi.Auth{}, errs.E(op, err)
+	// if no app in context, get app from Provider
+	if a == nil {
+		a, err = findAppByProviderClientID(ctx, tx, providerInfo.TokenInfo.ClientID)
+		if err != nil {
+			if errs.KindIs(errs.NotExist, err) {
+				return nil, errs.E(op, errs.NotExist, fmt.Sprintf("no app registered for Provider: %s, Client ID: %s", params.Provider.String(), providerInfo.TokenInfo.ClientID))
 			}
+			return nil, errs.E(op, err)
 		}
+	}
 
-		u := newUserFromProviderInfo(providerInfo, s.LanguageMatcher)
+	u := diygoapi.NewUserFromProviderInfo(providerInfo, s.LanguageMatcher)
 
-		err = u.Validate()
-		if err != nil {
-			return diygoapi.Auth{}, errs.E(op, err)
-		}
+	err = u.Validate()
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
 
-		p := diygoapi.Person{
-			ID:         uuid.New(),
-			ExternalID: secure.NewID(),
-			Users:      []*diygoapi.User{u},
-		}
+	p := diygoapi.Person{
+		ID:         uuid.New(),
+		ExternalID: secure.NewID(),
+		Users:      []*diygoapi.User{u},
+	}
 
-		adt := diygoapi.Audit{
-			App:    a,
-			User:   u,
-			Moment: time.Now(),
-		}
+	adt := diygoapi.Audit{
+		App:    a,
+		User:   u,
+		Moment: time.Now(),
+	}
 
-		// write Person/User from request to the database
-		err = createPersonTx(ctx, tx, p, adt)
-		if err != nil {
-			return diygoapi.Auth{}, errs.E(op, err)
-		}
+	// write Person/User from request to the database
+	err = createPersonTx(ctx, tx, p, adt)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
 
-		// associate user to the app's org
-		aoaParams := attachOrgAssociationParams{
-			Org:   a.Org,
-			User:  u,
-			Audit: adt,
-		}
-		err = attachOrgAssociation(ctx, tx, aoaParams)
-		if err != nil {
-			return diygoapi.Auth{}, errs.E(op, err)
-		}
+	// associate user to the app's org
+	aoaParams := attachOrgAssociationParams{
+		Org:   a.Org,
+		User:  u,
+		Audit: adt,
+	}
+	err = attachOrgAssociation(ctx, tx, aoaParams)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
 
-		auth = diygoapi.Auth{
-			ID:               uuid.New(),
-			User:             u,
-			Provider:         providerInfo.Provider,
-			ProviderClientID: providerInfo.TokenInfo.ClientID,
-			ProviderPersonID: providerInfo.UserInfo.ExternalID,
-			Token:            params.Token,
-		}
+	auth = diygoapi.Auth{
+		ID:               uuid.New(),
+		User:             u,
+		Provider:         providerInfo.Provider,
+		ProviderClientID: providerInfo.TokenInfo.ClientID,
+		ProviderPersonID: providerInfo.UserInfo.ExternalID,
+		Token:            params.Token,
+	}
 
-		err = createAuthTx(ctx, tx, createAuthTxParams{Auth: auth, Audit: adt})
-		if err != nil {
-			return diygoapi.Auth{}, errs.E(op, err)
-		}
-
+	err = createAuthTx(ctx, tx, createAuthTxParams{Auth: auth, Audit: adt})
+	if err != nil {
+		return nil, errs.E(op, err)
 	}
 
 	// commit db txn using pgxpool
 	err = s.Datastorer.CommitTx(ctx, tx)
 	if err != nil {
-		return diygoapi.Auth{}, errs.E(op, err)
+		return nil, errs.E(op, err)
 	}
 
-	return auth, nil
-}
-
-// newUserFromProviderInfo creates a new User struct to be used in db user creation
-func newUserFromProviderInfo(pi *diygoapi.ProviderInfo, lm language.Matcher) *diygoapi.User {
-	var langPrefs []language.Tag
-	langPref, _, _ := lm.Match(language.Make(pi.UserInfo.Locale))
-	langPrefs = append(langPrefs, langPref)
-
-	// create User from ProviderInfo
-	u := &diygoapi.User{
-		ID:                  uuid.New(),
-		ExternalID:          secure.NewID(),
-		NamePrefix:          pi.UserInfo.NamePrefix,
-		FirstName:           pi.UserInfo.FirstName,
-		MiddleName:          pi.UserInfo.MiddleName,
-		LastName:            pi.UserInfo.LastName,
-		FullName:            pi.UserInfo.FullName,
-		NameSuffix:          pi.UserInfo.NameSuffix,
-		Nickname:            pi.UserInfo.Nickname,
-		Gender:              pi.UserInfo.Gender,
-		Email:               pi.UserInfo.Email,
-		BirthDate:           pi.UserInfo.BirthDate,
-		LanguagePreferences: langPrefs,
-		HostedDomain:        pi.UserInfo.HostedDomain,
-		PictureURL:          pi.UserInfo.Picture,
-		ProfileLink:         pi.UserInfo.ProfileLink,
-		Source:              pi.Provider.String(),
-	}
-
-	return u
+	return newUserResponse(auth.User), nil
 }
 
 type createAuthTxParams struct {
@@ -513,6 +587,142 @@ func createAuthTx(ctx context.Context, tx pgx.Tx, params createAuthTxParams) (er
 	}
 
 	return nil
+}
+
+// parseAppHeader parses an app header and returns its value.
+func parseAppHeader(realm string, header http.Header, key string) (v string, err error) {
+	const op errs.Op = "server/parseAppHeader"
+
+	// Pull the header value from the Header map given the key
+	headerValue, ok := header[http.CanonicalHeaderKey(key)]
+	if !ok {
+		return "", errs.E(op, errs.NotExist, errs.Realm(realm), fmt.Sprintf("no %s header sent", key))
+
+	}
+
+	// too many values sent - should only be one value
+	if len(headerValue) > 1 {
+		return "", errs.E(op, errs.Unauthenticated, errs.Realm(realm), fmt.Sprintf("%s header value > 1", key))
+	}
+
+	// retrieve header value from map
+	v = headerValue[0]
+
+	// remove all leading/trailing white space
+	v = strings.TrimSpace(v)
+
+	// should not be empty
+	if v == "" {
+		return "", errs.E(op, errs.Unauthenticated, errs.Realm(realm), fmt.Sprintf("unauthenticated: %s header value not found", key))
+	}
+
+	return v, nil
+}
+
+// parseProviderHeader parses the X-AUTH-PROVIDER header and returns its value.
+func parseProviderHeader(realm string, header http.Header) (p diygoapi.Provider, err error) {
+	const op errs.Op = "server/parseProviderHeader"
+
+	// Pull the header value from the Header map given the key
+	headerValue, ok := header[http.CanonicalHeaderKey(diygoapi.AuthProviderHeaderKey)]
+	if !ok {
+		return diygoapi.UnknownProvider, errs.E(op, errs.Unauthenticated, errs.Realm(realm), fmt.Sprintf("no %s header sent", diygoapi.AuthProviderHeaderKey))
+
+	}
+
+	// too many values sent - should only be one value
+	if len(headerValue) > 1 {
+		return diygoapi.UnknownProvider, errs.E(op, errs.Unauthenticated, errs.Realm(realm), fmt.Sprintf("%s header value > 1", diygoapi.AuthProviderHeaderKey))
+	}
+
+	// retrieve header value from map
+	v := headerValue[0]
+
+	// remove all leading/trailing white space
+	v = strings.TrimSpace(v)
+
+	// should not be empty
+	if v == "" {
+		return diygoapi.UnknownProvider, errs.E(op, errs.Unauthenticated, errs.Realm(realm), fmt.Sprintf("unauthenticated: %s header value not found", diygoapi.AuthProviderHeaderKey))
+	}
+
+	p = diygoapi.ParseProvider(v)
+
+	if p == diygoapi.UnknownProvider {
+		return p, errs.E(op, errs.Unauthenticated, errs.Realm(realm), fmt.Sprintf("unknown provider given: %s", v))
+	}
+
+	return p, nil
+}
+
+// parseAuthorizationHeader parses/validates the Authorization header and returns an Oauth2 token
+func parseAuthorizationHeader(realm string, header http.Header) (*oauth2.Token, error) {
+	const op errs.Op = "server/parseAuthorizationHeader"
+
+	// Pull the token from the Authorization header by retrieving the
+	// value from the Header map with "Authorization" as the key
+	//
+	// format: Authorization: Bearer
+	headerValue, ok := header["Authorization"]
+	if !ok {
+		return nil, errs.E(op, errs.Unauthenticated, errs.Realm(realm), "unauthenticated: no Authorization header sent")
+	}
+
+	// too many values sent - spec allows for only one token
+	if len(headerValue) > 1 {
+		return nil, errs.E(op, errs.Unauthenticated, errs.Realm(realm), "header value > 1")
+	}
+
+	// retrieve token
+	token := headerValue[0]
+
+	// Oauth2 should have "Bearer " as the prefix as the authentication scheme
+	hasBearer := strings.HasPrefix(token, diygoapi.BearerTokenType+" ")
+	if !hasBearer {
+		return nil, errs.E(op, errs.Unauthenticated, errs.Realm(realm), "unauthenticated: Bearer authentication scheme not found")
+	}
+
+	// remove "Bearer " authentication scheme from header value
+	token = strings.TrimPrefix(token, diygoapi.BearerTokenType+" ")
+
+	// remove all leading/trailing white space
+	token = strings.TrimSpace(token)
+
+	// token should not be empty
+	if token == "" {
+		return nil, errs.E(op, errs.Unauthenticated, errs.Realm(realm), "unauthenticated: Authorization header sent with Bearer scheme, but no token found")
+	}
+
+	return &oauth2.Token{AccessToken: token, TokenType: diygoapi.BearerTokenType}, nil
+}
+
+// NewAuthenticationParams parses the provider and authorization
+// headers and returns AuthenticationParams based on the results
+func (s DBAuthenticationService) NewAuthenticationParams(r *http.Request, realm string) (*diygoapi.AuthenticationParams, error) {
+	const op errs.Op = "server/FindAuthenticationParams"
+
+	var (
+		provider diygoapi.Provider
+		err      error
+	)
+	provider, err = parseProviderHeader(realm, r.Header)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	var token *oauth2.Token
+	token, err = parseAuthorizationHeader(realm, r.Header)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	params := &diygoapi.AuthenticationParams{
+		Realm:    realm,
+		Provider: provider,
+		Token:    token,
+	}
+
+	return params, nil
 }
 
 // DBAuthorizationService manages authorization using the database.

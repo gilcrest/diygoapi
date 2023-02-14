@@ -42,7 +42,7 @@ func TestNewMuxRouter(t *testing.T) {
 			{PathTemplate: pathPrefix + orgsV1PathRoot, HTTPMethods: []string{http.MethodGet}},
 			{PathTemplate: pathPrefix + orgsV1PathRoot + extlIDPathDir, HTTPMethods: []string{http.MethodGet}},
 			{PathTemplate: pathPrefix + appsV1PathRoot, HTTPMethods: []string{http.MethodPost}},
-			{PathTemplate: pathPrefix + registerV1PathRoot, HTTPMethods: []string{http.MethodPost}},
+			{PathTemplate: pathPrefix + usersV1PathRoot, HTTPMethods: []string{http.MethodPost}},
 			{PathTemplate: pathPrefix + loggerV1PathRoot, HTTPMethods: []string{http.MethodGet}},
 			{PathTemplate: pathPrefix + loggerV1PathRoot, HTTPMethods: []string{http.MethodPut}},
 			{PathTemplate: pathPrefix + pingV1PathRoot, HTTPMethods: []string{http.MethodGet}},

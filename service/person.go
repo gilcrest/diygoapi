@@ -62,6 +62,32 @@ func createPersonTx(ctx context.Context, tx pgx.Tx, p diygoapi.Person, adt diygo
 
 }
 
+func newUserResponse(u *diygoapi.User) *diygoapi.UserResponse {
+	r := &diygoapi.UserResponse{
+		ID:                  u.ID,
+		ExternalID:          u.ExternalID,
+		NamePrefix:          u.NamePrefix,
+		FirstName:           u.FirstName,
+		MiddleName:          u.MiddleName,
+		LastName:            u.LastName,
+		FullName:            u.FullName,
+		NameSuffix:          u.NameSuffix,
+		Nickname:            u.Nickname,
+		Email:               u.Email,
+		CompanyName:         u.CompanyName,
+		CompanyDepartment:   u.CompanyDepartment,
+		JobTitle:            u.JobTitle,
+		BirthDate:           u.BirthDate,
+		LanguagePreferences: u.LanguagePreferences,
+		HostedDomain:        u.HostedDomain,
+		PictureURL:          u.PictureURL,
+		ProfileLink:         u.ProfileLink,
+		Source:              u.Source,
+	}
+
+	return r
+}
+
 type createUserTxParams struct {
 	// The ID of the Person the User is associated to
 	PersonID uuid.UUID

@@ -368,19 +368,27 @@ func (s *Server) handleAppCreate(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleRegister is a HandlerFunc used to register a User
-func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
+// handleNewUser is a HandlerFunc used to register a User
+func (s *Server) handleNewUser(w http.ResponseWriter, r *http.Request) {
 	lgr := *hlog.FromRequest(r)
 
-	adt, err := diygoapi.AuditFromRequest(r)
+	params, err := s.AuthenticationServicer.NewAuthenticationParams(r, defaultRealm)
 	if err != nil {
 		errs.HTTPErrorResponse(w, lgr, err)
 		return
 	}
 
-	err = s.RegisterUserService.SelfRegister(r.Context(), adt)
+	var response *diygoapi.UserResponse
+	response, err = s.AuthenticationServicer.SelfRegister(r.Context(), params)
 	if err != nil {
 		errs.HTTPErrorResponse(w, lgr, err)
+		return
+	}
+
+	// Encode response struct to JSON for the response body
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		errs.HTTPErrorResponse(w, lgr, errs.E(errs.Internal, err))
 		return
 	}
 }

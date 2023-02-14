@@ -55,50 +55,13 @@ func TestUserFromRequest(t *testing.T) {
 
 		r := httptest.NewRequest(http.MethodGet, "/api/v1/ping", nil)
 
-		wantErr := errs.E(errs.Internal, "User not set properly to context")
+		const op1 errs.Op = "diygoapi/UserFromContext"
+		const op2 errs.Op = "diygoapi/UserFromRequest"
+		ctxErr := errs.E(op1, errs.NotExist, "User not set properly to context")
+		wantErr := errs.E(op2, ctxErr)
 
-		got, err := UserFromRequest(r)
+		u, err := UserFromRequest(r)
 		c.Assert(err, qt.CmpEquals(cmp.Comparer(errs.Match)), wantErr)
-		c.Assert(got, qt.IsNil)
-	})
-	t.Run("user added but invalid", func(t *testing.T) {
-		c := qt.New(t)
-
-		r := httptest.NewRequest(http.MethodGet, "/api/v1/movies", nil)
-
-		wantErr := errs.E(errs.Validation, "User LastName cannot be empty")
-
-		invalidOtto := &User{
-			ID:                  uuid.New(),
-			ExternalID:          secure.NewID(),
-			NamePrefix:          "",
-			FirstName:           "Otto",
-			MiddleName:          "",
-			LastName:            "Maddox",
-			FullName:            "Otto Maddox",
-			NameSuffix:          "",
-			Nickname:            "",
-			Email:               "otto.maddox@helpinghandacceptanceco.com",
-			CompanyName:         "",
-			CompanyDepartment:   "",
-			JobTitle:            "",
-			BirthDate:           time.Time{},
-			LanguagePreferences: nil,
-			HostedDomain:        "",
-			PictureURL:          "",
-			ProfileLink:         "",
-			Source:              "",
-		}
-		invalidOtto.Email = "otto.maddox@helpinghandacceptanceco.com"
-		invalidOtto.LastName = ""
-		invalidOtto.FirstName = "Otto"
-		invalidOtto.FullName = "Otto Maddox"
-
-		ctx := NewContextWithUser(context.Background(), invalidOtto)
-		r = r.WithContext(ctx)
-
-		got, err := UserFromRequest(r)
-		c.Assert(err, qt.CmpEquals(cmp.Comparer(errs.Match)), wantErr)
-		c.Assert(got, qt.IsNil)
+		c.Assert(u, qt.IsNil)
 	})
 }

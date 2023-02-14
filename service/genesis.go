@@ -230,7 +230,7 @@ func (s *GenesisService) seedPrincipal(ctx context.Context, tx pgx.Tx, r *diygoa
 		return principalSeed{}, errs.E(op, err)
 	}
 
-	gUser := newUserFromProviderInfo(providerInfo, s.LanguageMatcher)
+	gUser := diygoapi.NewUserFromProviderInfo(providerInfo, s.LanguageMatcher)
 
 	err = gUser.Validate()
 	if err != nil {

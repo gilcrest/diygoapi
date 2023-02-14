@@ -20,7 +20,7 @@ const (
 	// app V1 Path root
 	appsV1PathRoot string = "/v1/apps"
 	// register V1 Path root
-	registerV1PathRoot string = "/v1/register"
+	usersV1PathRoot string = "/v1/users"
 	// logger V1 Path root
 	loggerV1PathRoot string = "/v1/logger"
 	// ping V1 Path root
@@ -154,12 +154,12 @@ func (s *Server) registerRoutes() {
 		Methods(http.MethodPost).
 		Headers(contentTypeHeaderKey, appJSONContentTypeHeaderVal)
 
-	// Match only POST requests at /api/v1/register
-	s.router.Handle(registerV1PathRoot,
+	// Match only POST requests at /api/v1/users
+	s.router.Handle(usersV1PathRoot,
 		s.loggerChain().
 			Append(s.appHandler).
 			Append(s.jsonContentTypeResponseHandler).
-			ThenFunc(s.handleAppCreate)).
+			ThenFunc(s.handleNewUser)).
 		Methods(http.MethodPost)
 
 	// Match only GET requests /api/v1/logger
