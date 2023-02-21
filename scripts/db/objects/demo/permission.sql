@@ -11,23 +11,7 @@ create table if not exists permission
     create_timestamp       timestamp with time zone not null,
     update_app_id          uuid                     not null,
     update_user_id         uuid,
-    update_timestamp       timestamp with time zone not null,
-    constraint permission_pk
-        primary key (permission_id),
-    constraint permission_resource_ui
-        unique (resource, operation),
-    constraint permission_create_app_fk
-        foreign key (create_app_id) references app
-            deferrable initially deferred,
-    constraint permission_create_user_fk
-        foreign key (create_user_id) references users
-            deferrable initially deferred,
-    constraint permission_update_app_fk
-        foreign key (update_app_id) references app
-            deferrable initially deferred,
-    constraint permission_update_user_fk
-        foreign key (update_user_id) references users
-            deferrable initially deferred
+    update_timestamp       timestamp with time zone not null
 );
 
 comment on table permission is 'The permission table stores an approval of a mode of access to a resource.';
@@ -58,4 +42,32 @@ comment on column permission.update_timestamp is 'The timestamp when the record 
 
 create unique index if not exists permission_extl_id_uindex
     on permission (permission_extl_id);
+
+alter table permission
+    add constraint permission_pk
+        primary key (permission_id);
+
+alter table permission
+    add constraint permission_resource_ui
+        unique (resource, operation);
+
+alter table permission
+    add constraint permission_create_app_fk
+        foreign key (create_app_id) references app
+            deferrable initially deferred;
+
+alter table permission
+    add constraint permission_create_user_fk
+        foreign key (create_user_id) references users
+            deferrable initially deferred;
+
+alter table permission
+    add constraint permission_update_app_fk
+        foreign key (update_app_id) references app
+            deferrable initially deferred;
+
+alter table permission
+    add constraint permission_update_user_fk
+        foreign key (update_user_id) references users
+            deferrable initially deferred;
 

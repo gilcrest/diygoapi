@@ -12,18 +12,7 @@ create table if not exists app
     create_timestamp        timestamp with time zone not null,
     update_app_id           uuid                     not null,
     update_user_id          uuid,
-    update_timestamp        timestamp with time zone not null,
-    constraint app_pk
-        primary key (app_id),
-    constraint app_self_ref1
-        foreign key (create_app_id) references app,
-    constraint app_self_ref2
-        foreign key (update_app_id) references app,
-    constraint app_auth_provider_null_fk
-        foreign key (auth_provider_id) references auth_provider,
-    constraint app_org_org_id_fk
-        foreign key (org_id) references org
-            deferrable initially deferred
+    update_timestamp        timestamp with time zone not null
 );
 
 comment on table app is 'app stores data about applications that interact with the system';
@@ -54,8 +43,6 @@ comment on column app.update_user_id is 'The user which performed the most recen
 
 comment on column app.update_timestamp is 'The timestamp when the record was updated most recently.';
 
-comment on constraint app_auth_provider_null_fk on app is 'Not every app has an associated auth provider, thus this field can be null.';
-
 create unique index if not exists app_app_extl_id_uindex
     on app (app_extl_id);
 
@@ -64,4 +51,27 @@ create unique index if not exists app_name_uindex
 
 create unique index if not exists auth_provider_client_id_ui
     on app (auth_provider_client_id);
+
+alter table app
+    add constraint app_pk
+        primary key (app_id);
+
+alter table app
+    add constraint app_self_ref1
+        foreign key (create_app_id) references app;
+
+alter table app
+    add constraint app_self_ref2
+        foreign key (update_app_id) references app;
+
+alter table app
+    add constraint app_auth_provider_null_fk
+        foreign key (auth_provider_id) references auth_provider;
+
+comment on constraint app_auth_provider_null_fk on app is 'Not every app has an associated auth provider, thus this field can be null.';
+
+alter table app
+    add constraint app_org_org_id_fk
+        foreign key (org_id) references org
+            deferrable initially deferred;
 
