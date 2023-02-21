@@ -8,7 +8,7 @@ create table if not exists auth
     auth_provider_person_id           varchar                  not null,
     auth_provider_access_token        varchar                  not null,
     auth_provider_refresh_token       varchar,
-    auth_provider_access_token_expiry timestamp with time zone,
+    auth_provider_access_token_expiry timestamp with time zone not null,
     create_app_id                     uuid                     not null,
     create_user_id                    uuid,
     create_timestamp                  timestamp with time zone not null,
