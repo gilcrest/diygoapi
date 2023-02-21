@@ -10,24 +10,7 @@ create table if not exists org
     create_timestamp timestamp with time zone not null,
     update_app_id    uuid                     not null,
     update_user_id   uuid,
-    update_timestamp timestamp with time zone not null,
-    constraint org_pk
-        primary key (org_id),
-    constraint org_create_user_fk
-        foreign key (create_user_id) references users
-            deferrable initially deferred,
-    constraint org_update_user_fk
-        foreign key (update_user_id) references users
-            deferrable initially deferred,
-    constraint org_create_app_fk
-        foreign key (create_app_id) references app
-            deferrable initially deferred,
-    constraint org_update_app_fk
-        foreign key (update_app_id) references app
-            deferrable initially deferred,
-    constraint org_org_kind_fk
-        foreign key (org_kind_id) references org_kind
-            deferrable initially deferred
+    update_timestamp timestamp with time zone not null
 );
 
 comment on column org.org_id is 'Organization ID - Unique ID for table';
@@ -52,11 +35,6 @@ comment on column org.update_user_id is 'The user which performed the most recen
 
 comment on column org.update_timestamp is 'The timestamp when the record was updated most recently.';
 
-alter table app
-    add constraint app_org_org_id_fk
-        foreign key (org_id) references org
-            deferrable initially deferred;
-
 create unique index if not exists org_org_id_uindex
     on org (org_id);
 
@@ -65,4 +43,38 @@ create unique index if not exists org_org_name_uindex
 
 create unique index if not exists org_org_extl_id_uindex
     on org (org_extl_id);
+
+alter table org
+    add constraint org_pk
+        primary key (org_id);
+
+alter table app
+    add constraint app_org_org_id_fk
+        foreign key (org_id) references org
+            deferrable initially deferred;
+
+alter table org
+    add constraint org_create_user_fk
+        foreign key (create_user_id) references users
+            deferrable initially deferred;
+
+alter table org
+    add constraint org_update_user_fk
+        foreign key (update_user_id) references users
+            deferrable initially deferred;
+
+alter table org
+    add constraint org_create_app_fk
+        foreign key (create_app_id) references app
+            deferrable initially deferred;
+
+alter table org
+    add constraint org_update_app_fk
+        foreign key (update_app_id) references app
+            deferrable initially deferred;
+
+alter table org
+    add constraint org_org_kind_fk
+        foreign key (org_kind_id) references org_kind
+            deferrable initially deferred;
 

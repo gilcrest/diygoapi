@@ -12,13 +12,7 @@ create table if not exists app
     create_timestamp        timestamp with time zone not null,
     update_app_id           uuid                     not null,
     update_user_id          uuid,
-    update_timestamp        timestamp with time zone not null,
-    constraint app_pk
-        primary key (app_id),
-    constraint app_self_ref1
-        foreign key (create_app_id) references app,
-    constraint app_self_ref2
-        foreign key (update_app_id) references app
+    update_timestamp        timestamp with time zone not null
 );
 
 comment on table app is 'app stores data about applications that interact with the system';
@@ -57,4 +51,16 @@ create unique index if not exists app_name_uindex
 
 create unique index if not exists auth_provider_client_id_ui
     on app (auth_provider_client_id);
+
+alter table app
+    add constraint app_pk
+        primary key (app_id);
+
+alter table app
+    add constraint app_self_ref1
+        foreign key (create_app_id) references app;
+
+alter table app
+    add constraint app_self_ref2
+        foreign key (update_app_id) references app;
 
