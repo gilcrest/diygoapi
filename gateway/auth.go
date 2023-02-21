@@ -53,14 +53,18 @@ func googleTokenExchange(ctx context.Context, realm string, token *oauth2.Token)
 		return nil, errs.E(op, errs.Unauthenticated, errs.Realm(realm), err)
 	}
 
-	// calculate the token expiration based on ExpiresIn (seconds)
-	tokenExpiration := time.Now().Add(time.Duration(tokenInfo.ExpiresIn) * time.Second)
-
 	pti := diygoapi.ProviderTokenInfo{
-		Expiration: tokenExpiration,
-		ClientID:   tokenInfo.IssuedTo,
-		Scope:      tokenInfo.Scope,
+		Token:    token,
+		ClientID: tokenInfo.IssuedTo,
+		Scope:    tokenInfo.Scope,
+		Audience: tokenInfo.Audience,
+		IssuedTo: tokenInfo.IssuedTo,
 	}
+
+	// calculate the token expiration based on ExpiresIn (seconds)
+	tokenExpiry := time.Now().Add(time.Duration(tokenInfo.ExpiresIn) * time.Second)
+
+	pti.Token.Expiry = tokenExpiry
 
 	var userinfo *googleoauth.Userinfo
 	userinfo, err = oauthService.Userinfo.Get().Do()
@@ -89,16 +93,17 @@ func googleTokenExchange(ctx context.Context, realm string, token *oauth2.Token)
 	}
 
 	pui := diygoapi.ProviderUserInfo{
-		ExternalID:   userinfo.Id,
-		Email:        userinfo.Email,
-		FirstName:    userinfo.GivenName,
-		LastName:     userinfo.FamilyName,
-		FullName:     userinfo.Name,
-		Gender:       userinfo.Gender,
-		HostedDomain: userinfo.Hd,
-		ProfileLink:  userinfo.Link,
-		Locale:       userinfo.Locale,
-		Picture:      userinfo.Picture,
+		ExternalID:    userinfo.Id,
+		Email:         userinfo.Email,
+		VerifiedEmail: tokenInfo.VerifiedEmail,
+		FirstName:     userinfo.GivenName,
+		LastName:      userinfo.FamilyName,
+		FullName:      userinfo.Name,
+		Gender:        userinfo.Gender,
+		HostedDomain:  userinfo.Hd,
+		ProfileLink:   userinfo.Link,
+		Locale:        userinfo.Locale,
+		Picture:       userinfo.Picture,
 	}
 
 	pi := diygoapi.ProviderInfo{

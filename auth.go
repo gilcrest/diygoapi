@@ -134,14 +134,20 @@ type ProviderInfo struct {
 	UserInfo  *ProviderUserInfo
 }
 
-// ProviderTokenInfo contains information gleaned from the Oauth2
-// provider's access token
+// ProviderTokenInfo contains non-user information gleaned from the
+// Oauth2 provider's access token and subsequent calls to get information
+// about a person using it. See ProviderUserInfo for user information.
 type ProviderTokenInfo struct {
-	// Expiration: time of expiration (estimated). This is a moving target as
-	// some providers send the actual time of expiration, others
-	// just send seconds until expiration, which means it's a
-	// calculation and won't have perfect precision.
-	Expiration time.Time
+
+	// Token is the Oauth2 token. For inbound requests, only the
+	// Access Token is given in the Authorization header, so the
+	// other details (Refresh Token, Token Type, Expiry) must be
+	// retrieved from a 3rd party service. The token's Expiry is
+	// a calculated time of expiration (estimated). This is a moving
+	// target as some providers send the actual time of expiration,
+	// others just send seconds until expiration, which means it's
+	// a calculation and won't have perfect precision.
+	Token *oauth2.Token
 
 	// Client ID: External ID representing the Oauth2 client which
 	// authenticated the user.
@@ -149,6 +155,14 @@ type ProviderTokenInfo struct {
 
 	// Scope: The space separated list of scopes granted to this token.
 	Scope string
+
+	// Audience: Who is the intended audience for this token. In general the
+	// same as issued_to.
+	Audience string `json:"audience,omitempty"`
+
+	// IssuedTo: To whom was the token issued to. In general the same as
+	// audience.
+	IssuedTo string `json:"issued_to,omitempty"`
 }
 
 // ProviderUserInfo contains common fields from the various Oauth2 providers.
@@ -159,6 +173,10 @@ type ProviderUserInfo struct {
 
 	// Email: The user's email address.
 	Email string
+
+	// VerifiedEmail: Boolean flag which is true if the email address is
+	// verified. Present only if the email scope is present in the request.
+	VerifiedEmail bool
 
 	// NamePrefix: The name prefix for the Profile (e.g. Mx., Ms., Mr., etc.)
 	NamePrefix string
@@ -202,8 +220,9 @@ type ProviderUserInfo struct {
 	Picture string
 }
 
-// Auth represents user's OAuth2 credentials.
-// Users are linked to a Person. A single Person could authenticate through multiple providers.
+// Auth represents a user's authorization in the database. It captures
+// the provider Oauth2 credentials. Users are linked to a Person.
+// A single Person could authenticate through multiple providers.
 type Auth struct {
 	// ID is the unique identifier for authorization record in database
 	ID uuid.UUID
@@ -224,8 +243,14 @@ type Auth struct {
 	// ProviderPersonID is the authentication provider's unique person/user ID.
 	ProviderPersonID string
 
-	// Token is the Oauth2 token used to determine user identity
-	Token *oauth2.Token
+	// Provider Access Token
+	ProviderAccessToken string
+
+	// Provider Access Token Expiration Date/Time
+	ProviderAccessTokenExpiry time.Time
+
+	// Provider Refresh Token
+	ProviderRefreshToken string
 }
 
 // Permission stores an approval of a mode of access to a resource.
@@ -327,6 +352,7 @@ func (r Role) Validate() error {
 	case r.Description == "":
 		return errs.E(op, errs.Validation, "Description is required")
 	}
+
 	return nil
 }
 

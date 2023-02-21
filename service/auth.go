@@ -141,7 +141,6 @@ func (s DBAuthenticationService) findAuthDB(ctx context.Context, params *diygoap
 		fParams := findAuthByProviderExternalIDParams{
 			Realm:        params.Realm,
 			ProviderInfo: providerInfo,
-			Token:        params.Token,
 		}
 
 		// search by Provider External ID
@@ -230,20 +229,25 @@ func findAuthByAccessToken(ctx context.Context, tx pgx.Tx, params *diygoapi.Auth
 
 	// populate Auth
 	auth := diygoapi.Auth{
-		ID:               dbAuth.AuthID,
-		User:             u,
-		Provider:         diygoapi.Provider(dbAuth.AuthProviderID),
-		ProviderClientID: dbAuth.AuthProviderClientID.String,
-		ProviderPersonID: dbAuth.AuthProviderPersonID,
-		Token: &oauth2.Token{
-			AccessToken:  dbAuth.AuthProviderAccessToken,
-			TokenType:    diygoapi.BearerTokenType,
-			RefreshToken: dbAuth.AuthProviderRefreshToken.String,
-			Expiry:       dbAuth.AuthProviderAccessTokenExpiry.Time},
+		ID:                        dbAuth.AuthID,
+		User:                      u,
+		Provider:                  diygoapi.Provider(dbAuth.AuthProviderID),
+		ProviderClientID:          dbAuth.AuthProviderClientID.String,
+		ProviderPersonID:          dbAuth.AuthProviderPersonID,
+		ProviderAccessToken:       dbAuth.AuthProviderAccessToken,
+		ProviderAccessTokenExpiry: dbAuth.AuthProviderAccessTokenExpiry.Time,
+		ProviderRefreshToken:      dbAuth.AuthProviderRefreshToken.String,
+	}
+
+	token := oauth2.Token{
+		AccessToken:  auth.ProviderAccessToken,
+		TokenType:    diygoapi.BearerTokenType,
+		RefreshToken: auth.ProviderRefreshToken,
+		Expiry:       auth.ProviderAccessTokenExpiry,
 	}
 
 	// if token is no longer valid, return an error
-	if !auth.Token.Valid() {
+	if !token.Valid() {
 		return diygoapi.Auth{}, errs.E(op, errs.Unauthenticated, errs.Realm(params.Realm), "token is no longer valid")
 	}
 
@@ -253,7 +257,6 @@ func findAuthByAccessToken(ctx context.Context, tx pgx.Tx, params *diygoapi.Auth
 type findAuthByProviderExternalIDParams struct {
 	Realm        string
 	ProviderInfo *diygoapi.ProviderInfo
-	Token        *oauth2.Token
 }
 
 // findAuthByProviderExternalID searches for an auth for the User using
@@ -289,16 +292,25 @@ func findAuthByProviderExternalID(ctx context.Context, tx pgx.Tx, params findAut
 
 	// populate Auth
 	auth := diygoapi.Auth{
-		ID:               dbAuth.AuthID,
-		User:             u,
-		Provider:         params.ProviderInfo.Provider,
-		ProviderClientID: params.ProviderInfo.TokenInfo.ClientID,
-		ProviderPersonID: params.ProviderInfo.UserInfo.ExternalID,
-		Token:            params.Token,
+		ID:                        dbAuth.AuthID,
+		User:                      u,
+		Provider:                  params.ProviderInfo.Provider,
+		ProviderClientID:          params.ProviderInfo.TokenInfo.ClientID,
+		ProviderPersonID:          params.ProviderInfo.UserInfo.ExternalID,
+		ProviderAccessToken:       params.ProviderInfo.TokenInfo.Token.AccessToken,
+		ProviderAccessTokenExpiry: params.ProviderInfo.TokenInfo.Token.Expiry,
+		ProviderRefreshToken:      params.ProviderInfo.TokenInfo.Token.RefreshToken,
+	}
+
+	token := oauth2.Token{
+		AccessToken:  auth.ProviderAccessToken,
+		TokenType:    diygoapi.BearerTokenType,
+		RefreshToken: auth.ProviderRefreshToken,
+		Expiry:       auth.ProviderAccessTokenExpiry,
 	}
 
 	// if token is no longer valid, return an error
-	if !auth.Token.Valid() {
+	if !token.Valid() {
 		return diygoapi.Auth{}, errs.E(op, errs.Unauthenticated, errs.Realm(params.Realm), "token exists in db for user, but is no longer valid")
 	}
 
@@ -454,7 +466,6 @@ func (s DBAuthenticationService) SelfRegister(ctx context.Context, params *diygo
 		fParams := findAuthByProviderExternalIDParams{
 			Realm:        params.Realm,
 			ProviderInfo: providerInfo,
-			Token:        params.Token,
 		}
 
 		// we've gotten here, error kind is NotExist, so auth could not be found by
@@ -527,12 +538,14 @@ func (s DBAuthenticationService) SelfRegister(ctx context.Context, params *diygo
 	}
 
 	auth = diygoapi.Auth{
-		ID:               uuid.New(),
-		User:             u,
-		Provider:         providerInfo.Provider,
-		ProviderClientID: providerInfo.TokenInfo.ClientID,
-		ProviderPersonID: providerInfo.UserInfo.ExternalID,
-		Token:            params.Token,
+		ID:                        uuid.New(),
+		User:                      u,
+		Provider:                  providerInfo.Provider,
+		ProviderClientID:          providerInfo.TokenInfo.ClientID,
+		ProviderPersonID:          providerInfo.UserInfo.ExternalID,
+		ProviderAccessToken:       providerInfo.TokenInfo.Token.AccessToken,
+		ProviderAccessTokenExpiry: providerInfo.TokenInfo.Token.Expiry,
+		ProviderRefreshToken:      providerInfo.TokenInfo.Token.RefreshToken,
 	}
 
 	err = createAuthTx(ctx, tx, createAuthTxParams{Auth: auth, Audit: adt})
@@ -564,9 +577,9 @@ func createAuthTx(ctx context.Context, tx pgx.Tx, params createAuthTxParams) (er
 		AuthProviderCd:                params.Auth.Provider.String(),
 		AuthProviderClientID:          diygoapi.NewNullString(params.Auth.ProviderClientID),
 		AuthProviderPersonID:          params.Auth.ProviderPersonID,
-		AuthProviderAccessToken:       params.Auth.Token.AccessToken,
-		AuthProviderRefreshToken:      diygoapi.NewNullString(params.Auth.Token.RefreshToken),
-		AuthProviderAccessTokenExpiry: diygoapi.NewNullTime(params.Auth.Token.Expiry),
+		AuthProviderAccessToken:       params.Auth.ProviderAccessToken,
+		AuthProviderRefreshToken:      diygoapi.NewNullString(params.Auth.ProviderRefreshToken),
+		AuthProviderAccessTokenExpiry: diygoapi.NewNullTime(params.Auth.ProviderAccessTokenExpiry),
 		CreateAppID:                   params.Audit.App.ID,
 		CreateUserID:                  params.Audit.User.NullUUID(),
 		CreateTimestamp:               params.Audit.Moment,

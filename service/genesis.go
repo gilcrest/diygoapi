@@ -284,12 +284,14 @@ func (s *GenesisService) seedPrincipal(ctx context.Context, tx pgx.Tx, r *diygoa
 
 	// create Auth for "The Creator"
 	auth := diygoapi.Auth{
-		ID:               uuid.New(),
-		User:             gUser,
-		Provider:         providerInfo.Provider,
-		ProviderClientID: providerInfo.TokenInfo.ClientID,
-		ProviderPersonID: providerInfo.UserInfo.ExternalID,
-		Token:            token,
+		ID:                        uuid.New(),
+		User:                      gUser,
+		Provider:                  providerInfo.Provider,
+		ProviderClientID:          providerInfo.TokenInfo.ClientID,
+		ProviderPersonID:          providerInfo.UserInfo.ExternalID,
+		ProviderAccessToken:       providerInfo.TokenInfo.Token.AccessToken,
+		ProviderAccessTokenExpiry: providerInfo.TokenInfo.Token.Expiry,
+		ProviderRefreshToken:      providerInfo.TokenInfo.Token.RefreshToken,
 	}
 
 	err = createAuthTx(ctx, tx, createAuthTxParams{Auth: auth, Audit: adt})
