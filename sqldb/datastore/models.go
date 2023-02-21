@@ -73,7 +73,7 @@ type Auth struct {
 	// OAuth2 refresh token given by the authorization provider.
 	AuthProviderRefreshToken sql.NullString
 	// Expiration of access token given by the authorization provider. Is not a perfect precision instrument as some providers do not give an exact time, but rather seconds until expiration, which means the value is calculated relative to the server time.
-	AuthProviderAccessTokenExpiry sql.NullTime
+	AuthProviderAccessTokenExpiry time.Time
 	// The application which created this record.
 	CreateAppID uuid.UUID
 	// The user which created this record.

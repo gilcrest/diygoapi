@@ -31,7 +31,7 @@ type CreateAuthParams struct {
 	AuthProviderPersonID          string
 	AuthProviderAccessToken       string
 	AuthProviderRefreshToken      sql.NullString
-	AuthProviderAccessTokenExpiry sql.NullTime
+	AuthProviderAccessTokenExpiry time.Time
 	CreateAppID                   uuid.UUID
 	CreateUserID                  uuid.NullUUID
 	CreateTimestamp               time.Time
