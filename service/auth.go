@@ -235,7 +235,7 @@ func findAuthByAccessToken(ctx context.Context, tx pgx.Tx, params *diygoapi.Auth
 		ProviderClientID:          dbAuth.AuthProviderClientID.String,
 		ProviderPersonID:          dbAuth.AuthProviderPersonID,
 		ProviderAccessToken:       dbAuth.AuthProviderAccessToken,
-		ProviderAccessTokenExpiry: dbAuth.AuthProviderAccessTokenExpiry.Time,
+		ProviderAccessTokenExpiry: dbAuth.AuthProviderAccessTokenExpiry,
 		ProviderRefreshToken:      dbAuth.AuthProviderRefreshToken.String,
 	}
 
@@ -579,7 +579,7 @@ func createAuthTx(ctx context.Context, tx pgx.Tx, params createAuthTxParams) (er
 		AuthProviderPersonID:          params.Auth.ProviderPersonID,
 		AuthProviderAccessToken:       params.Auth.ProviderAccessToken,
 		AuthProviderRefreshToken:      diygoapi.NewNullString(params.Auth.ProviderRefreshToken),
-		AuthProviderAccessTokenExpiry: diygoapi.NewNullTime(params.Auth.ProviderAccessTokenExpiry),
+		AuthProviderAccessTokenExpiry: params.Auth.ProviderAccessTokenExpiry,
 		CreateAppID:                   params.Audit.App.ID,
 		CreateUserID:                  params.Audit.User.NullUUID(),
 		CreateTimestamp:               params.Audit.Moment,
