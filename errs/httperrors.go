@@ -155,26 +155,69 @@ func newErrResponse(err *Error) ErrResponse {
 // unauthenticatedErrorResponse responds with http status code 401
 // (Unauthorized / Unauthenticated), an empty response body and a
 // WWW-Authenticate header.
-func unauthenticatedErrorResponse(w http.ResponseWriter, lgr zerolog.Logger, err *Error) {
-	if err.Realm == "" {
-		err.Realm = "default"
+func unauthenticatedErrorResponse(w http.ResponseWriter, lgr zerolog.Logger, e *Error) {
+	if e.Realm == "" {
+		e.Realm = "default"
 	}
 
-	lgr.Error().Stack().Err(err.Err).
-		Int("http_statuscode", http.StatusUnauthorized).
-		Str("realm", string(err.Realm)).
-		Msg("Unauthenticated Request")
+	if zerolog.ErrorStackMarshaler != nil {
+		err := TopError(e)
 
-	w.Header().Set("WWW-Authenticate", fmt.Sprintf(`Bearer realm="%s"`, err.Realm))
+		// log the error with stacktrace from "github.com/pkg/errors"
+		// do not bother to log with op stack
+		lgr.Error().Stack().Err(err).
+			Int("http_statuscode", http.StatusUnauthorized).
+			Str("realm", string(e.Realm)).
+			Msg("Unauthenticated Request")
+	} else {
+		ops := OpStack(e)
+		if len(ops) > 0 {
+			j, _ := json.Marshal(ops)
+			// log the error with the op stack
+			lgr.Error().RawJSON("stack", j).Err(e.Err).
+				Int("http_statuscode", http.StatusUnauthorized).
+				Str("realm", string(e.Realm)).
+				Msg("Unauthenticated Request")
+		} else {
+			// no op stack present, log the error without that field
+			lgr.Error().Err(e.Err).
+				Int("http_statuscode", http.StatusUnauthorized).
+				Str("realm", string(e.Realm)).
+				Msg("Unauthenticated Request")
+		}
+	}
+
+	w.Header().Set("WWW-Authenticate", fmt.Sprintf(`Bearer realm="%s"`, e.Realm))
 	w.WriteHeader(http.StatusUnauthorized)
 }
 
 // unauthorizedErrorResponse responds with http status code 403 (Forbidden)
 // and an empty response body.
-func unauthorizedErrorResponse(w http.ResponseWriter, lgr zerolog.Logger, err *Error) {
-	lgr.Error().Stack().Err(err.Err).
-		Int("http_statuscode", http.StatusForbidden).
-		Msg("Unauthorized Request")
+func unauthorizedErrorResponse(w http.ResponseWriter, lgr zerolog.Logger, e *Error) {
+
+	if zerolog.ErrorStackMarshaler != nil {
+		err := TopError(e)
+
+		// log the error with stacktrace from "github.com/pkg/errors"
+		// do not bother to log with op stack
+		lgr.Error().Stack().Err(err).
+			Int("http_statuscode", http.StatusForbidden).
+			Msg("Unauthorized Request")
+	} else {
+		ops := OpStack(e)
+		if len(ops) > 0 {
+			j, _ := json.Marshal(ops)
+			// log the error with the op stack
+			lgr.Error().RawJSON("stack", j).Err(e.Err).
+				Int("http_statuscode", http.StatusForbidden).
+				Msg("Unauthorized Request")
+		} else {
+			// no op stack present, log the error without that field
+			lgr.Error().Err(e.Err).
+				Int("http_statuscode", http.StatusForbidden).
+				Msg("Unauthorized Request")
+		}
+	}
 
 	w.WriteHeader(http.StatusForbidden)
 }
