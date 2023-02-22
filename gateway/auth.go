@@ -62,9 +62,7 @@ func googleTokenExchange(ctx context.Context, realm string, token *oauth2.Token)
 	}
 
 	// calculate the token expiration based on ExpiresIn (seconds)
-	tokenExpiry := time.Now().Add(time.Duration(tokenInfo.ExpiresIn) * time.Second)
-
-	pti.Token.Expiry = tokenExpiry
+	pti.Token.Expiry = time.Now().Add(time.Duration(tokenInfo.ExpiresIn) * time.Second)
 
 	var userinfo *googleoauth.Userinfo
 	userinfo, err = oauthService.Userinfo.Get().Do()
