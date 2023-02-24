@@ -6,9 +6,9 @@ package genesis
 user: #User
 org:  #Org
 permissions: [_pingV1Get, _loggerV1Get, _loggerV1Put, _orgsV1Post, _orgsV1Put, _orgsV1Delete, _orgsV1Get,
-	_orgsV1GetByExtlID, _appsV1Post, _permissionsV1Post, _permissionsV1Get,
+	_orgsV1GetByExtlID, _appsV1Post, _permissionsV1Post, _permissionsV1Get, _permissionsV1Delete,
 	_moviesV1Post, _moviesV1UpdateByExtlID, _moviesV1DeleteByExtlID, _moviesV1FindByExtlID, _moviesV1FindAll]
-roles: [_sysAdmin]
+roles: [_sysAdmin, _movieAdmin]
 
 #User: {
 	provider: #Oauth2Provider

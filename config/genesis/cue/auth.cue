@@ -134,3 +134,10 @@ _sysAdmin: #Role & {
 		_permissionsV1Post, _permissionsV1Get, _permissionsV1Delete, _moviesV1Post, _moviesV1UpdateByExtlID, _moviesV1DeleteByExtlID,
 		_moviesV1FindByExtlID, _moviesV1FindAll]
 }
+
+_movieAdmin: #Role & {
+	role_cd:          "movieAdmin"
+	role_description: "Users can create, update, delete and read the movie database"
+	active:           true
+	permissions: [_moviesV1Post, _moviesV1UpdateByExtlID, _moviesV1DeleteByExtlID, _moviesV1FindByExtlID, _moviesV1FindAll]
+}
