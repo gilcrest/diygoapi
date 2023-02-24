@@ -136,15 +136,15 @@ func (s *GenesisService) Arche(ctx context.Context, r *diygoapi.GenesisRequest) 
 		return gr, errs.E(op, err)
 	}
 
-	ar2gup := assignRoles2GenesisUsersParams{
+	gr2gup := grantRoles2GenesisUsersParams{
 		Roles:             gRoles,
 		PrincipalSeed:     ps,
 		TestSeed:          ts,
 		UserInitiatedSeed: uis,
 	}
 
-	// assign Roles to users
-	err = assignRoles2GenesisUsers(ctx, tx, ar2gup)
+	// grant Roles to users
+	err = grantRoles2GenesisUsers(ctx, tx, gr2gup)
 	if err != nil {
 		return gr, errs.E(op, err)
 	}
@@ -660,56 +660,56 @@ func seedRoles(ctx context.Context, tx pgx.Tx, r *diygoapi.GenesisRequest, adt d
 	return roles, nil
 }
 
-type assignRoles2GenesisUsersParams struct {
+type grantRoles2GenesisUsersParams struct {
 	Roles             genesisRoles
 	PrincipalSeed     principalSeed
 	TestSeed          testSeed
 	UserInitiatedSeed userInitiatedSeed
 }
 
-// assignRoles2GenesisUsers assigns whichever roles are included as
+// grantRoles2GenesisUsers grants whichever roles are included as
 // part of the Genesis request as well as the testAdmin role to flag
 // the test user
-func assignRoles2GenesisUsers(ctx context.Context, tx pgx.Tx, params assignRoles2GenesisUsersParams) error {
-	const op errs.Op = "service/assignRoles2GenesisUsers"
+func grantRoles2GenesisUsers(ctx context.Context, tx pgx.Tx, params grantRoles2GenesisUsersParams) error {
+	const op errs.Op = "service/grantRoles2GenesisUsers"
 
 	var err error
 
-	// assign roles from the Genesis request to The Creator
+	// grant roles from the Genesis request to The Creator
 	for _, requestRole := range params.Roles.RequestRoles {
-		aorParams := assignOrgRoleParams{
+		aorParams := grantOrgRoleParams{
 			Role:  requestRole,
 			User:  params.PrincipalSeed.Audit.User,
 			Org:   params.PrincipalSeed.PrincipalOrg,
 			Audit: params.PrincipalSeed.Audit,
 		}
 
-		err = assignOrgRole(ctx, tx, aorParams)
+		err = grantOrgRole(ctx, tx, aorParams)
 		if err != nil {
 			return errs.E(op, err)
 		}
 
-		p := assignOrgRoleParams{
+		p := grantOrgRoleParams{
 			Role:  requestRole,
 			User:  params.PrincipalSeed.Audit.User,
 			Org:   params.UserInitiatedSeed.UserInitiatedOrg,
 			Audit: params.PrincipalSeed.Audit,
 		}
 
-		err = assignOrgRole(ctx, tx, p)
+		err = grantOrgRole(ctx, tx, p)
 		if err != nil {
 			return errs.E(op, err)
 		}
 	}
 
-	aorParams := assignOrgRoleParams{
+	aorParams := grantOrgRoleParams{
 		Role:  params.Roles.TestRole,
 		User:  params.TestSeed.TestUser,
 		Org:   params.TestSeed.TestOrg,
 		Audit: params.PrincipalSeed.Audit,
 	}
 
-	err = assignOrgRole(ctx, tx, aorParams)
+	err = grantOrgRole(ctx, tx, aorParams)
 	if err != nil {
 		return errs.E(op, err)
 	}

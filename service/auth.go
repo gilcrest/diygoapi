@@ -1183,16 +1183,16 @@ func FindRoleByCode(ctx context.Context, tx datastore.DBTX, code string) (diygoa
 	return role, nil
 }
 
-type assignOrgRoleParams struct {
+type grantOrgRoleParams struct {
 	Role  diygoapi.Role
 	User  *diygoapi.User
 	Org   *diygoapi.Org
 	Audit diygoapi.Audit
 }
 
-// assignOrgRoles assigns a role to a user for a given org.
-func assignOrgRole(ctx context.Context, tx pgx.Tx, p assignOrgRoleParams) (err error) {
-	const op errs.Op = "service/assignOrgRole"
+// grantOrgRoles grants a role to a user for a given org.
+func grantOrgRole(ctx context.Context, tx pgx.Tx, p grantOrgRoleParams) (err error) {
+	const op errs.Op = "service/grantOrgRole"
 
 	params := datastore.CreateUsersRoleParams{
 		UserID:          p.User.ID,
@@ -1244,7 +1244,7 @@ func findPermissions(ctx context.Context, tx pgx.Tx, prs []*diygoapi.FindPermiss
 		} else {
 			ap, err = datastore.New(tx).FindPermissionByResourceOperation(ctx, datastore.FindPermissionByResourceOperationParams{Resource: pr.Resource, Operation: pr.Operation})
 			if err != nil {
-				return nil, errs.E(op, errs.Database, err)
+				return nil, errs.E(op, errs.Database, fmt.Sprintf("no row found for resource: %s, operation: %s. original error from db: %s", pr.Resource, pr.Operation, err.Error()))
 			}
 			aps = append(aps, newPermission(ap))
 		}
