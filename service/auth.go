@@ -553,6 +553,25 @@ func (s DBAuthenticationService) SelfRegister(ctx context.Context, params *diygo
 		return nil, errs.E(op, err)
 	}
 
+	const movieAdminRoleCode = "movieAdmin"
+	var movieAdminRole diygoapi.Role
+	movieAdminRole, err = FindRoleByCode(ctx, tx, movieAdminRoleCode)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	grantMovieAdminRoleParams := grantOrgRoleParams{
+		Role:  movieAdminRole,
+		User:  u,
+		Org:   a.Org,
+		Audit: adt,
+	}
+
+	err = grantOrgRole(ctx, tx, grantMovieAdminRoleParams)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
 	// commit db txn using pgxpool
 	err = s.Datastorer.CommitTx(ctx, tx)
 	if err != nil {
