@@ -55,6 +55,9 @@ insert into users_role (user_id, role_id, org_id, create_app_id, create_user_id,
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
 
 -- name: IsAuthorized :one
+-- IsAuthorized selects a user_id which is authorized for access to a resource.
+-- The query can return multiple results, but since QueryRow is used, only the first
+-- is returned.
 SELECT ur.user_id
 FROM users_role ur
          INNER JOIN role_permission rp on rp.role_id = ur.role_id
