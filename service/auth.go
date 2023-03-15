@@ -1209,7 +1209,7 @@ type grantOrgRoleParams struct {
 	Audit diygoapi.Audit
 }
 
-// grantOrgRoles grants a role to a user for a given org.
+// grantOrgRoles grants a role to a user for a given organization.
 func grantOrgRole(ctx context.Context, tx pgx.Tx, p grantOrgRoleParams) (err error) {
 	const op errs.Op = "service/grantOrgRole"
 
