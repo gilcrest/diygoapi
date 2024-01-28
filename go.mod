@@ -3,7 +3,7 @@ module github.com/gilcrest/diygoapi
 go 1.21.0
 
 require (
-	github.com/frankban/quicktest v1.14.4
+	github.com/frankban/quicktest v1.14.6
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
