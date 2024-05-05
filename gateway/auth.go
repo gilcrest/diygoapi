@@ -68,7 +68,7 @@ func googleTokenExchange(ctx context.Context, realm string, token *oauth2.Token)
 	userinfo, err = oauthService.Userinfo.Get().Do()
 	if err != nil {
 		// "In summary, a 401 Unauthorized response should be used for missing or
-		// bad authentication, and a 403 Forbidden response should be used afterwards,
+		// bad authentication, and a 403 Forbidden response should be used afterward,
 		// when the user is authenticated but isn’t authorized to perform the
 		// requested operation on the given resource."
 		// In this case, we are getting a bad response from Google service, assume
