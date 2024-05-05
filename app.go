@@ -94,10 +94,12 @@ func (r CreateAppRequest) Validate() error {
 		return errs.E(op, errs.Validation, "app name is required")
 	case r.Description == "":
 		return errs.E(op, errs.Validation, "app description is required")
-	case r.Oauth2Provider != "" && r.Oauth2ProviderClientID == "":
-		return errs.E(op, errs.Validation, "oAuth2 provider client ID is required when Oauth2 provider is given")
 	case r.Oauth2Provider == "" && r.Oauth2ProviderClientID != "":
 		return errs.E(op, errs.Validation, "oAuth2 provider is required when Oauth2 provider client ID is given")
+	case r.Oauth2Provider != "" && r.Oauth2ProviderClientID == "":
+		return errs.E(op, errs.Validation, "oAuth2 provider client ID is required when Oauth2 provider is given")
+	case r.Oauth2Provider != "" && r.Oauth2ProviderClientID == "REPLACE_ME":
+		return errs.E(op, errs.Validation, "oAuth2 provider client ID cannot be REPLACE_ME. ")
 	}
 	return nil
 }
