@@ -185,7 +185,7 @@ func (db *DB) ValidatePool(ctx context.Context, log zerolog.Logger) error {
 	row := db.pool.QueryRow(ctx, sqlStatement)
 	err = row.Scan(&currentDatabase, &currentUser, &dbVersion)
 	switch {
-	case err == sql.ErrNoRows:
+	case errors.Is(err, sql.ErrNoRows):
 		return errs.E(op, errs.Database, "no rows returned")
 	case err != nil:
 		return errs.E(op, errs.Database, err)
@@ -199,7 +199,7 @@ func (db *DB) ValidatePool(ctx context.Context, log zerolog.Logger) error {
 	searchPathRow := db.pool.QueryRow(ctx, searchPathSQL)
 	err = searchPathRow.Scan(&searchPath)
 	switch {
-	case err == sql.ErrNoRows:
+	case errors.Is(err, sql.ErrNoRows):
 		return errs.E(op, errs.Database, "no rows returned for search_path")
 	case err != nil:
 		return errs.E(op, errs.Database, err)

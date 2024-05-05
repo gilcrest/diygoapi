@@ -240,7 +240,7 @@ func (s *AppService) Update(ctx context.Context, r *diygoapi.UpdateAppRequest, a
 	var aa appAudit
 	aa, err = findAppByExternalIDWithAudit(ctx, tx, r.ExternalID)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errs.E(op, errs.Validation, "No app exists for the given external ID")
 		}
 		return nil, errs.E(op, errs.Database, err)
@@ -299,7 +299,7 @@ func (s *AppService) Delete(ctx context.Context, extlID string) (dr diygoapi.Del
 	var a diygoapi.App
 	a, err = findAppByExternalID(ctx, tx, extlID)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return diygoapi.DeleteResponse{}, errs.E(op, errs.Validation, "No app exists for the given external ID")
 		}
 		return diygoapi.DeleteResponse{}, errs.E(op, errs.Database, err)
