@@ -23,7 +23,7 @@ import (
 	"net/http"
 )
 
-// Server dispatches requests to an http.Handler.
+// Server dispatches requests to a http.Handler.
 type Server interface {
 	// ListenAndServe listens on the TCP network address addr and then
 	// calls Serve with handler to handle requests on incoming connections.
