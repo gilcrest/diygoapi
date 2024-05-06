@@ -73,19 +73,19 @@ All Mage programs in this project which take an environment (env) parameter (e.g
 
 The base environment variables to be set are:
 
-| Environment Variable | Description                                                        |
-|----------------------|--------------------------------------------------------------------|
-| PORT                 | Port the server will listen on                                     |
-| LOG_LEVEL            | zerolog logging level (debug, info, etc.)                          |
-| LOG_LEVEL_MIN        | sets the minimum accepted logging level                            |
+| Environment Variable | Description                                                                                        |
+|----------------------|----------------------------------------------------------------------------------------------------|
+| PORT                 | Port the server will listen on                                                                     |
+| LOG_LEVEL            | zerolog logging level (debug, info, etc.)                                                          |
+| LOG_LEVEL_MIN        | sets the minimum accepted logging level                                                            |
 | LOG_ERROR_STACK      | If true, log error stacktrace using github.com/pkg/errors, else just log error (includes op stack) |
-| DB_HOST              | The host name of the database server.                              |
-| DB_PORT              | The port number the database server is listening on.               |
-| DB_NAME              | The database name.                                                 |
-| DB_USER              | PostgreSQL™ user name to connect as.                               |
-| DB_PASSWORD          | Password to be used if the server demands password authentication. |
-| DB_SEARCH_PATH       | Schema Search Path                                                 |
-| ENCRYPT_KEY          | Encryption Key                                                     |
+| DB_HOST              | The host name of the database server.                                                              |
+| DB_PORT              | The port number the database server is listening on.                                               |
+| DB_NAME              | The database name.                                                                                 |
+| DB_USER              | PostgreSQL™ user name to connect as.                                                               |
+| DB_PASSWORD          | Password to be used if the server demands password authentication.                                 |
+| DB_SEARCH_PATH       | Schema Search Path                                                                                 |
+| ENCRYPT_KEY          | Encryption Key                                                                                     |
 
 > The same environment variables are used when running the web server, but are not mandatory. When running the web server, if you prefer, you can bypass environment variables and instead send command line flags (more about that later).
 
@@ -461,19 +461,19 @@ exec: go "run" "./cmd/diy/main.go"
 
 The below are the list of the command line flags that can be used to start the webserver (and their equivalent environment variable name for reference as well):
 
-| Flag Name       | Description                                                        | Environment Variable | Default |
-|-----------------|--------------------------------------------------------------------|----------------------|---------|
-| port            | Port the server will listen on                                     | PORT                 | 8080    |
-| log-level       | zerolog logging level (debug, info, etc.)                          | LOG_LEVEL            | debug   |
-| log-level-min   | sets the minimum accepted logging level                            | LOG_LEVEL_MIN        | debug   |
+| Flag Name       | Description                                                                                        | Environment Variable | Default |
+|-----------------|----------------------------------------------------------------------------------------------------|----------------------|---------|
+| port            | Port the server will listen on                                                                     | PORT                 | 8080    |
+| log-level       | zerolog logging level (debug, info, etc.)                                                          | LOG_LEVEL            | debug   |
+| log-level-min   | sets the minimum accepted logging level                                                            | LOG_LEVEL_MIN        | debug   |
 | log-error-stack | If true, log error stacktrace using github.com/pkg/errors, else just log error (includes op stack) | LOG_ERROR_STACK      | false   |
-| db-host         | The host name of the database server.                              | DB_HOST              |         |
-| db-port         | The port number the database server is listening on.               | DB_PORT              | 5432    |
-| db-name         | The database name.                                                 | DB_NAME              |         |
-| db-user         | PostgreSQL™ user name to connect as.                               | DB_USER              |         |
-| db-password     | Password to be used if the server demands password authentication. | DB_PASSWORD          |         |
-| db-search-path  | Schema search path to be used when connecting.                     | DB_SEARCH_PATH       |         |
-| encrypt-key     | Encryption key to be used for all encrypted data.                  | ENCRYPT_KEY          |         |
+| db-host         | The host name of the database server.                                                              | DB_HOST              |         |
+| db-port         | The port number the database server is listening on.                                               | DB_PORT              | 5432    |
+| db-name         | The database name.                                                                                 | DB_NAME              |         |
+| db-user         | PostgreSQL™ user name to connect as.                                                               | DB_USER              |         |
+| db-password     | Password to be used if the server demands password authentication.                                 | DB_PASSWORD          |         |
+| db-search-path  | Schema search path to be used when connecting.                                                     | DB_SEARCH_PATH       |         |
+| encrypt-key     | Encryption key to be used for all encrypted data.                                                  | ENCRYPT_KEY          |         |
 
 Starting the web server with command line flags looks like:
 
@@ -516,7 +516,9 @@ With the server up and running, the easiest service to interact with is the `pin
 Use [cURL](https://curl.se/) GET request to call `ping`:
 
 ```bash
-$ curl --location --request GET 'http://127.0.0.1:8080/api/v1/ping'
+$ curl --location --request GET 'http://127.0.0.1:8080/api/v1/ping' \
+--header 'x-auth-provider: google' \
+--header 'Authorization: Bearer <REPLACE WITH ACCESS TOKEN>'
 {"db_up":true}
 ```
 
@@ -1007,10 +1009,10 @@ Content-Length: 0
 
 When starting `diygoapi`, there are several flags which setup the logger:
 
-| Flag Name       | Description                                             | Environment Variable | Default |
-|-----------------|---------------------------------------------------------|----------------------|---------|
-| log-level       | zerolog logging level (debug, info, etc.)               | LOG_LEVEL            | debug   |
-| log-level-min   | sets the minimum accepted logging level                 | LOG_LEVEL_MIN        | debug   |
+| Flag Name       | Description                                                                                        | Environment Variable | Default |
+|-----------------|----------------------------------------------------------------------------------------------------|----------------------|---------|
+| log-level       | zerolog logging level (debug, info, etc.)                                                          | LOG_LEVEL            | debug   |
+| log-level-min   | sets the minimum accepted logging level                                                            | LOG_LEVEL_MIN        | debug   |
 | log-error-stack | If true, log error stacktrace using github.com/pkg/errors, else just log error (includes op stack) | LOG_ERROR_STACK      | false   |
 
 --------
