@@ -264,6 +264,8 @@ func httpErrorStatusCode(k Kind) int {
 	switch k {
 	case Invalid, Exist, NotExist, Private, BrokenLink, Validation, InvalidRequest:
 		return http.StatusBadRequest
+	case UnsupportedMediaType:
+		return http.StatusUnsupportedMediaType
 	// the zero value of Kind is Other, so if no Kind is present
 	// in the error, Other is used. Errors should always have a
 	// Kind set, otherwise, a 500 will be returned and no

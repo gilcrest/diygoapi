@@ -153,6 +153,7 @@ const (
 	// For Unauthorized errors, the response body should be empty.
 	// The error is logged and http.StatusForbidden (403) is sent.
 	Unauthorized
+	UnsupportedMediaType // Unsupported Media Type
 )
 
 func (k Kind) String() string {
@@ -185,8 +186,11 @@ func (k Kind) String() string {
 		return "unauthenticated request"
 	case Unauthorized:
 		return "unauthorized request"
+	case UnsupportedMediaType:
+		return "unsupported media type"
+	default:
+		return "unknown error kind"
 	}
-	return "unknown error kind"
 }
 
 // E builds an error value from its arguments.
