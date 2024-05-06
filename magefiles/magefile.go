@@ -240,9 +240,6 @@ func GCP(env string) error {
 	}
 
 	args := cmd.GCPCloudRunDeployImage(f, image)
-	if err != nil {
-		return errs.E(op, err)
-	}
 
 	err = sh.Run("gcloud", args...)
 	if err != nil {
