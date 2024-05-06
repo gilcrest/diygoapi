@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/gorilla/mux"
 	"github.com/rs/zerolog/hlog"
 
 	"github.com/gilcrest/diygoapi"
@@ -63,11 +62,8 @@ func (s *Server) handleMovieUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// gorilla mux Vars function returns the route variables for the
-	// current request, if any. id is the external id given for the
-	// movie
-	vars := mux.Vars(r)
-	extlid := vars["extlID"]
+	// return the extlID from the Path
+	extlID := r.PathValue("extlID")
 
 	// Declare request body (rb) as an instance of service.MovieRequest
 	rb := new(diygoapi.UpdateMovieRequest)
@@ -86,7 +82,7 @@ func (s *Server) handleMovieUpdate(w http.ResponseWriter, r *http.Request) {
 
 	// External ID is from path variable, need to set separate
 	// from decoding response body
-	rb.ExternalID = extlid
+	rb.ExternalID = extlID
 
 	var response *diygoapi.MovieResponse
 	response, err = s.MovieServicer.Update(r.Context(), rb, adt)
@@ -109,11 +105,8 @@ func (s *Server) handleMovieDelete(w http.ResponseWriter, r *http.Request) {
 
 	logger := *hlog.FromRequest(r)
 
-	// gorilla mux Vars function returns the route variables for the
-	// current request, if any. id is the external id given for the
-	// movie
-	vars := mux.Vars(r)
-	extlID := vars["extlID"]
+	// return the extlID from the Path
+	extlID := r.PathValue("extlID")
 
 	response, err := s.MovieServicer.Delete(r.Context(), extlID)
 	if err != nil {
@@ -135,11 +128,8 @@ func (s *Server) handleFindMovieByID(w http.ResponseWriter, r *http.Request) {
 
 	logger := *hlog.FromRequest(r)
 
-	// gorilla mux Vars function returns the route variables for the
-	// current request, if any. id is the external id given for the
-	// movie
-	vars := mux.Vars(r)
-	extlID := vars["extlID"]
+	// return the extlID from the Path
+	extlID := r.PathValue("extlID")
 
 	response, err := s.MovieServicer.FindMovieByExternalID(r.Context(), extlID)
 	if err != nil {
@@ -242,10 +232,8 @@ func (s *Server) handleOrgUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// gorilla mux Vars function returns the route variables for the
-	// current request, if any. ID is the external id given for the resource
-	vars := mux.Vars(r)
-	rb.ExternalID = vars["extlID"]
+	// return the extlID from the Path
+	rb.ExternalID = r.PathValue("extlID")
 
 	var response *diygoapi.OrgResponse
 	response, err = s.OrgServicer.Update(r.Context(), rb, adt)
@@ -266,11 +254,8 @@ func (s *Server) handleOrgUpdate(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleOrgDelete(w http.ResponseWriter, r *http.Request) {
 	lgr := *hlog.FromRequest(r)
 
-	// gorilla mux Vars function returns the route variables for the
-	// current request, if any.
-	vars := mux.Vars(r)
-	// extlID is the external id given for the resource
-	extlID := vars["extlID"]
+	// return the extlID from the Path
+	extlID := r.PathValue("extlID")
 
 	response, err := s.OrgServicer.Delete(r.Context(), extlID)
 	if err != nil {
@@ -308,10 +293,8 @@ func (s *Server) handleOrgFindAll(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleOrgFindByExtlID(w http.ResponseWriter, r *http.Request) {
 	lgr := *hlog.FromRequest(r)
 
-	// gorilla mux Vars function returns the route variables for the
-	// current request, if any. ID is the external id given for the resource
-	vars := mux.Vars(r)
-	extlID := vars["extlID"]
+	// return the extlID from the Path
+	extlID := r.PathValue("extlID")
 
 	response, err := s.OrgServicer.FindByExternalID(r.Context(), extlID)
 	if err != nil {
@@ -582,10 +565,8 @@ func (s *Server) handlePermissionFindAll(w http.ResponseWriter, r *http.Request)
 func (s *Server) handlePermissionDelete(w http.ResponseWriter, r *http.Request) {
 	lgr := *hlog.FromRequest(r)
 
-	// gorilla mux Vars function returns the route variables for the
-	// current request, if any. ID is the external id given for the resource
-	vars := mux.Vars(r)
-	extlID := vars["extlID"]
+	// return the extlID from the Path
+	extlID := r.PathValue("extlID")
 
 	response, err := s.PermissionServicer.Delete(r.Context(), extlID)
 	if err != nil {

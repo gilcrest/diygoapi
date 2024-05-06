@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -170,9 +171,9 @@ func Run(args []string) (err error) {
 		lgr.Fatal().Err(err).Msg("portRange() error")
 	}
 
-	// initialize Server enfolding a http.Server with default timeouts
-	// a Gorilla mux router with /api subroute and a zerolog.Logger
-	s := server.New(server.NewMuxRouter(), server.NewDriver(), lgr)
+	// initialize Server enfolding a http.Server with default timeouts,
+	// a mux router and a zerolog.Logger
+	s := server.New(http.NewServeMux(), server.NewDriver(), lgr)
 
 	// set listener address
 	s.Addr = fmt.Sprintf(":%d", flgs.port)

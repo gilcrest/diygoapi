@@ -11,10 +11,45 @@ import (
 type contextKey string
 
 const (
-	appContextKey        = contextKey("app")
-	contextKeyUser       = contextKey("user")
-	authParamsContextKey = contextKey("authParams")
+	handlerPatternKey    contextKey = "handlerPattern"
+	appContextKey        contextKey = "app"
+	contextKeyUser       contextKey = "user"
+	authParamsContextKey contextKey = "authParams"
 )
+
+// NewContextWithRequestHandlerPattern returns a new context with the given Handler pattern
+func NewContextWithRequestHandlerPattern(ctx context.Context, pattern string) context.Context {
+	return context.WithValue(ctx, handlerPatternKey, pattern)
+}
+
+// HandlerPatternFromRequest is a helper function which returns the handler pattern from the
+// request context.
+func HandlerPatternFromRequest(r *http.Request) (string, error) {
+	const op errs.Op = "diygoapi/HandlerPatternFromRequest"
+
+	pattern, err := RequestHandlerPatternFromContext(r.Context())
+	if err != nil {
+		return "", errs.E(op, err)
+	}
+
+	return pattern, nil
+}
+
+// RequestHandlerPatternFromContext returns a Handler Pattern from the given context
+func RequestHandlerPatternFromContext(ctx context.Context) (string, error) {
+	const op errs.Op = "diygoapi/RequestHandlerPatternFromContext"
+
+	pattern, ok := ctx.Value(handlerPatternKey).(string)
+	if !ok {
+		return "", errs.E(op, errs.NotExist, "handler pattern not set to context")
+	}
+
+	if pattern == "" {
+		return "", errs.E(op, errs.NotExist, "handler pattern not set to context (empty string)")
+	}
+
+	return pattern, nil
+}
 
 // NewContextWithApp returns a new context with the given App
 func NewContextWithApp(ctx context.Context, a *App) context.Context {

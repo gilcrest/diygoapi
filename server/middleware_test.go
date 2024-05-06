@@ -116,7 +116,7 @@ func TestServer_appHandler(t *testing.T) {
 
 		lgr := logger.New(os.Stdout, zerolog.DebugLevel, true)
 
-		s := New(NewMuxRouter(), NewDriver(), lgr)
+		s := New(http.NewServeMux(), NewDriver(), lgr)
 		s.AuthenticationServicer = mockAuthenticationService{}
 
 		handlers := s.appHandler(testAppHandler)

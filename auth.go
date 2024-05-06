@@ -2,12 +2,12 @@ package diygoapi
 
 import (
 	"context"
-	"github.com/rs/zerolog"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 	"golang.org/x/oauth2"
 
 	"github.com/gilcrest/diygoapi/errs"
@@ -97,7 +97,7 @@ type TokenExchanger interface {
 // BearerTokenType is used in authorization to access a resource
 const BearerTokenType string = "Bearer"
 
-// Provider defines the provider of authorization (Google, Github, Apple, auth0, etc.).
+// Provider defines the provider of authorization (Google, GitHub, Apple, auth0, etc.).
 //
 // Only Google is used currently.
 type Provider uint8
@@ -114,8 +114,9 @@ func (p Provider) String() string {
 	switch p {
 	case Google:
 		return "google"
+	default:
+		return "unknown_provider"
 	}
-	return "unknown_provider"
 }
 
 // ParseProvider initializes a Provider given a case-insensitive string

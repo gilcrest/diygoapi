@@ -32,11 +32,11 @@ package server
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
 
 	"github.com/gilcrest/diygoapi"
@@ -63,7 +63,8 @@ type Services struct {
 
 // Server represents an HTTP server.
 type Server struct {
-	router *mux.Router
+	mux *http.ServeMux
+
 	Driver driver.Server
 
 	// all logging is done with a zerolog.Logger
@@ -81,10 +82,12 @@ type Server struct {
 
 // New initializes a new Server and registers
 // routes to the given router
-func New(rtr *mux.Router, serverDriver driver.Server, lgr zerolog.Logger) *Server {
-	s := &Server{router: rtr}
-	s.Logger = lgr
-	s.Driver = serverDriver
+func New(sm *http.ServeMux, ds driver.Server, lgr zerolog.Logger) *Server {
+	s := &Server{
+		mux:    sm,
+		Driver: ds,
+		Logger: lgr,
+	}
 
 	// register routes to the router
 	s.registerRoutes()
@@ -98,13 +101,13 @@ func (s *Server) ListenAndServe() error {
 	if s.Addr == "" {
 		return errs.E(op, errs.Internal, "Server Addr is empty")
 	}
-	if s.router == nil {
+	if s.mux == nil {
 		return errs.E(op, errs.Internal, "Server router is nil")
 	}
 	if s.Driver == nil {
 		return errs.E(op, errs.Internal, "Server driver is nil")
 	}
-	return s.Driver.ListenAndServe(s.Addr, s.router)
+	return s.Driver.ListenAndServe(s.Addr, s.mux)
 }
 
 // Shutdown gracefully shuts down the server without interrupting any active connections.
@@ -142,22 +145,6 @@ func (d *Driver) Shutdown(ctx context.Context) error {
 	return d.Server.Shutdown(ctx)
 }
 
-// NewMuxRouter initializes a gorilla/mux router and
-// adds the /api subroute to it
-func NewMuxRouter() *mux.Router {
-	// initializer gorilla/mux router
-	r := mux.NewRouter()
-
-	// send Router through PathPrefix method to validate any standard
-	// subroutes you may want for your APIs. e.g. I always want to be
-	// sure that every request has "/api" as part of its path prefix
-	// without having to put it into every handle path in my various
-	// routing functions
-	s := r.PathPrefix(pathPrefix).Subrouter()
-
-	return s
-}
-
 // decoderErr is a convenience function to handle errors returned by
 // json.NewDecoder(r.Body).Decode(&data) and return the appropriate
 // error response
@@ -171,7 +158,7 @@ func decoderErr(err error) error {
 		return errs.E(op, errs.InvalidRequest, "request body cannot be empty")
 	// If the request body has malformed JSON (io.ErrUnexpectedEOF)
 	// return an error
-	case err == io.ErrUnexpectedEOF:
+	case errors.Is(err, io.ErrUnexpectedEOF):
 		return errs.E(op, errs.InvalidRequest, "malformed JSON")
 	// return other errors
 	case err != nil:

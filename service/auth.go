@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/gorilla/mux"
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
 	"github.com/rs/zerolog"
@@ -777,6 +776,21 @@ func (s *DBAuthorizationService) Authorize(r *http.Request, lgr zerolog.Logger, 
 
 	ctx := r.Context()
 
+	// Retrieve the handler pattern added to the request context as part of
+	// the server middleware chain when routing requests.
+	var handlerPattern string
+	handlerPattern, err = diygoapi.HandlerPatternFromRequest(r)
+	if err != nil {
+		return errs.E(op, err)
+	}
+
+	// Handler patterns are similar to "GET /posts/{id}"
+	// cut the request Method and resource from the pattern
+	handlerMethod, resource, found := strings.Cut(handlerPattern, " ")
+	if !found {
+		return errs.E(op, "handler pattern invalid")
+	}
+
 	// start db txn using pgxpool
 	var tx pgx.Tx
 	tx, err = s.Datastorer.BeginTx(ctx)
@@ -788,24 +802,9 @@ func (s *DBAuthorizationService) Authorize(r *http.Request, lgr zerolog.Logger, 
 		err = s.Datastorer.RollbackTx(ctx, tx, err)
 	}()
 
-	// current matched route for the request
-	route := mux.CurrentRoute(r)
-
-	// CurrentRoute can return a nil if route not setup properly or
-	// is being called outside the handler of the matched route
-	if route == nil {
-		return errs.E(op, errs.Unauthorized, "nil route returned from mux.CurrentRoute")
-	}
-
-	var pathTemplate string
-	pathTemplate, err = route.GetPathTemplate()
-	if err != nil {
-		return errs.E(op, errs.Unauthorized, err)
-	}
-
 	arg := datastore.IsAuthorizedParams{
-		Resource:  pathTemplate,
-		Operation: r.Method,
+		Resource:  resource,
+		Operation: handlerMethod,
 		UserID:    adt.User.ID,
 		// Set the Org using the org the audit app is associated to.
 		// The business assumption currently is that an app can
@@ -817,20 +816,20 @@ func (s *DBAuthorizationService) Authorize(r *http.Request, lgr zerolog.Logger, 
 	var authorizedID uuid.UUID
 	authorizedID, err = datastore.New(tx).IsAuthorized(r.Context(), arg)
 	if err != nil || authorizedID == uuid.Nil {
-		lgr.Info().Str("user_extl_id", adt.User.ExternalID.String()).Str("resource", pathTemplate).Str("operation", r.Method).
-			Msgf("Unauthorized (user_extl_id: %s, resource: %s, operation: %s)", adt.User.ExternalID.String(), pathTemplate, r.Method)
+		lgr.Info().Str("user_extl_id", adt.User.ExternalID.String()).Str("resource", resource).Str("operation", r.Method).
+			Msgf("Unauthorized (user_extl_id: %s, resource: %s, operation: %s)", adt.User.ExternalID.String(), resource, r.Method)
 
 		// "In summary, a 401 Unauthorized response should be used for missing or
-		// bad authentication, and a 403 Forbidden response should be used afterwards,
+		// bad authentication, and a 403 Forbidden response should be used afterward,
 		// when the user is authenticated but isn’t authorized to perform the
 		// requested operation on the given resource."
 		// If the user has gotten here, they have gotten through authentication
 		// but do have the right access, this they are Unauthorized
-		return errs.E(op, errs.Unauthorized, fmt.Sprintf("User_extl_id %s does not have %s permission for %s", adt.User.ExternalID.String(), r.Method, pathTemplate))
+		return errs.E(op, errs.Unauthorized, fmt.Sprintf("User_extl_id %s does not have %s permission for %s", adt.User.ExternalID.String(), r.Method, resource))
 	}
 
-	lgr.Debug().Str("user_extl_id", adt.User.ExternalID.String()).Str("resource", pathTemplate).Str("operation", r.Method).
-		Msgf("Authorized (user_extl_id: %s, resource: %s, operation: %s)", adt.User.ExternalID.String(), pathTemplate, r.Method)
+	lgr.Debug().Str("user_extl_id", adt.User.ExternalID.String()).Str("resource", resource).Str("operation", r.Method).
+		Msgf("Authorized (user_extl_id: %s, resource: %s, operation: %s)", adt.User.ExternalID.String(), resource, r.Method)
 
 	return nil
 }

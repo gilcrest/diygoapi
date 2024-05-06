@@ -861,7 +861,7 @@ package server
 //		// Assert that Response Status Code equals 200 (StatusOK)
 //		c.Assert(rr.Code, qt.Equals, http.StatusOK)
 //
-//		// setup the expected response data
+//		// set up the expected response data
 //		wantBody := service.LoggerResponse{
 //			LoggerMinimumLevel: zerolog.DebugLevel.String(),
 //			GlobalLogLevel:     zerolog.InfoLevel.String(),
@@ -957,7 +957,7 @@ package server
 //		// Assert that Response Status Code equals 200 (StatusOK)
 //		c.Assert(rr.Code, qt.Equals, http.StatusOK)
 //
-//		// setup the expected response data
+//		// set up the expected response data
 //		wantBody := service.LoggerResponse{
 //			LoggerMinimumLevel: zerolog.TraceLevel.String(),
 //			GlobalLogLevel:     zerolog.DebugLevel.String(),

@@ -2,6 +2,7 @@ package server
 
 import (
 	"errors"
+	"mime"
 	"net/http"
 	"time"
 
@@ -16,7 +17,61 @@ const (
 	// Default Realm used as part of the WWW-Authenticate response
 	// header when returning a 401 Unauthorized response
 	defaultRealm string = "diy"
+	// Content Type header key
+	contentTypeHeaderKey string = "Content-Type"
+	// application/json header value for Content-Type header key
+	appJSONContentTypeHeaderVal string = "application/json"
 )
+
+// addRequestHandlerPatternContextHandler middleware adds the request handler pattern to the
+// request context
+func (s *Server) addRequestHandlerPatternContextHandler(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		_, pattern := s.mux.Handler(r)
+
+		// get a new context with app added
+		ctx := diygoapi.NewContextWithRequestHandlerPattern(r.Context(), pattern)
+
+		h.ServeHTTP(w, r.WithContext(ctx)) // call original
+	})
+}
+
+// jsonContentTypeRequestHandler middleware ensures that the request has the
+// application/json Content-Type request header.
+func (s *Server) enforceJSONContentTypeHandler(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		lgr := *hlog.FromRequest(r)
+
+		// Validate the Content-Type header.
+		err := enforceJSONContentType(r)
+		if err != nil {
+			errs.HTTPErrorResponse(w, lgr, err)
+			return
+		}
+
+		h.ServeHTTP(w, r) // call original
+	})
+}
+
+func enforceJSONContentType(r *http.Request) error {
+
+	contentType := r.Header.Get(contentTypeHeaderKey)
+	if contentType == "" {
+		return errs.E(errs.InvalidRequest, "Missing "+contentTypeHeaderKey+" header")
+	}
+
+	mt, _, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		return errs.E(errs.InvalidRequest, "Malformed "+contentTypeHeaderKey+" header")
+	}
+
+	if mt != appJSONContentTypeHeaderVal {
+		return errs.E(errs.UnsupportedMediaType, contentTypeHeaderKey+" header must be "+appJSONContentTypeHeaderVal)
+	}
+
+	return nil
+}
 
 // jsonContentTypeResponseHandler middleware is used to add the
 // application/json Content-Type Header for responses
