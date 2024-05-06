@@ -61,8 +61,8 @@ func ExampleHTTPErrorResponse() {
 	fmt.Println(w.Body)
 	// Output:
 	//
-	// {"level":"error","error":"Actual error message","http_statuscode":400,"Kind":"input validation error","Parameter":"testParam","Code":"0212","severity":"ERROR","message":"error response sent to client"}
-	// {"error":{"kind":"input validation error","code":"0212","param":"testParam","message":"Actual error message"}}
+	// {"level":"error","error":"actual error message","http_statuscode":400,"Kind":"input validation error","Parameter":"testParam","Code":"0212","severity":"ERROR","message":"error response sent to client"}
+	// {"error":{"kind":"input validation error","code":"0212","param":"testParam","message":"actual error message"}}
 }
 
 func ExampleE() {
@@ -73,7 +73,7 @@ func ExampleE() {
 
 	// Output:
 	//
-	// Actual error message
+	// actual error message
 }
 
 func layer4() error {
@@ -92,5 +92,5 @@ func layer2() error {
 }
 
 func layer1() error {
-	return errs.E(errs.Validation, errs.Parameter("testParam"), errs.Code("0212"), errors.New("Actual error message"))
+	return errs.E(errs.Validation, errs.Parameter("testParam"), errs.Code("0212"), errors.New("actual error message"))
 }
