@@ -8,6 +8,8 @@ I struggled a lot with parsing the myriad different patterns people have for pac
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/gilcrest/diygoapi.svg)](https://pkg.go.dev/github.com/gilcrest/diygoapi) [![Go Report Card](https://goreportcard.com/badge/github.com/gilcrest/diygoapi)](https://goreportcard.com/report/github.com/gilcrest/diygoapi)
 
+> Note: I have recently removed gorilla/mux from this repo in favor of the standard library's new [routing enhancements](https://go.dev/blog/routing-enhancements). I have yet to update this README, but will soon.
+
 ## API Walkthrough
 
 The following is an in-depth walkthrough of this project. This is a demo API, so the "business" intent of it is to support basic CRUD (**C**reate, **R**ead, **U**pdate, **D**elete) operations for a movie database. All paths to files or directories are from the project root.
