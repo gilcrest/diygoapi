@@ -8,8 +8,6 @@ I struggled a lot with parsing the myriad different patterns people have for pac
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/gilcrest/diygoapi.svg)](https://pkg.go.dev/github.com/gilcrest/diygoapi) [![Go Report Card](https://goreportcard.com/badge/github.com/gilcrest/diygoapi)](https://goreportcard.com/report/github.com/gilcrest/diygoapi)
 
-> Note: I have recently removed gorilla/mux from this repo in favor of the standard library's new [routing enhancements](https://go.dev/blog/routing-enhancements). I have yet to update this README, but will soon.
-
 ## API Walkthrough
 
 The following is an in-depth walkthrough of this project. This is a demo API, so the "business" intent of it is to support basic CRUD (**C**reate, **R**ead, **U**pdate, **D**elete) operations for a movie database. All paths to files or directories are from the project root.
@@ -201,7 +199,7 @@ exec: cue "export" "./config/cue/schema.cue" "./config/cue/local.cue" "--force" 
 
 ### Step 4 - Database Initialization
 
-The following steps setup the database objects and initialize data needed for running the web server. As a convenience, database migration programs which create these objects and load initial data can be executed using [Mage](https://magefile.org/). To understand database migrations and how they are structured in this project, you can watch [this talk](https://youtu.be/w07butydI5Q) I gave to the [Boston Golang meetup group](https://www.meetup.com/bostongo/?_cookie-check=1Gx8ms5NN8GhlaLJ) in February 2022. The below examples assume you have already setup PostgreSQL and know what user, database and schema you want to install the objects.
+The following steps create the database objects and initialize data needed for running the web server. As a convenience, database migration programs which create these objects and load initial data can be executed using [Mage](https://magefile.org/). To understand database migrations and how they are structured in this project, you can watch [this talk](https://youtu.be/w07butydI5Q) I gave to the [Boston Golang meetup group](https://www.meetup.com/bostongo/?_cookie-check=1Gx8ms5NN8GhlaLJ) in February 2022. The below examples assume you have already setup PostgreSQL and know what user, database and schema you want to install the objects.
 
 > If you want to create an isolated database and schema, you can find examples of doing that at `./scripts/db/db_init.sql`.
 
@@ -385,7 +383,7 @@ Running target: Genesis
 
 When running the `Genesis` service through `mage`, the JSON response is sent to the terminal and also `./config/genesis/response.json` so you don't need to collect it now.
 
-Briefly, the data model is setup to enable a B2B multi-tenant SAAS, which is overkill for a simple CRUD app, but it's the model I wanted to create/learn and can serve only one tenant just fine. This initial data setup as part of Genesis creates a Principal organization, a Test organization and apps/users within those as well as sets up permissions and roles for access for the user input into the service. The principal org is created solely for the administrative purpose of creating other organizations, apps and users. The test organization is where all tests are run for test data isolation, etc.
+Briefly, the data model is set up to enable a B2B multi-tenant SAAS, which is overkill for a simple CRUD app, but it's the model I wanted to create/learn and can serve only one tenant just fine. This initial data setup as part of Genesis creates a Principal organization, a Test organization and apps/users within those as well as sets up permissions and roles for access for the user input into the service. The principal org is created solely for the administrative purpose of creating other organizations, apps and users. The test organization is where all tests are run for test data isolation, etc.
 
 Most importantly, a user initiated organization and app is created based on your input in `./config/genesis/cue/input.cue`. The response details of this organization (located within the `userInitiated` node of the response are those which are needed to run the various Movie APIs (create movie, read movie, etc.)
 
@@ -613,7 +611,7 @@ $ curl --location --request DELETE 'http://127.0.0.1:8080/api/v1/movies/IUAtsOQu
 
 ![RealWorld Example Applications](media/diygoapi-package-layout.png)
 
-The above image is a high-level view of an example request that is processed by the server (creating a movie). To summarize, after receiving an http request, the request path, method, etc. is matched to a registered route in the [gorilla mux](https://github.com/gorilla/mux) router (router initialization is part of server startup in the `command` package) as part of the routes.go file in the server package. The request is then sent through a sequence of middleware handlers for setting up request logging, response headers, authentication and authorization. Finally, the request is routed through a bespoke app handler, in this case `handleMovieCreate`.
+The above image is a high-level view of an example request that is processed by the server (creating a movie). To summarize, after receiving an http request, the request path, method, etc. is matched to a registered route in the Server's standard library multiplexer (aka ServeMux, initialization of which, is part of server startup in the `command` package as part of the routes.go file in the server package). The request is then sent through a sequence of middleware handlers for setting up request logging, response headers, authentication and authorization. Finally, the request is routed through a bespoke app handler, in this case `handleMovieCreate`.
 
 > `diygoapi` package layout is based on several projects, but the primary source of inspiration is the [WTF Dial app repo](https://github.com/benbjohnson/wtf) and [accompanying blog](https://www.gobeyond.dev/) from [Ben Johnson](https://github.com/benbjohnson). It's really a wonderful resource and I encourage everyone to read it.
 
@@ -1059,23 +1057,23 @@ if err != nil {
 
 #### Logger Setup in Handlers
 
-The `Server.routes` method is responsible for registering routes and corresponding middleware/handlers to the Server's `gorilla/mux` router. For each route registered to the handler, upon execution, the initialized `zerolog.Logger` struct is added to the request context through the `Server.loggerChain` method.
+The `Server.registerRoutes` method is responsible for registering routes and corresponding middleware/handlers to the Server's multiplexer (aka router). For each route registered to the handler, upon execution, the initialized `zerolog.Logger` struct is added to the request context through the `Server.loggerChain` method.
 
 ```go
-// register routes/middleware/handlers to the Server router
-func (s *Server) routes() {
+// register routes/middleware/handlers to the Server ServeMux
+func (s *Server) registerRoutes() {
 
-    // Match only POST requests at /api/v1/movies
-    // with Content-Type header = application/json
-    s.router.Handle(moviesV1PathRoot,
-        s.loggerChain().
-            Append(s.appHandler).
-            Append(s.authHandler).
-            Append(s.authorizeUserHandler).
-            Append(s.jsonContentTypeResponseHandler).
-            ThenFunc(s.handleMovieCreate)).
-        Methods(http.MethodPost).
-        Headers(contentTypeHeaderKey, appJSONContentTypeHeaderVal)
+	// Match only POST requests at /api/v1/movies
+	// with Content-Type header = application/json
+	s.mux.Handle("POST /api/v1/movies",
+		s.loggerChain().
+			Append(s.addRequestHandlerPatternContextHandler).
+			Append(s.enforceJSONContentTypeHandler).
+			Append(s.appHandler).
+			Append(s.authHandler).
+			Append(s.authorizeUserHandler).
+			Append(s.jsonContentTypeResponseHandler).
+			ThenFunc(s.handleMovieCreate))
 
 ...
 ```
@@ -1084,23 +1082,23 @@ The `Server.loggerChain` method sets up the logger with pre-populated fields, in
 
 ```go
 func (s *Server) loggerChain() alice.Chain {
-    ac := alice.New(hlog.NewHandler(s.logger),
-        hlog.AccessHandler(func(r *http.Request, status, size int, duration time.Duration) {
-        hlog.FromRequest(r).Info().
-            Str("method", r.Method).
-            Stringer("url", r.URL).
-            Int("status", status).
-            Int("size", size).
-            Dur("duration", duration).
-            Msg("request logged")
-        }),
-        hlog.RemoteAddrHandler("remote_ip"),
-        hlog.UserAgentHandler("user_agent"),
-        hlog.RefererHandler("referer"),
-        hlog.RequestIDHandler("request_id", "Request-Id"),
-    )
+	ac := alice.New(hlog.NewHandler(s.Logger),
+		hlog.AccessHandler(func(r *http.Request, status, size int, duration time.Duration) {
+			hlog.FromRequest(r).Info().
+				Str("method", r.Method).
+				Stringer("url", r.URL).
+				Int("status", status).
+				Int("size", size).
+				Dur("duration", duration).
+				Msg("request logged")
+		}),
+		hlog.RemoteAddrHandler("remote_ip"),
+		hlog.UserAgentHandler("user_agent"),
+		hlog.RefererHandler("referer"),
+		hlog.RequestIDHandler("request_id", "Request-Id"),
+	)
 
-    return ac
+	return ac
 }
 ```
 
