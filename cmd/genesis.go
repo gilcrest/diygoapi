@@ -147,8 +147,6 @@ func Genesis() (err error) {
 		return errs.E(op, err)
 	}
 
-	fmt.Println(string(responseJSON))
-
 	return nil
 }
 
