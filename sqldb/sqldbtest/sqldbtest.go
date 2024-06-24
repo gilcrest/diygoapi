@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 
 	"github.com/gilcrest/diygoapi/logger"
@@ -90,7 +90,7 @@ func newPool(t *testing.T) (dbpool *pgxpool.Pool, cleanup func()) {
 
 	var err error
 	// Open the postgres database using the postgres driver (pq)
-	dbpool, err = pgxpool.Connect(ctx, dsn.KeywordValueConnectionString())
+	dbpool, err = pgxpool.New(ctx, dsn.KeywordValueConnectionString())
 	if err != nil {
 		t.Fatalf("sql.Open() error = %v", err)
 	}
