@@ -2,6 +2,8 @@
 
 A RESTful API template (built with Go)
 
+> Note: 6/23/2024 - I just upgraded to pgx/v5 and fixed all tests. I need to update this README as a result. I also need to update the README flow in general as it's outdated a bit. Will be updated soon.
+
 The goal of this project is to be an example of a relational database-backed REST HTTP Web Server that has characteristics needed to ensure success in a high volume environment. This project co-opts the DIY ethos of the Go community and does its best to "use the standard library" whenever possible, bringing in third-party libraries when not doing so would be unduly burdensome (structured logging, Oauth2, etc.).
 
 I struggled a lot with parsing the myriad different patterns people have for package layouts over the past few years and have tried to coalesce what I've learned from others into my own take on a package layout. Below, I hope to communicate how this structure works. If you have any questions, open an issue or send me a note - I'm happy to help! Also, if you disagree or have suggestions, please do the same, I really enjoy getting both positive and negative feedback.
