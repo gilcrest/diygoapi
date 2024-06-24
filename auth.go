@@ -6,12 +6,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"golang.org/x/oauth2"
 
 	"github.com/gilcrest/diygoapi/errs"
 	"github.com/gilcrest/diygoapi/secure"
+	"github.com/gilcrest/diygoapi/uuid"
 )
 
 const (

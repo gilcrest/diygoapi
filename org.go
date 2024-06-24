@@ -3,10 +3,9 @@ package diygoapi
 import (
 	"context"
 
-	"github.com/google/uuid"
-
 	"github.com/gilcrest/diygoapi/errs"
 	"github.com/gilcrest/diygoapi/secure"
+	"github.com/gilcrest/diygoapi/uuid"
 )
 
 // OrgServicer manages the retrieval and manipulation of an Org

@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/gilcrest/diygoapi"
 	"github.com/gilcrest/diygoapi/errs"
 	"github.com/gilcrest/diygoapi/secure"
 	"github.com/gilcrest/diygoapi/sqldb/datastore"
+	"github.com/gilcrest/diygoapi/uuid"
 )
 
 // orgAudit is the combination of a domain Org and its audit data
@@ -185,17 +185,17 @@ func createOrgTx(ctx context.Context, tx pgx.Tx, oa *orgAudit) error {
 // newCreateOrgParams maps an Org to datastore.CreateOrgParams
 func newCreateOrgParams(oa *orgAudit) datastore.CreateOrgParams {
 	return datastore.CreateOrgParams{
-		OrgID:           oa.Org.ID,
+		OrgID:           oa.Org.ID.PgxUUID(),
 		OrgExtlID:       oa.Org.ExternalID.String(),
 		OrgName:         oa.Org.Name,
 		OrgDescription:  oa.Org.Description,
-		OrgKindID:       oa.Org.Kind.ID,
-		CreateAppID:     oa.SimpleAudit.Create.App.ID,
-		CreateUserID:    oa.SimpleAudit.Create.User.NullUUID(),
-		CreateTimestamp: oa.SimpleAudit.Create.Moment,
-		UpdateAppID:     oa.SimpleAudit.Update.App.ID,
-		UpdateUserID:    oa.SimpleAudit.Update.User.NullUUID(),
-		UpdateTimestamp: oa.SimpleAudit.Update.Moment,
+		OrgKindID:       oa.Org.Kind.ID.PgxUUID(),
+		CreateAppID:     oa.SimpleAudit.Create.App.ID.PgxUUID(),
+		CreateUserID:    oa.SimpleAudit.Create.User.ID.PgxUUID(),
+		CreateTimestamp: diygoapi.NewPgxTimestampTZ(oa.SimpleAudit.Create.Moment),
+		UpdateAppID:     oa.SimpleAudit.Update.App.ID.PgxUUID(),
+		UpdateUserID:    oa.SimpleAudit.Update.User.ID.PgxUUID(),
+		UpdateTimestamp: diygoapi.NewPgxTimestampTZ(oa.SimpleAudit.Update.Moment),
 	}
 }
 
@@ -218,7 +218,7 @@ func (s *OrgService) Update(ctx context.Context, r *diygoapi.UpdateOrgRequest, a
 	var oa *orgAudit
 	oa, err = findOrgByExternalIDWithAudit(ctx, tx, r.ExternalID)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errs.E(op, errs.Validation, "No org exists for the given external ID")
 		}
 		return nil, errs.E(op, errs.Database, err)
@@ -231,12 +231,12 @@ func (s *OrgService) Update(ctx context.Context, r *diygoapi.UpdateOrgRequest, a
 	oa.Org.Description = r.Description
 
 	params := datastore.UpdateOrgParams{
-		OrgID:           oa.Org.ID,
+		OrgID:           oa.Org.ID.PgxUUID(),
 		OrgName:         oa.Org.Name,
 		OrgDescription:  oa.Org.Description,
-		UpdateAppID:     adt.App.ID,
-		UpdateUserID:    adt.User.NullUUID(),
-		UpdateTimestamp: adt.Moment,
+		UpdateAppID:     adt.App.ID.PgxUUID(),
+		UpdateUserID:    adt.User.ID.PgxUUID(),
+		UpdateTimestamp: diygoapi.NewPgxTimestampTZ(adt.Moment),
 	}
 
 	// update database record using datastore
@@ -279,20 +279,20 @@ func (s *OrgService) Delete(ctx context.Context, extlID string) (dr diygoapi.Del
 	var o diygoapi.Org
 	o, err = findOrgByExternalID(ctx, tx, extlID)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return diygoapi.DeleteResponse{}, errs.E(op, errs.Validation, "No org exists for the given external ID")
 		}
 		return diygoapi.DeleteResponse{}, errs.E(op, errs.Database, err)
 	}
 
 	var dbApps []datastore.App
-	dbApps, err = datastore.New(tx).FindAppsByOrg(ctx, o.ID)
+	dbApps, err = datastore.New(tx).FindAppsByOrg(ctx, o.ID.PgxUUID())
 	if err != nil {
 		return diygoapi.DeleteResponse{}, errs.E(op, errs.Database, err)
 	}
 
 	for _, aa := range dbApps {
-		a := diygoapi.App{ID: aa.AppID}
+		a := diygoapi.App{ID: aa.AppID.Bytes}
 		err = deleteAppTx(ctx, tx, a)
 		if err != nil {
 			return diygoapi.DeleteResponse{}, errs.E(op, errs.Database, err)
@@ -300,7 +300,7 @@ func (s *OrgService) Delete(ctx context.Context, extlID string) (dr diygoapi.Del
 	}
 
 	var rowsAffected int64
-	rowsAffected, err = datastore.New(tx).DeleteOrg(ctx, o.ID)
+	rowsAffected, err = datastore.New(tx).DeleteOrg(ctx, o.ID.PgxUUID())
 	if err != nil {
 		return diygoapi.DeleteResponse{}, errs.E(op, errs.Database, err)
 	}
@@ -349,12 +349,12 @@ func (s *OrgService) FindAll(ctx context.Context) (responses []*diygoapi.OrgResp
 
 	for _, row := range rows {
 		o := diygoapi.Org{
-			ID:          row.OrgID,
+			ID:          row.OrgID.Bytes,
 			ExternalID:  secure.MustParseIdentifier(row.OrgExtlID),
 			Name:        row.OrgName,
 			Description: row.OrgDescription,
 			Kind: &diygoapi.OrgKind{
-				ID:          row.OrgKindID,
+				ID:          row.OrgKindID.Bytes,
 				ExternalID:  row.OrgKindExtlID,
 				Description: row.OrgKindDesc,
 			},
@@ -363,35 +363,35 @@ func (s *OrgService) FindAll(ctx context.Context) (responses []*diygoapi.OrgResp
 		sa := diygoapi.SimpleAudit{
 			Create: diygoapi.Audit{
 				App: &diygoapi.App{
-					ID:          row.CreateAppID,
+					ID:          row.CreateAppID.Bytes,
 					ExternalID:  secure.MustParseIdentifier(row.CreateAppExtlID),
-					Org:         &diygoapi.Org{ID: row.CreateAppOrgID},
+					Org:         &diygoapi.Org{ID: row.CreateAppOrgID.Bytes},
 					Name:        row.CreateAppName,
 					Description: row.CreateAppDescription,
 					APIKeys:     nil,
 				},
 				User: &diygoapi.User{
-					ID:        row.CreateUserID.UUID,
+					ID:        row.CreateUserID.Bytes,
 					FirstName: row.CreateUserFirstName,
 					LastName:  row.CreateUserLastName,
 				},
-				Moment: row.CreateTimestamp,
+				Moment: row.CreateTimestamp.Time,
 			},
 			Update: diygoapi.Audit{
 				App: &diygoapi.App{
-					ID:          row.UpdateAppID,
+					ID:          row.UpdateAppID.Bytes,
 					ExternalID:  secure.MustParseIdentifier(row.UpdateAppExtlID),
-					Org:         &diygoapi.Org{ID: row.UpdateAppOrgID},
+					Org:         &diygoapi.Org{ID: row.UpdateAppOrgID.Bytes},
 					Name:        row.UpdateAppName,
 					Description: row.UpdateAppDescription,
 					APIKeys:     nil,
 				},
 				User: &diygoapi.User{
-					ID:        row.UpdateUserID.UUID,
+					ID:        row.UpdateUserID.Bytes,
 					FirstName: row.UpdateUserFirstName,
 					LastName:  row.UpdateUserLastName,
 				},
-				Moment: row.UpdateTimestamp,
+				Moment: row.UpdateTimestamp.Time,
 			},
 		}
 		or := newOrgResponse(&orgAudit{Org: &o, SimpleAudit: &sa}, appAudit{})
@@ -427,21 +427,21 @@ func (s *OrgService) FindByExternalID(ctx context.Context, extlID string) (or *d
 }
 
 // findOrgByExternalID retrieves an Org from the datastore given a unique external ID
-func findOrgByExternalID(ctx context.Context, dbtx diygoapi.DBTX, extlID string) (diygoapi.Org, error) {
+func findOrgByExternalID(ctx context.Context, tx pgx.Tx, extlID string) (diygoapi.Org, error) {
 	const op errs.Op = "service/findOrgByExternalID"
 
-	row, err := datastore.New(dbtx).FindOrgByExtlID(ctx, extlID)
+	row, err := datastore.New(tx).FindOrgByExtlID(ctx, extlID)
 	if err != nil {
 		return diygoapi.Org{}, errs.E(op, errs.Database, err)
 	}
 
 	o := diygoapi.Org{
-		ID:          row.OrgID,
+		ID:          row.OrgID.Bytes,
 		ExternalID:  secure.MustParseIdentifier(row.OrgExtlID),
 		Name:        row.OrgName,
 		Description: row.OrgDescription,
 		Kind: &diygoapi.OrgKind{
-			ID:          row.OrgKindID,
+			ID:          row.OrgKindID.Bytes,
 			ExternalID:  row.OrgKindExtlID,
 			Description: row.OrgKindDesc,
 		},
@@ -452,7 +452,7 @@ func findOrgByExternalID(ctx context.Context, dbtx diygoapi.DBTX, extlID string)
 
 // findOrgByExternalID retrieves Org data from the datastore given a
 // unique external ID, which is then hydrated into Org and audit structs.
-func findOrgByExternalIDWithAudit(ctx context.Context, dbtx diygoapi.DBTX, extlID string) (*orgAudit, error) {
+func findOrgByExternalIDWithAudit(ctx context.Context, tx pgx.Tx, extlID string) (*orgAudit, error) {
 	const op errs.Op = "service/findOrgByExternalIDWithAudit"
 
 	var (
@@ -460,7 +460,7 @@ func findOrgByExternalIDWithAudit(ctx context.Context, dbtx diygoapi.DBTX, extlI
 		err error
 	)
 
-	row, err = datastore.New(dbtx).FindOrgByExtlIDWithAudit(ctx, extlID)
+	row, err = datastore.New(tx).FindOrgByExtlIDWithAudit(ctx, extlID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errs.E(op, errs.NotExist, fmt.Sprintf("no org found with external ID: %s", extlID))
@@ -470,12 +470,12 @@ func findOrgByExternalIDWithAudit(ctx context.Context, dbtx diygoapi.DBTX, extlI
 	}
 
 	o := &diygoapi.Org{
-		ID:          row.OrgID,
+		ID:          row.OrgID.Bytes,
 		ExternalID:  secure.MustParseIdentifier(row.OrgExtlID),
 		Name:        row.OrgName,
 		Description: row.OrgDescription,
 		Kind: &diygoapi.OrgKind{
-			ID:          row.OrgKindID,
+			ID:          row.OrgKindID.Bytes,
 			ExternalID:  row.OrgKindExtlID,
 			Description: row.OrgKindDesc,
 		},
@@ -484,35 +484,35 @@ func findOrgByExternalIDWithAudit(ctx context.Context, dbtx diygoapi.DBTX, extlI
 	sa := &diygoapi.SimpleAudit{
 		Create: diygoapi.Audit{
 			App: &diygoapi.App{
-				ID:          row.CreateAppID,
+				ID:          row.CreateAppID.Bytes,
 				ExternalID:  secure.MustParseIdentifier(row.CreateAppExtlID),
-				Org:         &diygoapi.Org{ID: row.CreateAppOrgID},
+				Org:         &diygoapi.Org{ID: row.CreateAppOrgID.Bytes},
 				Name:        row.CreateAppName,
 				Description: row.CreateAppDescription,
 				APIKeys:     nil,
 			},
 			User: &diygoapi.User{
-				ID:        row.CreateUserID.UUID,
+				ID:        row.CreateUserID.Bytes,
 				FirstName: row.CreateUserFirstName,
 				LastName:  row.CreateUserLastName,
 			},
-			Moment: row.CreateTimestamp,
+			Moment: row.CreateTimestamp.Time,
 		},
 		Update: diygoapi.Audit{
 			App: &diygoapi.App{
-				ID:          row.UpdateAppID,
+				ID:          row.UpdateAppID.Bytes,
 				ExternalID:  secure.MustParseIdentifier(row.UpdateAppExtlID),
-				Org:         &diygoapi.Org{ID: row.UpdateAppOrgID},
+				Org:         &diygoapi.Org{ID: row.UpdateAppOrgID.Bytes},
 				Name:        row.UpdateAppName,
 				Description: row.UpdateAppDescription,
 				APIKeys:     nil,
 			},
 			User: &diygoapi.User{
-				ID:        row.UpdateUserID.UUID,
+				ID:        row.UpdateUserID.Bytes,
 				FirstName: row.UpdateUserFirstName,
 				LastName:  row.UpdateUserLastName,
 			},
-			Moment: row.UpdateTimestamp,
+			Moment: row.UpdateTimestamp.Time,
 		},
 	}
 
@@ -529,12 +529,12 @@ func FindOrgByName(ctx context.Context, tx datastore.DBTX, name string) (*diygoa
 	}
 
 	o := &diygoapi.Org{
-		ID:          findOrgByNameRow.OrgID,
+		ID:          findOrgByNameRow.OrgID.Bytes,
 		ExternalID:  secure.MustParseIdentifier(findOrgByNameRow.OrgExtlID),
 		Name:        findOrgByNameRow.OrgName,
 		Description: findOrgByNameRow.OrgDescription,
 		Kind: &diygoapi.OrgKind{
-			ID:          findOrgByNameRow.OrgKindID,
+			ID:          findOrgByNameRow.OrgKindID.Bytes,
 			ExternalID:  findOrgByNameRow.OrgKindExtlID,
 			Description: findOrgByNameRow.OrgKindDesc,
 		},
@@ -544,16 +544,16 @@ func FindOrgByName(ctx context.Context, tx datastore.DBTX, name string) (*diygoa
 }
 
 // findOrgKindByExtlID finds an org kind from the datastore given its External ID
-func findOrgKindByExtlID(ctx context.Context, dbtx diygoapi.DBTX, extlID string) (*diygoapi.OrgKind, error) {
+func findOrgKindByExtlID(ctx context.Context, tx pgx.Tx, extlID string) (*diygoapi.OrgKind, error) {
 	const op errs.Op = "service/findOrgKindByExtlID"
 
-	kind, err := datastore.New(dbtx).FindOrgKindByExtlID(ctx, extlID)
+	kind, err := datastore.New(tx).FindOrgKindByExtlID(ctx, extlID)
 	if err != nil {
 		return nil, errs.E(op, errs.Database, err)
 	}
 
 	orgKind := &diygoapi.OrgKind{
-		ID:          kind.OrgKindID,
+		ID:          kind.OrgKindID.Bytes,
 		ExternalID:  kind.OrgKindExtlID,
 		Description: kind.OrgKindDesc,
 	}
@@ -566,15 +566,15 @@ func createPrincipalOrgKind(ctx context.Context, tx pgx.Tx, adt diygoapi.Audit) 
 	const op errs.Op = "service/createPrincipalOrgKind"
 
 	createOrgKindParams := datastore.CreateOrgKindParams{
-		OrgKindID:       uuid.New(),
+		OrgKindID:       uuid.New().PgxUUID(),
 		OrgKindExtlID:   principalOrgKind,
 		OrgKindDesc:     "The Principal org represents the first organization created in the database and exists purely for the administrative purpose of creating other organizations, apps and users.",
-		CreateAppID:     adt.App.ID,
-		CreateUserID:    adt.User.NullUUID(),
-		CreateTimestamp: adt.Moment,
-		UpdateAppID:     adt.App.ID,
-		UpdateUserID:    adt.User.NullUUID(),
-		UpdateTimestamp: adt.Moment,
+		CreateAppID:     adt.App.ID.PgxUUID(),
+		CreateUserID:    adt.User.ID.PgxUUID(),
+		CreateTimestamp: diygoapi.NewPgxTimestampTZ(adt.Moment),
+		UpdateAppID:     adt.App.ID.PgxUUID(),
+		UpdateUserID:    adt.User.ID.PgxUUID(),
+		UpdateTimestamp: diygoapi.NewPgxTimestampTZ(adt.Moment),
 	}
 
 	var (
@@ -598,15 +598,15 @@ func createTestOrgKind(ctx context.Context, tx pgx.Tx, adt diygoapi.Audit) (data
 	const op errs.Op = "service/createTestOrgKind"
 
 	testParams := datastore.CreateOrgKindParams{
-		OrgKindID:       uuid.New(),
+		OrgKindID:       uuid.New().PgxUUID(),
 		OrgKindExtlID:   "test",
 		OrgKindDesc:     "The test org is used strictly for testing",
-		CreateAppID:     adt.App.ID,
-		CreateUserID:    adt.User.NullUUID(),
-		CreateTimestamp: adt.Moment,
-		UpdateAppID:     adt.App.ID,
-		UpdateUserID:    adt.User.NullUUID(),
-		UpdateTimestamp: adt.Moment,
+		CreateAppID:     adt.App.ID.PgxUUID(),
+		CreateUserID:    adt.User.ID.PgxUUID(),
+		CreateTimestamp: diygoapi.NewPgxTimestampTZ(adt.Moment),
+		UpdateAppID:     adt.App.ID.PgxUUID(),
+		UpdateUserID:    adt.User.ID.PgxUUID(),
+		UpdateTimestamp: diygoapi.NewPgxTimestampTZ(adt.Moment),
 	}
 
 	var (
@@ -630,15 +630,15 @@ func createStandardOrgKind(ctx context.Context, tx pgx.Tx, adt diygoapi.Audit) (
 	const op errs.Op = "service/createStandardOrgKind"
 
 	standardParams := datastore.CreateOrgKindParams{
-		OrgKindID:       uuid.New(),
+		OrgKindID:       uuid.New().PgxUUID(),
 		OrgKindExtlID:   "standard",
 		OrgKindDesc:     "The standard org is used for myriad business purposes",
-		CreateAppID:     adt.App.ID,
-		CreateUserID:    adt.User.NullUUID(),
-		CreateTimestamp: adt.Moment,
-		UpdateAppID:     adt.App.ID,
-		UpdateUserID:    adt.User.NullUUID(),
-		UpdateTimestamp: adt.Moment,
+		CreateAppID:     adt.App.ID.PgxUUID(),
+		CreateUserID:    adt.User.ID.PgxUUID(),
+		CreateTimestamp: diygoapi.NewPgxTimestampTZ(adt.Moment),
+		UpdateAppID:     adt.App.ID.PgxUUID(),
+		UpdateUserID:    adt.User.ID.PgxUUID(),
+		UpdateTimestamp: diygoapi.NewPgxTimestampTZ(adt.Moment),
 	}
 
 	var (

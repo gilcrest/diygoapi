@@ -12,8 +12,8 @@ import (
 	"strconv"
 
 	"github.com/jackc/pgconn"
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 
 	"github.com/gilcrest/diygoapi/errs"
@@ -120,23 +120,23 @@ func (dsn PostgreSQLDSN) KeywordValueConnectionString() string {
 	}
 }
 
-// NewPostgreSQLPool creates a new db pool and establishes a connection.
+// NewPgxPool creates a new db pool and establishes a connection.
 // In addition, returns a Close function to defer closing the pool.
-func NewPostgreSQLPool(ctx context.Context, lgr zerolog.Logger, dsn PostgreSQLDSN) (pool *pgxpool.Pool, close func(), err error) {
-	const op errs.Op = "sqldb/NewPostgreSQLPool"
+func NewPgxPool(ctx context.Context, lgr zerolog.Logger, dsn PostgreSQLDSN) (dbpool *pgxpool.Pool, close func(), err error) {
+	const op errs.Op = "sqldb/NewPgxPool"
 
 	f := func() {}
 
 	// Open the postgres database using the pgxpool driver (pq)
 	// func Open(driverName, dataSourceName string) (*DB, error)
-	pool, err = pgxpool.Connect(ctx, dsn.KeywordValueConnectionString())
+	dbpool, err = pgxpool.New(ctx, dsn.KeywordValueConnectionString())
 	if err != nil {
 		return nil, f, errs.E(op, errs.Database, err)
 	}
 
 	lgr.Info().Msgf("sql database opened for %s on port %d", dsn.Host, dsn.Port)
 
-	return pool, func() { pool.Close() }, nil
+	return dbpool, func() { dbpool.Close() }, nil
 }
 
 // DB is a concrete implementation for a PostgreSQL database

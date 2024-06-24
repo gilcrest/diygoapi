@@ -4,10 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/gilcrest/diygoapi/errs"
 	"github.com/gilcrest/diygoapi/secure"
+	"github.com/gilcrest/diygoapi/uuid"
 )
 
 // MovieServicer is used to create, read, update and delete movies.
@@ -26,7 +25,7 @@ type Movie struct {
 	Title      string
 	Rated      string
 	Released   time.Time
-	RunTime    int
+	RunTime    int64
 	Director   string
 	Writer     string
 }
@@ -60,7 +59,7 @@ type CreateMovieRequest struct {
 	Title    string `json:"title"`
 	Rated    string `json:"rated"`
 	Released string `json:"release_date"`
-	RunTime  int    `json:"run_time"`
+	RunTime  int64  `json:"run_time"`
 	Director string `json:"director"`
 	Writer   string `json:"writer"`
 }
@@ -71,7 +70,7 @@ type UpdateMovieRequest struct {
 	Title      string `json:"title"`
 	Rated      string `json:"rated"`
 	Released   string `json:"release_date"`
-	RunTime    int    `json:"run_time"`
+	RunTime    int64  `json:"run_time"`
 	Director   string `json:"director"`
 	Writer     string `json:"writer"`
 }
@@ -82,7 +81,7 @@ type MovieResponse struct {
 	Title               string `json:"title"`
 	Rated               string `json:"rated"`
 	Released            string `json:"release_date"`
-	RunTime             int    `json:"run_time"`
+	RunTime             int64  `json:"run_time"`
 	Director            string `json:"director"`
 	Writer              string `json:"writer"`
 	CreateAppExtlID     string `json:"create_app_extl_id"`

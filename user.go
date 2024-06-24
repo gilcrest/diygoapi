@@ -4,11 +4,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
 	"golang.org/x/text/language"
 
 	"github.com/gilcrest/diygoapi/errs"
 	"github.com/gilcrest/diygoapi/secure"
+	"github.com/gilcrest/diygoapi/uuid"
 )
 
 // RegisterUserServicer registers a new user
@@ -35,17 +35,6 @@ type Person struct {
 	// Users: All the users that are linked to the Person
 	// (e.g. a GitHub user, a Google user, etc.).
 	Users []*User
-}
-
-// NullUUID returns ID as uuid.NullUUID
-func (p Person) NullUUID() uuid.NullUUID {
-	if p.ID == uuid.Nil {
-		return uuid.NullUUID{}
-	}
-	return uuid.NullUUID{
-		UUID:  p.ID,
-		Valid: true,
-	}
 }
 
 // Validate determines whether the Person has proper data to be considered valid
@@ -219,21 +208,12 @@ func (u User) Validate() error {
 	return nil
 }
 
-// NullUUID returns ID as uuid.NullUUID
-func (u User) NullUUID() uuid.NullUUID {
-	if u.ID == uuid.Nil {
-		return uuid.NullUUID{}
-	}
-	return uuid.NullUUID{
-		UUID:  u.ID,
-		Valid: true,
-	}
-}
-
 // NewUserFromProviderInfo creates a new User struct to be used in db user creation
 func NewUserFromProviderInfo(pi *ProviderInfo, lm language.Matcher) *User {
 	var langPrefs []language.Tag
+	// Match the user's locale to the supported languages
 	langPref, _, _ := lm.Match(language.Make(pi.UserInfo.Locale))
+	// Append the matched language to the language preferences
 	langPrefs = append(langPrefs, langPref)
 
 	// create User from ProviderInfo

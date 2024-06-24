@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/gilcrest/diygoapi"
 	"github.com/gilcrest/diygoapi/errs"
 	"github.com/gilcrest/diygoapi/secure"
 	"github.com/gilcrest/diygoapi/sqldb/datastore"
+	"github.com/gilcrest/diygoapi/uuid"
 )
 
 // appAudit is the combination of a domain App and its audit data
@@ -65,14 +65,17 @@ func (s *AppService) Create(ctx context.Context, r *diygoapi.CreateAppRequest, a
 		a  *diygoapi.App
 		aa appAudit
 	)
+
 	nap := newAppParams{
 		Name:        r.Name,
 		Description: r.Description,
 		// when creating an app, the org the app belongs to must be
 		// the same as the org which the user is transacting.
-		Org:             adt.App.Org,
-		ApiKeyGenerator: s.APIKeyGenerator,
-		EncryptionKey:   s.EncryptionKey,
+		Org:              adt.App.Org,
+		ApiKeyGenerator:  s.APIKeyGenerator,
+		EncryptionKey:    s.EncryptionKey,
+		Provider:         diygoapi.ParseProvider(r.Oauth2Provider),
+		ProviderClientID: r.Oauth2ProviderClientID,
 	}
 	a, err = newApp(nap)
 	if err != nil {
@@ -166,19 +169,19 @@ func createAppTx(ctx context.Context, tx pgx.Tx, aa appAudit) (err error) {
 	const op errs.Op = "service/createAppTx"
 
 	createAppParams := datastore.CreateAppParams{
-		AppID:                aa.App.ID,
-		OrgID:                aa.App.Org.ID,
+		AppID:                aa.App.ID.PgxUUID(),
+		OrgID:                aa.App.Org.ID.PgxUUID(),
 		AppExtlID:            aa.App.ExternalID.String(),
 		AppName:              aa.App.Name,
 		AppDescription:       aa.App.Description,
-		AuthProviderID:       diygoapi.NewNullInt32(int32(aa.App.Provider)),
-		AuthProviderClientID: diygoapi.NewNullString(aa.App.ProviderClientID),
-		CreateAppID:          aa.SimpleAudit.Create.App.ID,
-		CreateUserID:         aa.SimpleAudit.Create.User.NullUUID(),
-		CreateTimestamp:      aa.SimpleAudit.Create.Moment,
-		UpdateAppID:          aa.SimpleAudit.Update.App.ID,
-		UpdateUserID:         aa.SimpleAudit.Update.User.NullUUID(),
-		UpdateTimestamp:      aa.SimpleAudit.Update.Moment,
+		AuthProviderID:       diygoapi.NewPgxInt8(int64(aa.App.Provider)),
+		AuthProviderClientID: diygoapi.NewPgxText(aa.App.ProviderClientID),
+		CreateAppID:          aa.SimpleAudit.Create.App.ID.PgxUUID(),
+		CreateUserID:         aa.SimpleAudit.Create.User.ID.PgxUUID(),
+		CreateTimestamp:      diygoapi.NewPgxTimestampTZ(aa.SimpleAudit.Create.Moment),
+		UpdateAppID:          aa.SimpleAudit.Update.App.ID.PgxUUID(),
+		UpdateUserID:         aa.SimpleAudit.Update.User.ID.PgxUUID(),
+		UpdateTimestamp:      diygoapi.NewPgxTimestampTZ(aa.SimpleAudit.Update.Moment),
 	}
 
 	// create app database record using appstore
@@ -196,14 +199,14 @@ func createAppTx(ctx context.Context, tx pgx.Tx, aa appAudit) (err error) {
 
 		createAppAPIKeyParams := datastore.CreateAppAPIKeyParams{
 			ApiKey:          key.Ciphertext(),
-			AppID:           aa.App.ID,
-			DeactvDate:      key.DeactivationDate(),
-			CreateAppID:     aa.SimpleAudit.Create.App.ID,
-			CreateUserID:    aa.SimpleAudit.Create.User.NullUUID(),
-			CreateTimestamp: aa.SimpleAudit.Create.Moment,
-			UpdateAppID:     aa.SimpleAudit.Update.App.ID,
-			UpdateUserID:    aa.SimpleAudit.Update.User.NullUUID(),
-			UpdateTimestamp: aa.SimpleAudit.Update.Moment,
+			AppID:           aa.App.ID.PgxUUID(),
+			DeactvDate:      diygoapi.NewPgxDate(key.DeactivationDate()),
+			CreateAppID:     aa.SimpleAudit.Create.App.ID.PgxUUID(),
+			CreateUserID:    aa.SimpleAudit.Create.User.ID.PgxUUID(),
+			CreateTimestamp: diygoapi.NewPgxTimestampTZ(aa.SimpleAudit.Create.Moment),
+			UpdateAppID:     aa.SimpleAudit.Update.App.ID.PgxUUID(),
+			UpdateUserID:    aa.SimpleAudit.Update.User.ID.PgxUUID(),
+			UpdateTimestamp: diygoapi.NewPgxTimestampTZ(aa.SimpleAudit.Update.Moment),
 		}
 
 		// create app API key database record using appstore
@@ -255,10 +258,10 @@ func (s *AppService) Update(ctx context.Context, r *diygoapi.UpdateAppRequest, a
 	updateAppParams := datastore.UpdateAppParams{
 		AppName:         aa.App.Name,
 		AppDescription:  aa.App.Description,
-		UpdateAppID:     adt.App.ID,
-		UpdateUserID:    adt.User.NullUUID(),
-		UpdateTimestamp: adt.Moment,
-		AppID:           aa.App.ID,
+		UpdateAppID:     adt.App.ID.PgxUUID(),
+		UpdateUserID:    adt.User.ID.PgxUUID(),
+		UpdateTimestamp: diygoapi.NewPgxTimestampTZ(adt.Moment),
+		AppID:           aa.App.ID.PgxUUID(),
 	}
 
 	var rowsAffected int64
@@ -330,7 +333,7 @@ func deleteAppTx(ctx context.Context, tx pgx.Tx, a diygoapi.App) (err error) {
 	// one-to-many API keys can be associated with an App. This will
 	// delete them all.
 	var apiKeysRowsAffected int64
-	apiKeysRowsAffected, err = datastore.New(tx).DeleteAppAPIKeys(ctx, a.ID)
+	apiKeysRowsAffected, err = datastore.New(tx).DeleteAppAPIKeys(ctx, a.ID.PgxUUID())
 	if err != nil {
 		return errs.E(op, errs.Database, err)
 	}
@@ -340,7 +343,7 @@ func deleteAppTx(ctx context.Context, tx pgx.Tx, a diygoapi.App) (err error) {
 	}
 
 	var rowsAffected int64
-	rowsAffected, err = datastore.New(tx).DeleteApp(ctx, a.ID)
+	rowsAffected, err = datastore.New(tx).DeleteApp(ctx, a.ID.PgxUUID())
 	if err != nil {
 		return errs.E(op, errs.Database, err)
 	}
@@ -398,16 +401,17 @@ func (s *AppService) FindAll(ctx context.Context) (sar []*diygoapi.AppResponse, 
 	}
 
 	for _, row := range rows {
+
 		a := &diygoapi.App{
-			ID:         row.AppID,
+			ID:         row.AppID.Bytes,
 			ExternalID: secure.MustParseIdentifier(row.AppExtlID),
 			Org: &diygoapi.Org{
-				ID:          row.OrgID,
+				ID:          row.OrgID.Bytes,
 				ExternalID:  secure.MustParseIdentifier(row.OrgExtlID),
 				Name:        row.OrgName,
 				Description: row.OrgDescription,
 				Kind: &diygoapi.OrgKind{
-					ID:          row.OrgKindID,
+					ID:          row.OrgKindID.Bytes,
 					ExternalID:  row.OrgKindExtlID,
 					Description: row.OrgKindDesc,
 				},
@@ -420,35 +424,35 @@ func (s *AppService) FindAll(ctx context.Context) (sar []*diygoapi.AppResponse, 
 		sa := &diygoapi.SimpleAudit{
 			Create: diygoapi.Audit{
 				App: &diygoapi.App{
-					ID:          row.CreateAppID,
+					ID:          row.CreateAppID.Bytes,
 					ExternalID:  secure.MustParseIdentifier(row.CreateAppExtlID),
-					Org:         &diygoapi.Org{ID: row.CreateAppOrgID},
+					Org:         &diygoapi.Org{ID: row.CreateAppOrgID.Bytes},
 					Name:        row.CreateAppName,
 					Description: row.CreateAppDescription,
 					APIKeys:     nil,
 				},
 				User: &diygoapi.User{
-					ID:        row.CreateUserID.UUID,
+					ID:        row.CreateUserID.Bytes,
 					FirstName: row.CreateUserFirstName.String,
 					LastName:  row.CreateUserLastName.String,
 				},
-				Moment: row.CreateTimestamp,
+				Moment: row.CreateTimestamp.Time,
 			},
 			Update: diygoapi.Audit{
 				App: &diygoapi.App{
-					ID:          row.UpdateAppID,
+					ID:          row.UpdateAppID.Bytes,
 					ExternalID:  secure.MustParseIdentifier(row.UpdateAppExtlID),
-					Org:         &diygoapi.Org{ID: row.UpdateAppOrgID},
+					Org:         &diygoapi.Org{ID: row.UpdateAppOrgID.Bytes},
 					Name:        row.UpdateAppName,
 					Description: row.UpdateAppDescription,
 					APIKeys:     nil,
 				},
 				User: &diygoapi.User{
-					ID:        row.UpdateUserID.UUID,
+					ID:        row.UpdateUserID.Bytes,
 					FirstName: row.UpdateUserFirstName.String,
 					LastName:  row.UpdateUserLastName.String,
 				},
-				Moment: row.UpdateTimestamp,
+				Moment: row.UpdateTimestamp.Time,
 			},
 		}
 		or := newAppResponse(appAudit{App: a, SimpleAudit: sa})
@@ -462,21 +466,21 @@ func (s *AppService) FindAll(ctx context.Context) (sar []*diygoapi.AppResponse, 
 func findAppByID(ctx context.Context, dbtx datastore.DBTX, id uuid.UUID) (diygoapi.App, error) {
 	const op errs.Op = "service/findAppByID"
 
-	row, err := datastore.New(dbtx).FindAppByID(ctx, id)
+	row, err := datastore.New(dbtx).FindAppByID(ctx, id.PgxUUID())
 	if err != nil {
 		return diygoapi.App{}, errs.E(op, errs.Database, err)
 	}
 
 	a := diygoapi.App{
-		ID:         row.AppID,
+		ID:         row.AppID.Bytes,
 		ExternalID: secure.MustParseIdentifier(row.AppExtlID),
 		Org: &diygoapi.Org{
-			ID:          row.OrgID,
+			ID:          row.OrgID.Bytes,
 			ExternalID:  secure.MustParseIdentifier(row.OrgExtlID),
 			Name:        row.OrgName,
 			Description: row.OrgDescription,
 			Kind: &diygoapi.OrgKind{
-				ID:          row.OrgKindID,
+				ID:          row.OrgKindID.Bytes,
 				ExternalID:  row.OrgKindExtlID,
 				Description: row.OrgKindDesc,
 			},
@@ -498,15 +502,15 @@ func findAppByExternalID(ctx context.Context, dbtx datastore.DBTX, extlID string
 	}
 
 	a := diygoapi.App{
-		ID:         row.AppID,
+		ID:         row.AppID.Bytes,
 		ExternalID: secure.MustParseIdentifier(row.AppExtlID),
 		Org: &diygoapi.Org{
-			ID:          row.OrgID,
+			ID:          row.OrgID.Bytes,
 			ExternalID:  secure.MustParseIdentifier(row.OrgExtlID),
 			Name:        row.OrgName,
 			Description: row.OrgDescription,
 			Kind: &diygoapi.OrgKind{
-				ID:          row.OrgKindID,
+				ID:          row.OrgKindID.Bytes,
 				ExternalID:  row.OrgKindExtlID,
 				Description: row.OrgKindDesc,
 			},
@@ -536,15 +540,15 @@ func findAppByExternalIDWithAudit(ctx context.Context, dbtx datastore.DBTX, extl
 	}
 
 	a := &diygoapi.App{
-		ID:         row.AppID,
+		ID:         row.AppID.Bytes,
 		ExternalID: secure.MustParseIdentifier(row.AppExtlID),
 		Org: &diygoapi.Org{
-			ID:          row.OrgID,
+			ID:          row.OrgID.Bytes,
 			ExternalID:  secure.MustParseIdentifier(row.OrgExtlID),
 			Name:        row.OrgName,
 			Description: row.OrgDescription,
 			Kind: &diygoapi.OrgKind{
-				ID:          row.OrgKindID,
+				ID:          row.OrgKindID.Bytes,
 				ExternalID:  row.OrgKindExtlID,
 				Description: row.OrgKindDesc,
 			},
@@ -557,35 +561,35 @@ func findAppByExternalIDWithAudit(ctx context.Context, dbtx datastore.DBTX, extl
 	sa := &diygoapi.SimpleAudit{
 		Create: diygoapi.Audit{
 			App: &diygoapi.App{
-				ID:          row.CreateAppID,
+				ID:          row.CreateAppID.Bytes,
 				ExternalID:  secure.MustParseIdentifier(row.CreateAppExtlID),
-				Org:         &diygoapi.Org{ID: row.CreateAppOrgID},
+				Org:         &diygoapi.Org{ID: row.CreateAppOrgID.Bytes},
 				Name:        row.CreateAppName,
 				Description: row.CreateAppDescription,
 				APIKeys:     nil,
 			},
 			User: &diygoapi.User{
-				ID:        row.CreateUserID.UUID,
+				ID:        row.CreateUserID.Bytes,
 				FirstName: row.CreateUserFirstName.String,
 				LastName:  row.CreateUserLastName.String,
 			},
-			Moment: row.CreateTimestamp,
+			Moment: row.CreateTimestamp.Time,
 		},
 		Update: diygoapi.Audit{
 			App: &diygoapi.App{
-				ID:          row.UpdateAppID,
+				ID:          row.UpdateAppID.Bytes,
 				ExternalID:  secure.MustParseIdentifier(row.UpdateAppExtlID),
-				Org:         &diygoapi.Org{ID: row.UpdateAppOrgID},
+				Org:         &diygoapi.Org{ID: row.UpdateAppOrgID.Bytes},
 				Name:        row.UpdateAppName,
 				Description: row.UpdateAppDescription,
 				APIKeys:     nil,
 			},
 			User: &diygoapi.User{
-				ID:        row.UpdateUserID.UUID,
+				ID:        row.UpdateUserID.Bytes,
 				FirstName: row.UpdateUserFirstName.String,
 				LastName:  row.UpdateUserLastName.String,
 			},
-			Moment: row.UpdateTimestamp,
+			Moment: row.UpdateTimestamp.Time,
 		},
 	}
 
@@ -595,7 +599,7 @@ func findAppByExternalIDWithAudit(ctx context.Context, dbtx datastore.DBTX, extl
 func findAppByProviderClientID(ctx context.Context, tx pgx.Tx, id string) (*diygoapi.App, error) {
 	const op errs.Op = "service/findAppByProviderClientID"
 
-	row, err := datastore.New(tx).FindAppByProviderClientID(ctx, diygoapi.NewNullString(id))
+	row, err := datastore.New(tx).FindAppByProviderClientID(ctx, diygoapi.NewPgxText(id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errs.E(op, errs.NotExist, fmt.Sprintf("no app registered for provider client ID: %s", id))
@@ -605,15 +609,15 @@ func findAppByProviderClientID(ctx context.Context, tx pgx.Tx, id string) (*diyg
 	}
 
 	a := diygoapi.App{
-		ID:         row.AppID,
+		ID:         row.AppID.Bytes,
 		ExternalID: secure.MustParseIdentifier(row.AppExtlID),
 		Org: &diygoapi.Org{
-			ID:          row.OrgID,
+			ID:          row.OrgID.Bytes,
 			ExternalID:  secure.MustParseIdentifier(row.OrgExtlID),
 			Name:        row.OrgName,
 			Description: row.OrgDescription,
 			Kind: &diygoapi.OrgKind{
-				ID:          row.OrgKindID,
+				ID:          row.OrgKindID.Bytes,
 				ExternalID:  row.OrgKindExtlID,
 				Description: row.OrgKindDesc,
 			},
@@ -631,7 +635,7 @@ func FindAppByName(ctx context.Context, tx datastore.DBTX, o *diygoapi.Org, name
 	const op errs.Op = "service/FindAppByName"
 
 	findAppByNameParams := datastore.FindAppByNameParams{
-		OrgID:   o.ID,
+		OrgID:   o.ID.PgxUUID(),
 		AppName: name,
 	}
 
@@ -641,7 +645,7 @@ func FindAppByName(ctx context.Context, tx datastore.DBTX, o *diygoapi.Org, name
 	}
 
 	a := &diygoapi.App{
-		ID:          dbAppRow.AppID,
+		ID:          dbAppRow.AppID.Bytes,
 		ExternalID:  secure.MustParseIdentifier(dbAppRow.AppExtlID),
 		Org:         o,
 		Name:        dbAppRow.AppName,

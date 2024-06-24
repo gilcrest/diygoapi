@@ -6,10 +6,10 @@ import (
 
 	qt "github.com/frankban/quicktest"
 	"github.com/google/go-cmp/cmp"
-	"github.com/google/uuid"
 
 	"github.com/gilcrest/diygoapi/errs"
 	"github.com/gilcrest/diygoapi/secure"
+	"github.com/gilcrest/diygoapi/uuid"
 )
 
 func TestUser_Validate(t *testing.T) {

@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 	"golang.org/x/text/language"
 
@@ -88,9 +88,9 @@ func Genesis() (err error) {
 		dbpool  *pgxpool.Pool
 		cleanup func()
 	)
-	dbpool, cleanup, err = sqldb.NewPostgreSQLPool(ctx, lgr, newPostgreSQLDSN(flgs))
+	dbpool, cleanup, err = sqldb.NewPgxPool(ctx, lgr, newPostgreSQLDSN(flgs))
 	if err != nil {
-		lgr.Fatal().Err(err).Msg("sqldb.NewPostgreSQLPool error")
+		lgr.Fatal().Err(err).Msg("sqldb.NewPgxPool error")
 	}
 	defer cleanup()
 

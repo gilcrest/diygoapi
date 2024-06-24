@@ -7,7 +7,7 @@ import (
 
 	qt "github.com/frankban/quicktest"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/gilcrest/diygoapi"
 	"github.com/gilcrest/diygoapi/errs"

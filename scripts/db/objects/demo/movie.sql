@@ -5,7 +5,7 @@ create table if not exists movie
     title            varchar(1000)            not null,
     rated            varchar,
     released         date,
-    run_time         integer,
+    run_time         bigint,
     director         varchar(1000),
     writer           varchar(1000),
     create_app_id    uuid                     not null,

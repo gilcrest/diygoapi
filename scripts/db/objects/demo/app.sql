@@ -5,7 +5,7 @@ create table if not exists app
     org_id                  uuid                     not null,
     app_name                varchar                  not null,
     app_description         varchar                  not null,
-    auth_provider_id        integer,
+    auth_provider_id        bigint,
     auth_provider_client_id varchar,
     create_app_id           uuid                     not null,
     create_user_id          uuid,

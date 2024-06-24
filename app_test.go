@@ -8,10 +8,10 @@ import (
 	"time"
 
 	qt "github.com/frankban/quicktest"
-	"github.com/google/uuid"
 
 	"github.com/gilcrest/diygoapi"
 	"github.com/gilcrest/diygoapi/secure"
+	"github.com/gilcrest/diygoapi/uuid"
 )
 
 func TestApp_AddKey(t *testing.T) {

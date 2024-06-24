@@ -8,11 +8,11 @@ import (
 	"testing"
 
 	qt "github.com/frankban/quicktest"
-	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 
 	"github.com/gilcrest/diygoapi"
 	"github.com/gilcrest/diygoapi/logger"
+	"github.com/gilcrest/diygoapi/uuid"
 )
 
 type mockAuthenticationService struct{}

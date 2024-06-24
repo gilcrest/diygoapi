@@ -2,16 +2,17 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/gilcrest/diygoapi"
 	"github.com/gilcrest/diygoapi/errs"
 	"github.com/gilcrest/diygoapi/secure"
 	"github.com/gilcrest/diygoapi/sqldb/datastore"
+	"github.com/gilcrest/diygoapi/uuid"
 )
 
 // movieAudit is the combination of a domain Movie and its audit data
@@ -86,20 +87,20 @@ func (s *MovieService) Create(ctx context.Context, r *diygoapi.CreateMovieReques
 	}
 
 	createMovieParams := datastore.CreateMovieParams{
-		MovieID:         m.ID,
+		MovieID:         m.ID.PgxUUID(),
 		ExtlID:          m.ExternalID.String(),
 		Title:           m.Title,
-		Rated:           diygoapi.NewNullString(m.Rated),
-		Released:        diygoapi.NewNullTime(released),
-		RunTime:         diygoapi.NewNullInt32(int32(m.RunTime)),
-		Director:        diygoapi.NewNullString(m.Director),
-		Writer:          diygoapi.NewNullString(m.Writer),
-		CreateAppID:     sa.Create.App.ID,
-		CreateUserID:    sa.Create.User.NullUUID(),
-		CreateTimestamp: sa.Create.Moment,
-		UpdateAppID:     sa.Update.App.ID,
-		UpdateUserID:    sa.Update.User.NullUUID(),
-		UpdateTimestamp: sa.Update.Moment,
+		Rated:           diygoapi.NewPgxText(m.Rated),
+		Released:        diygoapi.NewPgxDate(released),
+		RunTime:         diygoapi.NewPgxInt8(m.RunTime),
+		Director:        diygoapi.NewPgxText(m.Director),
+		Writer:          diygoapi.NewPgxText(m.Writer),
+		CreateAppID:     sa.Create.App.ID.PgxUUID(),
+		CreateUserID:    sa.Create.User.ID.PgxUUID(),
+		CreateTimestamp: diygoapi.NewPgxTimestampTZ(sa.Create.Moment),
+		UpdateAppID:     sa.Update.App.ID.PgxUUID(),
+		UpdateUserID:    sa.Update.User.ID.PgxUUID(),
+		UpdateTimestamp: diygoapi.NewPgxTimestampTZ(sa.Update.Moment),
 	}
 
 	// start db txn using pgxpool
@@ -157,19 +158,19 @@ func (s *MovieService) Update(ctx context.Context, r *diygoapi.UpdateMovieReques
 	var row datastore.FindMovieByExternalIDWithAuditRow
 	row, err = datastore.New(tx).FindMovieByExternalIDWithAudit(ctx, r.ExternalID)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errs.E(op, errs.Validation, "No movie exists for the given external ID")
 		}
 		return nil, errs.E(op, errs.Database, err)
 	}
 
 	m := diygoapi.Movie{
-		ID:         row.MovieID,
+		ID:         row.MovieID.Bytes,
 		ExternalID: secure.MustParseIdentifier(row.ExtlID),
 		Title:      row.Title,
 		Rated:      row.Rated.String,
 		Released:   row.Released.Time,
-		RunTime:    int(row.RunTime.Int32),
+		RunTime:    row.RunTime.Int64,
 		Director:   row.Director.String,
 		Writer:     row.Writer.String,
 	}
@@ -190,19 +191,19 @@ func (s *MovieService) Update(ctx context.Context, r *diygoapi.UpdateMovieReques
 	sa := diygoapi.SimpleAudit{
 		Create: diygoapi.Audit{
 			App: &diygoapi.App{
-				ID:          row.CreateAppID,
+				ID:          row.CreateAppID.Bytes,
 				ExternalID:  secure.MustParseIdentifier(row.CreateAppExtlID),
-				Org:         &diygoapi.Org{ID: row.CreateAppOrgID},
+				Org:         &diygoapi.Org{ID: row.CreateAppOrgID.Bytes},
 				Name:        row.CreateAppName,
 				Description: row.CreateAppDescription,
 				APIKeys:     nil,
 			},
 			User: &diygoapi.User{
-				ID:        row.CreateUserID.UUID,
+				ID:        row.CreateUserID.Bytes,
 				FirstName: row.CreateUserFirstName.String,
 				LastName:  row.CreateUserLastName.String,
 			},
-			Moment: row.CreateTimestamp,
+			Moment: row.CreateTimestamp.Time,
 		},
 	}
 	// update audit with latest
@@ -210,15 +211,15 @@ func (s *MovieService) Update(ctx context.Context, r *diygoapi.UpdateMovieReques
 
 	updateMovieParams := datastore.UpdateMovieParams{
 		Title:           m.Title,
-		Rated:           diygoapi.NewNullString(m.Rated),
-		Released:        diygoapi.NewNullTime(released),
-		RunTime:         diygoapi.NewNullInt32(int32(m.RunTime)),
-		Director:        diygoapi.NewNullString(m.Director),
-		Writer:          diygoapi.NewNullString(m.Writer),
-		UpdateAppID:     adt.App.ID,
-		UpdateUserID:    adt.User.NullUUID(),
-		UpdateTimestamp: adt.Moment,
-		MovieID:         m.ID,
+		Rated:           diygoapi.NewPgxText(m.Rated),
+		Released:        diygoapi.NewPgxDate(released),
+		RunTime:         diygoapi.NewPgxInt8(m.RunTime),
+		Director:        diygoapi.NewPgxText(m.Director),
+		Writer:          diygoapi.NewPgxText(m.Writer),
+		UpdateAppID:     adt.App.ID.PgxUUID(),
+		UpdateUserID:    adt.User.ID.PgxUUID(),
+		UpdateTimestamp: diygoapi.NewPgxTimestampTZ(adt.Moment),
+		MovieID:         m.ID.PgxUUID(),
 	}
 
 	err = datastore.New(tx).UpdateMovie(ctx, updateMovieParams)
@@ -256,7 +257,7 @@ func (s *MovieService) Delete(ctx context.Context, extlID string) (dr diygoapi.D
 	var dbm datastore.Movie
 	dbm, err = datastore.New(tx).FindMovieByExternalID(ctx, extlID)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return diygoapi.DeleteResponse{}, errs.E(op, errs.Validation, "No movie exists for the given external ID")
 		}
 		return diygoapi.DeleteResponse{}, errs.E(op, errs.Database, err)
@@ -304,19 +305,19 @@ func (s *MovieService) FindMovieByExternalID(ctx context.Context, extlID string)
 	var row datastore.FindMovieByExternalIDWithAuditRow
 	row, err = datastore.New(tx).FindMovieByExternalIDWithAudit(ctx, extlID)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errs.E(op, errs.Validation, "no movie exists for the given external ID")
 		}
 		return nil, errs.E(op, errs.Database, err)
 	}
 
 	m := diygoapi.Movie{
-		ID:         row.MovieID,
+		ID:         row.MovieID.Bytes,
 		ExternalID: secure.MustParseIdentifier(row.ExtlID),
 		Title:      row.Title,
 		Rated:      row.Rated.String,
 		Released:   row.Released.Time,
-		RunTime:    int(row.RunTime.Int32),
+		RunTime:    row.RunTime.Int64,
 		Director:   row.Director.String,
 		Writer:     row.Writer.String,
 	}
@@ -324,35 +325,35 @@ func (s *MovieService) FindMovieByExternalID(ctx context.Context, extlID string)
 	sa := diygoapi.SimpleAudit{
 		Create: diygoapi.Audit{
 			App: &diygoapi.App{
-				ID:          row.CreateAppID,
+				ID:          row.CreateAppID.Bytes,
 				ExternalID:  secure.MustParseIdentifier(row.CreateAppExtlID),
-				Org:         &diygoapi.Org{ID: row.CreateAppOrgID},
+				Org:         &diygoapi.Org{ID: row.CreateAppOrgID.Bytes},
 				Name:        row.CreateAppName,
 				Description: row.CreateAppDescription,
 				APIKeys:     nil,
 			},
 			User: &diygoapi.User{
-				ID:        row.CreateUserID.UUID,
+				ID:        row.CreateUserID.Bytes,
 				FirstName: row.CreateUserFirstName.String,
 				LastName:  row.CreateUserLastName.String,
 			},
-			Moment: row.CreateTimestamp,
+			Moment: row.CreateTimestamp.Time,
 		},
 		Update: diygoapi.Audit{
 			App: &diygoapi.App{
-				ID:          row.UpdateAppID,
+				ID:          row.UpdateAppID.Bytes,
 				ExternalID:  secure.MustParseIdentifier(row.UpdateAppExtlID),
-				Org:         &diygoapi.Org{ID: row.UpdateAppOrgID},
+				Org:         &diygoapi.Org{ID: row.UpdateAppOrgID.Bytes},
 				Name:        row.UpdateAppName,
 				Description: row.UpdateAppDescription,
 				APIKeys:     nil,
 			},
 			User: &diygoapi.User{
-				ID:        row.UpdateUserID.UUID,
+				ID:        row.UpdateUserID.Bytes,
 				FirstName: row.UpdateUserFirstName.String,
 				LastName:  row.UpdateUserLastName.String,
 			},
-			Moment: row.UpdateTimestamp,
+			Moment: row.UpdateTimestamp.Time,
 		},
 	}
 
@@ -379,7 +380,7 @@ func (s *MovieService) FindAllMovies(ctx context.Context) (smr []*diygoapi.Movie
 	var rows []datastore.FindMoviesRow
 	rows, err = datastore.New(tx).FindMovies(ctx)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errs.E(op, errs.Validation, "no movies exists")
 		}
 		return nil, errs.E(op, errs.Database, err)
@@ -387,47 +388,47 @@ func (s *MovieService) FindAllMovies(ctx context.Context) (smr []*diygoapi.Movie
 
 	for _, row := range rows {
 		m := diygoapi.Movie{
-			ID:         row.MovieID,
+			ID:         row.MovieID.Bytes,
 			ExternalID: secure.MustParseIdentifier(row.ExtlID),
 			Title:      row.Title,
 			Rated:      row.Rated.String,
 			Released:   row.Released.Time,
-			RunTime:    int(row.RunTime.Int32),
+			RunTime:    row.RunTime.Int64,
 			Director:   row.Director.String,
 			Writer:     row.Writer.String,
 		}
 		sa := diygoapi.SimpleAudit{
 			Create: diygoapi.Audit{
 				App: &diygoapi.App{
-					ID:          row.CreateAppID,
+					ID:          row.CreateAppID.Bytes,
 					ExternalID:  secure.MustParseIdentifier(row.CreateAppExtlID),
-					Org:         &diygoapi.Org{ID: row.CreateAppOrgID},
+					Org:         &diygoapi.Org{ID: row.CreateAppOrgID.Bytes},
 					Name:        row.CreateAppName,
 					Description: row.CreateAppDescription,
 					APIKeys:     nil,
 				},
 				User: &diygoapi.User{
-					ID:        row.CreateUserID.UUID,
+					ID:        row.CreateUserID.Bytes,
 					FirstName: row.CreateUserFirstName.String,
 					LastName:  row.CreateUserLastName.String,
 				},
-				Moment: row.CreateTimestamp,
+				Moment: row.CreateTimestamp.Time,
 			},
 			Update: diygoapi.Audit{
 				App: &diygoapi.App{
-					ID:          row.UpdateAppID,
+					ID:          row.UpdateAppID.Bytes,
 					ExternalID:  secure.MustParseIdentifier(row.UpdateAppExtlID),
-					Org:         &diygoapi.Org{ID: row.UpdateAppOrgID},
+					Org:         &diygoapi.Org{ID: row.UpdateAppOrgID.Bytes},
 					Name:        row.UpdateAppName,
 					Description: row.UpdateAppDescription,
 					APIKeys:     nil,
 				},
 				User: &diygoapi.User{
-					ID:        row.UpdateUserID.UUID,
+					ID:        row.UpdateUserID.Bytes,
 					FirstName: row.UpdateUserLastName.String,
 					LastName:  row.UpdateUserLastName.String,
 				},
-				Moment: row.UpdateTimestamp,
+				Moment: row.UpdateTimestamp.Time,
 			},
 		}
 		mr := newMovieResponse(movieAudit{m, sa})

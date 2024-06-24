@@ -6,10 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/gilcrest/diygoapi/errs"
 	"github.com/gilcrest/diygoapi/secure"
+	"github.com/gilcrest/diygoapi/uuid"
 )
 
 // AppServicer manages the retrieval and manipulation of an App
@@ -101,6 +100,15 @@ func (r CreateAppRequest) Validate() error {
 	case r.Oauth2Provider != "" && r.Oauth2ProviderClientID == "REPLACE_ME":
 		return errs.E(op, errs.Validation, "oAuth2 provider client ID cannot be REPLACE_ME. ")
 	}
+
+	// check if the provider is a known provider
+	p := ParseProvider(r.Oauth2Provider)
+
+	// if the provider is unknown, return an error
+	if p == UnknownProvider {
+		return errs.E(op, errs.Validation, "Unknown OAuth2 Provider")
+	}
+
 	return nil
 }
 

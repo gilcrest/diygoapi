@@ -8,7 +8,7 @@ import (
 
 	qt "github.com/frankban/quicktest"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/gilcrest/diygoapi"
 	"github.com/gilcrest/diygoapi/secure"
@@ -18,10 +18,12 @@ import (
 )
 
 const (
-	testAppServiceAppName               = "TestAppService_Create"
-	testAppServiceAppDescription        = "Test App created via TestAppService_Create"
-	testAppServiceUpdatedAppName        = "TestAppService_Update"
-	testAppServiceUpdatedAppDescription = "Test App updated via TestAppService_Update"
+	testAppServiceAppName                = "TestAppService_Create"
+	testAppServiceAppDescription         = "Test App created via TestAppService_Create"
+	testAppServiceOauth2Provider         = "google"
+	testAppServiceOauth2ProviderClientID = "8675309"
+	testAppServiceUpdatedAppName         = "TestAppService_Update"
+	testAppServiceUpdatedAppDescription  = "Test App updated via TestAppService_Update"
 )
 
 func TestAppService(t *testing.T) {
@@ -61,8 +63,10 @@ func TestAppService(t *testing.T) {
 			EncryptionKey:   ek,
 		}
 		r := diygoapi.CreateAppRequest{
-			Name:        testAppServiceAppName,
-			Description: testAppServiceAppDescription,
+			Name:                   testAppServiceAppName,
+			Description:            testAppServiceAppDescription,
+			Oauth2Provider:         testAppServiceOauth2Provider,
+			Oauth2ProviderClientID: testAppServiceOauth2ProviderClientID,
 		}
 
 		adt := findTestAudit(ctx, c, tx)
@@ -103,7 +107,7 @@ func TestAppService(t *testing.T) {
 		adt := findTestAudit(ctx, c, tx)
 
 		findAppByNameParams := datastore.FindAppByNameParams{
-			OrgID:   adt.App.Org.ID,
+			OrgID:   adt.App.Org.ID.PgxUUID(),
 			AppName: testAppServiceAppName,
 		}
 
@@ -156,7 +160,7 @@ func TestAppService(t *testing.T) {
 
 		var testAppRow datastore.FindAppByNameRow
 		findAppByNameParams := datastore.FindAppByNameParams{
-			OrgID:   adt.App.Org.ID,
+			OrgID:   adt.App.Org.ID.PgxUUID(),
 			AppName: testAppServiceUpdatedAppName,
 		}
 
@@ -226,7 +230,7 @@ func TestAppService(t *testing.T) {
 		adt := findTestAudit(ctx, c, tx)
 
 		findAppByNameParams := datastore.FindAppByNameParams{
-			OrgID:   adt.App.Org.ID,
+			OrgID:   adt.App.Org.ID.PgxUUID(),
 			AppName: testAppServiceUpdatedAppName,
 		}
 
@@ -275,8 +279,8 @@ func findTestAudit(ctx context.Context, c *qt.C, tx datastore.DBTX) diygoapi.Aud
 	}
 
 	findUsersByOrgRoleParams := datastore.FindUsersByOrgRoleParams{
-		OrgID:  testOrg.ID,
-		RoleID: testRole.ID,
+		OrgID:  testOrg.ID.PgxUUID(),
+		RoleID: testRole.ID.PgxUUID(),
 	}
 
 	var usersRole []datastore.UsersRole
@@ -287,7 +291,7 @@ func findTestAudit(ctx context.Context, c *qt.C, tx datastore.DBTX) diygoapi.Aud
 
 	var u *diygoapi.User
 	for i, ur := range usersRole {
-		u, err = service.FindUserByID(ctx, tx, ur.UserID)
+		u, err = service.FindUserByID(ctx, tx, ur.UserID.Bytes)
 		if err != nil {
 			c.Fatalf("FindUserByID() error = %v", err)
 		}

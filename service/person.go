@@ -2,17 +2,17 @@ package service
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"golang.org/x/text/language"
 
 	"github.com/gilcrest/diygoapi"
 	"github.com/gilcrest/diygoapi/errs"
 	"github.com/gilcrest/diygoapi/secure"
 	"github.com/gilcrest/diygoapi/sqldb/datastore"
+	"github.com/gilcrest/diygoapi/uuid"
 )
 
 // createPersonTx creates a Person in the database
@@ -24,14 +24,14 @@ func createPersonTx(ctx context.Context, tx pgx.Tx, p diygoapi.Person, adt diygo
 	var err error
 
 	createPersonParams := datastore.CreatePersonParams{
-		PersonID:        p.ID,
+		PersonID:        p.ID.PgxUUID(),
 		PersonExtlID:    p.ExternalID.String(),
-		CreateAppID:     adt.App.ID,
-		CreateUserID:    adt.User.NullUUID(),
-		CreateTimestamp: adt.Moment,
-		UpdateAppID:     adt.App.ID,
-		UpdateUserID:    adt.User.NullUUID(),
-		UpdateTimestamp: adt.Moment,
+		CreateAppID:     adt.App.ID.PgxUUID(),
+		CreateUserID:    adt.User.ID.PgxUUID(),
+		CreateTimestamp: diygoapi.NewPgxTimestampTZ(adt.Moment),
+		UpdateAppID:     adt.App.ID.PgxUUID(),
+		UpdateUserID:    adt.User.ID.PgxUUID(),
+		UpdateTimestamp: diygoapi.NewPgxTimestampTZ(adt.Moment),
 	}
 
 	// create Person db record
@@ -103,37 +103,37 @@ func createUserTx(ctx context.Context, tx pgx.Tx, params createUserTxParams) err
 
 	var err error
 
-	var birthYear, birthMonth, birthDay sql.NullInt64
+	var birthYear, birthMonth, birthDay pgtype.Int8
 	if !params.User.BirthDate.IsZero() {
-		birthYear = diygoapi.NewNullInt64(int64(params.User.BirthDate.Year()))
-		birthMonth = diygoapi.NewNullInt64(int64(params.User.BirthDate.Month()))
-		birthDay = diygoapi.NewNullInt64(int64(params.User.BirthDate.Day()))
+		birthYear = diygoapi.NewPgxInt8(int64(params.User.BirthDate.Year()))
+		birthMonth = diygoapi.NewPgxInt8(int64(params.User.BirthDate.Month()))
+		birthDay = diygoapi.NewPgxInt8(int64(params.User.BirthDate.Day()))
 	}
 
 	cuParams := datastore.CreateUserParams{
-		UserID:          params.User.ID,
+		UserID:          params.User.ID.PgxUUID(),
 		UserExtlID:      params.User.ExternalID.String(),
-		PersonID:        params.PersonID,
-		NamePrefix:      diygoapi.NewNullString(params.User.NamePrefix),
+		PersonID:        params.PersonID.PgxUUID(),
+		NamePrefix:      diygoapi.NewPgxText(params.User.NamePrefix),
 		FirstName:       params.User.FirstName,
-		MiddleName:      diygoapi.NewNullString(params.User.MiddleName),
+		MiddleName:      diygoapi.NewPgxText(params.User.MiddleName),
 		LastName:        params.User.LastName,
-		NameSuffix:      diygoapi.NewNullString(params.User.NameSuffix),
-		Nickname:        diygoapi.NewNullString(params.User.Nickname),
-		Email:           diygoapi.NewNullString(params.User.Email),
-		CompanyName:     diygoapi.NewNullString(params.User.CompanyName),
-		CompanyDept:     diygoapi.NewNullString(params.User.CompanyDepartment),
-		JobTitle:        diygoapi.NewNullString(params.User.JobTitle),
-		BirthDate:       diygoapi.NewNullTime(params.User.BirthDate),
+		NameSuffix:      diygoapi.NewPgxText(params.User.NameSuffix),
+		Nickname:        diygoapi.NewPgxText(params.User.Nickname),
+		Email:           diygoapi.NewPgxText(params.User.Email),
+		CompanyName:     diygoapi.NewPgxText(params.User.CompanyName),
+		CompanyDept:     diygoapi.NewPgxText(params.User.CompanyDepartment),
+		JobTitle:        diygoapi.NewPgxText(params.User.JobTitle),
+		BirthDate:       diygoapi.NewPgxDate(params.User.BirthDate),
 		BirthYear:       birthYear,
 		BirthMonth:      birthMonth,
 		BirthDay:        birthDay,
-		CreateAppID:     params.Audit.App.ID,
-		CreateUserID:    params.Audit.User.NullUUID(),
-		CreateTimestamp: params.Audit.Moment,
-		UpdateAppID:     params.Audit.App.ID,
-		UpdateUserID:    params.Audit.User.NullUUID(),
-		UpdateTimestamp: params.Audit.Moment,
+		CreateAppID:     params.Audit.App.ID.PgxUUID(),
+		CreateUserID:    params.Audit.User.ID.PgxUUID(),
+		CreateTimestamp: diygoapi.NewPgxTimestampTZ(params.Audit.Moment),
+		UpdateAppID:     params.Audit.App.ID.PgxUUID(),
+		UpdateUserID:    params.Audit.User.ID.PgxUUID(),
+		UpdateTimestamp: diygoapi.NewPgxTimestampTZ(params.Audit.Moment),
 	}
 
 	// create User db record
@@ -155,13 +155,13 @@ func createUserTx(ctx context.Context, tx pgx.Tx, params createUserTxParams) err
 func FindUserByID(ctx context.Context, dbtx datastore.DBTX, id uuid.UUID) (*diygoapi.User, error) {
 	const op errs.Op = "service/FindUserByID"
 
-	dbUser, err := datastore.New(dbtx).FindUserByID(ctx, id)
+	dbUser, err := datastore.New(dbtx).FindUserByID(ctx, id.PgxUUID())
 	if err != nil {
 		return nil, errs.E(op, errs.Database, err)
 	}
 
 	var ulp []datastore.UsersLangPref
-	ulp, err = datastore.New(dbtx).FindUserLanguagePreferencesByUserID(ctx, id)
+	ulp, err = datastore.New(dbtx).FindUserLanguagePreferencesByUserID(ctx, id.PgxUUID())
 	if err != nil {
 		return nil, errs.E(op, errs.Database, err)
 	}
@@ -173,7 +173,7 @@ func FindUserByID(ctx context.Context, dbtx datastore.DBTX, id uuid.UUID) (*diyg
 	}
 
 	u := &diygoapi.User{
-		ID:                  dbUser.UserID,
+		ID:                  dbUser.UserID.Bytes,
 		ExternalID:          secure.MustParseIdentifier(dbUser.UserExtlID),
 		NamePrefix:          dbUser.NamePrefix.String,
 		FirstName:           dbUser.FirstName,
@@ -209,15 +209,15 @@ func attachOrgAssociation(ctx context.Context, tx pgx.Tx, params attachOrgAssoci
 	const op errs.Op = "service/attachOrgAssociation"
 
 	createUsersOrgParams := datastore.CreateUsersOrgParams{
-		UsersOrgID:      uuid.New(),
-		OrgID:           params.Org.ID,
-		UserID:          params.User.ID,
-		CreateAppID:     params.Audit.App.ID,
-		CreateUserID:    diygoapi.NewNullUUID(params.Audit.User.ID),
-		CreateTimestamp: params.Audit.Moment,
-		UpdateAppID:     params.Audit.App.ID,
-		UpdateUserID:    diygoapi.NewNullUUID(params.Audit.User.ID),
-		UpdateTimestamp: params.Audit.Moment,
+		UsersOrgID:      uuid.New().PgxUUID(),
+		OrgID:           params.Org.ID.PgxUUID(),
+		UserID:          params.User.ID.PgxUUID(),
+		CreateAppID:     params.Audit.App.ID.PgxUUID(),
+		CreateUserID:    params.Audit.User.ID.PgxUUID(),
+		CreateTimestamp: diygoapi.NewPgxTimestampTZ(params.Audit.Moment),
+		UpdateAppID:     params.Audit.App.ID.PgxUUID(),
+		UpdateUserID:    params.Audit.User.ID.PgxUUID(),
+		UpdateTimestamp: diygoapi.NewPgxTimestampTZ(params.Audit.Moment),
 	}
 
 	// create database record using datastore

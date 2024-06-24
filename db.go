@@ -2,14 +2,12 @@ package diygoapi
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/rs/zerolog"
-
 	"github.com/jackc/pgconn"
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/rs/zerolog"
 )
 
 // Datastorer is an interface for working with the Database
@@ -42,62 +40,46 @@ type PingResponse struct {
 	DBUp bool `json:"db_up"`
 }
 
-// NewNullString returns a null if s is empty, otherwise it returns
-// the string which was input
-func NewNullString(s string) sql.NullString {
-	if len(s) == 0 {
-		return sql.NullString{}
-	}
-	return sql.NullString{
-		String: s,
-		Valid:  true,
-	}
-}
-
-// NewNullTime returns a null if t is the zero value for time.Time,
-// otherwise it returns the time which was input
-func NewNullTime(t time.Time) sql.NullTime {
-	if t.IsZero() {
-		return sql.NullTime{}
-	}
-	return sql.NullTime{
-		Time:  t,
-		Valid: true,
-	}
-}
-
-// NewNullInt64 returns a null if i == 0, otherwise it returns
-// the int64 which was input.
-func NewNullInt64(i int64) sql.NullInt64 {
-	if i == 0 {
-		return sql.NullInt64{}
-	}
-	return sql.NullInt64{
-		Int64: i,
-		Valid: true,
-	}
-}
-
-// NewNullInt32 returns a null if i == 0, otherwise it returns
-// the int32 which was input.
-func NewNullInt32(i int32) sql.NullInt32 {
-	if i == 0 {
-		return sql.NullInt32{}
-	}
-	return sql.NullInt32{
+// NewPgxInt4 returns a pgx/pgtype.Int4 with the input value
+func NewPgxInt4(i int32) pgtype.Int4 {
+	return pgtype.Int4{
 		Int32: i,
 		Valid: true,
 	}
 }
 
-// NewNullUUID returns a null if i == uuid.Nil, otherwise it returns
-// the int32 which was input.
-func NewNullUUID(i uuid.UUID) uuid.NullUUID {
-	if i == uuid.Nil {
-		return uuid.NullUUID{}
+// NewPgxInt8 returns a pgx/pgtype.Int8 with the input value
+func NewPgxInt8(i int64) pgtype.Int8 {
+	return pgtype.Int8{
+		Int64: i,
+		Valid: true,
 	}
-	return uuid.NullUUID{
-		UUID:  i,
+}
+
+// NewPgxText returns a pgx/pgtype.Text with the input value.
+// If the input string is empty, it returns an empty pgtype.Text
+func NewPgxText(s string) pgtype.Text {
+	if len(s) == 0 {
+		return pgtype.Text{}
+	}
+	return pgtype.Text{
+		String: s,
+		Valid:  true,
+	}
+}
+
+// NewPgxTimestampTZ returns a pgx/pgtype.Timestamptz with the input value
+func NewPgxTimestampTZ(t time.Time) pgtype.Timestamptz {
+	return pgtype.Timestamptz{
+		Time:  t,
+		Valid: true,
+	}
+}
+
+// NewPgxDate returns a pgx/pgtype.Date with the input value
+func NewPgxDate(t time.Time) pgtype.Date {
+	return pgtype.Date{
+		Time:  t,
 		Valid: true,
 	}
 }

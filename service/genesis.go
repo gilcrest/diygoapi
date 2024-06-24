@@ -3,11 +3,11 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5"
 	"golang.org/x/oauth2"
 	"golang.org/x/text/language"
 
@@ -15,6 +15,7 @@ import (
 	"github.com/gilcrest/diygoapi/errs"
 	"github.com/gilcrest/diygoapi/secure"
 	"github.com/gilcrest/diygoapi/sqldb/datastore"
+	"github.com/gilcrest/diygoapi/uuid"
 )
 
 const (
@@ -213,6 +214,7 @@ func (s *GenesisService) seedPrincipal(ctx context.Context, tx pgx.Tx, r *diygoa
 		Org:             o,
 		ApiKeyGenerator: s.APIKeyGenerator,
 		EncryptionKey:   s.EncryptionKey,
+		Provider:        provider,
 	}
 
 	var a *diygoapi.App
@@ -249,16 +251,17 @@ func (s *GenesisService) seedPrincipal(ctx context.Context, tx pgx.Tx, r *diygoa
 		Moment: time.Now(),
 	}
 
+	// create Google Auth Provider
 	cg := datastore.CreateAuthProviderParams{
 		AuthProviderID:   int64(diygoapi.Google),
 		AuthProviderCd:   diygoapi.Google.String(),
 		AuthProviderDesc: "Google Oauth2",
-		CreateAppID:      adt.App.ID,
-		CreateUserID:     adt.User.NullUUID(),
-		CreateTimestamp:  adt.Moment,
-		UpdateAppID:      adt.App.ID,
-		UpdateUserID:     adt.User.NullUUID(),
-		UpdateTimestamp:  adt.Moment,
+		CreateAppID:      adt.App.ID.PgxUUID(),
+		CreateUserID:     adt.User.ID.PgxUUID(),
+		CreateTimestamp:  diygoapi.NewPgxTimestampTZ(adt.Moment),
+		UpdateAppID:      adt.App.ID.PgxUUID(),
+		UpdateUserID:     adt.User.ID.PgxUUID(),
+		UpdateTimestamp:  diygoapi.NewPgxTimestampTZ(adt.Moment),
 	}
 	_, err = datastore.New(tx).CreateAuthProvider(ctx, cg)
 	if err != nil {
@@ -306,7 +309,7 @@ func (s *GenesisService) seedPrincipal(ctx context.Context, tx pgx.Tx, r *diygoa
 		return principalSeed{}, errs.E(op, errs.Database, err)
 	}
 	o.Kind = &diygoapi.OrgKind{
-		ID:          principalKindParams.OrgKindID,
+		ID:          principalKindParams.OrgKindID.Bytes,
 		ExternalID:  principalKindParams.OrgKindExtlID,
 		Description: principalKindParams.OrgKindDesc,
 	}
@@ -318,7 +321,7 @@ func (s *GenesisService) seedPrincipal(ctx context.Context, tx pgx.Tx, r *diygoa
 		return principalSeed{}, errs.E(op, errs.Database, err)
 	}
 	tk := &diygoapi.OrgKind{
-		ID:          testKindParams.OrgKindID,
+		ID:          testKindParams.OrgKindID.Bytes,
 		ExternalID:  testKindParams.OrgKindExtlID,
 		Description: testKindParams.OrgKindDesc,
 	}
@@ -329,7 +332,7 @@ func (s *GenesisService) seedPrincipal(ctx context.Context, tx pgx.Tx, r *diygoa
 		return principalSeed{}, errs.E(op, errs.Database, err)
 	}
 	sk := &diygoapi.OrgKind{
-		ID:          standardOrgParams.OrgKindID,
+		ID:          standardOrgParams.OrgKindID.Bytes,
 		ExternalID:  standardOrgParams.OrgKindExtlID,
 		Description: standardOrgParams.OrgKindDesc,
 	}
@@ -414,6 +417,7 @@ func (s *GenesisService) seedTest(ctx context.Context, tx pgx.Tx, ps principalSe
 		Org:             o,
 		ApiKeyGenerator: s.APIKeyGenerator,
 		EncryptionKey:   s.EncryptionKey,
+		Provider:        ps.PrincipalApp.Provider,
 	}
 
 	var a *diygoapi.App
@@ -540,7 +544,7 @@ func genesisHasOccurred(ctx context.Context, dbtx datastore.DBTX) (err error) {
 	// first: check org_type
 	_, err = datastore.New(dbtx).FindOrgKindByExtlID(ctx, principalOrgKind)
 	if err != nil {
-		if err != pgx.ErrNoRows {
+		if !errors.Is(err, pgx.ErrNoRows) {
 			return errs.E(op, errs.Database, err)
 		}
 		hasGenesisOrgTypeRow = false

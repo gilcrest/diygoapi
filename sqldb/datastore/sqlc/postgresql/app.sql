@@ -36,8 +36,8 @@ SELECT a.org_id,
        ca.app_name        create_app_name,
        ca.app_description create_app_description,
        a.create_user_id,
-       cu.first_name     create_user_first_name,
-       cu.last_name      create_user_last_name,
+       cu.first_name      create_user_first_name,
+       cu.last_name       create_user_last_name,
        a.create_timestamp,
        a.update_app_id,
        ua.org_id          update_app_org_id,
@@ -45,8 +45,8 @@ SELECT a.org_id,
        ua.app_name        update_app_name,
        ua.app_description update_app_description,
        a.update_user_id,
-       uu.first_name     update_user_first_name,
-       uu.last_name      update_user_last_name,
+       uu.first_name      update_user_first_name,
+       uu.last_name       update_user_last_name,
        a.update_timestamp
 FROM app a
          INNER JOIN org o on o.org_id = a.org_id
@@ -95,8 +95,8 @@ SELECT a.org_id,
        ca.app_name        create_app_name,
        ca.app_description create_app_description,
        a.create_user_id,
-       cu.first_name     create_user_first_name,
-       cu.last_name      create_user_last_name,
+       cu.first_name      create_user_first_name,
+       cu.last_name       create_user_last_name,
        a.create_timestamp,
        a.update_app_id,
        ua.org_id          update_app_org_id,
@@ -104,8 +104,8 @@ SELECT a.org_id,
        ua.app_name        update_app_name,
        ua.app_description update_app_description,
        a.update_user_id,
-       uu.first_name     update_user_first_name,
-       uu.last_name      update_user_last_name,
+       uu.first_name      update_user_first_name,
+       uu.last_name       update_user_last_name,
        a.update_timestamp
 FROM app a
          INNER JOIN org o on o.org_id = a.org_id
@@ -155,12 +155,14 @@ WHERE a.auth_provider_client_id = $1;
 
 -- name: FindApps :many
 -- FindApps returns every app.
-SELECT * FROM app
+SELECT *
+FROM app
 ORDER BY app_name;
 
 -- name: FindAppsByOrg :many
 -- FindAppsByOrg returns all apps for a given Organization.
-SELECT * FROM app
+SELECT *
+FROM app
 WHERE org_id = $1;
 
 -- name: FindAppsWithAudit :many
@@ -183,8 +185,8 @@ SELECT a.org_id,
        ca.app_name        create_app_name,
        ca.app_description create_app_description,
        a.create_user_id,
-       cu.first_name     create_user_first_name,
-       cu.last_name      create_user_last_name,
+       cu.first_name      create_user_first_name,
+       cu.last_name       create_user_last_name,
        a.create_timestamp,
        a.update_app_id,
        ua.org_id          update_app_org_id,
@@ -192,8 +194,8 @@ SELECT a.org_id,
        ua.app_name        update_app_name,
        ua.app_description update_app_description,
        a.update_user_id,
-       uu.first_name     update_user_first_name,
-       uu.last_name      update_user_last_name,
+       uu.first_name      update_user_first_name,
+       uu.last_name       update_user_last_name,
        a.update_timestamp
 FROM app a
          INNER JOIN org o on o.org_id = a.org_id
@@ -214,8 +216,8 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);
 -- name: UpdateApp :execrows
 -- UpdateApp updates an app given its app_id.
 UPDATE app
-SET app_name        = $1,
-    app_description = $2,
+SET app_name         = $1,
+    app_description  = $2,
     update_app_id    = $3,
     update_user_id   = $4,
     update_timestamp = $5
@@ -224,22 +226,26 @@ WHERE app_id = $6;
 
 -- name: DeleteApp :execrows
 -- DeleteApp deletes an app given its app_id.
-DELETE FROM app
+DELETE
+FROM app
 WHERE app_id = $1;
 
 -- name: DeleteAppAPIKey :execrows
 -- DeleteAppAPIKey deletes an app API key given the key.
-DELETE FROM app_api_key
+DELETE
+FROM app_api_key
 WHERE api_key = $1;
 
 -- name: DeleteAppAPIKeys :execrows
 -- DeleteAppAPIKeys deletes all API keys for a given app_id.
-DELETE FROM app_api_key
+DELETE
+FROM app_api_key
 WHERE app_id = $1;
 
 -- name: FindAPIKeysByAppID :many
 -- FindAPIKeysByAppID selects all API keys for a given app_id.
-SELECT * FROM app_api_key
+SELECT *
+FROM app_api_key
 WHERE app_id = $1;
 
 -- name: CreateAppAPIKey :execrows

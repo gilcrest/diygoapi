@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgconn"
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog"
 	"golang.org/x/oauth2"
 	"golang.org/x/text/language"
@@ -19,6 +19,7 @@ import (
 	"github.com/gilcrest/diygoapi/errs"
 	"github.com/gilcrest/diygoapi/secure"
 	"github.com/gilcrest/diygoapi/sqldb/datastore"
+	"github.com/gilcrest/diygoapi/uuid"
 )
 
 // DBAuthenticationService is a service which manages Oauth2 authentication
@@ -221,20 +222,20 @@ func findAuthByAccessToken(ctx context.Context, tx pgx.Tx, params *diygoapi.Auth
 
 	// populate Person
 	var u *diygoapi.User
-	u, err = FindUserByID(ctx, tx, dbAuth.UserID)
+	u, err = FindUserByID(ctx, tx, dbAuth.UserID.Bytes)
 	if err != nil {
 		return diygoapi.Auth{}, errs.E(op, err)
 	}
 
 	// populate Auth
 	auth := diygoapi.Auth{
-		ID:                        dbAuth.AuthID,
+		ID:                        dbAuth.AuthID.Bytes,
 		User:                      u,
 		Provider:                  diygoapi.Provider(dbAuth.AuthProviderID),
 		ProviderClientID:          dbAuth.AuthProviderClientID.String,
 		ProviderPersonID:          dbAuth.AuthProviderPersonID,
 		ProviderAccessToken:       dbAuth.AuthProviderAccessToken,
-		ProviderAccessTokenExpiry: dbAuth.AuthProviderAccessTokenExpiry,
+		ProviderAccessTokenExpiry: dbAuth.AuthProviderAccessTokenExpiry.Time,
 		ProviderRefreshToken:      dbAuth.AuthProviderRefreshToken.String,
 	}
 
@@ -284,14 +285,14 @@ func findAuthByProviderExternalID(ctx context.Context, tx pgx.Tx, params findAut
 
 	// populate User
 	var u *diygoapi.User
-	u, err = FindUserByID(ctx, tx, dbAuth.UserID)
+	u, err = FindUserByID(ctx, tx, dbAuth.UserID.Bytes)
 	if err != nil {
 		return diygoapi.Auth{}, errs.E(op, err)
 	}
 
 	// populate Auth
 	auth := diygoapi.Auth{
-		ID:                        dbAuth.AuthID,
+		ID:                        dbAuth.AuthID.Bytes,
 		User:                      u,
 		Provider:                  params.ProviderInfo.Provider,
 		ProviderClientID:          params.ProviderInfo.TokenInfo.ClientID,
@@ -380,10 +381,10 @@ func (s DBAuthenticationService) findAppByAPIKeyDB(ctx context.Context, realm, a
 			if err != nil {
 				return nil, errs.E(op, err)
 			}
-			a.ID = row.AppID
+			a.ID = row.AppID.Bytes
 			a.ExternalID = extl
 			a.Org = &diygoapi.Org{
-				ID:          row.OrgID,
+				ID:          row.OrgID.Bytes,
 				ExternalID:  extl,
 				Name:        row.OrgName,
 				Description: row.OrgDescription,
@@ -395,7 +396,7 @@ func (s DBAuthenticationService) findAppByAPIKeyDB(ctx context.Context, realm, a
 		if err != nil {
 			return nil, errs.E(op, err)
 		}
-		ak.SetDeactivationDate(row.DeactvDate)
+		ak.SetDeactivationDate(row.DeactvDate.Time)
 		aks = append(aks, ak)
 	}
 	a.APIKeys = aks
@@ -589,21 +590,21 @@ func createAuthTx(ctx context.Context, tx pgx.Tx, params createAuthTxParams) (er
 	const op errs.Op = "service/createAuthTx"
 
 	createAuthParams := datastore.CreateAuthParams{
-		AuthID:                        params.Auth.ID,
-		UserID:                        params.Auth.User.ID,
+		AuthID:                        params.Auth.ID.PgxUUID(),
+		UserID:                        params.Auth.User.ID.PgxUUID(),
 		AuthProviderID:                int64(params.Auth.Provider),
 		AuthProviderCd:                params.Auth.Provider.String(),
-		AuthProviderClientID:          diygoapi.NewNullString(params.Auth.ProviderClientID),
+		AuthProviderClientID:          diygoapi.NewPgxText(params.Auth.ProviderClientID),
 		AuthProviderPersonID:          params.Auth.ProviderPersonID,
 		AuthProviderAccessToken:       params.Auth.ProviderAccessToken,
-		AuthProviderRefreshToken:      diygoapi.NewNullString(params.Auth.ProviderRefreshToken),
-		AuthProviderAccessTokenExpiry: params.Auth.ProviderAccessTokenExpiry,
-		CreateAppID:                   params.Audit.App.ID,
-		CreateUserID:                  params.Audit.User.NullUUID(),
-		CreateTimestamp:               params.Audit.Moment,
-		UpdateAppID:                   params.Audit.App.ID,
-		UpdateUserID:                  params.Audit.User.NullUUID(),
-		UpdateTimestamp:               params.Audit.Moment,
+		AuthProviderRefreshToken:      diygoapi.NewPgxText(params.Auth.ProviderRefreshToken),
+		AuthProviderAccessTokenExpiry: diygoapi.NewPgxTimestampTZ(params.Auth.ProviderAccessTokenExpiry),
+		CreateAppID:                   params.Audit.App.ID.PgxUUID(),
+		CreateUserID:                  params.Audit.User.ID.PgxUUID(),
+		CreateTimestamp:               diygoapi.NewPgxTimestampTZ(params.Audit.Moment),
+		UpdateAppID:                   params.Audit.App.ID.PgxUUID(),
+		UpdateUserID:                  params.Audit.User.ID.PgxUUID(),
+		UpdateTimestamp:               diygoapi.NewPgxTimestampTZ(params.Audit.Moment),
 	}
 
 	var rowsAffected int64
@@ -805,17 +806,30 @@ func (s *DBAuthorizationService) Authorize(r *http.Request, lgr zerolog.Logger, 
 	arg := datastore.IsAuthorizedParams{
 		Resource:  resource,
 		Operation: handlerMethod,
-		UserID:    adt.User.ID,
+		UserID:    adt.User.ID.PgxUUID(),
 		// Set the Org using the org the audit app is associated to.
 		// The business assumption currently is that an app can
 		// only belong to one org.
-		OrgID: adt.App.Org.ID,
+		OrgID: adt.App.Org.ID.PgxUUID(),
 	}
 
 	// call IsAuthorized method to validate user has access to the resource and operation
-	var authorizedID uuid.UUID
+	var authorizedID pgtype.UUID
 	authorizedID, err = datastore.New(tx).IsAuthorized(r.Context(), arg)
-	if err != nil || authorizedID == uuid.Nil {
+	if err != nil {
+		lgr.Info().Str("user_extl_id", adt.User.ExternalID.String()).Str("resource", resource).Str("operation", r.Method).
+			Msgf("Unauthorized (user_extl_id: %s, resource: %s, operation: %s)", adt.User.ExternalID.String(), resource, r.Method)
+
+		// "In summary, a 401 Unauthorized response should be used for missing or
+		// bad authentication, and a 403 Forbidden response should be used afterward,
+		// when the user is authenticated but isn’t authorized to perform the
+		// requested operation on the given resource."
+		// If the user has gotten here, they have gotten through authentication
+		// but do have the right access, this they are Unauthorized
+		return errs.E(op, errs.Unauthorized, fmt.Sprintf("User_extl_id %s does not have %s permission for %s", adt.User.ExternalID.String(), r.Method, resource))
+	}
+
+	if authorizedID.Bytes == uuid.Nil {
 		lgr.Info().Str("user_extl_id", adt.User.ExternalID.String()).Str("resource", resource).Str("operation", r.Method).
 			Msgf("Unauthorized (user_extl_id: %s, resource: %s, operation: %s)", adt.User.ExternalID.String(), resource, r.Method)
 
@@ -896,18 +910,18 @@ func createPermissionTx(ctx context.Context, tx pgx.Tx, r *diygoapi.CreatePermis
 	}
 
 	arg := datastore.CreatePermissionParams{
-		PermissionID:          p.ID,
+		PermissionID:          p.ID.PgxUUID(),
 		PermissionExtlID:      p.ExternalID.String(),
 		Resource:              p.Resource,
 		Operation:             p.Operation,
 		PermissionDescription: p.Description,
 		Active:                p.Active,
-		CreateAppID:           adt.App.ID,
-		CreateUserID:          adt.User.NullUUID(),
-		CreateTimestamp:       time.Now(),
-		UpdateAppID:           adt.App.ID,
-		UpdateUserID:          adt.User.NullUUID(),
-		UpdateTimestamp:       time.Now(),
+		CreateAppID:           adt.App.ID.PgxUUID(),
+		CreateUserID:          adt.User.ID.PgxUUID(),
+		CreateTimestamp:       diygoapi.NewPgxTimestampTZ(time.Now()),
+		UpdateAppID:           adt.App.ID.PgxUUID(),
+		UpdateUserID:          adt.User.ID.PgxUUID(),
+		UpdateTimestamp:       diygoapi.NewPgxTimestampTZ(time.Now()),
 	}
 
 	var rowsAffected int64
@@ -1009,7 +1023,7 @@ func (s *PermissionService) Delete(ctx context.Context, extlID string) (dr diygo
 // newPermission initializes a Permission given a datastore.Permission
 func newPermission(ap datastore.Permission) *diygoapi.Permission {
 	return &diygoapi.Permission{
-		ID:          ap.PermissionID,
+		ID:          ap.PermissionID.Bytes,
 		ExternalID:  secure.MustParseIdentifier(ap.PermissionExtlID),
 		Resource:    ap.Resource,
 		Operation:   ap.Operation,
@@ -1085,16 +1099,16 @@ func createRoleTx(ctx context.Context, tx pgx.Tx, role diygoapi.Role, adt diygoa
 	}
 
 	arg := datastore.CreateRoleParams{
-		RoleID:          role.ID,
+		RoleID:          role.ID.PgxUUID(),
 		RoleExtlID:      role.ExternalID.String(),
 		RoleCd:          role.Code,
 		Active:          role.Active,
-		CreateAppID:     adt.App.ID,
-		CreateUserID:    adt.User.NullUUID(),
-		CreateTimestamp: adt.Moment,
-		UpdateAppID:     adt.App.ID,
-		UpdateUserID:    adt.User.NullUUID(),
-		UpdateTimestamp: adt.Moment,
+		CreateAppID:     adt.App.ID.PgxUUID(),
+		CreateUserID:    adt.User.ID.PgxUUID(),
+		CreateTimestamp: diygoapi.NewPgxTimestampTZ(adt.Moment),
+		UpdateAppID:     adt.App.ID.PgxUUID(),
+		UpdateUserID:    adt.User.ID.PgxUUID(),
+		UpdateTimestamp: diygoapi.NewPgxTimestampTZ(adt.Moment),
 	}
 
 	var rowsAffected int64
@@ -1127,21 +1141,21 @@ type UpdateRolePermissionsParams struct {
 func UpdateRolePermissions(ctx context.Context, tx pgx.Tx, params UpdateRolePermissionsParams) (err error) {
 	const op errs.Op = "service/UpdateRolePermissions"
 
-	_, err = datastore.New(tx).DeleteAllPermissions4Role(ctx, params.Role.ID)
+	_, err = datastore.New(tx).DeleteAllPermissions4Role(ctx, params.Role.ID.PgxUUID())
 	if err != nil {
 		return errs.E(op, errs.Database, err)
 	}
 
 	for _, rp := range params.Role.Permissions {
 		createRolePermissionParams := datastore.CreateRolePermissionParams{
-			RoleID:          params.Role.ID,
-			PermissionID:    rp.ID,
-			CreateAppID:     params.Audit.App.ID,
-			CreateUserID:    params.Audit.User.NullUUID(),
-			CreateTimestamp: params.Audit.Moment,
-			UpdateAppID:     params.Audit.App.ID,
-			UpdateUserID:    params.Audit.User.NullUUID(),
-			UpdateTimestamp: params.Audit.Moment,
+			RoleID:          params.Role.ID.PgxUUID(),
+			PermissionID:    rp.ID.PgxUUID(),
+			CreateAppID:     params.Audit.App.ID.PgxUUID(),
+			CreateUserID:    params.Audit.User.ID.PgxUUID(),
+			CreateTimestamp: diygoapi.NewPgxTimestampTZ(params.Audit.Moment),
+			UpdateAppID:     params.Audit.App.ID.PgxUUID(),
+			UpdateUserID:    params.Audit.User.ID.PgxUUID(),
+			UpdateTimestamp: diygoapi.NewPgxTimestampTZ(params.Audit.Moment),
 		}
 
 		var rowsAffected int64
@@ -1178,7 +1192,7 @@ func FindRoleByCode(ctx context.Context, tx datastore.DBTX, code string) (diygoa
 	if dbPermissions != nil {
 		for _, dbp := range dbPermissions {
 			p := &diygoapi.Permission{
-				ID:          dbp.PermissionID,
+				ID:          dbp.PermissionID.Bytes,
 				ExternalID:  secure.MustParseIdentifier(dbp.PermissionExtlID),
 				Resource:    dbp.Resource,
 				Operation:   dbp.Operation,
@@ -1190,7 +1204,7 @@ func FindRoleByCode(ctx context.Context, tx datastore.DBTX, code string) (diygoa
 	}
 
 	role := diygoapi.Role{
-		ID:          dbRole.RoleID,
+		ID:          dbRole.RoleID.Bytes,
 		ExternalID:  secure.MustParseIdentifier(dbRole.RoleExtlID),
 		Code:        dbRole.RoleCd,
 		Description: dbRole.RoleDescription,
@@ -1213,15 +1227,15 @@ func grantOrgRole(ctx context.Context, tx pgx.Tx, p grantOrgRoleParams) (err err
 	const op errs.Op = "service/grantOrgRole"
 
 	params := datastore.CreateUsersRoleParams{
-		UserID:          p.User.ID,
-		RoleID:          p.Role.ID,
-		OrgID:           p.Org.ID,
-		CreateAppID:     p.Audit.App.ID,
-		CreateUserID:    p.Audit.User.NullUUID(),
-		CreateTimestamp: p.Audit.Moment,
-		UpdateAppID:     p.Audit.App.ID,
-		UpdateUserID:    p.Audit.User.NullUUID(),
-		UpdateTimestamp: p.Audit.Moment,
+		UserID:          p.User.ID.PgxUUID(),
+		RoleID:          p.Role.ID.PgxUUID(),
+		OrgID:           p.Org.ID.PgxUUID(),
+		CreateAppID:     p.Audit.App.ID.PgxUUID(),
+		CreateUserID:    p.Audit.User.ID.PgxUUID(),
+		CreateTimestamp: diygoapi.NewPgxTimestampTZ(p.Audit.Moment),
+		UpdateAppID:     p.Audit.App.ID.PgxUUID(),
+		UpdateUserID:    p.Audit.User.ID.PgxUUID(),
+		UpdateTimestamp: diygoapi.NewPgxTimestampTZ(p.Audit.Moment),
 	}
 
 	var rowsAffected int64

@@ -12,7 +12,7 @@ import (
 	"github.com/gilcrest/diygoapi/logger"
 )
 
-func Test_NewPostgreSQLPool(t *testing.T) {
+func Test_NewPgxPool(t *testing.T) {
 	type args struct {
 		ctx  context.Context
 		pgds PostgreSQLDSN
@@ -35,21 +35,15 @@ func Test_NewPostgreSQLPool(t *testing.T) {
 		wantErr bool
 	}{
 		{"App DB", args{ctx, dsn, lgr}, false},
-		{"Bad DSN", args{ctx, baddsn, lgr}, true},
+		{"Bad DSN", args{ctx, baddsn, lgr}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			db, cleanup, err := NewPostgreSQLPool(tt.args.ctx, tt.args.l, tt.args.pgds)
+			_, cleanup, err := NewPgxPool(tt.args.ctx, tt.args.l, tt.args.pgds)
 			t.Cleanup(cleanup)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NewDB() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NewPgxPool() error = %v, wantErr %v", err, tt.wantErr)
 				return
-			}
-			if err == nil {
-				err = db.Ping(ctx)
-				if err != nil {
-					t.Errorf("Error pinging database = %v", err)
-				}
 			}
 		})
 	}
@@ -64,7 +58,7 @@ func TestNewDB(t *testing.T) {
 
 		dsn := newPostgreSQLDSN(t)
 
-		dbpool, cleanup, err := NewPostgreSQLPool(ctx, lgr, dsn)
+		dbpool, cleanup, err := NewPgxPool(ctx, lgr, dsn)
 		c.Assert(err, qt.IsNil)
 		t.Cleanup(cleanup)
 

@@ -8,7 +8,7 @@ import (
 
 	qt "github.com/frankban/quicktest"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/gilcrest/diygoapi"
 	"github.com/gilcrest/diygoapi/errs"
@@ -116,8 +116,10 @@ func TestOrgService(t *testing.T) {
 			Description: testOrgServiceOrgDescription,
 			Kind:        testOrgServiceOrgKind,
 			CreateAppRequest: &diygoapi.CreateAppRequest{
-				Name:        testAppServiceAppName,
-				Description: testAppServiceAppDescription,
+				Name:                   testAppServiceAppName,
+				Description:            testAppServiceAppDescription,
+				Oauth2Provider:         testAppServiceOauth2Provider,
+				Oauth2ProviderClientID: testAppServiceOauth2ProviderClientID,
 			},
 		}
 
@@ -338,13 +340,13 @@ func findPrincipalTestAudit(ctx context.Context, c *qt.C, tx pgx.Tx) diygoapi.Au
 	}
 
 	k := &diygoapi.OrgKind{
-		ID:          findOrgByNameRow.OrgKindID,
+		ID:          findOrgByNameRow.OrgKindID.Bytes,
 		ExternalID:  findOrgByNameRow.OrgKindExtlID,
 		Description: findOrgByNameRow.OrgKindDesc,
 	}
 
 	genesisOrg := &diygoapi.Org{
-		ID:          findOrgByNameRow.OrgID,
+		ID:          findOrgByNameRow.OrgID.Bytes,
 		ExternalID:  secure.MustParseIdentifier(findOrgByNameRow.OrgExtlID),
 		Name:        findOrgByNameRow.OrgName,
 		Description: findOrgByNameRow.OrgDescription,
@@ -363,7 +365,7 @@ func findPrincipalTestAudit(ctx context.Context, c *qt.C, tx pgx.Tx) diygoapi.Au
 	}
 
 	genesisApp := &diygoapi.App{
-		ID:          genesisDBAppRow.AppID,
+		ID:          genesisDBAppRow.AppID.Bytes,
 		ExternalID:  secure.MustParseIdentifier(genesisDBAppRow.AppExtlID),
 		Org:         genesisOrg,
 		Name:        genesisDBAppRow.AppName,
@@ -384,8 +386,8 @@ func findPrincipalTestAudit(ctx context.Context, c *qt.C, tx pgx.Tx) diygoapi.Au
 	}
 
 	findUsersByOrgRoleParams := datastore.FindUsersByOrgRoleParams{
-		OrgID:  testOrg.ID,
-		RoleID: testRole.ID,
+		OrgID:  testOrg.ID.PgxUUID(),
+		RoleID: testRole.ID.PgxUUID(),
 	}
 
 	var usersRole []datastore.UsersRole
@@ -396,7 +398,7 @@ func findPrincipalTestAudit(ctx context.Context, c *qt.C, tx pgx.Tx) diygoapi.Au
 
 	var u *diygoapi.User
 	for i, ur := range usersRole {
-		u, err = service.FindUserByID(ctx, tx, ur.UserID)
+		u, err = service.FindUserByID(ctx, tx, ur.UserID.Bytes)
 		if err != nil {
 			c.Fatalf("FindUserByID() error = %v", err)
 		}
