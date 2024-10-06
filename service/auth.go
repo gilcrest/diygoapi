@@ -83,6 +83,8 @@ func (s DBAuthenticationService) FindExistingAuth(r *http.Request, realm string)
 		provider diygoapi.Provider
 		err      error
 	)
+
+	// get the X-AUTH-PROVIDER header value (e.g. Google, Github, etc.)
 	provider, err = parseProviderHeader(realm, r.Header)
 	if err != nil {
 		return diygoapi.Auth{}, errs.E(op, err)
@@ -162,9 +164,9 @@ func (s DBAuthenticationService) findAuthDB(ctx context.Context, params *diygoap
 	return auth, nil
 }
 
-// DetermineAppContext checks to see if the request already has an app as part of
-// if it does, use that app as the app for session, if it does not, determine the
-// app based on the user's provider client ID. In either case, return a new context
+// DetermineAppContext checks if the context already has an app within, if so,
+// use that app as the app for session, if it does not, determine the app
+// based on the user's provider client ID. In either case, return a new context
 // with an app. If there is no app to be found for either, return an error.
 func (s DBAuthenticationService) DetermineAppContext(ctx context.Context, auth diygoapi.Auth, realm string) (context.Context, error) {
 	const op errs.Op = "server/Server.determineAppContext"
