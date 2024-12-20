@@ -41,7 +41,7 @@ func (s DBAuthenticationService) FindAppByAPIKey(r *http.Request, realm string) 
 		appExtlID string
 		err       error
 	)
-	appExtlID, err = parseAppHeader(realm, r.Header, diygoapi.ApiKeyHeaderKey)
+	appExtlID, err = parseAppHeader(realm, r.Header, diygoapi.AppIDHeaderKey)
 	if err != nil {
 		return nil, errs.E(op, err)
 	}
