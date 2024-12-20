@@ -23,8 +23,8 @@ const (
 	appJSONContentTypeHeaderVal string = "application/json"
 )
 
-// addRequestHandlerPatternContextHandler middleware adds the request handler pattern to the
-// request context
+// addRequestHandlerPatternContextHandler middleware adds the registered pattern that
+// matches the request to the request context.
 func (s *Server) addRequestHandlerPatternContextHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
@@ -114,7 +114,7 @@ func (s *Server) appHandler(h http.Handler) http.Handler {
 		// get a new context with app added
 		ctx = diygoapi.NewContextWithApp(ctx, a)
 
-		lgr.Debug().Msgf("Internal app authentication successful for: %s", a.Name)
+		lgr.Debug().Msgf("x-app-id app authentication successful for: %s", a.Name)
 
 		// call original, adding app to request context
 		h.ServeHTTP(w, r.WithContext(ctx))
