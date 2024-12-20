@@ -155,24 +155,6 @@ func DBDown(env string) (err error) {
 	return nil
 }
 
-// Genesis runs all tests including executing the Genesis service,
-// example: mage -v genesis local
-func Genesis(env string) (err error) {
-	const op errs.Op = "main/Genesis"
-
-	err = cmd.LoadEnv(cmd.ParseEnv(env))
-	if err != nil {
-		return errs.E(op, err)
-	}
-
-	err = cmd.Genesis()
-	if err != nil {
-		return errs.E(op, err)
-	}
-
-	return nil
-}
-
 // TestAll runs all tests for the app,
 // example: mage -v testall false local.
 // If verbose is true, tests will be run in verbose mode.
