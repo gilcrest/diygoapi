@@ -2,11 +2,9 @@
 
 A RESTful API template (built with Go)
 
-> Note: 6/23/2024 - I just upgraded to pgx/v5 and fixed all tests. I need to update this README as a result. I also need to update the README flow in general as it's outdated a bit. Will be updated soon.
-
 The goal of this project is to be an example of a relational database-backed REST HTTP Web Server that has characteristics needed to ensure success in a high volume environment. This project co-opts the DIY ethos of the Go community and does its best to "use the standard library" whenever possible, bringing in third-party libraries when not doing so would be unduly burdensome (structured logging, Oauth2, etc.).
 
-I struggled a lot with parsing the myriad different patterns people have for package layouts over the past few years and have tried to coalesce what I've learned from others into my own take on a package layout. Below, I hope to communicate how this structure works. If you have any questions, open an issue or send me a note - I'm happy to help! Also, if you disagree or have suggestions, please do the same, I really enjoy getting both positive and negative feedback.
+I struggled a lot with parsing the myriad different patterns people have for package layouts and have tried to coalesce what I've learned from others into my own take on a package layout. Below, I hope to communicate how this structure works. If you have any questions, open an issue or send me a note - I'm happy to help! Also, if you disagree or have suggestions, please do the same, I really enjoy getting both positive and negative feedback.
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/gilcrest/diygoapi.svg)](https://pkg.go.dev/github.com/gilcrest/diygoapi) [![Go Report Card](https://goreportcard.com/badge/github.com/gilcrest/diygoapi)](https://goreportcard.com/report/github.com/gilcrest/diygoapi)
 
@@ -24,9 +22,22 @@ The following is an in-depth walkthrough of this project. This is a demo API, so
 
 --------
 
+## Disclaimer
+
+Briefly, the data model for this project is set up to enable a B2B multi-tenant SAAS, which is overkill for a simple CRUD app, however, it's the model I wanted to create and teach myself. That said, it can serve only one tenant just fine.
+
+## Key Terms
+
+- `Person`: from Wikipedia: "A person (plural people or persons) is a being that has certain capacities or attributes such as reason, morality, consciousness or self-consciousness, and being a part of a culturally established form of social relations such as kinship, ownership of property, or legal responsibility. The defining features of personhood and, consequently, what makes a person count as a person, differ widely among cultures and contexts."
+- `User`: from Wikipedia: "A user is a person who utilizes a computer or network service." In the context of this project, given that we allow Persons to authenticate with multiple providers, a User is akin to a persona (Wikipedia - "The word persona derives from Latin, where it originally referred to a theatrical mask. On the social web, users develop virtual personas as online identities.") and as such, a Person can have one or many Users (for instance, I can have a GitHub user and a Google user, but I am just one Person). As a general, practical matter, most operations are considered at the User level. For instance, roles are assigned at the user level instead of the Person level, which allows for more fine-grained access control.
+- `App`: is an application that interacts with the system. An App always belongs to just one Org.
+- `Org`: represents an Organization (company, institution or any other organized body of people with a particular purpose). An Org can have multiple Persons/Users and Apps.
+
+----------
+
 ## Getting Started
 
-The following are basic instructions for getting started. For detailed explanations of many of the constructs created as part of these steps, jump to the [Project Walkthrough](#project-walkthrough)
+The following are basic instructions for getting started. 
 
 ### Step 1 - Get the code
 
@@ -57,9 +68,17 @@ Once a user has authenticated through this flow, all calls to services require t
 - If there is no token present, an `HTTP 401 (Unauthorized)` response will be sent and the response body will be empty.
 - If a token is properly sent, the [Google Oauth2 v2 API](https://pkg.go.dev/google.golang.org/api/oauth2/v2) is used to validate the token. If the token is ***invalid***, an `HTTP 401 (Unauthorized)` response will be sent and the response body will be empty.
 
+> Note: For more details on the authentication model, see the [Authentication Detail](#authentication-detail) section below.
+
 #### Authorization
 
-- If the token is ***valid***, Google will respond with information about the user. The user's email will be used as their username in addition to determining if the user is authorized for access to a particular endpoint/resource. The authorization is done through an internal database role based access control model. If the user is not authorized to use the API, an `HTTP 403 (Forbidden)` response will be sent and the response body will be empty.
+If the user's Bearer token is ***valid***, the user must be _authorized_. Users must first register with the system and be given a role. Currently, the SelfRegister service accommodates this and automatically assigns a default _role_ `movieAdmin` (functionality will be added eventually for one person registering another).
+
+_Roles_ are assigned _permissions_ and permissions are assigned to resources (service endpoints). The system uses a role-based access control model. The user's role is used to determine if the user is authorized to access a particular endpoint/resource.
+
+The `movieAdmin` role is set up to grant access to all resources. It's a demo... so why not?
+
+> Note: For more details on the authorization model, see the [Authorization Detail](#authorization-detail) section below.
 
 --------
 
@@ -93,7 +112,7 @@ The base environment variables to be set are:
 
 #### Generate a new encryption key
 
-Either option below for setting the environment requires a 256-bit ciphertext string, which can be parsed to a 32 byte encryption key. Generate the ciphertext with the `NewKey` mage program:
+Either option for setting the environment requires a 256-bit ciphertext string, which can be parsed to a 32 byte encryption key. Generate the ciphertext with the `NewKey` mage program:
 
 ```shell
 $ mage -v newkey
@@ -132,46 +151,11 @@ export DB_SEARCH_PATH="demo"
 
 #### Option 2 - Set your environment through a Config File
 
-##### Generate new config file using CUE
+> Security Disclaimer: Config files make local development easier, however, putting any credentials (encryption keys, username and password, etc.) in a config file is a bad idea from a security perspective. At a minimum, you should have the `config/` directory added to your `.gitignore` file so these configs are not checked in. As this is a template repo, I have checked this all in for example purposes only. The data there is bogus. In an upcoming release, I will integrate with a secrets management platform like [GCP Secret Manager](https://cloud.google.com/secret-manager) or [HashiCorp Vault](https://learn.hashicorp.com/tutorials/vault/getting-started-intro?in=vault/getting-started) [See Issue 91](https://github.com/gilcrest/diygoapi/issues/91).
 
-Another option is to use a JSON configuration file generated by [CUE](https://cuelang.org/) located at `./config/local.json`.
+##### JSON file
 
-In order to generate this file, edit the `./config/cue/local.cue` file. Paste and overwrite the ciphertext from your clipboard into the `config: encryptionKey:` field of the file and also update the `config: database:` fields (`host`, `port`, `name`, `user`, `password`, `searchPath`) as appropriate for your `PostgreSQL` installation.
-
-```cue
-package config
-
-config: #LocalConfig
-
-config: encryptionKey: "31f8cbffe80df0067fbfac4abf0bb76c51d44cb82d2556743e6bf1a5e25d4e06"
-
-config: httpServer: listenPort: 8080
-
-config: logger: minLogLevel:   "trace"
-config: logger: logLevel:      "debug"
-config: logger: logErrorStack: false
-
-config: database: host:       "localhost"
-config: database: port:       5432
-config: database: name:       "dga_local"
-config: database: user:       "demo_user"
-config: database: password:   "REPLACE_ME"
-config: database: searchPath: "demo"
-```
-
-> Security Disclaimer: Config files make local development easier, however, putting any credentials (encryption keys, username and password, etc.) in a config file is a bad idea from a security perspective. At a minimum, you should have the `config/` directory added to your `.gitignore` file so these configs are not checked in. As this is a template repo, I have checked this all in for example purposes only. The data there is bogus. In an upcoming release, I will integrate with a secrets management platform like [GCP Secret Manager](https://cloud.google.com/secret-manager) or [HashiCorp Vault](https://learn.hashicorp.com/tutorials/vault/getting-started-intro?in=vault/getting-started) [Issue 91](https://github.com/gilcrest/diygoapi/issues/91).
-
-After modifying the above file, run the following from project root:
-
-```shell
-$ mage -v cueGenerateConfig local
-Running target: CueGenerateConfig
-exec: cue "vet" "./config/cue/schema.cue" "./config/cue/local.cue"
-exec: cue "fmt" "./config/cue/schema.cue" "./config/cue/local.cue"
-exec: cue "export" "./config/cue/schema.cue" "./config/cue/local.cue" "--force" "--out" "json" "--outfile" "./config/local.json"
-```
-
-`cueGenerateConfig` should produce a JSON config file at `./config/local.json` that looks similar to:
+Another option is to use a JSON configuration file located at `./config/local.json`. Paste and overwrite the ciphertext from your clipboard into the `encryptionKey` field of the file and also update the `database:` fields (`host`, `port`, `name`, `user`, `password`, `searchPath`) as appropriate for your `PostgreSQL` installation.
 
 ```json
 {
@@ -198,6 +182,45 @@ exec: cue "export" "./config/cue/schema.cue" "./config/cue/local.cue" "--force" 
 ```
 
 > Setting the [schema search path](https://www.postgresql.org/docs/current/ddl-schemas.html#DDL-SCHEMAS-PATH) properly is critical as the objects in the migration scripts intentionally do not have qualified object names and will therefore use the search path when creating or dropping objects (in the case of the db down migration).
+
+##### Generate new config file using CUE (Optional)
+
+If you prefer, you can generate the JSON config file using [CUE](https://cuelang.org/) x
+
+In order to generate this file, edit the `./config/cue/local.cue` file. Paste and overwrite the ciphertext from your clipboard into the `config: encryptionKey:` field of the file and also update the `config: database:` fields (`host`, `port`, `name`, `user`, `password`, `searchPath`) as appropriate for your `PostgreSQL` installation.
+
+```cue
+package config
+
+config: #LocalConfig
+
+config: encryptionKey: "31f8cbffe80df0067fbfac4abf0bb76c51d44cb82d2556743e6bf1a5e25d4e06"
+
+config: httpServer: listenPort: 8080
+
+config: logger: minLogLevel:   "trace"
+config: logger: logLevel:      "debug"
+config: logger: logErrorStack: false
+
+config: database: host:       "localhost"
+config: database: port:       5432
+config: database: name:       "dga_local"
+config: database: user:       "demo_user"
+config: database: password:   "REPLACE_ME"
+config: database: searchPath: "demo"
+```
+
+After modifying the above file, run the following from project root:
+
+```shell
+$ mage -v cueGenerateConfig local
+Running target: CueGenerateConfig
+exec: cue "vet" "./config/cue/schema.cue" "./config/cue/local.cue"
+exec: cue "fmt" "./config/cue/schema.cue" "./config/cue/local.cue"
+exec: cue "export" "./config/cue/schema.cue" "./config/cue/local.cue" "--force" "--out" "json" "--outfile" "./config/local.json"
+```
+
+`cueGenerateConfig` should produce the JSON config file mentioned above (at `./config/local.json`).
 
 ### Step 4 - Database Initialization
 
@@ -244,150 +267,15 @@ COMMENT
 
 #### Data Initialization (Genesis)
 
-There are a number of tables that require initialization of data to facilitate things like: authentication through role based access controls, tracking which applications/users are interacting with the system, etc. I have bundled this initialization into a Genesis service, which can be run only once per database. This can be run as a service, but for ease of use, there is a mage program for it as well.
+There are a number of tables that require initialization of data to facilitate things like: authentication through role based access controls, tracking which applications/users are interacting with the system, etc. I have bundled this initialization into a Genesis service, which can be run only once per database.
 
-The `genesis` mage program uses a JSON configuration file generated by [CUE](https://cuelang.org/) located at `./config/genesis/request.json`.
+TODO - Priority 1! - Talk about calling the Genesis service to setup data
 
-To generate this file, navigate to `./config/genesis/cue/input.cue` and update the user details you plan to authenticate with via Google Oauth2. If you wish, you can update the initial org and app details from the default values you'll find in the file as well:
+This initial data setup as part of Genesis creates a Principal organization, a Test organization and apps/users within those as well as sets up permissions and roles for access for the user input into the service. The principal org is created solely for the administrative purpose of creating other organizations, apps and users. The test organization is where all tests are run for test data isolation, etc.
 
-```cue
-package genesis
+Most importantly, a user initiated organization and app is created based on your input. The response details of this organization (located within the `userInitiated` node of the response are those which are needed to run the various Movie APIs (create movie, read movie, etc.)
 
-// The "genesis" user - the first user to create the system and is
-// given the sysAdmin role (which has all permissions). This user is
-// added to the Principal org and the user initiated org created below.
-user: email:      "otto.maddox@gmail.com"
-user: first_name: "Otto"
-user: last_name:  "Maddox"
-
-// The first organization created which can actually transact
-// (e.g. is not the principal or test org)
-org: name:        "Movie Makers Unlimited"
-org: description: "An organization dedicated to creating movies in a demo app."
-org: kind:        "standard"
-
-// The initial app created along with the Organization created above
-org: app: name:        "Movie Makers App"
-org: app: description: "The first app dedicated to creating movies in a demo app."
-```
-
-Next, use mage to run the `cueGenerateGenesisConfig` program:
-
-```shell
-$ mage -v cueGenerateGenesisConfig
-Running target: CueGenerateGenesisConfig
-exec: cue "vet" "./config/genesis/cue/schema.cue" "./config/genesis/cue/auth.cue" "./config/genesis/cue/input.cue"
-exec: cue "fmt" "./config/genesis/cue/schema.cue" "./config/genesis/cue/auth.cue" "./config/genesis/cue/input.cue"
-exec: cue "export" "./config/genesis/cue/schema.cue" "./config/genesis/cue/auth.cue" "./config/genesis/cue/input.cue" "--force" "--out" "json" "--outfile" "./config/genesis/request.json"
-```
-
-This will generate `./config/genesis/request.json` similar to the below. This file also includes information about which permissions and roles to create as part of Genesis. Leave those as is.
-
-```json
-{
-    "user": {
-        "email": "otto.maddox@gmail.com",
-        "first_name": "Otto",
-        "last_name": "Maddox"
-    },
-    "org": {
-        "name": "Movie Makers Unlimited",
-        "description": "An organization dedicated to creating movies in a demo app.",
-        "kind": "standard",
-        "app": {
-            "name": "Movie Makers App",
-            "description": "The first app dedicated to creating movies in a demo app."
-        }
-    },
-    "permissions": [
-        {
-            "resource": "/api/v1/ping",
-            "operation": "GET",
-            "description": "allows for calling the ping service to determine if system is up and running",
-            "active": true
-        },
-        {
-            "resource": "/api/v1/logger",
-            "operation": "GET",
-            "description": "allows for reading the logger state",
-            "active": true
-        },
-        {
-            "resource": "/api/v1/logger",
-            "operation": "PUT",
-            "description": "allows for updating the logger state",
-            "active": true
-        },
-        {
-            "resource": "/api/v1/orgs",
-            "operation": "POST",
-...
-```
-
-Execute the `Genesis` mage program to initialize the database with dependent data:
-
-```shell
-$ mage -v genesis local
-Running target: Genesis
-{"level":"info","time":1654723891,"severity":"INFO","message":"minimum accepted logging level set to trace"}
-{"level":"info","time":1654723891,"severity":"INFO","message":"logging level set to debug"}
-{"level":"info","time":1654723891,"severity":"INFO","message":"log error stack global set to true"}
-{"level":"info","time":1654723891,"severity":"INFO","message":"sql database opened for localhost on port 5432"}
-{"level":"info","time":1654723891,"severity":"INFO","message":"sql database Ping returned successfully"}
-{"level":"info","time":1654723891,"severity":"INFO","message":"database version: PostgreSQL 14.2 on aarch64-apple-darwin20.6.0, compiled by Apple clang version 12.0.5 (clang-1205.0.22.9), 64-bit"}
-{"level":"info","time":1654723891,"severity":"INFO","message":"current database user: demo_user"}
-{"level":"info","time":1654723891,"severity":"INFO","message":"current database: dga_local"}
-{"level":"info","time":1654723891,"severity":"INFO","message":"current search_path: demo"}
-{
-  "principal": {
-    "org": {
-      "external_id": "HmiB9CmMpUU8hdVk",
-      "name": "Principal",
-      "kind_description": "genesis",
-      "description": "The Principal org represents the first organization created in the database and exists for the administrative purpose of creating other organizations, apps and users.",
-      "create_app_extl_id": "L-qGp1UquEgxKjn2",
-      "create_username": "otto.maddox@gmail.com",
-      "create_user_first_name": "Otto",
-      "create_user_last_name": "Maddox",
-      "create_date_time": "2022-06-08T17:31:31-04:00",
-      "update_app_extl_id": "L-qGp1UquEgxKjn2",
-      "update_username": "otto.maddox@gmail.com",
-      "update_user_first_name": "Otto",
-      "update_user_last_name": "Maddox",
-      "update_date_time": "2022-06-08T17:31:31-04:00"
-    },
-    "app": {
-      "external_id": "L-qGp1UquEgxKjn2",
-      "name": "Developer Dashboard",
-      "description": "App created as part of Genesis event. To be used solely for creating other apps, orgs and users.",
-      "create_app_extl_id": "L-qGp1UquEgxKjn2",
-      "create_username": "otto.maddox@gmail.com",
-      "create_user_first_name": "Otto",
-      "create_user_last_name": "Maddox",
-      "create_date_time": "2022-06-08T17:31:31-04:00",
-      "update_app_extl_id": "L-qGp1UquEgxKjn2",
-      "update_username": "otto.maddox@gmail.com",
-      "update_user_first_name": "Otto",
-      "update_user_last_name": "Maddox",
-      "update_date_time": "2022-06-08T17:31:31-04:00",
-      "api_keys": [
-        {
-          "key": "ZXo3BL-deFqP2VXLIYDAbZzF",
-          "deactivation_date": "2099-12-31 00:00:00 +0000 UTC"
-        }
-      ]
-    }
-  },
-  "test": {
-    "org": {
-...
-```
-
-When running the `Genesis` service through `mage`, the JSON response is sent to the terminal and also `./config/genesis/response.json` so you don't need to collect it now.
-
-Briefly, the data model is set up to enable a B2B multi-tenant SAAS, which is overkill for a simple CRUD app, but it's the model I wanted to create/learn and can serve only one tenant just fine. This initial data setup as part of Genesis creates a Principal organization, a Test organization and apps/users within those as well as sets up permissions and roles for access for the user input into the service. The principal org is created solely for the administrative purpose of creating other organizations, apps and users. The test organization is where all tests are run for test data isolation, etc.
-
-Most importantly, a user initiated organization and app is created based on your input in `./config/genesis/cue/input.cue`. The response details of this organization (located within the `userInitiated` node of the response are those which are needed to run the various Movie APIs (create movie, read movie, etc.)
+TODO - show response
 
 --------
 
@@ -988,7 +876,7 @@ If the user is not authorized to use the API, an `HTTP 403 (Forbidden)` response
 
 ##### Unauthorized Error Flow
 
-*Unauthorized* errors are raised when there is a permission issue for a user attempting to access a resource. `diygoapi` currently has a custom database-driven RBAC (Role Based Access Control) authorization implementation (more about this later). The below example demonstrates raising an *Unauthorized* error and is found in the [DBAuthorizer.Authorize](https://github.com/gilcrest/diygoapi/blob/v0.47.3/service/rbac.go#L37) method.
+*Unauthorized* errors are raised when there is a permission issue for a user attempting to access a resource. `diygoapi` currently has a custom database-driven RBAC (Role Based Access Control) authorization implementation (more about this later). The below example demonstrates raising an *Unauthorized* error and is found in the `DBAuthorizer.Authorize` method.
 
 ```go
 return errs.E(errs.Unauthorized, fmt.Sprintf("user %s does not have %s permission for %s", adt.User.Username, r.Method, pathTemplate))
@@ -1188,3 +1076,39 @@ and the response will look something like:
 ```
 
 The `PUT` response is the same as the `GET` response, but with updated values. In the examples above, I used a scenario where the logger state started with the global logging level (`global_log_level`) at error and error stack tracing (`log_error_stack`) set to false. The `PUT` request then updates the logger state, setting the global logging level to `debug` and the error stack tracing. You might do something like this if you are debugging an issue and need to see debug logs or error stacks to help with that.
+
+#### Authentication Detail
+
+**Authentication** is determined by validating the `App` making the request as well as the `User`.
+
+##### App Authentication Detail
+
+An `App` (aka API Client) can be registered using the `POST /api/v1/apps` service. The `App` can be registered with an association to an Oauth2 Provider Client ID or be standalone.
+
+An `App` has two possible methods of authentication.
+
+1. The first method, which overrides the second, is using the `X-APP-ID` and `X-API-KEY` HTTP headers. The `X-APP-ID` is the app unique identifier and the `X-API-KEY` is the password. This method confirms the veracity of the App against values stored in the database (the password is encrypted in the db). If the App ID is not found or the API key does not match the stored API key, an `HTTP 401 (Unauthorized)` response will be sent and the response body will be empty. If the authentication is successful, the App details will be set to the request context for downstream use.
+2. If there is no X-APP-ID header present, the second method is using the authorization Provider's Client ID associated with the `Authorization` header Bearer token. When a request is made only using the `Authorization` header, a callback to the provider's Oauth2 TokenInfo API is done to retrieve the associated Provider Client ID. The Provider Client ID is then used to find the associated App in the database. If the App is not found, an `HTTP 401 (Unauthorized)` response will be sent and the response body will be empty. If the App is found, the App details will be set to the request context for downstream use.
+
+##### User Authentication Detail
+
+User authentication happens outside the API using an Oauth2 provider (e.g. Google, Github, etc.) sign-in page. After successful authentication, the user is given a Bearer token which is then used for service-level authentication.
+
+In order to perform any actions with the `diygoapi` services, a User must Self-Register. The `SelfRegister` service creates a Person/User and stores them in the database. In addition, an `Auth` object, which represents the user's credentials is stored in the db. A search is done prior to `Auth` creation to determine if the user is already registered, and if so, the existing user is returned.
+
+After a user is registered, they can perform actions (use resources/endpoints) using the services. For every call, the `Authorization` HTTP header with the user's Bearer token along with the `X-AUTH-PROVIDER` header used to denote the `Provider` (e.g. Google, Github, etc.) must be set.
+
+The Bearer token is used to find the `Auth` object for the user in the database. Searching for the `Auth` object is done as follows:
+- Search the database directly using the Bearer token.
+  - If an `Auth` object already exists in the datastore which matches the `Bearer` token and the `Bearer` token is not past its expiration date, the existing `Auth` will be used to determine the User.
+  - If no `Auth` object exists in the datastore for the request `Bearer` token, an attempt will be made to find the user's `Auth` with the Provider ID (e.g. Google) and unique person ID given by the provider (found by calling the provider API with the request `Bearer` token). If an `Auth` object exists given these attributes, it will be updated with the new `Bearer` token details and this `Auth` will be used to obtain the `User` details.
+
+If the `Auth` object is not found, an `HTTP 401 (Unauthorized)` response will be sent and the response body will be empty. If the `Auth` object is found, the `User` details will be set to the request context for downstream use.
+
+#### Authorization Detail
+
+TODO
+
+##### Role Based Access Control
+
+TODO
