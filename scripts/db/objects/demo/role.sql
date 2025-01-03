@@ -10,7 +10,23 @@ create table if not exists role
     create_timestamp timestamp with time zone not null,
     update_app_id    uuid                     not null,
     update_user_id   uuid,
-    update_timestamp timestamp with time zone not null
+    update_timestamp timestamp with time zone not null,
+    constraint role_pk
+        primary key (role_id),
+    constraint role_cd_ui
+        unique (role_cd),
+    constraint role_create_app_fk
+        foreign key (create_app_id) references app
+            deferrable initially deferred,
+    constraint role_update_app_fk
+        foreign key (update_app_id) references app
+            deferrable initially deferred,
+    constraint role_create_user_fk
+        foreign key (create_user_id) references users
+            deferrable initially deferred,
+    constraint role_update_user_fk
+        foreign key (update_user_id) references users
+            deferrable initially deferred
 );
 
 comment on table role is 'The role table stores a job function or title which defines an authority level.';
@@ -38,30 +54,5 @@ comment on column role.update_user_id is 'The user which performed the most rece
 comment on column role.update_timestamp is 'The timestamp when the record was updated most recently.';
 
 alter table role
-    add constraint role_pk
-        primary key (role_id);
-
-alter table role
-    add constraint role_cd_ui
-        unique (role_cd);
-
-alter table role
-    add constraint role_create_app_fk
-        foreign key (create_app_id) references app
-            deferrable initially deferred;
-
-alter table role
-    add constraint role_update_app_fk
-        foreign key (update_app_id) references app
-            deferrable initially deferred;
-
-alter table role
-    add constraint role_create_user_fk
-        foreign key (create_user_id) references users
-            deferrable initially deferred;
-
-alter table role
-    add constraint role_update_user_fk
-        foreign key (update_user_id) references users
-            deferrable initially deferred;
+    owner to demo_user;
 

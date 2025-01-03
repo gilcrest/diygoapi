@@ -14,7 +14,25 @@ create table if not exists auth
     create_timestamp                  timestamp with time zone not null,
     update_app_id                     uuid                     not null,
     update_user_id                    uuid,
-    update_timestamp                  timestamp with time zone not null
+    update_timestamp                  timestamp with time zone not null,
+    constraint auth_pk
+        primary key (auth_id),
+    constraint auth_user_id_fk
+        foreign key (user_id) references users,
+    constraint auth_create_app_fk
+        foreign key (create_app_id) references app
+            deferrable initially deferred,
+    constraint auth_create_user_fk
+        foreign key (create_user_id) references users
+            deferrable initially deferred,
+    constraint auth_update_app_fk
+        foreign key (update_app_id) references app
+            deferrable initially deferred,
+    constraint auth_update_user_fk
+        foreign key (update_user_id) references users
+            deferrable initially deferred,
+    constraint auth_auth_provider_auth_provider_id_fk
+        foreign key (auth_provider_id) references auth_provider
 );
 
 comment on table auth is 'The auth table stores which user has authenticated through an Oauth2 provider.';
@@ -47,6 +65,9 @@ comment on column auth.update_user_id is 'The user which performed the most rece
 
 comment on column auth.update_timestamp is 'The timestamp when the record was updated most recently.';
 
+alter table auth
+    owner to demo_user;
+
 create unique index if not exists auth_access_token_ui
     on auth (auth_provider_access_token);
 
@@ -61,36 +82,4 @@ create unique index if not exists auth_user_provider_ui
     on auth (user_id, auth_provider_id);
 
 comment on index auth_user_provider_ui is 'one provider per user';
-
-alter table auth
-    add constraint auth_pk
-        primary key (auth_id);
-
-alter table auth
-    add constraint auth_user_id_fk
-        foreign key (user_id) references users;
-
-alter table auth
-    add constraint auth_create_app_fk
-        foreign key (create_app_id) references app
-            deferrable initially deferred;
-
-alter table auth
-    add constraint auth_create_user_fk
-        foreign key (create_user_id) references users
-            deferrable initially deferred;
-
-alter table auth
-    add constraint auth_update_app_fk
-        foreign key (update_app_id) references app
-            deferrable initially deferred;
-
-alter table auth
-    add constraint auth_update_user_fk
-        foreign key (update_user_id) references users
-            deferrable initially deferred;
-
-alter table auth
-    add constraint auth_auth_provider_auth_provider_id_fk
-        foreign key (auth_provider_id) references auth_provider;
 

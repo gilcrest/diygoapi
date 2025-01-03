@@ -7,7 +7,25 @@ create table if not exists role_permission
     create_timestamp timestamp with time zone not null,
     update_app_id    uuid                     not null,
     update_user_id   uuid,
-    update_timestamp timestamp with time zone not null
+    update_timestamp timestamp with time zone not null,
+    constraint role_permission_pk
+        primary key (role_id, permission_id),
+    constraint role_permission_role_id_fk
+        foreign key (role_id) references role,
+    constraint role_permission_permission_id_fk
+        foreign key (permission_id) references permission,
+    constraint role_permission_create_app_fk
+        foreign key (create_app_id) references app
+            deferrable initially deferred,
+    constraint role_permission_update_app_fk
+        foreign key (update_app_id) references app
+            deferrable initially deferred,
+    constraint role_permission_create_user_fk
+        foreign key (create_user_id) references users
+            deferrable initially deferred,
+    constraint role_permission_update_user_fk
+        foreign key (update_user_id) references users
+            deferrable initially deferred
 );
 
 comment on table role_permission is 'The role_permission table stores which roles have which permissions.';
@@ -29,34 +47,5 @@ comment on column role_permission.update_user_id is 'The user which performed th
 comment on column role_permission.update_timestamp is 'The timestamp when the record was updated most recently.';
 
 alter table role_permission
-    add constraint role_permission_pk
-        primary key (role_id, permission_id);
-
-alter table role_permission
-    add constraint role_permission_role_id_fk
-        foreign key (role_id) references role;
-
-alter table role_permission
-    add constraint role_permission_permission_id_fk
-        foreign key (permission_id) references permission;
-
-alter table role_permission
-    add constraint role_permission_create_app_fk
-        foreign key (create_app_id) references app
-            deferrable initially deferred;
-
-alter table role_permission
-    add constraint role_permission_update_app_fk
-        foreign key (update_app_id) references app
-            deferrable initially deferred;
-
-alter table role_permission
-    add constraint role_permission_create_user_fk
-        foreign key (create_user_id) references users
-            deferrable initially deferred;
-
-alter table role_permission
-    add constraint role_permission_update_user_fk
-        foreign key (update_user_id) references users
-            deferrable initially deferred;
+    owner to demo_user;
 
