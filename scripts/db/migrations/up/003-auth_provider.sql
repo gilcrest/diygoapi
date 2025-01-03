@@ -45,6 +45,10 @@ comment on column auth_provider.update_user_id is 'The user which performed the 
 
 comment on column auth_provider.update_timestamp is 'The timestamp when the record was updated most recently.';
 
+-- constraint app_auth_provider_null_fk is outside the app create table statement
+-- because the app table is created in a previous migration. To make this script idempotent,
+-- we need to check if the constraint exists before creating it.
+ALTER TABLE app DROP CONSTRAINT IF EXISTS app_auth_provider_null_fk;
 alter table app
     add constraint app_auth_provider_null_fk
         foreign key (auth_provider_id) references auth_provider;
