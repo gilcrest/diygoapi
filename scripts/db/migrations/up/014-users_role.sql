@@ -8,7 +8,27 @@ create table if not exists users_role
     create_timestamp timestamp with time zone not null,
     update_app_id    uuid                     not null,
     update_user_id   uuid,
-    update_timestamp timestamp with time zone not null
+    update_timestamp timestamp with time zone not null,
+    constraint users_role_pk
+        primary key (user_id, role_id, org_id),
+    constraint users_role_user_id_fk
+        foreign key (user_id) references users,
+    constraint users_role_role_id_fk
+        foreign key (role_id) references role,
+    constraint users_role_org_id_fk
+        foreign key (org_id) references org,
+    constraint users_role_create_app_fk
+        foreign key (create_app_id) references app
+            deferrable initially deferred,
+    constraint users_role_update_app_fk
+        foreign key (update_app_id) references app
+            deferrable initially deferred,
+    constraint users_role_create_user_fk
+        foreign key (create_user_id) references users
+            deferrable initially deferred,
+    constraint users_role_update_user_fk
+        foreign key (update_user_id) references users
+            deferrable initially deferred
 );
 
 comment on table users_role is 'The users_role table stores which users have which role(s) in which organization(s).';
@@ -30,40 +50,4 @@ comment on column users_role.update_app_id is 'The application which performed t
 comment on column users_role.update_user_id is 'The user which performed the most recent update to this record.';
 
 comment on column users_role.update_timestamp is 'The timestamp when the record was updated most recently.';
-
-alter table users_role
-    add constraint users_role_pk
-        primary key (user_id, role_id, org_id);
-
-alter table users_role
-    add constraint users_role_user_id_fk
-        foreign key (user_id) references users;
-
-alter table users_role
-    add constraint users_role_role_id_fk
-        foreign key (role_id) references role;
-
-alter table users_role
-    add constraint users_role_org_id_fk
-        foreign key (org_id) references org;
-
-alter table users_role
-    add constraint users_role_create_app_fk
-        foreign key (create_app_id) references app
-            deferrable initially deferred;
-
-alter table users_role
-    add constraint users_role_update_app_fk
-        foreign key (update_app_id) references app
-            deferrable initially deferred;
-
-alter table users_role
-    add constraint users_role_create_user_fk
-        foreign key (create_user_id) references users
-            deferrable initially deferred;
-
-alter table users_role
-    add constraint users_role_update_user_fk
-        foreign key (update_user_id) references users
-            deferrable initially deferred;
 
