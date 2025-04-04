@@ -262,8 +262,12 @@ func unknownErrorResponse(w http.ResponseWriter, lgr zerolog.Logger, err error) 
 // httpErrorStatusCode maps an error Kind to an HTTP Status Code
 func httpErrorStatusCode(k Kind) int {
 	switch k {
-	case Invalid, Exist, NotExist, Private, BrokenLink, Validation, InvalidRequest:
+	case Invalid, Private, BrokenLink, Validation, InvalidRequest:
 		return http.StatusBadRequest
+	case NotExist:
+		return http.StatusNotFound
+	case Exist:
+		return http.StatusConflict
 	case UnsupportedMediaType:
 		return http.StatusUnsupportedMediaType
 	// the zero value of Kind is Other, so if no Kind is present

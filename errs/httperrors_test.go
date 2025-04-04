@@ -23,8 +23,8 @@ func Test_httpErrorStatusCode(t *testing.T) {
 		args args
 		want int
 	}{
-		{"Exist", args{k: Exist}, http.StatusBadRequest},
-		{"NotExist", args{k: NotExist}, http.StatusBadRequest},
+		{"Exist", args{k: Exist}, http.StatusConflict},
+		{"NotExist", args{k: NotExist}, http.StatusNotFound},
 		{"Invalid", args{k: Invalid}, http.StatusBadRequest},
 		{"Private", args{k: Private}, http.StatusBadRequest},
 		{"BrokenLink", args{k: BrokenLink}, http.StatusBadRequest},
