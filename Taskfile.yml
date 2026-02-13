@@ -1,0 +1,7 @@
+version: '3'
+
+tasks:
+  db-up:
+    desc: Run DDL up migration scripts found in the scripts/db/migrations/up directory
+    cmds:
+      - go run ./cmd/migrations/main.go
