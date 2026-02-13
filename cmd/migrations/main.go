@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
+
 	"github.com/gilcrest/diygoapi/cmd"
 	"github.com/gilcrest/diygoapi/errs"
-	"github.com/magefile/mage/sh"
-	"os"
 )
 
 func main() {
@@ -29,7 +30,10 @@ func DBUp(args []string) (err error) {
 		return errs.E(op, err)
 	}
 
-	err = sh.Run("psql", args...)
+	c := exec.Command("psql", args...)
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	err = c.Run()
 	if err != nil {
 		return errs.E(op, err)
 	}

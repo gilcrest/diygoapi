@@ -8,21 +8,19 @@ DIY Go API is a RESTful API template backed by PostgreSQL. It demonstrates a mul
 
 ## Build & Run Commands
 
-**Build tool**: [Mage](https://magefile.org/) (Go-based make alternative), defined in `magefiles/magefile.go`.
+**Build tool**: [Taskfile.dev](https://taskfile.dev/) — tasks defined in `Taskfile.yml`.
 
 | Command | Description |
 |---|---|
-| `mage -v run local` | Run the server locally |
-| `mage -v testall false local` | Run all tests (non-verbose) |
-| `mage -v testall true local` | Run all tests (verbose) |
-| `go test ./...` | Run tests directly (requires env vars set) |
+| `task run` | Run the server |
+| `task test` | Run all tests |
+| `task test-verbose` | Run all tests (verbose) |
 | `go test -v -run TestFunctionName ./path/to/package` | Run a single test |
-| `mage -v newkey` | Generate a new encryption key |
-| `mage -v cueGenerateGenesisConfig` | Generate genesis config from CUE schemas |
+| `task new-key` | Generate a new encryption key |
 | `task db-up` | Run database DDL migrations |
-| `mage -v gcp staging` | Build Docker image and deploy to GCP Cloud Run |
+| `task cue-dbt:gen-config` | Generate config from CUE schemas |
 
-The `env` parameter for mage commands (e.g., `local`, `staging`) determines which config profile to load. Config is loaded from `config_profiles.json` or environment variables.
+Config is loaded from environment variables or config file via `ff` flags.
 
 ## Architecture
 

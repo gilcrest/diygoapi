@@ -1,7 +1,56 @@
 version: '3'
 
+includes:
+  cue-dbt:
+    taskfile: ./config/cue/dbt/Taskfile.yml
+    dir: ./config/cue/dbt
+
 tasks:
   db-up:
     desc: Run DDL up migration scripts found in the scripts/db/migrations/up directory
     cmds:
       - go run ./cmd/migrations/main.go
+
+  run:
+    desc: Run the server
+    cmds:
+      - go run ./cmd/diy/main.go
+
+  test:
+    desc: Run all tests
+    cmds:
+      - go test ./...
+
+  test-verbose:
+    desc: Run all tests (verbose)
+    cmds:
+      - go test -v ./...
+
+  new-key:
+    desc: Generate a new encryption key
+    cmds:
+      - go run ./cmd/newkey/main.go
+
+  gcp-deploy:
+    desc: Build and deploy to GCP Cloud Run (not yet implemented)
+    cmds:
+      - echo "Not yet implemented — GCP deployment helpers need to be redesigned"
+      - exit 1
+
+  gcp-db-start:
+    desc: Start GCP Cloud SQL instance (not yet implemented)
+    cmds:
+      - echo "Not yet implemented"
+      - exit 1
+
+  gcp-db-stop:
+    desc: Stop GCP Cloud SQL instance (not yet implemented)
+    cmds:
+      - echo "Not yet implemented"
+      - exit 1
+
+  gen-genesis-config:
+    desc: Generate genesis config from CUE files (not yet implemented)
+    cmds:
+      - echo "Not yet implemented — CUEGenesisPaths helper was removed"
+      - exit 1
