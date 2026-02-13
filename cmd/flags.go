@@ -1,14 +1,12 @@
 package cmd
 
 import (
-	"bufio"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
-	"strings"
+	"strconv"
 
 	"github.com/peterbourgon/ff/v3"
 
@@ -18,7 +16,7 @@ import (
 
 const (
 	configFileFlagName        = "config-file"
-	configFileFlagNameDefault = "./config.json"
+	configFileFlagNameDefault = ""
 	configFileFlagNameEnvVar  = "CONFIG_FILE"
 
 	targetFlagName       = "target"
@@ -178,14 +176,15 @@ func newFlags(args []string) (flags, error) {
 		dbpassword    = fs.String(dbPasswordFlagName, dbPasswordFlagDefault, fmt.Sprintf("postgresql database password (also via %s)", sqldb.DBPasswordEnv))
 		dbsearchpath  = fs.String(dbSearchPathFlagName, dbSearchPathFlagDefault, fmt.Sprintf("postgresql database search path (also via %s)", sqldb.DBSearchPathEnv))
 		encryptkey    = fs.String(encryptKeyFlagName, encryptKeyFlagDefault, fmt.Sprintf("encryption key (also via %s)", encryptKeyFlagEnvVarName))
-		configFile    = fs.String(configFileFlagName, configFileFlagNameDefault, fmt.Sprintf("JSON configuration file (also via %s)", configFileFlagNameEnvVar))
+		_             = fs.String(configFileFlagName, configFileFlagNameDefault, fmt.Sprintf("JSON configuration file (also via %s)", configFileFlagNameEnvVar))
 	)
 
 	// Parse the command line flags from above
 	err := ff.Parse(fs, args[1:],
 		ff.WithEnvVars(),
-		ff.WithConfigFileFlag("config"),
-		ff.WithConfigFileParser(ff.PlainParser))
+		ff.WithConfigFileFlag(configFileFlagName),
+		ff.WithAllowMissingConfigFile(true),
+		ff.WithConfigFileParser(configJSONParser))
 	if err != nil {
 		return flags{}, errs.E(op, err)
 	}
@@ -228,75 +227,75 @@ type ConfigFile struct {
 	} `json:"targets"`
 }
 
-// NewConfigFile initializes a ConfigFile struct from a JSON file which
-// must be located in the same directory as the executable. The executable
-// path is determined by os.Executable() and returned as a string.
-func NewConfigFile() (ConfigFile, string, error) {
-	const op errs.Op = "cmd/NewConfigFile"
-
-	var (
-		b   []byte
-		s   string
-		err error
-	)
-	s, err = os.Executable()
-	if err != nil {
-		return ConfigFile{}, "", errs.E(op, err)
+// configJSONParser is a custom ff config file parser that reads a
+// multi-target JSON config file and sets flag values from the selected target.
+// Target selection priority: --target CLI arg > TARGET env var > default_target in JSON.
+func configJSONParser(r io.Reader, set func(name, value string) error) error {
+	var cf ConfigFile
+	if err := json.NewDecoder(r).Decode(&cf); err != nil {
+		return fmt.Errorf("decoding config JSON: %w", err)
 	}
 
-	p := filepath.Dir(s)
-	p = filepath.Join(p, configFilename)
-
-	b, err = os.ReadFile(p)
-	if err != nil {
-		return ConfigFile{}, "", errs.E(op, err)
+	// Determine target: CLI arg > env var > default_target from config
+	target := scanArgsForTarget()
+	if target == "" {
+		target = os.Getenv(targetFlagEnvVarName)
+	}
+	if target == "" {
+		target = cf.DefaultTarget
 	}
 
-	f := ConfigFile{}
-	err = json.Unmarshal(b, &f)
-	if err != nil {
-		return ConfigFile{}, "", errs.E(op, err)
+	// Find the matching target
+	idx := -1
+	for i, t := range cf.Targets {
+		if t.Target == target {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return fmt.Errorf("target %q not found in config file", target)
 	}
 
-	return f, p, nil
-}
+	t := cf.Targets[idx]
 
-// ConfigParser is a parser for config files in a specifig JSON format.
-func ConfigParser(r io.Reader, set func(name, value string) error) error {
+	// Map JSON fields to flag names via set(). ff silently ignores
+	// values for flags already set by higher-priority sources.
+	pairs := []struct {
+		name, value string
+	}{
+		{targetFlagName, t.Target},
+		{listenPortFlagName, strconv.Itoa(t.ServerListenerPort)},
+		{logLevelMinFlagName, t.Logger.MinLogLevel},
+		{loglevelFlagName, t.Logger.LogLevel},
+		{logErrorStackFlagName, strconv.FormatBool(t.Logger.LogErrorStack)},
+		{encryptKeyFlagName, t.EncryptionKey},
+		{dbHostFlagName, t.Database.Host},
+		{dbPortFlagName, strconv.Itoa(t.Database.Port)},
+		{dbNameFlagName, t.Database.Name},
+		{dbUserFlagName, t.Database.User},
+		{dbPasswordFlagName, t.Database.Password},
+		{dbSearchPathFlagName, t.Database.SearchPath},
+	}
 
-	// Decode io.Reader into a Decoder type and unmarshal that into the
-	// CreateMovieRequest struct (rb)
-	err := json.NewDecoder(r).Decode(&rb)
-
-	s := bufio.NewScanner(r)
-	for s.Scan() {
-		line := strings.TrimSpace(s.Text())
-		if line == "" {
-			continue // skip empties
+	for _, p := range pairs {
+		if p.value == "" {
+			continue
 		}
-
-		if line[0] == '#' {
-			continue // skip comments
-		}
-
-		var (
-			name  string
-			value string
-			index = strings.IndexRune(line, ' ')
-		)
-		if index < 0 {
-			name, value = line, "true" // boolean option
-		} else {
-			name, value = line[:index], strings.TrimSpace(line[index:])
-		}
-
-		if i := strings.Index(value, " #"); i >= 0 {
-			value = strings.TrimSpace(value[:i])
-		}
-
-		if err := set(name, value); err != nil {
+		if err := set(p.name, p.value); err != nil {
 			return err
 		}
 	}
+
 	return nil
+}
+
+// scanArgsForTarget scans os.Args for --target or -target and returns the value.
+func scanArgsForTarget() string {
+	for i, arg := range os.Args {
+		if (arg == "--target" || arg == "-target") && i+1 < len(os.Args) {
+			return os.Args[i+1]
+		}
+	}
+	return ""
 }

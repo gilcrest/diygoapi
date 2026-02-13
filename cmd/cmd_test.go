@@ -42,38 +42,39 @@ func Test_newFlags(t *testing.T) {
 
 	setEnvFunc := func() {
 		c.Log("setting environment variables for test")
-		c.Setenv(loglevelEnv, "warn")
-		c.Setenv(logLevelMinEnv, "debug")
-		c.Setenv(logErrorStackEnv, "false")
-		c.Setenv(portEnv, "8081")
+		c.Setenv(loglevelFlagEnvVarName, "warn")
+		c.Setenv(logLevelMinFlagEnvVarName, "debug")
+		c.Setenv(logErrorStackFlagEnvVarName, "false")
+		c.Setenv(listenPortFlagEnvVarName, "8081")
 		c.Setenv(sqldb.DBHostEnv, "hostwiththemost")
 		c.Setenv(sqldb.DBPortEnv, "5150")
 		c.Setenv(sqldb.DBNameEnv, "whatisinaname")
 		c.Setenv(sqldb.DBUserEnv, "usersarelosers")
 		c.Setenv(sqldb.DBPasswordEnv, "yeet")
 		c.Setenv(sqldb.DBSearchPathEnv, "u2")
-		c.Setenv(encryptKeyEnv, "reallyGoodKey")
+		c.Setenv(encryptKeyFlagEnvVarName, "reallyGoodKey")
 		c.Log("Environment setup completed")
 	}
 
 	setEnv2EmptyFunc := func() {
 		c.Log("setting environment variables for test")
-		c.Setenv(loglevelEnv, "")
-		c.Setenv(logLevelMinEnv, "")
-		c.Setenv(logErrorStackEnv, "")
-		c.Setenv(portEnv, "")
+		c.Setenv(loglevelFlagEnvVarName, "")
+		c.Setenv(logLevelMinFlagEnvVarName, "")
+		c.Setenv(logErrorStackFlagEnvVarName, "")
+		c.Setenv(listenPortFlagEnvVarName, "")
 		c.Setenv(sqldb.DBHostEnv, "")
 		c.Setenv(sqldb.DBPortEnv, "")
 		c.Setenv(sqldb.DBNameEnv, "")
 		c.Setenv(sqldb.DBUserEnv, "")
 		c.Setenv(sqldb.DBPasswordEnv, "")
 		c.Setenv(sqldb.DBSearchPathEnv, "")
-		c.Setenv(encryptKeyEnv, "")
+		c.Setenv(encryptKeyFlagEnvVarName, "")
 		c.Log("Environment setup completed")
 	}
 
 	a1 := args{args: []string{"server", "-log-level=info", "-log-level-min=debug", "-log-error-stack", "-port=8080", "-db-host=localhost", "-db-port=5432", "-db-name=go_api_basic", "-db-user=postgres", "-db-password=sosecret", "-db-search-path=demo", "-encrypt-key=reallyGoodKey"}}
 	f1 := flags{
+		target:        "dev",
 		loglvl:        "info",
 		logLvlMin:     "debug",
 		logErrorStack: true,
@@ -89,6 +90,7 @@ func Test_newFlags(t *testing.T) {
 
 	a2 := args{args: []string{"server"}}
 	f2 := flags{
+		target:        "dev",
 		loglvl:        "warn",
 		logLvlMin:     "debug",
 		logErrorStack: false,
@@ -104,6 +106,7 @@ func Test_newFlags(t *testing.T) {
 
 	a3 := args{args: []string{"server", "-log-level=error"}}
 	f3 := flags{
+		target:        "dev",
 		loglvl:        "error",
 		logLvlMin:     "debug",
 		logErrorStack: false,
@@ -122,6 +125,7 @@ func Test_newFlags(t *testing.T) {
 
 	a5 := args{args: []string{"server", "-log-level=debug", "-log-level-min=debug", "-log-error-stack", "-port=8080", "-db-host=localhost", "-db-port=5432", "-db-name=go_api_basic", "-db-user=postgres", "-db-password=sosecret"}}
 	f5 := flags{
+		target:        "dev",
 		loglvl:        "debug",
 		logLvlMin:     "debug",
 		logErrorStack: true,
