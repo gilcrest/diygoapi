@@ -15,14 +15,14 @@ tasks:
   cue-vet:
     desc: Run cue vet which validates CUE and other data files
     cmds:
-      - cue vet config.cue schema.cue
+      - cue vet ../local/config.cue schema.cue
 
   cue-fmt:
     desc: Run cue fmt which formats CUE and other data files
     cmds:
-      - cue fmt config.cue schema.cue
+      - cue fmt ../local/config.cue schema.cue
 
   cue-export:
     desc: Run cue export which exports CUE and other data files to JSON
     cmds:
-      - cue export config.cue schema.cue --out json --outfile config.json
+      - cue export ../local/config.cue schema.cue --out json --outfile ../local/config.json --force
