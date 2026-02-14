@@ -2,8 +2,8 @@ version: '3'
 
 includes:
   cue-dbt:
-    taskfile: ./config/cue/dbt/Taskfile.yml
-    dir: ./config/cue/dbt
+    taskfile: ./config/cue/Taskfile.yml
+    dir: ./config/cue
 
 tasks:
   db-up:

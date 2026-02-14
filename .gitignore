@@ -40,3 +40,6 @@ tasks.json
 
 # bin directory
 /bin/
+
+# Local configuration (generated and user-specific)
+/config/local/
