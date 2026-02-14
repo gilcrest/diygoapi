@@ -2,13 +2,11 @@ package cmd
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"net/http"
 	"os"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/peterbourgon/ff/v3"
 	"github.com/rs/zerolog"
 	"golang.org/x/text/language"
 
@@ -20,104 +18,6 @@ import (
 	"github.com/gilcrest/diygoapi/service"
 	"github.com/gilcrest/diygoapi/sqldb"
 )
-
-const (
-	// log level environment variable name
-	loglevelEnv string = "LOG_LEVEL"
-	// minimum accepted log level environment variable name
-	logLevelMinEnv string = "LOG_LEVEL_MIN"
-	// log error stack environment variable name
-	logErrorStackEnv string = "LOG_ERROR_STACK"
-	// server port environment variable name
-	portEnv string = "PORT"
-	// encryption key environment variable name
-	encryptKeyEnv string = "ENCRYPT_KEY"
-)
-
-type flags struct {
-	// log-level flag allows for setting logging level, e.g. to run the server
-	// with level set to debug, it'd be: ./server -log-level=debug
-	// If not set, defaults to error
-	loglvl string
-
-	// log-level-min flag sets the minimum accepted logging level
-	// - e.g. in production, you may have a policy to never allow logs at
-	// trace level. You could set the minimum log level to Debug. Even
-	// if the Global log level is set to Trace, only logs at Debug
-	// and above would be logged. Default level is trace.
-	logLvlMin string
-
-	// logErrorStack flag determines whether or not a full error stack
-	// should be logged. If true, error stacks are logged, if false,
-	// just the error is logged
-	logErrorStack bool
-
-	// port flag is what http.ListenAndServe will listen on. default is 8080 if not set
-	port int
-
-	// dbhost is the database host
-	dbhost string
-
-	// dbport is the database port
-	dbport int
-
-	// dbname is the database name
-	dbname string
-
-	// dbuser is the database user
-	dbuser string
-
-	// dbpassword is the database user's password
-	dbpassword string
-
-	// dbsearchpath is the database search path
-	dbsearchpath string
-
-	// encryptkey is the encryption key
-	encryptkey string
-}
-
-// newFlags parses the command line flags using ff and returns
-// a flags struct or an error
-func newFlags(args []string) (flags, error) {
-	const op errs.Op = "cmd/newFlags"
-	// create new FlagSet using the program name being executed (args[0])
-	// as the name of the FlagSet
-	fs := flag.NewFlagSet(args[0], flag.ContinueOnError)
-	var (
-		logLvlMin     = fs.String("log-level-min", "trace", fmt.Sprintf("sets minimum log level (trace, debug, info, warn, error, fatal, panic, disabled), (also via %s)", logLevelMinEnv))
-		loglvl        = fs.String("log-level", "info", fmt.Sprintf("sets log level (trace, debug, info, warn, error, fatal, panic, disabled), (also via %s)", loglevelEnv))
-		logErrorStack = fs.Bool("log-error-stack", false, fmt.Sprintf("if true, log full error stacktrace using github.com/pkg/errors, else just log error, (also via %s)", logErrorStackEnv))
-		port          = fs.Int("port", 8080, fmt.Sprintf("listen port for server (also via %s)", portEnv))
-		dbhost        = fs.String("db-host", "", fmt.Sprintf("postgresql database host (also via %s)", sqldb.DBHostEnv))
-		dbport        = fs.Int("db-port", 5432, fmt.Sprintf("postgresql database port (also via %s)", sqldb.DBPortEnv))
-		dbname        = fs.String("db-name", "", fmt.Sprintf("postgresql database name (also via %s)", sqldb.DBNameEnv))
-		dbuser        = fs.String("db-user", "", fmt.Sprintf("postgresql database user (also via %s)", sqldb.DBUserEnv))
-		dbpassword    = fs.String("db-password", "", fmt.Sprintf("postgresql database password (also via %s)", sqldb.DBPasswordEnv))
-		dbsearchpath  = fs.String("db-search-path", "", fmt.Sprintf("postgresql database search path (also via %s)", sqldb.DBSearchPathEnv))
-		encryptkey    = fs.String("encrypt-key", "", fmt.Sprintf("encryption key (also via %s)", encryptKeyEnv))
-	)
-
-	// Parse the command line flags from above
-	err := ff.Parse(fs, args[1:], ff.WithEnvVars())
-	if err != nil {
-		return flags{}, errs.E(op, err)
-	}
-
-	return flags{
-		loglvl:        *loglvl,
-		logLvlMin:     *logLvlMin,
-		logErrorStack: *logErrorStack,
-		port:          *port,
-		dbhost:        *dbhost,
-		dbport:        *dbport,
-		dbname:        *dbname,
-		dbuser:        *dbuser,
-		dbpassword:    *dbpassword,
-		dbsearchpath:  *dbsearchpath,
-		encryptkey:    *encryptkey,
-	}, nil
-}
 
 // Run parses command line flags and starts the server
 func Run(args []string) (err error) {
@@ -165,21 +65,9 @@ func Run(args []string) (err error) {
 	logger.LogErrorStackViaPkgErrors(flgs.logErrorStack)
 	lgr.Info().Msgf("log error stack via github.com/pkg/errors set to %t", flgs.logErrorStack)
 
-	// validate port in acceptable range
-	err = portRange(flgs.port)
+	err = flgs.Validate()
 	if err != nil {
-		lgr.Fatal().Err(err).Msg("portRange() error")
-	}
-
-	// initialize Server enfolding a http.Server with default timeouts,
-	// a mux router and a zerolog.Logger
-	s := server.New(http.NewServeMux(), server.NewDriver(), lgr)
-
-	// set listener address
-	s.Addr = fmt.Sprintf(":%d", flgs.port)
-
-	if flgs.encryptkey == "" {
-		lgr.Fatal().Msg("no encryption key found")
+		lgr.Fatal().Err(err).Msg("flags.Validate() error")
 	}
 
 	// decode and retrieve encryption key
@@ -188,6 +76,13 @@ func Run(args []string) (err error) {
 	if err != nil {
 		lgr.Fatal().Err(err).Msg("secure.ParseEncryptionKey() error")
 	}
+
+	// initialize Server enfolding a http.Server with default timeouts,
+	// a mux router and a zerolog.Logger
+	s := server.New(http.NewServeMux(), server.NewDriver(), lgr)
+
+	// set Server listener address
+	s.Addr = fmt.Sprintf(":%d", flgs.port)
 
 	ctx := context.Background()
 
@@ -269,4 +164,27 @@ func portRange(port int) error {
 		return errs.E(op, fmt.Sprintf("port %d is not within valid port range (0 to 65535)", port))
 	}
 	return nil
+}
+
+// printFlags prints the flags to stdout
+func printFlags(flgs flags) {
+	fmt.Printf("Log Level: %s\n", flgs.loglvl)
+	fmt.Printf("Log Level Min: %s\n", flgs.logLvlMin)
+	fmt.Printf("Log Error Stack: %t\n", flgs.logErrorStack)
+	fmt.Printf("Port: %d\n", flgs.port)
+	fmt.Printf("DB Host: %s\n", flgs.dbhost)
+	fmt.Printf("DB Port: %d\n", flgs.dbport)
+	fmt.Printf("DB Name: %s\n", flgs.dbname)
+	fmt.Printf("DB Search Path: %s\n", flgs.dbsearchpath)
+	fmt.Printf("DB User: %s\n", flgs.dbuser)
+	if flgs.dbpassword == "" {
+		fmt.Println("DB Password: <empty>")
+	} else {
+		fmt.Println("DB Password: <not empty>")
+	}
+	if flgs.encryptkey == "" {
+		fmt.Println("Encryption Key: <empty>")
+	} else {
+		fmt.Println("Encryption Key: <not empty>")
+	}
 }

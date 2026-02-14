@@ -1,3 +1,7 @@
+// All values in this file are example/placeholder values for demonstration
+// purposes only. They are not real credentials and should be replaced with
+// your own values before use in any environment.
+
 package config
 
 #Config & {

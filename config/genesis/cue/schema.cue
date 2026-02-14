@@ -1,7 +1,6 @@
 package genesis
 
-// Objects included in output. All object definitions are in the schema.cue file. The permissions and roles are in the
-// auth.cue file, but they are only included as part of the request.json file due to their inclusion below (because of
+// Objects included in output. All object definitions are in the schema.cue file. The permissions and roles are in the// auth.cue file, but they are only included as part of the request.json file due to their inclusion below (because of
 // the leading underscore).
 user: #User
 org:  #Org

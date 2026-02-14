@@ -1,0 +1,9 @@
+{
+    "profile": "demo",
+    "listener_port": 8080,
+    "logger": {
+        "min_log_level": "trace",
+        "log_level": "debug",
+        "log_error_stack": true
+    }
+}
