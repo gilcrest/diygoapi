@@ -1,0 +1,23 @@
+{
+    "default_target": "local",
+    "targets": [
+        {
+            "target": "local",
+            "server_listener_port": 8080,
+            "logger": {
+                "min_log_level": "trace",
+                "log_level": "debug",
+                "log_error_stack": true
+            },
+            "encryption_key": "31f8cbffe80df0067fbfac4abf0bb76c51d44cb82d2556743e6bf1a5e25d4e06",
+            "database": {
+                "host": "localhost",
+                "port": 5432,
+                "name": "dga_local",
+                "user": "demo_user",
+                "password": "REPLACE_ME",
+                "search_path": "demo"
+            }
+        }
+    ]
+}
