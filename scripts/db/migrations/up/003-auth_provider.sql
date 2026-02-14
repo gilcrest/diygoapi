@@ -57,4 +57,3 @@ comment on constraint app_auth_provider_null_fk on app is 'Not every app has an 
 
 create unique index if not exists auth_provider_cd_ui
     on auth_provider (auth_provider_cd);
-

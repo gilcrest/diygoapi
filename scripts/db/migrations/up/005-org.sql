@@ -52,6 +52,10 @@ comment on column org.update_user_id is 'The user which performed the most recen
 
 comment on column org.update_timestamp is 'The timestamp when the record was updated most recently.';
 
+-- constraint app_org_org_id_fk is outside the app create table statement
+-- because the app table is created in a previous migration. To make this script idempotent,
+-- we need to check if the constraint exists before creating it.
+ALTER TABLE app DROP CONSTRAINT IF EXISTS app_org_org_id_fk;
 alter table app
     add constraint app_org_org_id_fk
         foreign key (org_id) references org
@@ -65,4 +69,3 @@ create unique index if not exists org_org_name_uindex
 
 create unique index if not exists org_org_extl_id_uindex
     on org (org_extl_id);
-

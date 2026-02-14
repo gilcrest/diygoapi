@@ -110,13 +110,16 @@ func PSQLArgs(up bool) ([]string, error) {
 	}
 
 	// newFlags will retrieve the database info from the environment using ff
-	flgs, err := newFlags([]string{"server"})
+	var f flags
+	f, err = newFlags([]string{"server"})
 	if err != nil {
 		return nil, errs.E(op, err)
 	}
 
+	printFlags(f)
+
 	// command line args for psql are constructed
-	args := []string{"-w", "-d", newPostgreSQLDSN(flgs).ConnectionURI(), "-c", "select current_database(), current_user, version()"}
+	args := []string{"-w", "-d", newPostgreSQLDSN(f).ConnectionURI(), "-q", "-c", "select current_database(), current_user, version()"}
 
 	for _, file := range ddlFiles {
 		args = append(args, "-f")

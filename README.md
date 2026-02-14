@@ -82,9 +82,21 @@ The `movieAdmin` role is set up to grant access to all resources. It's a demo...
 
 --------
 
-### Step 3 - Prepare Environment (2 options)
+### Step 2 - Prepare Environment (2 options)
 
-All Mage programs in this project which take an environment (env) parameter (e.g., `func DBUp(env string)`), must have certain environment variables set. These environment variables can be set independently [option 1](#option-1---set-your-environment-independently) or based on a configuration file [option 2](#option-2---set-your-environment-through-a-config-file). Depending on which environment method you choose, the values to pass to the env parameter when running Mage programs in this project are as follows:
+Set environment variables for the database:
+
+| Environment Variable | Description                                                                                        |
+|----------------------|----------------------------------------------------------------------------------------------------|
+| DB_HOST              | The host name of the database server.                                                              |
+| DB_PORT              | The port number the database server is listening on.                                               |
+| DB_NAME              | The database name.                                                                                 |
+| DB_USER              | PostgreSQL™ user name to connect as.                                                               |
+| DB_PASSWORD          | Password to be used if the server demands password authentication.                                 |
+| DB_SEARCH_PATH       | Schema Search Path                                                                                 |
+
+These environment variables can be set independently [option 1](#option-1---set-your-environment-independently) or based on a configuration file [option 2](#option-2---set-your-environment-through-a-config-file). Depending on which environment method you choose, the values to pass to the env parameter when running Mage programs in this project are as follows:
+
 
 | env string | File Path             | Description                                                                                                    |
 |------------|-----------------------|----------------------------------------------------------------------------------------------------------------|
@@ -93,20 +105,6 @@ All Mage programs in this project which take an environment (env) parameter (e.g
 | staging    | ./config/staging.json | Uses the `staging.json` config file to set the environment in [Google Cloud Run](https://cloud.google.com/run) |
 
 The base environment variables to be set are:
-
-| Environment Variable | Description                                                                                        |
-|----------------------|----------------------------------------------------------------------------------------------------|
-| PORT                 | Port the server will listen on                                                                     |
-| LOG_LEVEL            | zerolog logging level (debug, info, etc.)                                                          |
-| LOG_LEVEL_MIN        | sets the minimum accepted logging level                                                            |
-| LOG_ERROR_STACK      | If true, log error stacktrace using github.com/pkg/errors, else just log error (includes op stack) |
-| DB_HOST              | The host name of the database server.                                                              |
-| DB_PORT              | The port number the database server is listening on.                                               |
-| DB_NAME              | The database name.                                                                                 |
-| DB_USER              | PostgreSQL™ user name to connect as.                                                               |
-| DB_PASSWORD          | Password to be used if the server demands password authentication.                                 |
-| DB_SEARCH_PATH       | Schema Search Path                                                                                 |
-| ENCRYPT_KEY          | Encryption Key                                                                                     |
 
 > The same environment variables are used when running the web server, but are not mandatory. When running the web server, if you prefer, you can bypass environment variables and instead send command line flags (more about that later).
 
@@ -504,6 +502,26 @@ $ curl --location --request DELETE 'http://127.0.0.1:8080/api/v1/movies/IUAtsOQu
 The above image is a high-level view of an example request that is processed by the server (creating a movie). To summarize, after receiving an http request, the request path, method, etc. is matched to a registered route in the Server's standard library multiplexer (aka ServeMux, initialization of which, is part of server startup in the `command` package as part of the routes.go file in the server package). The request is then sent through a sequence of middleware handlers for setting up request logging, response headers, authentication and authorization. Finally, the request is routed through a bespoke app handler, in this case `handleMovieCreate`.
 
 > `diygoapi` package layout is based on several projects, but the primary source of inspiration is the [WTF Dial app repo](https://github.com/benbjohnson/wtf) and [accompanying blog](https://www.gobeyond.dev/) from [Ben Johnson](https://github.com/benbjohnson). It's really a wonderful resource and I encourage everyone to read it.
+
+### Environment Variables
+
+The following environment variables are used to configure the web server:
+
+| Environment Variable | Description                                                                                        |
+|----------------------|----------------------------------------------------------------------------------------------------|
+| PORT                 | Port the server will listen on                                                                     |
+| LOG_LEVEL            | zerolog logging level (debug, info, etc.)                                                          |
+| LOG_LEVEL_MIN        | sets the minimum accepted logging level                                                            |
+| LOG_ERROR_STACK      | If true, log error stacktrace using github.com/pkg/errors, else just log error (includes op stack) |
+| DB_HOST              | The host name of the database server.                                                              |
+| DB_PORT              | The port number the database server is listening on.                                               |
+| DB_NAME              | The database name.                                                                                 |
+| DB_USER              | PostgreSQL™ user name to connect as.                                                               |
+| DB_PASSWORD          | Password to be used if the server demands password authentication.                                 |
+| DB_SEARCH_PATH       | Schema Search Path                                                                                 |
+| ENCRYPT_KEY          | Encryption Key                                                                                     |
+
+> Note: If an environment variable is not set, the default is used
 
 ### Errors
 
