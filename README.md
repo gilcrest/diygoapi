@@ -17,7 +17,7 @@ The following is an in-depth walkthrough of this project. This is a demo API, so
 - [Go](https://go.dev/)
 - [PostgreSQL](https://www.postgresql.org/) - Database
 - [Google OAuth 2.0](https://developers.google.com/identity/protocols/oauth2/web-server) - authentication
-- [Mage](https://magefile.org/) - for build and easier script execution
+- [Task](https://taskfile.dev/) - task runner for build and script execution
 - [CUE](https://cuelang.org/) - config file generation
 
 --------
@@ -82,7 +82,7 @@ The `movieAdmin` role is set up to grant access to all resources. It's a demo...
 
 --------
 
-### Step 2 - Prepare Environment (2 options)
+### Step 3 - Prepare Environment (2 options)
 
 Set environment variables for the database:
 
@@ -95,26 +95,16 @@ Set environment variables for the database:
 | DB_PASSWORD          | Password to be used if the server demands password authentication.                                 |
 | DB_SEARCH_PATH       | Schema Search Path                                                                                 |
 
-These environment variables can be set independently [option 1](#option-1---set-your-environment-independently) or based on a configuration file [option 2](#option-2---set-your-environment-through-a-config-file). Depending on which environment method you choose, the values to pass to the env parameter when running Mage programs in this project are as follows:
-
-
-| env string | File Path             | Description                                                                                                    |
-|------------|-----------------------|----------------------------------------------------------------------------------------------------------------|
-| current    | N/A                   | Uses the current session environment. Environment will not be overriden from a config file                     |
-| local      | ./config/local.json   | Uses the `local.json` config file to set the environment                                                       |
-| staging    | ./config/staging.json | Uses the `staging.json` config file to set the environment in [Google Cloud Run](https://cloud.google.com/run) |
-
-The base environment variables to be set are:
+These environment variables can be set independently [option 1](#option-1---set-your-environment-independently) or based on a configuration file [option 2](#option-2---set-your-environment-through-a-config-file).
 
 > The same environment variables are used when running the web server, but are not mandatory. When running the web server, if you prefer, you can bypass environment variables and instead send command line flags (more about that later).
 
 #### Generate a new encryption key
 
-Either option for setting the environment requires a 256-bit ciphertext string, which can be parsed to a 32 byte encryption key. Generate the ciphertext with the `NewKey` mage program:
+Either option for setting the environment requires a 256-bit ciphertext string, which can be parsed to a 32 byte encryption key. Generate the ciphertext with `task new-key`:
 
 ```shell
-$ mage -v newkey
-Running target: NewKey
+$ task new-key
 Key Ciphertext: [31f8cbffe80df0067fbfac4abf0bb76c51d44cb82d2556743e6bf1a5e25d4e06]
 ```
 
@@ -153,29 +143,31 @@ export DB_SEARCH_PATH="demo"
 
 ##### JSON file
 
-Another option is to use a JSON configuration file located at `./config/local.json`. Paste and overwrite the ciphertext from your clipboard into the `encryptionKey` field of the file and also update the `database:` fields (`host`, `port`, `name`, `user`, `password`, `searchPath`) as appropriate for your `PostgreSQL` installation.
+Another option is to use a JSON configuration file. The config uses a multi-target layout where each target (e.g. `local`, `staging`) has its own settings. The generated JSON file is located at `./config/local/config.json`. Update the `encryption_key`, `database` fields (`host`, `port`, `name`, `user`, `password`, `search_path`) and other settings as appropriate for your `PostgreSQL` installation.
 
 ```json
 {
-    "config": {
-        "httpServer": {
-            "listenPort": 8080
-        },
-        "logger": {
-            "minLogLevel": "trace",
-            "logLevel": "debug",
-            "logErrorStack": false
-        },
-        "encryptionKey": "31f8cbffe80df0067fbfac4abf0bb76c51d44cb82d2556743e6bf1a5e25d4e06",
-        "database": {
-            "host": "localhost",
-            "port": 5432,
-            "name": "dga_local",
-            "user": "demo_user",
-            "password": "REPLACE_ME",
-            "searchPath": "demo"
+    "default_target": "local",
+    "targets": [
+        {
+            "target": "local",
+            "server_listener_port": 8080,
+            "logger": {
+                "min_log_level": "trace",
+                "log_level": "debug",
+                "log_error_stack": false
+            },
+            "encryption_key": "31f8cbffe80df0067fbfac4abf0bb76c51d44cb82d2556743e6bf1a5e25d4e06",
+            "database": {
+                "host": "localhost",
+                "port": 5432,
+                "name": "dga_local",
+                "user": "demo_user",
+                "password": "REPLACE_ME",
+                "search_path": "demo"
+            }
         }
-    }
+    ]
 }
 ```
 
@@ -183,85 +175,38 @@ Another option is to use a JSON configuration file located at `./config/local.js
 
 ##### Generate new config file using CUE (Optional)
 
-If you prefer, you can generate the JSON config file using [CUE](https://cuelang.org/) x
+If you prefer, you can generate the JSON config file using [CUE](https://cuelang.org/).
 
-In order to generate this file, edit the `./config/cue/local.cue` file. Paste and overwrite the ciphertext from your clipboard into the `config: encryptionKey:` field of the file and also update the `config: database:` fields (`host`, `port`, `name`, `user`, `password`, `searchPath`) as appropriate for your `PostgreSQL` installation.
+The CUE-based config uses a split layout:
+- **`config/cue/schema.cue`** -- the shared validation schema (checked into git)
+- **`config/local/config.cue`** -- local config values with credentials (gitignored)
+- **`config/local/config.json`** -- generated output (gitignored)
 
-```cue
-package config
+Edit the `./config/local/config.cue` file. Update the `encryption_key`, `database` fields (`host`, `port`, `name`, `user`, `password`, `search_path`) and other settings as appropriate for your `PostgreSQL` installation.
 
-config: #LocalConfig
-
-config: encryptionKey: "31f8cbffe80df0067fbfac4abf0bb76c51d44cb82d2556743e6bf1a5e25d4e06"
-
-config: httpServer: listenPort: 8080
-
-config: logger: minLogLevel:   "trace"
-config: logger: logLevel:      "debug"
-config: logger: logErrorStack: false
-
-config: database: host:       "localhost"
-config: database: port:       5432
-config: database: name:       "dga_local"
-config: database: user:       "demo_user"
-config: database: password:   "REPLACE_ME"
-config: database: searchPath: "demo"
-```
-
-After modifying the above file, run the following from project root:
+After modifying the CUE file, run the following from project root:
 
 ```shell
-$ mage -v cueGenerateConfig local
-Running target: CueGenerateConfig
-exec: cue "vet" "./config/cue/schema.cue" "./config/cue/local.cue"
-exec: cue "fmt" "./config/cue/schema.cue" "./config/cue/local.cue"
-exec: cue "export" "./config/cue/schema.cue" "./config/cue/local.cue" "--force" "--out" "json" "--outfile" "./config/local.json"
+$ task cue-dbt:gen-config
 ```
 
-`cueGenerateConfig` should produce the JSON config file mentioned above (at `./config/local.json`).
+This should produce the JSON config file mentioned above (at `./config/local/config.json`).
 
 ### Step 4 - Database Initialization
 
-The following steps create the database objects and initialize data needed for running the web server. As a convenience, database migration programs which create these objects and load initial data can be executed using [Mage](https://magefile.org/). To understand database migrations and how they are structured in this project, you can watch [this talk](https://youtu.be/w07butydI5Q) I gave to the [Boston Golang meetup group](https://www.meetup.com/bostongo/?_cookie-check=1Gx8ms5NN8GhlaLJ) in February 2022. The below examples assume you have already setup PostgreSQL and know what user, database and schema you want to install the objects.
+The following steps create the database objects and initialize data needed for running the web server. As a convenience, database migration programs which create these objects and load initial data can be executed using [Task](https://taskfile.dev/). To understand database migrations and how they are structured in this project, you can watch [this talk](https://youtu.be/w07butydI5Q) I gave to the [Boston Golang meetup group](https://www.meetup.com/bostongo/?_cookie-check=1Gx8ms5NN8GhlaLJ) in February 2022. The below examples assume you have already setup PostgreSQL and know what user, database and schema you want to install the objects.
 
 > If you want to create an isolated database and schema, you can find examples of doing that at `./scripts/db/db_init.sql`.
 
 #### Run the Database Up Migration
 
-Twelve database tables are created as part of the up migration.
+Fifteen database migration scripts are run as part of the up migration.
 
 ```shell
-$ mage -v dbup local
-Running target: DBUp
-exec: psql "-w" "-d" "postgresql://demo_user@localhost:5432/dga_local?options=-csearch_path%3Ddemo" "-c" "select current_database(), current_user, version()" "-f" "./scripts/db/migrations/up/001-app.sql" "-f" "./scripts/db/migrations/up/002-org_user.sql" "-f" "./scripts/db/migrations/up/003-permission.sql" "-f" "./scripts/db/migrations/up/004-person.sql" "-f" "./scripts/db/migrations/up/005-org_kind.sql" "-f" "./scripts/db/migrations/up/006-role.sql" "-f" "./scripts/db/migrations/up/014-movie.sql" "-f" "./scripts/db/migrations/up/008-app_api_key.sql" "-f" "./scripts/db/migrations/up/009-person_profile.sql" "-f" "./scripts/db/migrations/up/010-org.sql" "-f" "./scripts/db/migrations/up/011-role_permission.sql" "-f" "./scripts/db/migrations/up/012-role_user.sql"
- current_database | current_user |                                                      version                                                      
-------------------+--------------+-------------------------------------------------------------------------------------------------------------------
- dga_local        | demo_user    | PostgreSQL 14.2 on aarch64-apple-darwin20.6.0, compiled by Apple clang version 12.0.5 (clang-1205.0.22.9), 64-bit
-(1 row)
-
-CREATE TABLE
-COMMENT
-COMMENT
-COMMENT
-COMMENT
-COMMENT
-COMMENT
-COMMENT
-COMMENT
-COMMENT
-COMMENT
-COMMENT
-COMMENT
-CREATE INDEX
-CREATE INDEX
-CREATE TABLE
-COMMENT
-COMMENT
-COMMENT
-...
+$ task db-up
 ```
 
-> Note: At any time, you can drop all the database objects created as part of the up migration using using the down migration program: `mage -v dbdown local`
+> Note: At any time, you can drop all the database objects created as part of the up migration using the down migration scripts in `./scripts/db/migrations/down/`.
 
 #### Data Initialization (Genesis)
 
@@ -282,58 +227,23 @@ TODO - show response
 The project tests require that Genesis has been run successfully. If all went well in step 4, you can run the following command to validate:
 
 ```shell
-$ mage -v testall false local
-Running target: TestAll
-exec: go "test" "./..."
-?       github.com/gilcrest/diygoapi  [no test files]
-?       github.com/gilcrest/diygoapi/app      [no test files]
-?       github.com/gilcrest/diygoapi/audit    [no test files]
-ok      github.com/gilcrest/diygoapi/auth     0.331s
-ok      github.com/gilcrest/diygoapi/command  0.724s
-ok      github.com/gilcrest/diygoapi/datastore        0.682s
-?       github.com/gilcrest/diygoapi/datastore/appstore       [no test files]
-?       github.com/gilcrest/diygoapi/datastore/authstore      [no test files]
-?       github.com/gilcrest/diygoapi/datastore/datastoretest  [no test files]
-?       github.com/gilcrest/diygoapi/datastore/moviestore     [no test files]
-?       github.com/gilcrest/diygoapi/datastore/orgstore       [no test files]
-?       github.com/gilcrest/diygoapi/datastore/personstore    [no test files]
-?       github.com/gilcrest/diygoapi/datastore/pingstore      [no test files]
-ok      github.com/gilcrest/diygoapi/datastore/userstore      0.742s
-ok      github.com/gilcrest/diygoapi/errs     0.490s
-?       github.com/gilcrest/diygoapi/gateway  [no test files]
-?       github.com/gilcrest/diygoapi/gateway/authgateway      [no test files]
-ok      github.com/gilcrest/diygoapi/logger   0.284s
-?       github.com/gilcrest/diygoapi/magefiles        [no test files]
-ok      github.com/gilcrest/diygoapi/movie    0.571s
-?       github.com/gilcrest/diygoapi/org      [no test files]
-?       github.com/gilcrest/diygoapi/person   [no test files]
-ok      github.com/gilcrest/diygoapi/random   0.333s
-?       github.com/gilcrest/diygoapi/random/randomtest        [no test files]
-ok      github.com/gilcrest/diygoapi/secure   0.574s
-?       github.com/gilcrest/diygoapi/secure/random    [no test files]
-ok      github.com/gilcrest/diygoapi/server   0.328s
-?       github.com/gilcrest/diygoapi/server/driver    [no test files]
-ok      github.com/gilcrest/diygoapi/service  0.504s
-ok      github.com/gilcrest/diygoapi/user     0.323s
-?       github.com/gilcrest/diygoapi/user/usertest    [no test files]
+$ task test
 ```
 
-> Note: There are a number of packages without test files, but there is extensive testing as part of this project. More can and will be done, of course...
+> Note: Some tests require a running database with Genesis data. Packages without database dependencies can be tested independently.
 
 ### Step 6 - Run the Web Server
 
 There are three options for running the web server. When running the program, a number of flags can be passed instead of using the environment. The [ff](https://github.com/peterbourgon/ff) library from [Peter Bourgon](https://peter.bourgon.org) is used to parse the flags. If your preference is to set configuration with [environment variables](https://en.wikipedia.org/wiki/Environment_variable), that is possible as well. Flags take precedence, so if a flag is passed, that will be used. A PostgreSQL database connection is required. If there is no flag set, then the program checks for a matching environment variable. If neither are found, the flag's default value will be used and, depending on the flag, may result in a database connection error.
 
-For simplicity’s sake, the easiest option to start with is setting the environment and running the server with Mage:
+For simplicity's sake, the easiest option to start with is setting the environment and running the server with Task:
 
-#### Option 1 - Run web server with config file and Mage
+#### Option 1 - Run web server with config file and Task
 
-You can run the webserver with Mage. As in all examples above, Mage will either use the current environment or set the environment using a config file depending on the environment parameter sent in.
+You can run the webserver with Task. Ensure your environment variables or config file are set up, then run:
 
 ```shell
-$ mage -v run local
-Running target: Run
-exec: go "run" "./cmd/diy/main.go"
+$ task run
 {"level":"info","time":1675700939,"severity":"INFO","message":"minimum accepted logging level set to trace"}
 {"level":"info","time":1675700939,"severity":"INFO","message":"logging level set to debug"}
 {"level":"info","time":1675700939,"severity":"INFO","message":"log error stack via github.com/pkg/errors set to false"}
@@ -349,24 +259,24 @@ exec: go "run" "./cmd/diy/main.go"
 
 The below are the list of the command line flags that can be used to start the webserver (and their equivalent environment variable name for reference as well):
 
-| Flag Name       | Description                                                                                        | Environment Variable | Default |
-|-----------------|----------------------------------------------------------------------------------------------------|----------------------|---------|
-| port            | Port the server will listen on                                                                     | PORT                 | 8080    |
-| log-level       | zerolog logging level (debug, info, etc.)                                                          | LOG_LEVEL            | debug   |
-| log-level-min   | sets the minimum accepted logging level                                                            | LOG_LEVEL_MIN        | debug   |
-| log-error-stack | If true, log error stacktrace using github.com/pkg/errors, else just log error (includes op stack) | LOG_ERROR_STACK      | false   |
-| db-host         | The host name of the database server.                                                              | DB_HOST              |         |
-| db-port         | The port number the database server is listening on.                                               | DB_PORT              | 5432    |
-| db-name         | The database name.                                                                                 | DB_NAME              |         |
-| db-user         | PostgreSQL™ user name to connect as.                                                               | DB_USER              |         |
-| db-password     | Password to be used if the server demands password authentication.                                 | DB_PASSWORD          |         |
-| db-search-path  | Schema search path to be used when connecting.                                                     | DB_SEARCH_PATH       |         |
-| encrypt-key     | Encryption key to be used for all encrypted data.                                                  | ENCRYPT_KEY          |         |
+| Flag Name       | Description                                                                                        | Environment Variable | Default   |
+|-----------------|----------------------------------------------------------------------------------------------------|----------------------|-----------|
+| port            | Port the server will listen on                                                                     | PORT                 | 8080      |
+| log-level       | zerolog logging level (debug, info, etc.)                                                          | LOG_LEVEL            | info      |
+| log-level-min   | sets the minimum accepted logging level                                                            | LOG_LEVEL_MIN        | trace     |
+| log-error-stack | If true, log error stacktrace using github.com/pkg/errors, else just log error (includes op stack) | LOG_ERROR_STACK      | false     |
+| db-host         | The host name of the database server.                                                              | DB_HOST              | localhost |
+| db-port         | The port number the database server is listening on.                                               | DB_PORT              | 5432      |
+| db-name         | The database name.                                                                                 | DB_NAME              |           |
+| db-user         | PostgreSQL™ user name to connect as.                                                               | DB_USER              |           |
+| db-password     | Password to be used if the server demands password authentication.                                 | DB_PASSWORD          |           |
+| db-search-path  | Schema search path to be used when connecting.                                                     | DB_SEARCH_PATH       |           |
+| encrypt-key     | Encryption key to be used for all encrypted data.                                                  | ENCRYPT_KEY          |           |
 
 Starting the web server with command line flags looks like:
 
 ```bash
-$ go run main.go -db-name=dga_local -db-user=demo_user -db-password=REPLACE_ME -db-search-path=demo -encrypt-key=31f8cbffe80df0067fbfac4abf0bb76c51d44cb82d2556743e6bf1a5e25d4e06
+$ go run ./cmd/diy/main.go -db-name=dga_local -db-user=demo_user -db-password=REPLACE_ME -db-search-path=demo -encrypt-key=31f8cbffe80df0067fbfac4abf0bb76c51d44cb82d2556743e6bf1a5e25d4e06
 {"level":"info","time":1656296193,"severity":"INFO","message":"minimum accepted logging level set to trace"}
 {"level":"info","time":1656296193,"severity":"INFO","message":"logging level set to debug"}
 {"level":"info","time":1656296193,"severity":"INFO","message":"log error stack global set to true"}
@@ -380,10 +290,10 @@ $ go run main.go -db-name=dga_local -db-user=demo_user -db-password=REPLACE_ME -
 
 #### Option 3 - Run web server using independently set environment
 
-If you're not using mage or command line flags and have set the appropriate environment variables properly, you can run the web server simply like so:
+If you're not using Task or command line flags and have set the appropriate environment variables properly, you can run the web server simply like so:
 
 ```bash
-$ go run main.go
+$ go run ./cmd/diy/main.go
 {"level":"info","time":1656296765,"severity":"INFO","message":"minimum accepted logging level set to trace"}
 {"level":"info","time":1656296765,"severity":"INFO","message":"logging level set to debug"}
 {"level":"info","time":1656296765,"severity":"INFO","message":"log error stack global set to true"}
@@ -412,7 +322,7 @@ $ curl --location --request GET 'http://127.0.0.1:8080/api/v1/ping' \
 
 #### cURL Commands to Call Movie Services
 
-The values for the `x-app-id` and `x-api-key` headers needed for all below services are found in the `/api/v1/genesis` service response. If you used `mage` to run the service on your local machine, the response can be found at `./config/genesis/response.json`:
+The values for the `x-app-id` and `x-api-key` headers needed for all below services are found in the `/api/v1/genesis` service response. The response can be found at `./config/genesis/response.json`:
 
 - APP ID (x-app-id): `userInitiated.app.external_id`
 - API Key (x-api-key): `userInitiated.app.api_keys[0].key`
@@ -499,7 +409,7 @@ $ curl --location --request DELETE 'http://127.0.0.1:8080/api/v1/movies/IUAtsOQu
 
 ![RealWorld Example Applications](media/diygoapi-package-layout.png)
 
-The above image is a high-level view of an example request that is processed by the server (creating a movie). To summarize, after receiving an http request, the request path, method, etc. is matched to a registered route in the Server's standard library multiplexer (aka ServeMux, initialization of which, is part of server startup in the `command` package as part of the routes.go file in the server package). The request is then sent through a sequence of middleware handlers for setting up request logging, response headers, authentication and authorization. Finally, the request is routed through a bespoke app handler, in this case `handleMovieCreate`.
+The above image is a high-level view of an example request that is processed by the server (creating a movie). To summarize, after receiving an http request, the request path, method, etc. is matched to a registered route in the Server's standard library multiplexer (aka ServeMux, initialization of which, is part of server startup in the `cmd` package as part of the routes.go file in the server package). The request is then sent through a sequence of middleware handlers for setting up request logging, response headers, authentication and authorization. Finally, the request is routed through a bespoke app handler, in this case `handleMovieCreate`.
 
 > `diygoapi` package layout is based on several projects, but the primary source of inspiration is the [WTF Dial app repo](https://github.com/benbjohnson/wtf) and [accompanying blog](https://www.gobeyond.dev/) from [Ben Johnson](https://github.com/benbjohnson). It's really a wonderful resource and I encourage everyone to read it.
 
@@ -560,7 +470,7 @@ All errors should return a `Request-Id` response header with a unique request id
 
 #### Error Implementation
 
-All errors should be raised using custom errors from the [domain/errs](https://github.com/gilcrest/diygoapi/tree/main/domain/errs) package. The three custom errors correspond directly to the requirements above.
+All errors should be raised using custom errors from the [errs](https://github.com/gilcrest/diygoapi/tree/main/errs) package. The three custom errors correspond directly to the requirements above.
 
 ##### Typical Errors
 
@@ -590,7 +500,7 @@ type Error struct {
 }
 ```
 
-This custom error type is raised using the `E` function from the [domain/errs](https://github.com/gilcrest/diygoapi/tree/main/domain/errs) package. `errs.E` is taken from Rob Pike's [upspin errors package](https://github.com/upspin/upspin/tree/master/errors) (but has been changed based on my requirements). The `errs.E` function call is [variadic](https://en.wikipedia.org/wiki/Variadic) and can take several different types to form the custom `errs.Error` struct.
+This custom error type is raised using the `E` function from the [errs](https://github.com/gilcrest/diygoapi/tree/main/errs) package. `errs.E` is taken from Rob Pike's [upspin errors package](https://github.com/upspin/upspin/tree/master/errors) (but has been changed based on my requirements). The `errs.E` function call is [variadic](https://en.wikipedia.org/wiki/Variadic) and can take several different types to form the custom `errs.Error` struct.
 
 Here is a simple example of creating an `error` using `errs.E`:
 
@@ -919,8 +829,8 @@ When starting `diygoapi`, there are several flags which setup the logger:
 
 | Flag Name       | Description                                                                                        | Environment Variable | Default |
 |-----------------|----------------------------------------------------------------------------------------------------|----------------------|---------|
-| log-level       | zerolog logging level (debug, info, etc.)                                                          | LOG_LEVEL            | debug   |
-| log-level-min   | sets the minimum accepted logging level                                                            | LOG_LEVEL_MIN        | debug   |
+| log-level       | zerolog logging level (debug, info, etc.)                                                          | LOG_LEVEL            | info    |
+| log-level-min   | sets the minimum accepted logging level                                                            | LOG_LEVEL_MIN        | trace   |
 | log-error-stack | If true, log error stacktrace using github.com/pkg/errors, else just log error (includes op stack) | LOG_ERROR_STACK      | false   |
 
 --------
@@ -943,24 +853,19 @@ The `log-level-min` flag sets the minimum accepted logging level, which means, f
 
 The `log-error-stack` boolean flag tells whether to log full stack traces for each error. If `true`, the `zerolog.ErrorStackMarshaler` will be set to `pkgerrors.MarshalStack` which means, for errors raised using the [github.com/pkg/errors](https://github.com/pkg/errors) package, the error stack trace will be captured and printed along with the log. All errors raised in `diygoapi` are raised using `github.com/pkg/errors` if this flag is set to true.
 
-After parsing the command line flags, `zerolog.Logger` is initialized in `main.go`
+After parsing the command line flags, `zerolog.Logger` is initialized in `cmd/cmd.go`
 
 ```go
 // setup logger with appropriate defaults
-lgr := logger.NewLogger(os.Stdout, minlvl, true)
+lgr := logger.NewWithGCPHook(os.Stdout, minlvl, true)
 ```
 
-and subsequently injected into the `app.Server` struct as a Server parameter.
+and subsequently used to initialize the `server.Server` struct.
 
 ```go
-// initialize server configuration parameters
-params := app.NewServerParams(lgr, serverDriver)
-
-// initialize Server
-s, err := app.NewServer(mr, params)
-if err != nil {
-    lgr.Fatal().Err(err).Msg("Error from app.NewServer")
-}
+// initialize Server enfolding a http.Server with default timeouts,
+// a mux router and a zerolog.Logger
+s := server.New(http.NewServeMux(), server.NewDriver(), lgr)
 ```
 
 #### Logger Setup in Handlers
