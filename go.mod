@@ -1,6 +1,6 @@
 module github.com/gilcrest/diygoapi
 
-go 1.24.11
+go 1.26
 
 require (
 	github.com/frankban/quicktest v1.14.6
