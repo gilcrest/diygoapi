@@ -115,7 +115,7 @@ func (f *flags) ValidateDBConnection() error {
 
 	// validate database host is not empty
 	if f.dbhost == "" {
-		return errs.E(op, "database host is required")
+		return errs.E(op, fmt.Sprintf("database host flag (%s) or environment variable (%s) is required", dbHostFlagName, sqldb.DBHostEnv))
 	}
 
 	// validate database port in acceptable range
@@ -126,17 +126,17 @@ func (f *flags) ValidateDBConnection() error {
 
 	// validate database name is not empty
 	if f.dbname == "" {
-		return errs.E(op, "database name is required")
+		return errs.E(op, fmt.Sprintf("database name flag (%s) or environment variable (%s) is required", dbNameFlagName, sqldb.DBNameEnv))
 	}
 
 	// validate database user is not empty
 	if f.dbuser == "" {
-		return errs.E(op, "database user is required")
+		return errs.E(op, fmt.Sprintf("database user flag (%s) or environment variable (%s) is required", dbUserFlagName, sqldb.DBUserEnv))
 	}
 
 	// validate database search path is not empty
 	if f.dbsearchpath == "" {
-		return errs.E(op, "database search path is required")
+		return errs.E(op, fmt.Sprintf("database search path flag (%s) or environment variable (%s) is required", dbSearchPathFlagName, sqldb.DBSearchPathEnv))
 	}
 
 	return nil
