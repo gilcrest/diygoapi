@@ -109,6 +109,39 @@ type flags struct {
 	encryptkey string
 }
 
+// ValidateDBConnection validates only the fields required for a database connection.
+func (f *flags) ValidateDBConnection() error {
+	const op errs.Op = "cmd/flags.ValidateDBConnection"
+
+	// validate database host is not empty
+	if f.dbhost == "" {
+		return errs.E(op, "database host is required")
+	}
+
+	// validate database port in acceptable range
+	err := portRange(f.dbport)
+	if err != nil {
+		return err
+	}
+
+	// validate database name is not empty
+	if f.dbname == "" {
+		return errs.E(op, "database name is required")
+	}
+
+	// validate database user is not empty
+	if f.dbuser == "" {
+		return errs.E(op, "database user is required")
+	}
+
+	// validate database search path is not empty
+	if f.dbsearchpath == "" {
+		return errs.E(op, "database search path is required")
+	}
+
+	return nil
+}
+
 func (f *flags) Validate() error {
 	const op errs.Op = "cmd/flags.Validate"
 
@@ -138,19 +171,10 @@ func (f *flags) Validate() error {
 		return errs.E(op, "minimum log level is required")
 	}
 
-	// validate database host is not empty
-	if f.dbhost == "" {
-		return errs.E(op, "database host is required")
-	}
-
-	// validate database name is not empty
-	if f.dbname == "" {
-		return errs.E(op, "database name is required")
-	}
-
-	// validate database user is not empty
-	if f.dbuser == "" {
-		return errs.E(op, "database user is required")
+	// validate database connection fields
+	err = f.ValidateDBConnection()
+	if err != nil {
+		return err
 	}
 
 	return nil

@@ -116,6 +116,11 @@ func PSQLArgs(up bool) ([]string, error) {
 		return nil, errs.E(op, err)
 	}
 
+	err = f.ValidateDBConnection()
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
 	printFlags(f)
 
 	// command line args for psql are constructed
