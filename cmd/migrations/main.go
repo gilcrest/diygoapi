@@ -11,7 +11,7 @@ import (
 
 func main() {
 	if err := DBUp(os.Args); err != nil {
-		fmt.Fprintf(os.Stderr, "error from commands.Run(): %s\n", err)
+		fmt.Fprintf(os.Stderr, "error from DBUp(): %s\n", err)
 		os.Exit(1)
 	}
 }
