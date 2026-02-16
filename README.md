@@ -82,68 +82,26 @@ The `movieAdmin` role is set up to grant access to all resources. It's a demo...
 
 --------
 
-### Step 3 - Prepare Environment (2 options)
+### Step 3 - Configuration
 
-Set environment variables for the database:
-
-| Environment Variable | Description                                                                                        |
-|----------------------|----------------------------------------------------------------------------------------------------|
-| DB_HOST              | The host name of the database server.                                                              |
-| DB_PORT              | The port number the database server is listening on.                                               |
-| DB_NAME              | The database name.                                                                                 |
-| DB_USER              | PostgreSQL™ user name to connect as.                                                               |
-| DB_PASSWORD          | Password to be used if the server demands password authentication.                                 |
-| DB_SEARCH_PATH       | Schema Search Path                                                                                 |
-
-These environment variables can be set independently [option 1](#option-1---set-your-environment-independently) or based on a configuration file [option 2](#option-2---set-your-environment-through-a-config-file).
-
-> The same environment variables are used when running the web server, but are not mandatory. When running the web server, if you prefer, you can bypass environment variables and instead send command line flags (more about that later).
+All programs in this project (the web server, database tasks, etc.) use the [ff](https://github.com/peterbourgon/ff) library from [Peter Bourgon](https://peter.bourgon.org) for configuration. The priority order is: **CLI flags > environment variables > config file > defaults**. The config file defaults to `./config/config.json`, so the simplest path is to create that file.
 
 #### Generate a new encryption key
 
-Either option for setting the environment requires a 256-bit ciphertext string, which can be parsed to a 32 byte encryption key. Generate the ciphertext with `task new-key`:
+Regardless of which configuration approach you choose, you need a 256-bit ciphertext string, which can be parsed to a 32 byte encryption key. Generate the ciphertext with `task new-key`:
 
 ```shell
 $ task new-key
 Key Ciphertext: [31f8cbffe80df0067fbfac4abf0bb76c51d44cb82d2556743e6bf1a5e25d4e06]
 ```
 
-> Copy the key ciphertext between the brackets to your clipboard to use in option 1 or 2 below
+> Copy the key ciphertext between the brackets to your clipboard to use in one of the options below
 
-#### Option 1 - Set your environment independently
-
-As always, you can set your environment on your own through bash or whatever strategy you use for this, an example bash script should you choose:
-
-```bash
-#!/bin/bash
-
-# encryption key
-export ENCRYPT_KEY="31f8cbffe80df0067fbfac4abf0bb76c51d44cb82d2556743e6bf1a5e25d4e06"
-
-# server listen port
-export PORT="8080"
-
-# logger environment variables
-export LOG_LEVEL_MIN="trace"
-export LOG_LEVEL="debug"
-export LOG_ERROR_STACK="false"
-
-# Database Environment variables
-export DB_HOST="localhost"
-export DB_PORT="5432"
-export DB_NAME="dga_local"
-export DB_USER="demo_user"
-export DB_PASSWORD="REPLACE_ME"
-export DB_SEARCH_PATH="demo"
-```
-
-#### Option 2 - Set your environment through a Config File
+#### Option 1 (Recommended for Local Development) - Config File
 
 > Security Disclaimer: Config files make local development easier, however, putting any credentials (encryption keys, username and password, etc.) in a config file is a bad idea from a security perspective. At a minimum, you should have the `config/` directory added to your `.gitignore` file so these configs are not checked in. As this is a template repo, I have checked this all in for example purposes only. The data there is bogus. In an upcoming release, I will integrate with a secrets management platform like [GCP Secret Manager](https://cloud.google.com/secret-manager) or [HashiCorp Vault](https://learn.hashicorp.com/tutorials/vault/getting-started-intro?in=vault/getting-started) [See Issue 91](https://github.com/gilcrest/diygoapi/issues/91).
 
-##### JSON file
-
-Another option is to use a JSON configuration file. The config uses a multi-target layout where each target (e.g. `local`, `staging`) has its own settings. The generated JSON file is located at `./config/config.json`. Update the `encryption_key`, `database` fields (`host`, `port`, `name`, `user`, `password`, `search_path`) and other settings as appropriate for your `PostgreSQL` installation.
+The config uses a multi-target layout where each target (e.g. `local`, `staging`) has its own settings. Create or edit the JSON file at `./config/config.json`. Update the `encryption_key`, `database` fields (`host`, `port`, `name`, `user`, `password`, `search_path`) and other settings as appropriate for your `PostgreSQL` installation.
 
 ```json
 {
@@ -173,7 +131,7 @@ Another option is to use a JSON configuration file. The config uses a multi-targ
 
 > Setting the [schema search path](https://www.postgresql.org/docs/current/ddl-schemas.html#DDL-SCHEMAS-PATH) properly is critical as the objects in the migration scripts intentionally do not have qualified object names and will therefore use the search path when creating or dropping objects (in the case of the db down migration).
 
-##### Generate new config file using CUE (Optional)
+##### Generate config file using CUE (Optional)
 
 If you prefer, you can generate the JSON config file using [CUE](https://cuelang.org/).
 
@@ -192,6 +150,57 @@ $ task gen-config
 
 This should produce the JSON config file mentioned above (at `./config/config.json`).
 
+#### Option 2 - Environment Variables
+
+As an alternative, you can set environment variables directly through bash or whatever strategy you use. Environment variables override config file values. An example bash script:
+
+```bash
+#!/bin/bash
+
+# encryption key
+export ENCRYPT_KEY="31f8cbffe80df0067fbfac4abf0bb76c51d44cb82d2556743e6bf1a5e25d4e06"
+
+# server listen port
+export PORT="8080"
+
+# logger environment variables
+export LOG_LEVEL_MIN="trace"
+export LOG_LEVEL="debug"
+export LOG_ERROR_STACK="false"
+
+# Database Environment variables
+export DB_HOST="localhost"
+export DB_PORT="5432"
+export DB_NAME="dga_local"
+export DB_USER="demo_user"
+export DB_PASSWORD="REPLACE_ME"
+export DB_SEARCH_PATH="demo"
+```
+
+#### Option 3 - Command Line Flags
+
+For full control, you can pass command line flags directly when running a program. Flags take the highest priority, overriding both environment variables and config file values. The following table lists all available flags, their equivalent environment variables, and defaults:
+
+| Flag Name       | Description                                                                                        | Environment Variable | Default   |
+|-----------------|----------------------------------------------------------------------------------------------------|----------------------|-----------|
+| port            | Port the server will listen on                                                                     | PORT                 | 8080      |
+| log-level       | zerolog logging level (debug, info, etc.)                                                          | LOG_LEVEL            | info      |
+| log-level-min   | sets the minimum accepted logging level                                                            | LOG_LEVEL_MIN        | trace     |
+| log-error-stack | If true, log error stacktrace using github.com/pkg/errors, else just log error (includes op stack) | LOG_ERROR_STACK      | false     |
+| db-host         | The host name of the database server.                                                              | DB_HOST              | localhost |
+| db-port         | The port number the database server is listening on.                                               | DB_PORT              | 5432      |
+| db-name         | The database name.                                                                                 | DB_NAME              |           |
+| db-user         | PostgreSQL™ user name to connect as.                                                               | DB_USER              |           |
+| db-password     | Password to be used if the server demands password authentication.                                 | DB_PASSWORD          |           |
+| db-search-path  | Schema search path to be used when connecting.                                                     | DB_SEARCH_PATH       |           |
+| encrypt-key     | Encryption key to be used for all encrypted data.                                                  | ENCRYPT_KEY          |           |
+
+For example:
+
+```bash
+$ go run ./cmd/diy/main.go -db-name=dga_local -db-user=demo_user -db-password=REPLACE_ME -db-search-path=demo -encrypt-key=31f8cbffe80df0067fbfac4abf0bb76c51d44cb82d2556743e6bf1a5e25d4e06
+```
+
 ### Step 4 - Database Initialization
 
 The following steps create the database objects and initialize data needed for running the web server. As a convenience, database migration programs which create these objects and load initial data can be executed using [Task](https://taskfile.dev/). To understand database migrations and how they are structured in this project, you can watch [this talk](https://youtu.be/w07butydI5Q) I gave to the [Boston Golang meetup group](https://www.meetup.com/bostongo/?_cookie-check=1Gx8ms5NN8GhlaLJ) in February 2022. The below examples assume you have already setup PostgreSQL and know what user, database and schema you want to install the objects.
@@ -202,11 +211,13 @@ The following steps create the database objects and initialize data needed for r
 
 #### Create the Database User
 
-Create the `dga_local` database user (with password `REPLACE_ME`) via psql:
+Creating a database user requires elevated privileges. Define a `local-admin` target in your config with a superuser (or a role that has `CREATEROLE`), then run:
 
 ```shell
-$ task db-create-user
+$ TARGET=local-admin task db-create-user
 ```
+
+This creates the `dga_local` user (with password `REPLACE_ME`) via psql.
 
 #### Run the Database Up Migration
 
@@ -244,13 +255,7 @@ $ task test
 
 ### Step 6 - Run the Web Server
 
-There are three options for running the web server. When running the program, a number of flags can be passed instead of using the environment. The [ff](https://github.com/peterbourgon/ff) library from [Peter Bourgon](https://peter.bourgon.org) is used to parse the flags. If your preference is to set configuration with [environment variables](https://en.wikipedia.org/wiki/Environment_variable), that is possible as well. Flags take precedence, so if a flag is passed, that will be used. A PostgreSQL database connection is required. If there is no flag set, then the program checks for a matching environment variable. If neither are found, the flag's default value will be used and, depending on the flag, may result in a database connection error.
-
-For simplicity's sake, the easiest option to start with is setting the environment and running the server with Task:
-
-#### Option 1 - Run web server with config file and Task
-
-You can run the webserver with Task. Ensure your environment variables or config file are set up, then run:
+With configuration handled in [Step 3](#step-3---configuration), start the web server with Task:
 
 ```shell
 $ task run
@@ -265,55 +270,7 @@ $ task run
 {"level":"info","time":1675700939,"severity":"INFO","message":"current search_path: demo"}
 ```
 
-#### Option 2 - Run web server using command line flags
-
-The below are the list of the command line flags that can be used to start the webserver (and their equivalent environment variable name for reference as well):
-
-| Flag Name       | Description                                                                                        | Environment Variable | Default   |
-|-----------------|----------------------------------------------------------------------------------------------------|----------------------|-----------|
-| port            | Port the server will listen on                                                                     | PORT                 | 8080      |
-| log-level       | zerolog logging level (debug, info, etc.)                                                          | LOG_LEVEL            | info      |
-| log-level-min   | sets the minimum accepted logging level                                                            | LOG_LEVEL_MIN        | trace     |
-| log-error-stack | If true, log error stacktrace using github.com/pkg/errors, else just log error (includes op stack) | LOG_ERROR_STACK      | false     |
-| db-host         | The host name of the database server.                                                              | DB_HOST              | localhost |
-| db-port         | The port number the database server is listening on.                                               | DB_PORT              | 5432      |
-| db-name         | The database name.                                                                                 | DB_NAME              |           |
-| db-user         | PostgreSQL™ user name to connect as.                                                               | DB_USER              |           |
-| db-password     | Password to be used if the server demands password authentication.                                 | DB_PASSWORD          |           |
-| db-search-path  | Schema search path to be used when connecting.                                                     | DB_SEARCH_PATH       |           |
-| encrypt-key     | Encryption key to be used for all encrypted data.                                                  | ENCRYPT_KEY          |           |
-
-Starting the web server with command line flags looks like:
-
-```bash
-$ go run ./cmd/diy/main.go -db-name=dga_local -db-user=demo_user -db-password=REPLACE_ME -db-search-path=demo -encrypt-key=31f8cbffe80df0067fbfac4abf0bb76c51d44cb82d2556743e6bf1a5e25d4e06
-{"level":"info","time":1656296193,"severity":"INFO","message":"minimum accepted logging level set to trace"}
-{"level":"info","time":1656296193,"severity":"INFO","message":"logging level set to debug"}
-{"level":"info","time":1656296193,"severity":"INFO","message":"log error stack global set to true"}
-{"level":"info","time":1656296193,"severity":"INFO","message":"sql database opened for localhost on port 5432"}
-{"level":"info","time":1656296193,"severity":"INFO","message":"sql database Ping returned successfully"}
-{"level":"info","time":1656296193,"severity":"INFO","message":"database version: PostgreSQL 14.4 on aarch64-apple-darwin20.6.0, compiled by Apple clang version 12.0.5 (clang-1205.0.22.9), 64-bit"}
-{"level":"info","time":1656296193,"severity":"INFO","message":"current database user: demo_user"}
-{"level":"info","time":1656296193,"severity":"INFO","message":"current database: dga_local"}
-{"level":"info","time":1656296193,"severity":"INFO","message":"current search_path: demo"}
-```
-
-#### Option 3 - Run web server using independently set environment
-
-If you're not using Task or command line flags and have set the appropriate environment variables properly, you can run the web server simply like so:
-
-```bash
-$ go run ./cmd/diy/main.go
-{"level":"info","time":1656296765,"severity":"INFO","message":"minimum accepted logging level set to trace"}
-{"level":"info","time":1656296765,"severity":"INFO","message":"logging level set to debug"}
-{"level":"info","time":1656296765,"severity":"INFO","message":"log error stack global set to true"}
-{"level":"info","time":1656296765,"severity":"INFO","message":"sql database opened for localhost on port 5432"}
-{"level":"info","time":1656296765,"severity":"INFO","message":"sql database Ping returned successfully"}
-{"level":"info","time":1656296765,"severity":"INFO","message":"database version: PostgreSQL 14.4 on aarch64-apple-darwin20.6.0, compiled by Apple clang version 12.0.5 (clang-1205.0.22.9), 64-bit"}
-{"level":"info","time":1656296765,"severity":"INFO","message":"current database user: gilcrest"}
-{"level":"info","time":1656296765,"severity":"INFO","message":"current database: dga_local"}
-{"level":"info","time":1656296765,"severity":"INFO","message":"current search_path: demo"}
-```
+> You can also run directly with `go run ./cmd/diy/main.go`, passing flags or relying on environment variables / config file as described in [Step 3](#step-3---configuration).
 
 ### Step 7 - Send Requests
 
@@ -422,26 +379,6 @@ $ curl --location --request DELETE 'http://127.0.0.1:8080/api/v1/movies/IUAtsOQu
 The above image is a high-level view of an example request that is processed by the server (creating a movie). To summarize, after receiving an http request, the request path, method, etc. is matched to a registered route in the Server's standard library multiplexer (aka ServeMux, initialization of which, is part of server startup in the `cmd` package as part of the routes.go file in the server package). The request is then sent through a sequence of middleware handlers for setting up request logging, response headers, authentication and authorization. Finally, the request is routed through a bespoke app handler, in this case `handleMovieCreate`.
 
 > `diygoapi` package layout is based on several projects, but the primary source of inspiration is the [WTF Dial app repo](https://github.com/benbjohnson/wtf) and [accompanying blog](https://www.gobeyond.dev/) from [Ben Johnson](https://github.com/benbjohnson). It's really a wonderful resource and I encourage everyone to read it.
-
-### Environment Variables
-
-The following environment variables are used to configure the web server:
-
-| Environment Variable | Description                                                                                        |
-|----------------------|----------------------------------------------------------------------------------------------------|
-| PORT                 | Port the server will listen on                                                                     |
-| LOG_LEVEL            | zerolog logging level (debug, info, etc.)                                                          |
-| LOG_LEVEL_MIN        | sets the minimum accepted logging level                                                            |
-| LOG_ERROR_STACK      | If true, log error stacktrace using github.com/pkg/errors, else just log error (includes op stack) |
-| DB_HOST              | The host name of the database server.                                                              |
-| DB_PORT              | The port number the database server is listening on.                                               |
-| DB_NAME              | The database name.                                                                                 |
-| DB_USER              | PostgreSQL™ user name to connect as.                                                               |
-| DB_PASSWORD          | Password to be used if the server demands password authentication.                                 |
-| DB_SEARCH_PATH       | Schema Search Path                                                                                 |
-| ENCRYPT_KEY          | Encryption Key                                                                                     |
-
-> Note: If an environment variable is not set, the default is used
 
 ### Errors
 
@@ -845,7 +782,7 @@ When starting `diygoapi`, there are several flags which setup the logger:
 
 --------
 
-> As mentioned [above](https://github.com/gilcrest/diygoapi#command-line-flags), `diygoapi` uses the [ff](https://github.com/peterbourgon/ff) library from [Peter Bourgon](https://peter.bourgon.org), which allows for using either flags or environment variables. Going forward, we'll assume you've chosen flags.
+> As mentioned in [Step 3](#step-3---configuration), `diygoapi` uses the [ff](https://github.com/peterbourgon/ff) library from [Peter Bourgon](https://peter.bourgon.org), which allows for using flags, environment variables, or a config file. Going forward, we'll assume you've chosen flags.
 
 The `log-level` flag sets the Global logging level for your `zerolog.Logger`.
 
