@@ -28,13 +28,12 @@ func createDBUser() error {
 	args = append(args, "-c", "CREATE USER demo_user WITH CREATEDB PASSWORD 'REPLACE_ME'")
 
 	c := exec.Command("psql", args...)
+	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
 	err = c.Run()
 	if err != nil {
 		return errs.E(op, err)
 	}
-
-	fmt.Println("database user demo_user created successfully")
 
 	return nil
 }
