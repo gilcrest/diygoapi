@@ -184,10 +184,10 @@ The CUE-based config uses a split layout:
 
 Edit the `./config/local/config.cue` file. Update the `encryption_key`, `database` fields (`host`, `port`, `name`, `user`, `password`, `search_path`) and other settings as appropriate for your `PostgreSQL` installation.
 
-After modifying the CUE file, run the following from project root:
+After modifying the CUE file, run the following from project root, passing the target name (e.g. `local`, `staging`) as the `TARGET` variable:
 
 ```shell
-$ task cue-dbt:gen-config
+$ task gen-config TARGET=local
 ```
 
 This should produce the JSON config file mentioned above (at `./config/local/config.json`).

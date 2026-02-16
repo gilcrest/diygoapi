@@ -20,7 +20,7 @@ The "business" domain is a simple movie CRUD (**C**reate, **R**ead, **U**pdate, 
 | `go test -v -run TestFunctionName ./path/to/package` | Run a single test |
 | `task new-key` | Generate a new encryption key |
 | `task db-up` | Run database DDL migrations |
-| `task cue-dbt:gen-config` | Generate config from CUE schemas |
+| `task gen-config TARGET=local` | Generate config from CUE schemas for a given target |
 
 --------
 
@@ -83,7 +83,7 @@ The [ff](https://github.com/peterbourgon/ff) library from [Peter Bourgon](https:
 The CUE-based config setup uses a split layout:
 - **`config/cue/schema.cue`** — the shared validation schema (checked into git)
 - **`config/local/config.cue`** — local config values with credentials (gitignored)
-- **`config/local/config.json`** — generated output from `task cue-dbt:gen-config` (gitignored)
+- **`config/local/config.json`** — generated output from `task gen-config TARGET=local` (gitignored)
 
 Key env vars: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_SEARCH_PATH`, `ENCRYPT_KEY`, `PORT`, `LOG_LEVEL`, `LOG_LEVEL_MIN`, `LOG_ERROR_STACK`
 

@@ -6,23 +6,33 @@ tasks:
       CueGenerateConfig generates the server configuration file, `config.json` from the CUE files,
       `config.cue` and `schema.cue`. The files are run through cue vet to ensure they are
       acceptable given the schema and are then run through cue "fmt" to format the files.
+    requires:
+      vars:
+        - TARGET
     cmds:
       - task: cue-vet
+        vars:
+          TARGET: "{{.TARGET}}"
       - task: cue-fmt
+        vars:
+          TARGET: "{{.TARGET}}"
       - task: cue-export
-      - echo "gen-config completed successfully"
+        vars:
+          TARGET: "{{.TARGET}}"
+      - cmd: 'echo "gen-config completed successfully for target: {{.TARGET}}"'
+        silent: true
 
   cue-vet:
     desc: Run cue vet which validates CUE and other data files
     cmds:
-      - cue vet ../local/config.cue schema.cue
+      - cue vet ../{{.TARGET}}/config.cue schema.cue
 
   cue-fmt:
     desc: Run cue fmt which formats CUE and other data files
     cmds:
-      - cue fmt ../local/config.cue schema.cue
+      - cue fmt ../{{.TARGET}}/config.cue schema.cue
 
   cue-export:
     desc: Run cue export which exports CUE and other data files to JSON
     cmds:
-      - cue export ../local/config.cue schema.cue --out json --outfile ../local/config.json --force
+      - cue export ../{{.TARGET}}/config.cue schema.cue --out json --outfile ../{{.TARGET}}/config.json --force

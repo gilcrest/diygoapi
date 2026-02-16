@@ -1,7 +1,7 @@
 version: '3'
 
 includes:
-  cue-dbt:
+  cue:
     taskfile: ./config/cue/Taskfile.yml
     dir: ./config/cue
 
@@ -48,6 +48,13 @@ tasks:
     cmds:
       - echo "Not yet implemented"
       - exit 1
+
+  gen-config:
+    desc: Generate config from CUE schemas for a given target (e.g., task gen-config -- local)
+    cmds:
+      - task: cue:gen-config
+        vars:
+          TARGET: "{{.TARGET}}"
 
   gen-genesis-config:
     desc: Generate genesis config from CUE files (not yet implemented)
