@@ -109,8 +109,8 @@ type flags struct {
 	encryptkey string
 }
 
-// ValidateDBConnection validates only the fields required for a database connection.
-func (f *flags) ValidateDBConnection() error {
+// validateDBConnection validates only the fields required for a database connection.
+func (f *flags) validateDBConnection() error {
 	const op errs.Op = "cmd/flags.ValidateDBConnection"
 
 	// validate database host is not empty
@@ -172,7 +172,7 @@ func (f *flags) Validate() error {
 	}
 
 	// validate database connection fields
-	err = f.ValidateDBConnection()
+	err = f.validateDBConnection()
 	if err != nil {
 		return err
 	}
