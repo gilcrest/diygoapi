@@ -25,7 +25,7 @@ func main() {
 func DBUp(args []string) (err error) {
 	const op errs.Op = "main/DBUp"
 
-	args, err = cmd.PSQLArgs(true)
+	args, err = cmd.PSQLArgs(true, os.Args)
 	if err != nil {
 		return errs.E(op, err)
 	}

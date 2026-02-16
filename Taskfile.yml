@@ -6,10 +6,15 @@ includes:
     dir: ./config/cue
 
 tasks:
+  db-create-user:
+    desc: Create the dga_local database user via psql
+    cmds:
+      - go run ./cmd/dbuser/main.go {{.CLI_ARGS}}
+
   db-up:
     desc: Run DDL up migration scripts found in the scripts/db/migrations/up directory
     cmds:
-      - go run ./cmd/migrations/main.go
+      - go run ./cmd/migrations/main.go {{.CLI_ARGS}}
 
   run:
     desc: Run the server
@@ -50,11 +55,9 @@ tasks:
       - exit 1
 
   gen-config:
-    desc: Generate config from CUE schemas for a given target (e.g., task gen-config -- local)
+    desc: Generate config from CUE schemas
     cmds:
       - task: cue:gen-config
-        vars:
-          TARGET: "{{.TARGET}}"
 
   gen-genesis-config:
     desc: Generate genesis config from CUE files (not yet implemented)

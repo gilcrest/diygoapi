@@ -42,7 +42,8 @@ tasks.json
 /bin/
 
 # Local configuration (generated and user-specific)
-/config/local/
+/config/config.cue
+/config/config.json
 
 # Claude Code local settings (per-developer preferences)
 .claude/settings.local.json

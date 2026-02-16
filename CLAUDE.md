@@ -19,8 +19,11 @@ The "business" domain is a simple movie CRUD (**C**reate, **R**ead, **U**pdate, 
 | `task test-verbose` | Run all tests (verbose) |
 | `go test -v -run TestFunctionName ./path/to/package` | Run a single test |
 | `task new-key` | Generate a new encryption key |
+| `task db-create-user` | Create the `dga_local` database user via psql |
 | `task db-up` | Run database DDL migrations |
-| `task gen-config TARGET=local` | Generate config from CUE schemas for a given target |
+| `task gen-config` | Generate config from CUE schemas |
+
+Database tasks (`db-create-user`, `db-up`) read connection info from `./config/config.json` by default (using the `default_target` in the config). To override the target: `task db-up -- --target prod`.
 
 --------
 
@@ -78,12 +81,12 @@ Key types:
 
 ### Configuration
 
-The [ff](https://github.com/peterbourgon/ff) library from [Peter Bourgon](https://peter.bourgon.org) is used to parse flags. Flags take precedence, so if a flag is passed, that will be used. If there is no flag set, then the program checks for a matching environment variable. If neither are found, the flag's default value will be used.
+The [ff](https://github.com/peterbourgon/ff) library from [Peter Bourgon](https://peter.bourgon.org) is used to parse flags. Flags take precedence, so if a flag is passed, that will be used. If there is no flag set, then the program checks for a matching environment variable. If neither are found, the flag's default value will be used. The config file defaults to `./config/config.json`.
 
 The CUE-based config setup uses a split layout:
 - **`config/cue/schema.cue`** — the shared validation schema (checked into git)
-- **`config/local/config.cue`** — local config values with credentials (gitignored)
-- **`config/local/config.json`** — generated output from `task gen-config TARGET=local` (gitignored)
+- **`config/config.cue`** — local config values with credentials (gitignored)
+- **`config/config.json`** — generated output from `task gen-config` (gitignored)
 
 Key env vars: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_SEARCH_PATH`, `ENCRYPT_KEY`, `PORT`, `LOG_LEVEL`, `LOG_LEVEL_MIN`, `LOG_ERROR_STACK`
 

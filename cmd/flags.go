@@ -16,7 +16,7 @@ import (
 
 const (
 	configFileFlagName        = "config-file"
-	configFileFlagNameDefault = ""
+	configFileFlagNameDefault = "./config/config.json"
 	configFileFlagNameEnvVar  = "CONFIG_FILE"
 
 	targetFlagName       = "target"

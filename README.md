@@ -143,7 +143,7 @@ export DB_SEARCH_PATH="demo"
 
 ##### JSON file
 
-Another option is to use a JSON configuration file. The config uses a multi-target layout where each target (e.g. `local`, `staging`) has its own settings. The generated JSON file is located at `./config/local/config.json`. Update the `encryption_key`, `database` fields (`host`, `port`, `name`, `user`, `password`, `search_path`) and other settings as appropriate for your `PostgreSQL` installation.
+Another option is to use a JSON configuration file. The config uses a multi-target layout where each target (e.g. `local`, `staging`) has its own settings. The generated JSON file is located at `./config/config.json`. Update the `encryption_key`, `database` fields (`host`, `port`, `name`, `user`, `password`, `search_path`) and other settings as appropriate for your `PostgreSQL` installation.
 
 ```json
 {
@@ -179,18 +179,18 @@ If you prefer, you can generate the JSON config file using [CUE](https://cuelang
 
 The CUE-based config uses a split layout:
 - **`config/cue/schema.cue`** -- the shared validation schema (checked into git)
-- **`config/local/config.cue`** -- local config values with credentials (gitignored)
-- **`config/local/config.json`** -- generated output (gitignored)
+- **`config/config.cue`** -- local config values with credentials (gitignored)
+- **`config/config.json`** -- generated output (gitignored)
 
-Edit the `./config/local/config.cue` file. Update the `encryption_key`, `database` fields (`host`, `port`, `name`, `user`, `password`, `search_path`) and other settings as appropriate for your `PostgreSQL` installation.
+Edit the `./config/config.cue` file. Update the `encryption_key`, `database` fields (`host`, `port`, `name`, `user`, `password`, `search_path`) and other settings as appropriate for your `PostgreSQL` installation.
 
-After modifying the CUE file, run the following from project root, passing the target name (e.g. `local`, `staging`) as the `TARGET` variable:
+After modifying the CUE file, run the following from project root:
 
 ```shell
-$ task gen-config TARGET=local
+$ task gen-config
 ```
 
-This should produce the JSON config file mentioned above (at `./config/local/config.json`).
+This should produce the JSON config file mentioned above (at `./config/config.json`).
 
 ### Step 4 - Database Initialization
 
@@ -198,9 +198,19 @@ The following steps create the database objects and initialize data needed for r
 
 > If you want to create an isolated database and schema, you can find examples of doing that at `./scripts/db/db_init.sql`.
 
+> All database tasks read connection info from `./config/config.json` by default, using the `default_target` defined in the config. To target a different environment, pass `--target` via CLI args, e.g. `task db-up -- --target staging`. You can also override the target with the `TARGET` environment variable.
+
+#### Create the Database User
+
+Create the `dga_local` database user (with password `REPLACE_ME`) via psql:
+
+```shell
+$ task db-create-user
+```
+
 #### Run the Database Up Migration
 
-Fifteen database migration scripts are run as part of the up migration.
+Fifteen database migration scripts are run as part of the up migration:
 
 ```shell
 $ task db-up

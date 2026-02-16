@@ -80,16 +80,36 @@ func (bfn byFileNumber) Swap(i, j int) { bfn[i], bfn[j] = bfn[j], bfn[i] }
 // Less is the sorting logic for the ByFileNumber slice
 func (bfn byFileNumber) Less(i, j int) bool { return bfn[i].fileNumber < bfn[j].fileNumber }
 
-// PSQLArgs takes a slice of DDL files to be executed and builds a
-// sequence of command line arguments using the appropriate flags
-// psql needs to execute files. The arguments returned for psql are as follows:
+// PSQLConnectionArgs parses config flags, validates the database connection
+// info and returns the base psql connection arguments. The arguments are:
 //
 // -w flag is set to never prompt for a password as we are running this as a script
 //
 // -d flag sets the database connection using a Connection URI string.
-//
-// -f flag is sent before each file to tell it to process the file
-func PSQLArgs(up bool) ([]string, error) {
+func PSQLConnectionArgs(args []string) ([]string, error) {
+	const op errs.Op = "cmd/PSQLConnectionArgs"
+
+	f, err := newFlags(args)
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	err = f.validateDBConnection()
+	if err != nil {
+		return nil, errs.E(op, err)
+	}
+
+	printFlags(f)
+
+	psqlArgs := []string{"-w", "-d", newPostgreSQLDSN(f).ConnectionURI()}
+
+	return psqlArgs, nil
+}
+
+// PSQLArgs builds command line arguments for psql to execute DDL migration
+// files. It delegates connection logic to PSQLConnectionArgs and appends
+// a connectivity check followed by -f flags for each DDL file.
+func PSQLArgs(up bool, args []string) ([]string, error) {
 	const op errs.Op = "cmd/PSQLArgs"
 
 	dir := "./scripts/db/migrations"
@@ -99,7 +119,6 @@ func PSQLArgs(up bool) ([]string, error) {
 		dir += "/down"
 	}
 
-	// readDDLFiles reads and returns sorted DDL files from the up or down directory
 	ddlFiles, err := readDDLFiles(dir)
 	if err != nil {
 		return nil, errs.E(op, err)
@@ -109,27 +128,17 @@ func PSQLArgs(up bool) ([]string, error) {
 		return nil, errs.E(op, fmt.Sprintf("there are no DDL files to process in %s", dir))
 	}
 
-	// newFlags will retrieve the database info from the environment using ff
-	var f flags
-	f, err = newFlags([]string{"server"})
+	psqlArgs, err := PSQLConnectionArgs(args)
 	if err != nil {
 		return nil, errs.E(op, err)
 	}
 
-	err = f.ValidateDBConnection()
-	if err != nil {
-		return nil, errs.E(op, err)
-	}
-
-	printFlags(f)
-
-	// command line args for psql are constructed
-	args := []string{"-w", "-d", newPostgreSQLDSN(f).ConnectionURI(), "-q", "-c", "select current_database(), current_user, version()"}
+	// verify connectivity before running DDL files
+	psqlArgs = append(psqlArgs, "-q", "-c", "select current_database(), current_user, version()")
 
 	for _, file := range ddlFiles {
-		args = append(args, "-f")
-		args = append(args, dir+"/"+file.filename)
+		psqlArgs = append(psqlArgs, "-f", dir+"/"+file.filename)
 	}
 
-	return args, nil
+	return psqlArgs, nil
 }
