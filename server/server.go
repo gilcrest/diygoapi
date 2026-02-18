@@ -107,6 +107,7 @@ func (s *Server) ListenAndServe() error {
 	if s.Driver == nil {
 		return errs.E(op, errs.Internal, "Server driver is nil")
 	}
+	s.Logger.Info().Msgf("server listening on %s", s.Addr)
 	return s.Driver.ListenAndServe(s.Addr, s.mux)
 }
 
