@@ -8,9 +8,7 @@ alter user demo_user with nosuperuser;
 -- create database for the environment (dga_local, dga_nonprod, dga_prod, etc.)
 -- dga = "DIY Go API" :)
 create database dga_local with owner demo_user;
-
 -- !!!!!! switch to newly created dga_local database !!!!!
-
 -- create schema demo with owner demo_user
 create schema if not exists demo authorization demo_user;
 

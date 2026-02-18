@@ -19,11 +19,11 @@ The "business" domain is a simple movie CRUD (**C**reate, **R**ead, **U**pdate, 
 | `task test-verbose` | Run all tests (verbose) |
 | `go test -v -run TestFunctionName ./path/to/package` | Run a single test |
 | `task new-key` | Generate a new encryption key |
-| `task db-create-user` | Create the `dga_local` database user via psql |
+| `task db-init` | Initialize database user, database, and schema via psql |
 | `task db-up` | Run database DDL migrations |
 | `task gen-config` | Generate config from CUE schemas |
 
-Database tasks (`db-create-user`, `db-up`) read connection info from `./config/config.json` by default (using the `default_target` in the config). To override the target: `task db-up -- --target prod`.
+Database tasks (`db-init`, `db-up`) read connection info from `./config/config.json` by default (using the `default_target` in the config). `db-init` requires `--db-admin-config-target` (admin connection) and optionally takes `--app-config-target` (defaults to `default_target`). Example: `task db-init -- --db-admin-config-target local-admin`. To override the migration target: `task db-up -- --target prod`.
 
 --------
 

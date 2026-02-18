@@ -6,10 +6,10 @@ includes:
     dir: ./config/cue
 
 tasks:
-  db-create-user:
-    desc: Create the dga_local database user via psql
+  db-init:
+    desc: Initialize database user, database, and schema via psql
     cmds:
-      - go run ./cmd/dbuser/main.go {{.CLI_ARGS}}
+      - go run ./cmd/dbinit/main.go {{.CLI_ARGS}}
 
   db-up:
     desc: Run DDL up migration scripts found in the scripts/db/migrations/up directory

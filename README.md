@@ -209,15 +209,15 @@ The following steps create the database objects and initialize data needed for r
 
 > All database tasks read connection info from `./config/config.json` by default, using the `default_target` defined in the config. To target a different environment, pass `--target` via CLI args, e.g. `task db-up -- --target staging`. You can also override the target with the `TARGET` environment variable.
 
-#### Create the Database User
+#### Initialize the Database
 
-Creating a database user requires elevated privileges. Define a `local-admin` target in your config with a superuser (or a role that has `CREATEROLE`), then run:
+Database initialization (creating the user, database, and schema) requires elevated privileges. Define a `local-admin` target in your config with a superuser (or a role that has `CREATEROLE` and `CREATEDB`), then run:
 
 ```shell
-$ TARGET=local-admin task db-create-user
+$ task db-init -- --db-admin-config-target local-admin
 ```
 
-This creates the `dga_local` user (with password `REPLACE_ME`) via psql.
+This idempotently creates the database user, database, and schema using values from the config's default target. To specify a different app target: `task db-init -- --db-admin-config-target local-admin --app-config-target staging`.
 
 #### Run the Database Up Migration
 
