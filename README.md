@@ -86,6 +86,8 @@ The `movieAdmin` role is set up to grant access to all resources. It's a demo...
 
 All programs in this project (the web server, database tasks, etc.) use the [ff](https://github.com/peterbourgon/ff) library from [Peter Bourgon](https://peter.bourgon.org) for configuration. The priority order is: **CLI flags > environment variables > config file > defaults**. The config file defaults to `./config/config.json`, so the simplest path, for local development, is to create that file.
 
+> If you are using [Claude Code](https://claude.ai/code), you can run `/db-init-config` to be guided through configuration setup interactively — it collects your database connection values, generates a fresh encryption key, writes `config/config.cue`, and runs `task gen-config` for you.
+
 #### Generate a new encryption key
 
 Regardless of which configuration approach you choose, you need a 256-bit ciphertext string, which can be parsed to a 32 byte encryption key. Generate the ciphertext with `task new-key`:
@@ -141,8 +143,6 @@ The CUE-based config uses a split layout:
 - **`config/config.json`** -- generated output (gitignored)
 
 Edit the `./config/config.cue` file. Update the `encryption_key`, `database` fields (`host`, `port`, `name`, `user`, `password`, `search_path`) and other settings as appropriate for your `PostgreSQL` installation.
-
-> If you are using [Claude Code](https://claude.ai/code), you can run `/db-init-config` to be guided through creating `config/config.cue` interactively — it collects your database connection values, generates a fresh encryption key, writes the file, and runs `task gen-config` for you.
 
 After modifying the CUE file, run the following from project root:
 
