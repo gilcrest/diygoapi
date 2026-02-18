@@ -233,13 +233,79 @@ $ task db-up
 
 There are a number of tables that require initialization of data to facilitate things like: authentication through role based access controls, tracking which applications/users are interacting with the system, etc. I have bundled this initialization into a Genesis service, which can be run only once per database.
 
-TODO - Priority 1! - Talk about calling the Genesis service to setup data
+To call Genesis, send a `POST` request to `/api/v1/genesis`. The Genesis endpoint uses a special authentication middleware (`genesisAuthHandler`) that only validates the user's Bearer token — no app authentication is required, since apps don't exist yet. An example request body is provided at `./config/genesis/request.json`:
 
-This initial data setup as part of Genesis creates a Principal organization, a Test organization and apps/users within those as well as sets up permissions and roles for access for the user input into the service. The principal org is created solely for the administrative purpose of creating other organizations, apps and users. The test organization is where all tests are run for test data isolation, etc.
+```bash
+$ curl --location --request POST 'http://127.0.0.1:8080/api/v1/genesis' \
+--header 'Content-Type: application/json' \
+--header 'x-auth-provider: google' \
+--header 'Authorization: Bearer <REPLACE WITH ACCESS TOKEN>' \
+--data @./config/genesis/request.json
+```
 
-Most importantly, a user initiated organization and app is created based on your input. The response details of this organization (located within the `userInitiated` node of the response are those which are needed to run the various Movie APIs (create movie, read movie, etc.)
+The request body defines:
 
-TODO - show response
+- **`user`**: The OAuth2 provider and token for the user calling Genesis (this user becomes the system's first admin).
+- **`org`**: The user-initiated organization and app to create (your organization for interacting with the Movie APIs).
+- **`permissions`**: The set of permissions (resource + operation pairs) to create, e.g. `POST /api/v1/movies`.
+- **`roles`**: The roles to create, each with a list of permissions to assign to it.
+
+> Edit `./config/genesis/request.json` before calling the service — replace the `user.token` with a valid Google OAuth2 access token and `org.app.oauth2_provider_client_id` with your Google OAuth2 Client ID.
+
+This initial data setup as part of Genesis creates a Principal organization, a Test organization and apps/users within those as well as sets up permissions and roles for access for the user input into the service. The Principal org is created solely for the administrative purpose of creating other organizations, apps and users. The Test organization is where all tests are run for test data isolation, etc.
+
+Most importantly, a user initiated organization and app is created based on your input. The response details of this organization (located within the `userInitiated` node of the response) are those which are needed to run the various Movie APIs (create movie, read movie, etc.)
+
+Genesis creates the following seed data within a single database transaction:
+
+1. **Principal Org** — The administrative organization, with a "Developer Dashboard" app created within it.
+2. **Test Org** — The test organization, with a "Test App" and a test user created within it.
+3. **User-Initiated Org** — Your organization (name and description from the request body), with the app you specified created within it.
+4. **Permissions** — All resource/operation pairs from the request (e.g. `GET /api/v1/movies`, `POST /api/v1/movies`).
+5. **Roles** — All roles from the request (e.g. `sysAdmin`, `movieAdmin`), each linked to their specified permissions.
+6. **Role Grants** — The authenticated user (the person calling Genesis) is granted all requested roles in both the Principal and User-Initiated orgs. A test role is granted to the test user in the Test org.
+
+The response contains three nodes — `principal`, `test`, and `userInitiated` — each with the org and app details:
+
+```json
+{
+  "principal": {
+    "external_id": "qAG9Gn34ruud86a_",
+    "name": "Principal",
+    "kind_description": "principal",
+    "description": "The Principal org represents the first organization created in the database...",
+    "app": {
+      "external_id": "iK6yM7pBTTSXJXCF",
+      "name": "Developer Dashboard",
+      "api_keys": [{ "key": "j-DZh4olLswgodsPDA2NsA==", "deactivation_date": "2099-12-31 ..." }]
+    }
+  },
+  "test": {
+    "external_id": "h-o4hvaClqlM0V3d",
+    "name": "Test Org",
+    "kind_description": "test",
+    "app": {
+      "external_id": "upbfVbnyqByyuOUs",
+      "name": "Test App",
+      "api_keys": [{ "key": "sD-i1kYNWtGaFNauXhKZ6A==", "deactivation_date": "2099-12-31 ..." }]
+    }
+  },
+  "userInitiated": {
+    "external_id": "a2gmurv3P9Ws1ybk",
+    "name": "Movie Makers Unlimited",
+    "kind_description": "standard",
+    "app": {
+      "external_id": "zakvyaRpCu4zmt1-",
+      "name": "Movie Makers App",
+      "api_keys": [{ "key": "2BJd-AYbXJdzHWmiphtxxA==", "deactivation_date": "2099-12-31 ..." }]
+    }
+  }
+}
+```
+
+> The full response is saved to `./config/genesis/response.json` and can be retrieved later via `GET /api/v1/genesis`.
+
+Most importantly, the `userInitiated` node contains the app `external_id` and `api_keys[0].key` values needed as the `x-app-id` and `x-api-key` headers for all subsequent API calls (see [Step 7](#step-7---send-requests)).
 
 --------
 
