@@ -84,7 +84,7 @@ The `movieAdmin` role is set up to grant access to all resources. It's a demo...
 
 ### Step 3 - Configuration
 
-All programs in this project (the web server, database tasks, etc.) use the [ff](https://github.com/peterbourgon/ff) library from [Peter Bourgon](https://peter.bourgon.org) for configuration. The priority order is: **CLI flags > environment variables > config file > defaults**. The config file defaults to `./config/config.json`, so the simplest path is to create that file.
+All programs in this project (the web server, database tasks, etc.) use the [ff](https://github.com/peterbourgon/ff) library from [Peter Bourgon](https://peter.bourgon.org) for configuration. The priority order is: **CLI flags > environment variables > config file > defaults**. The config file defaults to `./config/config.json`, so the simplest path, for local development, is to create that file.
 
 #### Generate a new encryption key
 
@@ -977,8 +977,63 @@ If the `Auth` object is not found, an `HTTP 401 (Unauthorized)` response will be
 
 #### Authorization Detail
 
-TODO
+After a user is authenticated, their ability to access a given resource is determined by **authorization**. `diygoapi` implements a custom, database-driven Role Based Access Control (RBAC) model. Authorization is enforced via the `authorizeUserHandler` middleware, which runs after authentication in the middleware chain for every protected route:
+
+```go
+s.mux.Handle("POST /api/v1/movies",
+    s.loggerChain().
+        Append(s.addRequestHandlerPatternContextHandler).
+        Append(s.enforceJSONContentTypeHandler).
+        Append(s.appHandler).              // authenticate app
+        Append(s.authHandler).             // authenticate user
+        Append(s.authorizeUserHandler).    // authorize user (RBAC)
+        Append(s.jsonContentTypeResponseHandler).
+        ThenFunc(s.handleMovieCreate))
+```
+
+The `authorizeUserHandler` middleware retrieves the authenticated `User` and `App` from the request context (set by earlier authentication middleware), then delegates to `DBAuthorizationService.Authorize`. This method extracts the handler pattern (e.g. `POST /api/v1/movies`) from the request context and splits it into the HTTP method (`POST`) and the resource path (`/api/v1/movies`). It then executes a database query to determine if the user is authorized.
+
+If the user is not authorized, an `HTTP 403 (Forbidden)` response is returned with an empty response body.
 
 ##### Role Based Access Control
 
-TODO
+The RBAC model is built on three core domain types, defined in the root package (`auth.go`):
+
+- **Permission**: An approval of a mode of access to a resource. Each permission pairs a `Resource` (an HTTP route, e.g. `/api/v1/movies`) with an `Operation` (an HTTP method, e.g. `POST`). Permissions have an `Active` flag — only active permissions grant access.
+- **Role**: A job function or title which defines an authority level (e.g. `movieAdmin`). Each role has a `Code`, a `Description`, and a list of `Permissions`.
+- **User**: Roles are assigned at the User level (not the Person level), allowing for fine-grained access control across personas.
+
+These are linked together through four database tables:
+
+| Table | Purpose |
+|---|---|
+| `permission` | Stores each permission as a unique `(resource, operation)` pair |
+| `role` | Stores roles with a unique `role_cd` |
+| `role_permission` | Junction table linking roles to their permissions |
+| `users_role` | Junction table linking users to roles, **scoped by organization** (`org_id`) |
+
+The `users_role` table's composite primary key of `(user_id, role_id, org_id)` means a user's roles are scoped per organization, enabling multi-tenant access control.
+
+###### Authorization Query
+
+The authorization check is a single SQL query (`IsAuthorized`) that joins through the RBAC chain:
+
+```sql
+SELECT ur.user_id
+FROM users_role ur
+         INNER JOIN role_permission rp on rp.role_id = ur.role_id
+         INNER JOIN permission p on p.permission_id = rp.permission_id
+WHERE p.active = true
+  AND p.resource = $1      -- e.g. '/api/v1/movies'
+  AND p.operation = $2     -- e.g. 'POST'
+  AND ur.user_id = $3      -- authenticated user
+  AND ur.org_id = $4;      -- org from authenticated app
+```
+
+The organization context (`org_id`) is derived from the authenticated `App` — each app belongs to exactly one `Org`. This means authorization is determined by: _does this user have a role (within this app's organization) that includes a permission matching the requested resource and HTTP method?_
+
+For example, when a user calls `POST /api/v1/movies`, the query checks: does `users_role` contain a row for this user and org? Does that role have a `role_permission` entry linking to a `permission` where `resource = '/api/v1/movies'` and `operation = 'POST'`? If so, the user is authorized.
+
+If the query returns a matching `user_id`, the request proceeds to the handler. If not, the middleware returns an `HTTP 403 (Forbidden)` response with an empty body and logs the unauthorized attempt.
+
+> Note: For details on the 403 response format, see the [Unauthorized Errors](#unauthorized-errors) section above.
