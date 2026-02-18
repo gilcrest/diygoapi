@@ -142,6 +142,8 @@ The CUE-based config uses a split layout:
 
 Edit the `./config/config.cue` file. Update the `encryption_key`, `database` fields (`host`, `port`, `name`, `user`, `password`, `search_path`) and other settings as appropriate for your `PostgreSQL` installation.
 
+> If you are using [Claude Code](https://claude.ai/code), you can run `/db-init-config` to be guided through creating `config/config.cue` interactively — it collects your database connection values, generates a fresh encryption key, writes the file, and runs `task gen-config` for you.
+
 After modifying the CUE file, run the following from project root:
 
 ```shell
@@ -334,6 +336,7 @@ $ task run
 {"level":"info","time":1675700939,"severity":"INFO","message":"current database user: demo_user"}
 {"level":"info","time":1675700939,"severity":"INFO","message":"current database: dga_local"}
 {"level":"info","time":1675700939,"severity":"INFO","message":"current search_path: demo"}
+{"level":"info","time":1675700939,"severity":"INFO","message":"server listening on :8080"}
 ```
 
 > You can also run directly with `go run ./cmd/diy/main.go`, passing flags or relying on environment variables / config file as described in [Step 3](#step-3---configuration).
