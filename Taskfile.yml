@@ -11,6 +11,11 @@ tasks:
     cmds:
       - go run ./cmd/dbinit/main.go {{.CLI_ARGS}}
 
+  db-teardown:
+    desc: Drop database schema, database, and user via psql
+    cmds:
+      - go run ./cmd/dbteardown/main.go {{.CLI_ARGS}}
+
   db-up:
     desc: Run DDL up migration scripts found in the scripts/db/migrations/up directory
     cmds:
