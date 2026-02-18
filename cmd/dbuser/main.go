@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -25,9 +26,24 @@ func createDBUser() error {
 		return errs.E(op, err)
 	}
 
-	args = append(args, "-c", "CREATE USER demo_user WITH CREATEDB PASSWORD 'REPLACE_ME'")
+	// Check if the role already exists.
+	checkArgs := append(append([]string{}, args...), "-tAc", "SELECT 1 FROM pg_roles WHERE rolname='demo_user'")
+	var out bytes.Buffer
+	check := exec.Command("psql", checkArgs...)
+	check.Stdout = &out
+	check.Stderr = os.Stderr
+	err = check.Run()
+	if err != nil {
+		return errs.E(op, err)
+	}
 
-	c := exec.Command("psql", args...)
+	if out.Len() > 0 {
+		fmt.Println("database user \"demo_user\" already exists, skipping")
+		return nil
+	}
+
+	createArgs := append(args, "-c", "CREATE USER demo_user WITH CREATEDB PASSWORD 'REPLACE_ME'")
+	c := exec.Command("psql", createArgs...)
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
 	err = c.Run()
