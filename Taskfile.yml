@@ -5,6 +5,10 @@ includes:
     taskfile: ./config/cue/Taskfile.yml
     dir: ./config/cue
 
+  genesis-cue:
+    taskfile: ./config/genesis/cue/Taskfile.yml
+    dir: ./config/genesis/cue
+
 tasks:
   db-init:
     desc: Initialize database user, database, and schema via psql
@@ -64,8 +68,12 @@ tasks:
     cmds:
       - task: cue:gen-config
 
-  gen-genesis-config:
-    desc: Generate genesis config from CUE files (not yet implemented)
+  gen-genesis-request:
+    desc: Generate config/genesis/request.json from genesis CUE files
     cmds:
-      - echo "Not yet implemented — CUEGenesisPaths helper was removed"
-      - exit 1
+      - task: genesis-cue:gen-genesis-request
+
+  genesis:
+    desc: Run the Genesis service to seed the database
+    cmds:
+      - go run ./cmd/genesis/main.go {{.CLI_ARGS}}

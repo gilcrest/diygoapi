@@ -1,0 +1,30 @@
+version: '3'
+
+tasks:
+  gen-genesis-request:
+    desc: >
+      Generate the Genesis request file, `request.json`, from the CUE files
+      `schema.cue`, `input.cue`, and `auth.cue`. Files are run through cue vet
+      to validate against the schema, then cue fmt to format, then cue export
+      to produce the JSON request file.
+    cmds:
+      - task: cue-vet
+      - task: cue-fmt
+      - task: cue-export
+      - cmd: 'echo "gen-genesis-request completed successfully"'
+        silent: true
+
+  cue-vet:
+    desc: Run cue vet to validate genesis CUE files
+    cmds:
+      - cue vet schema.cue input.cue auth.cue
+
+  cue-fmt:
+    desc: Run cue fmt to format genesis CUE files
+    cmds:
+      - cue fmt schema.cue input.cue auth.cue
+
+  cue-export:
+    desc: Run cue export to generate request.json from genesis CUE files
+    cmds:
+      - cue export schema.cue input.cue auth.cue --out json --outfile ../request.json --force
