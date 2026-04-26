@@ -21,7 +21,7 @@ import (
 const genesisRequestFile = "./config/genesis/request.json"
 
 // Genesis command runs the Genesis service and seeds the database.
-func Genesis() (err error) {
+func Genesis(args []string) (err error) {
 	const op errs.Op = "cmd/Genesis"
 
 	var (
@@ -31,7 +31,7 @@ func Genesis() (err error) {
 	)
 
 	// newFlags will retrieve the database info from the environment using ff
-	flgs, err = newFlags([]string{"server"})
+	flgs, err = newFlags(args)
 	if err != nil {
 		return errs.E(op, err)
 	}
@@ -70,8 +70,9 @@ func Genesis() (err error) {
 	logger.LogErrorStackViaPkgErrors(flgs.logErrorStack)
 	lgr.Info().Msgf("log error stack global set to %t", flgs.logErrorStack)
 
-	if flgs.encryptkey == "" {
-		lgr.Fatal().Msg("no encryption key found")
+	err = flgs.Validate()
+	if err != nil {
+		lgr.Fatal().Err(err).Msg("flags.Validate() error")
 	}
 
 	// decode and retrieve encryption key

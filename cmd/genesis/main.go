@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	if err := cmd.Genesis(); err != nil {
+	if err := cmd.Genesis(os.Args); err != nil {
 		fmt.Fprintf(os.Stderr, "error from cmd.Genesis(): %s\n", err)
 		os.Exit(1)
 	}
