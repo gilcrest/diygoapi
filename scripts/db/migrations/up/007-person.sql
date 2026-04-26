@@ -34,7 +34,7 @@ comment on column person.update_user_id is 'The user which performed the most re
 
 comment on column person.update_timestamp is 'The timestamp when the record was updated most recently.';
 
--- constraint app_org_org_id_fk is outside the app create table statement
+-- constraint user_person_fk is outside the app create table statement
 -- because the app table is created in a previous migration. To make this script idempotent,
 -- we need to check if the constraint exists before creating it.
 ALTER TABLE users DROP CONSTRAINT IF EXISTS user_person_fk;

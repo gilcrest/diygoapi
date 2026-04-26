@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"net/http"
 	"os"
@@ -187,4 +188,19 @@ func printFlags(flgs flags) {
 	} else {
 		fmt.Println("Encryption Key: <not empty>")
 	}
+}
+
+// NewEncryptionKey generates a random 256-bit key and prints it to standard out.
+// It will return an error if the system's secure random number generator fails
+// to function correctly, in which case the caller should not continue.
+// Taken from https://github.com/gtank/cryptopasta/blob/master/encrypt.go
+func NewEncryptionKey() {
+	lgr := logger.NewWithGCPHook(os.Stdout, zerolog.DebugLevel, true)
+
+	keyBytes, err := secure.NewEncryptionKey()
+	if err != nil {
+		lgr.Fatal().Err(err).Msg("EncryptionKey() error")
+	}
+
+	fmt.Printf("Key Ciphertext:\t[%s]\n", hex.EncodeToString(keyBytes[:]))
 }
